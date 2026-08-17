@@ -24,12 +24,13 @@ import { colors, radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
 import type { CameraStop } from '@maplibre/maplibre-react-native';
 
-// Lazy native-module load, at module scope: the installed build-4 dev
-// client has no MapLibre native module, so a bare `import` would crash the
+// Lazy native-module load, at module scope: the dev client installed before
+// build 4 has no MapLibre native module, so a bare `import` would crash the
 // whole bundle. `require` inside a try/catch fails soft instead — this file
 // then falls back to the PNG rung, and Fast Refresh keeps working, never a
-// red screen. Build 5 makes ML real; once it's on every phone this whole
-// try/catch (and the PNG rung it guards) can eventually retire.
+// red screen. Build 4 (the dev-client rebuild, 2026-08-17) makes ML real;
+// once it's on the phone this try/catch (and the PNG rung) can eventually
+// retire.
 let ML: typeof import('@maplibre/maplibre-react-native') | null = null;
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires

@@ -1,20 +1,36 @@
 ﻿<#
-    Qualifire -- build 4: bake the current JS into the standalone preview APK.
+    Qualifire -- build 4: rebuild the Fast Refresh DEV CLIENT to carry the
+    MapLibre native module (B-50/D-041). MapLibre is the ONLY native change
+    since build 3 -- everything else on the phone (six tabs, the D-030 colour
+    model, the ghost tower, persisted settings, B-40's comparison-window
+    cache, the B-50 real map itself as JS/JSX) already arrives live over Fast
+    Refresh the instant Metro connects, and needs no build at all.
 
-    Build 3 shipped the native slate (expo-audio, react-native-safe-area-context)
-    and gave the preview profile its own app id. NOTHING NATIVE HAS CHANGED
-    SINCE. Build 4 exists only to freeze in the JS that landed after it: six
-    tabs, the live route map, the D-030 colour model, the ghost tower, persisted
-    settings, and the corrected launcher icon.
+    Build 3 was the last completed build, and it FAILED: the resulting
+    *preview* APK froze its JS at build time, so Nathan installed it and found
+    the old three-tab app, carrying none of his changes since (see
+    cycles/cycle-008.md: "The preview APK is stale: it froze the JS at build
+    time and shows none of this."). Build 4 was never run.
+
+    Build 4 CANNOT repeat that failure class. A dev client has no baked-in JS
+    bundle to go stale -- it streams its JavaScript from Metro
+    (`npx expo start`) at runtime, on every launch. The only thing a dev-client
+    build freezes is the native layer, and the only native layer change since
+    build 3 is MapLibre.
+
+    Nathan's ruling, 2026-08-17 (binding): no standalone/preview APK until the
+    app is finalized. This script REFUSES -BuildProfile preview unless -Force
+    is also given -- see section 0 below. Build 4 also folds in the whole
+    MapLibre rebuild; there is no build 5 for that.
 
         cd "C:\Users\natha\Claude personal projects\Qualifire\scripts"
         .\build4.ps1 -DryRun    # run every check, spend nothing
-        .\build4.ps1            # run every check, then spend the build
+        .\build4.ps1            # run every check, then spend the build (development -- the default)
 
-    One script, two halves: PREFLIGHT (sections 1-6 -- reads only, changes
-    nothing, costs no build slot) and BUILD (section 7 -- ~10-20 min on Expo's
-    servers, one of the 15 free Android builds a month). -DryRun stops cleanly
-    at the boundary between them.
+    One script, two halves: PREFLIGHT (sections 0-6 -- reads only, changes
+    nothing, costs no build slot) and BUILD (sections 7-8 -- ~10-20 min on
+    Expo's servers, one of the 15 free Android builds a month). -DryRun stops
+    cleanly at the boundary between them.
 
     Keystore prompt during the build: REUSE the existing keystore. Details and
     the on-device checklist are in BUILD-4-RUNBOOK.md at the repo root.
@@ -28,7 +44,7 @@ param(
     [switch]$NoWait,
     [switch]$Force,
     [ValidateSet('preview', 'development')]
-    [string]$BuildProfile = 'preview'
+    [string]$BuildProfile = 'development'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -68,6 +84,17 @@ try {
     Say "repo: $repo"
     if ($DryRun) { Warn 'DRY RUN -- checks only, no build will be queued' }
 
+    # -------------------------------------------- 0. profile gate (Nathan, 2026-08-17)
+    if ($BuildProfile -eq 'preview') {
+        Step '0. Profile gate -- standalone/preview is barred until the app is finalized'
+        if (-not $Force) {
+            Warn "preview/standalone builds are barred until the app is finalized (Nathan, 2026-08-17); build 3's stale-JS failure is the precedent."
+            $problems += 'BuildProfile preview requires -Force: standalone builds are barred until the app is finalized (Nathan, 2026-08-17).'
+        } else {
+            Warn 'preview requested WITH -Force -- proceeding despite the standalone bar. This is Nathan overriding his own rule for one run, not the script relaxing it.'
+        }
+    }
+
     # ---------------------------------------------------------------- 1. tools
     Step '1. Toolchain'
     $node = (node --version)
@@ -100,11 +127,11 @@ try {
         Ok $summary
     }
 
-    # -------------------------------------------------- 3. native slate (build 3)
-    Step '3. Native slate -- unchanged since build 3, so nothing to install'
+    # ----------------------------- 3. native slate -- MapLibre added (B-50/D-041)
+    Step '3. Native slate -- build 4 adds ONE native module since build 3: MapLibre (B-50/D-041)'
     $pkg  = Get-Content (Join-Path $app 'package.json') -Raw | ConvertFrom-Json
     $deps = $pkg.dependencies.PSObject.Properties.Name
-    foreach ($p in @('expo-audio', 'react-native-safe-area-context')) {
+    foreach ($p in @('expo-audio', 'react-native-safe-area-context', '@maplibre/maplibre-react-native')) {
         if ($deps -notcontains $p) {
             $problems += "$p missing from package.json -- run: npx expo install $p"
         }
@@ -114,12 +141,40 @@ try {
     foreach ($pl in $appJson.expo.plugins) {
         if ($pl -is [string]) { $plugins += $pl } else { $plugins += $pl[0] }
     }
-    foreach ($p in @('expo-location', 'expo-status-bar', 'expo-audio')) {
+    foreach ($p in @('expo-location', 'expo-status-bar', 'expo-audio', '@maplibre/maplibre-react-native')) {
         if ($plugins -notcontains $p) { $problems += "app.json expo.plugins is missing $p" }
     }
-    if ($problems.Count -eq 0) { Ok 'both native packages present and the plugin list matches' }
+    if ($problems.Count -eq 0) { Ok 'package.json and app.json plugins list all four native packages' }
 
-    # --------------------------------------------- 4. preview variant (D-026)
+    # MapLibre is the one module build 4 actually exists to install -- verify
+    # it is really on disk, not just declared, and that it is an 11.x release
+    # (D-041 pinned 11.3.6).
+    $mlPkgPath = Join-Path $app 'node_modules\@maplibre\maplibre-react-native\package.json'
+    if (Test-Path $mlPkgPath) {
+        $mlPkg = Get-Content $mlPkgPath -Raw | ConvertFrom-Json
+        if ($mlPkg.version -like '11.*') {
+            Ok "MapLibre native module installed in node_modules, version $($mlPkg.version)"
+        } else {
+            $problems += "MapLibre installed but version is $($mlPkg.version) -- expected an 11.x release"
+        }
+    } else {
+        $problems += 'node_modules\@maplibre\maplibre-react-native\package.json missing -- run: npm install (or npx expo install @maplibre/maplibre-react-native) in app/'
+    }
+
+    # The map actually points at the free tiles (B-50) rather than a stale or
+    # placeholder style URL.
+    $mapViewFile = Join-Path $app 'src\ui\routeMapView.tsx'
+    if (Test-Path $mapViewFile) {
+        if ((Get-Content $mapViewFile -Raw) -match 'tiles\.openfreemap\.org') {
+            Ok 'routeMapView.tsx points at tiles.openfreemap.org (OpenFreeMap, no key)'
+        } else {
+            $problems += 'routeMapView.tsx no longer references tiles.openfreemap.org -- the map style source may have changed'
+        }
+    } else {
+        $problems += 'src\ui\routeMapView.tsx not found'
+    }
+
+    # ------------------------ 4. preview variant (D-026), only relevant with -Force
     Step '4. Preview variant keeps its own app id, so it sits BESIDE the dev client'
     if ($BuildProfile -eq 'preview') {
         $cfg = Join-Path $app 'app.config.js'
@@ -141,7 +196,7 @@ try {
             $problems += 'eas.json build.preview does not set APP_VARIANT=preview'
         }
     } else {
-        Warn "profile is $BuildProfile -- this REPLACES the dev client, not the preview app"
+        Ok "profile is $BuildProfile -- rebuilds the dev client in place. This IS build 4's expected path (Nathan, 2026-08-17): no standalone/preview APK until the app is finalized."
     }
 
     # ------------------------------------------------------------- 5. app icon
@@ -232,7 +287,11 @@ try {
 
     Step 'Done.'
     Say 'Open the printed link on the phone and tap the APK to install.'
-    Say 'It installs OVER the old preview app (same id) and keeps its data.'
+    if ($BuildProfile -eq 'development') {
+        Say 'It installs OVER the old dev client (com.nathanbonher.qualifire) and keeps its data.'
+    } else {
+        Say 'It installs OVER the old preview app (com.nathanbonher.qualifire.preview) and keeps its data.'
+    }
     Say 'Status of past builds:  npx eas-cli build:list'
     Say 'On-device checklist: see BUILD-4-RUNBOOK.md section 5.'
 }

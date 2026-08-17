@@ -22,6 +22,6 @@ Non-blocking, logged for B-51: '−' button doesn't leave FIT mode; empty-string
 
 ## Process notes
 
-STATE.md and repo locks touched 15:27 by unidentified process (D-040 or editor polling); no content damage. Tokens: Haiku triage ~29k, Fable planner, Sonnet executor ~122k, Fable inspector ~102k.
+STATE.md and repo locks touched 15:27 by a parallel session that landed B-40's persistence fix (source of `results_cache_suite.ts`) on the same `spike/maplibre` checkout; no conflict with the map work. Tokens: Haiku triage ~29k, Fable planner, Sonnet executor ~122k, Fable inspector ~102k.
 
-**Next:** Nathan commits, runs `.\build4.ps1 -BuildProfile development` (build 5), then on-device checklist.
+**Next:** Nathan commits, runs `.\build4.ps1` (build 4, dev-client profile only — Nathan folded the rebuild into build 4 and barred a standalone APK until the app is finalized; build 3 had completed as a FAILURE, stale JS, cycle-008), then on-device checklist in `BUILD-4-RUNBOOK.md` §5.
