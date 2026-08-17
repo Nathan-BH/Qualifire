@@ -1,0 +1,838 @@
+{
+ "reviewed": "2026-08-16 by Nathan",
+ "statuses": [
+  "keep",
+  "ignore",
+  "unreviewed",
+  "drop"
+ ],
+ "ways": {
+  "home--work": [
+   {
+    "n": 1,
+    "file": "20260413-1647-work2home-18092213095.gpx",
+    "when": "2026-04-13 16:47",
+    "from": "work",
+    "to": "home",
+    "status": "keep",
+    "note": "established Morning / Evening A/B"
+   },
+   {
+    "n": 2,
+    "file": "20260424-0916-home2work-18235451892.gpx",
+    "when": "2026-04-24 09:16",
+    "from": "home",
+    "to": "work",
+    "status": "keep",
+    "note": "established Morning / Evening A/B"
+   },
+   {
+    "n": 3,
+    "file": "20260503-0848-home2work-18354682772.gpx",
+    "when": "2026-05-03 08:48",
+    "from": "home",
+    "to": "work",
+    "status": "keep",
+    "note": "established Morning / Evening A/B"
+   },
+   {
+    "n": 4,
+    "file": "20260512-0218-work2home-18470959015.gpx",
+    "when": "2026-05-12 02:18",
+    "from": "work",
+    "to": "home",
+    "status": "keep",
+    "note": "established Morning / Evening A/B"
+   },
+   {
+    "n": 5,
+    "file": "20260520-2317-work2home-18587698478.gpx",
+    "when": "2026-05-20 23:17",
+    "from": "work",
+    "to": "home",
+    "status": "keep",
+    "note": "established Morning / Evening A/B"
+   },
+   {
+    "n": 6,
+    "file": "20260602-2048-work2home-18760293314.gpx",
+    "when": "2026-06-02 20:48",
+    "from": "work",
+    "to": "home",
+    "status": "keep",
+    "note": "established Morning / Evening A/B"
+   },
+   {
+    "n": 7,
+    "file": "20260612-1042-home2work-18887838701.gpx",
+    "when": "2026-06-12 10:42",
+    "from": "home",
+    "to": "work",
+    "status": "keep",
+    "note": "SEED for a new route: the home\u2192work mirror of Evening B (0.71\u20130.73 with 4/5/10) \u2014 the rain/asphalt route"
+   },
+   {
+    "n": 8,
+    "file": "20260621-1451-work2home-19011356244.gpx",
+    "when": "2026-06-21 14:51",
+    "from": "work",
+    "to": "home",
+    "status": "ignore",
+    "note": "way off \u2014 10.9 km / 102 min, 2529 m GPS jump"
+   },
+   {
+    "n": 9,
+    "file": "20260715-1027-home2work-19319989088.gpx",
+    "when": "2026-07-15 10:27",
+    "from": "home",
+    "to": "work",
+    "status": "keep",
+    "note": "established Morning / Evening A/B"
+   },
+   {
+    "n": 10,
+    "file": "20260727-2325-work2home-19491419206.gpx",
+    "when": "2026-07-27 23:25",
+    "from": "work",
+    "to": "home",
+    "status": "keep",
+    "note": "established Morning / Evening A/B"
+   },
+   {
+    "n": 11,
+    "file": "20260806-0857-home2work-19622830015.gpx",
+    "when": "2026-08-06 08:57",
+    "from": "home",
+    "to": "work",
+    "status": "keep",
+    "note": "established Morning / Evening A/B"
+   },
+   {
+    "n": 12,
+    "file": "20260813-1618-work2home-19726172105.gpx",
+    "when": "2026-08-13 16:18",
+    "from": "work",
+    "to": "home",
+    "status": "keep",
+    "note": "established Morning / Evening A/B"
+   }
+  ],
+  "station--work": [
+   {
+    "n": 1,
+    "file": "20260428-1802-other-18294098484.gpx",
+    "when": "2026-04-28 18:02",
+    "from": "work",
+    "to": "station",
+    "status": "keep",
+    "note": "work\u2192station route A"
+   },
+   {
+    "n": 2,
+    "file": "20260501-2049-other-18337065601.gpx",
+    "when": "2026-05-01 20:49",
+    "from": "station",
+    "to": "work",
+    "status": "keep",
+    "note": "station\u2192work alternative (reverse of 1, 0.75)"
+   },
+   {
+    "n": 3,
+    "file": "20260505-1809-other-18387354207.gpx",
+    "when": "2026-05-05 18:09",
+    "from": "work",
+    "to": "station",
+    "status": "ignore",
+    "note": "bad route \u2014 many lights and stops; matches nothing (0.11\u20130.21)"
+   },
+   {
+    "n": 4,
+    "file": "20260607-0934-other-18819152678.gpx",
+    "when": "2026-06-07 09:34",
+    "from": "station",
+    "to": "work",
+    "status": "unreviewed",
+    "note": ""
+   },
+   {
+    "n": 5,
+    "file": "20260717-2128-other-19353873809.gpx",
+    "when": "2026-07-17 21:28",
+    "from": "station",
+    "to": "work",
+    "status": "unreviewed",
+    "note": ""
+   },
+   {
+    "n": 6,
+    "file": "20260720-1001-other-19385292914.gpx",
+    "when": "2026-07-20 10:01",
+    "from": "station",
+    "to": "work",
+    "status": "unreviewed",
+    "note": ""
+   },
+   {
+    "n": 7,
+    "file": "20260803-1034-other-19579576468.gpx",
+    "when": "2026-08-03 10:34",
+    "from": "station",
+    "to": "work",
+    "status": "unreviewed",
+    "note": ""
+   },
+   {
+    "n": 8,
+    "file": "20260808-0958-other-19650203020.gpx",
+    "when": "2026-08-08 09:58",
+    "from": "work",
+    "to": "station",
+    "status": "keep",
+    "note": "work\u2192station route B (reverse of 9/10)"
+   },
+   {
+    "n": 9,
+    "file": "20260808-1841-other-19657520752.gpx",
+    "when": "2026-08-08 18:41",
+    "from": "station",
+    "to": "work",
+    "status": "keep",
+    "note": "station\u2192work standard"
+   },
+   {
+    "n": 10,
+    "file": "20260809-1805-other-19671504764.gpx",
+    "when": "2026-08-09 18:05",
+    "from": "station",
+    "to": "work",
+    "status": "keep",
+    "note": "station\u2192work standard (0.85 with 9)"
+   }
+  ],
+  "church--work": [
+   {
+    "n": 1,
+    "file": "20260607-1021-other-18819610406.gpx",
+    "when": "2026-06-07 10:21",
+    "from": "work",
+    "to": "church",
+    "status": "keep",
+    "note": "alternative A"
+   },
+   {
+    "n": 2,
+    "file": "20260809-1011-other-19664221843.gpx",
+    "when": "2026-08-09 10:11",
+    "from": "work",
+    "to": "church",
+    "status": "keep",
+    "note": "alternative B"
+   }
+  ],
+  "home--station": [
+   {
+    "n": 1,
+    "file": "20260428-2037-other-18296681909.gpx",
+    "when": "2026-04-28 20:37",
+    "from": "station",
+    "to": "home",
+    "status": "ignore",
+    "note": "Nathan"
+   },
+   {
+    "n": 2,
+    "file": "20260503-2103-other-18364492000.gpx",
+    "when": "2026-05-03 21:03",
+    "from": "station",
+    "to": "home",
+    "status": "unreviewed",
+    "note": "odd one out \u2014 matches nothing well (best 0.53 with 5)"
+   },
+   {
+    "n": 3,
+    "file": "20260505-1920-other-18388708666.gpx",
+    "when": "2026-05-05 19:20",
+    "from": "station",
+    "to": "home",
+    "status": "ignore",
+    "note": "Nathan"
+   },
+   {
+    "n": 4,
+    "file": "20260517-1148-other-18540109242.gpx",
+    "when": "2026-05-17 11:48",
+    "from": "home",
+    "to": "station",
+    "status": "keep",
+    "note": "via-fosh route (home\u2192station)"
+   },
+   {
+    "n": 5,
+    "file": "20260517-2050-other-18547588142.gpx",
+    "when": "2026-05-17 20:50",
+    "from": "station",
+    "to": "home",
+    "status": "keep",
+    "note": "station\u2192home, passes fosh but on different roads than 4/6/8/11"
+   },
+   {
+    "n": 6,
+    "file": "20260606-1236-other-18808109098.gpx",
+    "when": "2026-06-06 12:36",
+    "from": "home",
+    "to": "station",
+    "status": "keep",
+    "note": "via-fosh route"
+   },
+   {
+    "n": 7,
+    "file": "20260621-0717-other-19005107215.gpx",
+    "when": "2026-06-21 07:17",
+    "from": "home",
+    "to": "station",
+    "status": "keep",
+    "note": "station\u2192home, pairs with 5 (0.85)"
+   },
+   {
+    "n": 8,
+    "file": "20260717-1616-other-19350741523.gpx",
+    "when": "2026-07-17 16:16",
+    "from": "home",
+    "to": "station",
+    "status": "keep",
+    "note": "via-fosh route"
+   },
+   {
+    "n": 9,
+    "file": "20260721-1132-other-19407568557.gpx",
+    "when": "2026-07-21 11:32",
+    "from": "home",
+    "to": "station",
+    "status": "keep",
+    "note": "PREFERRED standard \u2014 shortest (8.74 km), avoids fosh"
+   },
+   {
+    "n": 10,
+    "file": "20260721-2048-other-19413926559.gpx",
+    "when": "2026-07-21 20:48",
+    "from": "station",
+    "to": "home",
+    "status": "keep",
+    "note": "PREFERRED standard \u2014 pairs with 9 (0.74), shortest (8.67 km)"
+   },
+   {
+    "n": 11,
+    "file": "20260801-1305-other-19554546683.gpx",
+    "when": "2026-08-01 13:05",
+    "from": "home",
+    "to": "station",
+    "status": "keep",
+    "note": "via-fosh route"
+   }
+  ],
+  "puttestraat--work": [
+   {
+    "n": 1,
+    "file": "20250901-0745-other-15655886030.gpx",
+    "when": "2025-09-01 07:45",
+    "from": "puttestraat",
+    "to": "work",
+    "status": "ignore",
+    "note": "road-closure era (works now finished)"
+   },
+   {
+    "n": 2,
+    "file": "20250924-0735-other-15917680362.gpx",
+    "when": "2025-09-24 07:35",
+    "from": "puttestraat",
+    "to": "work",
+    "status": "ignore",
+    "note": "road-closure era"
+   },
+   {
+    "n": 3,
+    "file": "20251017-0820-other-16167113190.gpx",
+    "when": "2025-10-17 08:20",
+    "from": "puttestraat",
+    "to": "work",
+    "status": "ignore",
+    "note": "road-closure era"
+   },
+   {
+    "n": 4,
+    "file": "20251103-1645-other-16342896056.gpx",
+    "when": "2025-11-03 16:45",
+    "from": "work",
+    "to": "puttestraat",
+    "status": "ignore",
+    "note": "special case \u2014 9.7 min stop at the Okay store, Vossem (50.832227, 4.565008), confirmed"
+   },
+   {
+    "n": 5,
+    "file": "20251124-0842-other-16550103010.gpx",
+    "when": "2025-11-24 08:42",
+    "from": "puttestraat",
+    "to": "work",
+    "status": "keep",
+    "note": ""
+   },
+   {
+    "n": 6,
+    "file": "20251211-1801-other-16715034666.gpx",
+    "when": "2025-12-11 18:01",
+    "from": "work",
+    "to": "puttestraat",
+    "status": "keep",
+    "note": ""
+   },
+   {
+    "n": 7,
+    "file": "20260113-0940-other-17031962986.gpx",
+    "when": "2026-01-13 09:40",
+    "from": "puttestraat",
+    "to": "work",
+    "status": "keep",
+    "note": ""
+   },
+   {
+    "n": 8,
+    "file": "20260203-1824-other-17274495534.gpx",
+    "when": "2026-02-03 18:24",
+    "from": "work",
+    "to": "puttestraat",
+    "status": "keep",
+    "note": ""
+   },
+   {
+    "n": 9,
+    "file": "20260219-2328-other-17455645272.gpx",
+    "when": "2026-02-19 23:28",
+    "from": "work",
+    "to": "puttestraat",
+    "status": "keep",
+    "note": ""
+   },
+   {
+    "n": 10,
+    "file": "20260305-0811-other-17609939181.gpx",
+    "when": "2026-03-05 08:11",
+    "from": "puttestraat",
+    "to": "work",
+    "status": "keep",
+    "note": ""
+   },
+   {
+    "n": 11,
+    "file": "20260326-0836-other-17862428061.gpx",
+    "when": "2026-03-26 08:36",
+    "from": "puttestraat",
+    "to": "work",
+    "status": "ignore",
+    "note": "GPS artifact \u2014 2338 m straight-line jump over buildings; lowest overlap with every other ride (0.44\u20130.52)"
+   },
+   {
+    "n": 12,
+    "file": "20260725-1836-other-19462311329.gpx",
+    "when": "2026-07-25 18:36",
+    "from": "puttestraat",
+    "to": "work",
+    "status": "keep",
+    "note": ""
+   }
+  ],
+  "home--puttestraat": [
+   {
+    "n": 1,
+    "file": "20260425-1857-other-18255559460.gpx",
+    "when": "2026-04-25 18:57",
+    "from": "puttestraat",
+    "to": "home",
+    "status": "keep",
+    "note": "all overlap \u2014 single route"
+   },
+   {
+    "n": 2,
+    "file": "20260509-1722-other-18441007094.gpx",
+    "when": "2026-05-09 17:22",
+    "from": "home",
+    "to": "puttestraat",
+    "status": "keep",
+    "note": "all overlap \u2014 single route"
+   },
+   {
+    "n": 3,
+    "file": "20260511-1533-other-18464136119.gpx",
+    "when": "2026-05-11 15:33",
+    "from": "puttestraat",
+    "to": "home",
+    "status": "keep",
+    "note": "all overlap \u2014 single route"
+   },
+   {
+    "n": 4,
+    "file": "20260525-2253-other-18653676289.gpx",
+    "when": "2026-05-25 22:53",
+    "from": "puttestraat",
+    "to": "home",
+    "status": "keep",
+    "note": "all overlap \u2014 single route"
+   },
+   {
+    "n": 5,
+    "file": "20260530-0920-other-18711247109.gpx",
+    "when": "2026-05-30 09:20",
+    "from": "home",
+    "to": "puttestraat",
+    "status": "keep",
+    "note": "all overlap \u2014 single route"
+   },
+   {
+    "n": 6,
+    "file": "20260530-1926-other-18731616628.gpx",
+    "when": "2026-05-30 19:26",
+    "from": "puttestraat",
+    "to": "home",
+    "status": "keep",
+    "note": "all overlap \u2014 single route"
+   },
+   {
+    "n": 7,
+    "file": "20260613-0817-other-18898771232.gpx",
+    "when": "2026-06-13 08:17",
+    "from": "home",
+    "to": "puttestraat",
+    "status": "keep",
+    "note": "all overlap \u2014 single route"
+   },
+   {
+    "n": 8,
+    "file": "20260613-2214-other-18908821850.gpx",
+    "when": "2026-06-13 22:14",
+    "from": "puttestraat",
+    "to": "home",
+    "status": "keep",
+    "note": "all overlap \u2014 single route"
+   },
+   {
+    "n": 9,
+    "file": "20260620-0945-other-18993177513.gpx",
+    "when": "2026-06-20 09:45",
+    "from": "home",
+    "to": "puttestraat",
+    "status": "keep",
+    "note": "all overlap \u2014 single route"
+   }
+  ],
+  "fosh--home": [
+   {
+    "n": 1,
+    "file": "20260415-2144-other-18127349045.gpx",
+    "when": "2026-04-15 21:44",
+    "from": "fosh",
+    "to": "home",
+    "status": "keep",
+    "note": "fosh\u2192home corridor; contains a 57 min stop at work"
+   },
+   {
+    "n": 2,
+    "file": "20260421-1757-other-18199837310.gpx",
+    "when": "2026-04-21 17:57",
+    "from": "home",
+    "to": "fosh",
+    "status": "keep",
+    "note": "the ONLY home\u2192fosh ride \u2014 and it takes a different corridor (0.13\u20130.17 overlap with the returns)"
+   },
+   {
+    "n": 3,
+    "file": "20260604-2049-other-18795862677.gpx",
+    "when": "2026-06-04 20:49",
+    "from": "fosh",
+    "to": "home",
+    "status": "keep",
+    "note": "fosh\u2192home corridor; contains a 150 min stop at work"
+   },
+   {
+    "n": 4,
+    "file": "20260614-1425-other-18916881865.gpx",
+    "when": "2026-06-14 14:25",
+    "from": "fosh",
+    "to": "home",
+    "status": "keep",
+    "note": "cleanest fosh\u2192home (22 min)"
+   }
+  ],
+  "church--fosh": [
+   {
+    "n": 1,
+    "file": "20260614-1221-other-18914888435.gpx",
+    "when": "2026-06-14 12:21",
+    "from": "church",
+    "to": "fosh",
+    "status": "keep",
+    "note": "only ride on this way \u2014 canonical for now"
+   }
+  ],
+  "church--home": [
+   {
+    "n": 1,
+    "file": "20260426-1012-other-18263099459.gpx",
+    "when": "2026-04-26 10:12",
+    "from": "home",
+    "to": "church",
+    "status": "ignore",
+    "note": "bad route, much longer (8.5 km / 122 min, 433 m GPS jump)"
+   },
+   {
+    "n": 2,
+    "file": "20260426-1215-other-18264002184.gpx",
+    "when": "2026-04-26 12:15",
+    "from": "church",
+    "to": "home",
+    "status": "ignore",
+    "note": "detour \u2014 11.4 km vs 6.3\u20136.8 km on the good rides"
+   },
+   {
+    "n": 3,
+    "file": "20260524-1012-other-18630944518.gpx",
+    "when": "2026-05-24 10:12",
+    "from": "home",
+    "to": "church",
+    "status": "keep",
+    "note": "reference; identical to 5 (0.96 overlap)"
+   },
+   {
+    "n": 4,
+    "file": "20260607-1213-other-18833364296.gpx",
+    "when": "2026-06-07 12:13",
+    "from": "church",
+    "to": "home",
+    "status": "keep",
+    "note": "only clean church\u2192home return"
+   },
+   {
+    "n": 5,
+    "file": "20260614-1019-other-18913128020.gpx",
+    "when": "2026-06-14 10:19",
+    "from": "home",
+    "to": "church",
+    "status": "keep",
+    "note": "identical to 3"
+   }
+  ],
+  "work-loops": [
+   {
+    "n": 1,
+    "file": "20260611-1022-other-18875760231.gpx",
+    "when": "2026-06-11 10:22",
+    "from": "work",
+    "to": "work",
+    "status": "drop",
+    "note": "not relevant (Nathan)"
+   }
+  ],
+  "puttestraat-loops": [
+   {
+    "n": 1,
+    "file": "20240901-0756-other-12294660525.gpx",
+    "when": "2024-09-01 07:56",
+    "from": "puttestraat",
+    "to": "puttestraat",
+    "status": "drop",
+    "note": "not relevant (Nathan)"
+   },
+   {
+    "n": 2,
+    "file": "20240909-0758-other-12363803775.gpx",
+    "when": "2024-09-09 07:58",
+    "from": "puttestraat",
+    "to": "puttestraat",
+    "status": "drop",
+    "note": "not relevant (Nathan)"
+   },
+   {
+    "n": 3,
+    "file": "20240911-1513-other-12383620414.gpx",
+    "when": "2024-09-11 15:13",
+    "from": "puttestraat",
+    "to": "puttestraat",
+    "status": "drop",
+    "note": "not relevant (Nathan)"
+   },
+   {
+    "n": 4,
+    "file": "20241012-0805-other-12633978914.gpx",
+    "when": "2024-10-12 08:05",
+    "from": "puttestraat",
+    "to": "puttestraat",
+    "status": "drop",
+    "note": "not relevant (Nathan)"
+   },
+   {
+    "n": 5,
+    "file": "20241225-2153-other-13189882711.gpx",
+    "when": "2024-12-25 21:53",
+    "from": "puttestraat",
+    "to": "puttestraat",
+    "status": "drop",
+    "note": "not relevant (Nathan)"
+   },
+   {
+    "n": 6,
+    "file": "20250104-1902-other-13266677062.gpx",
+    "when": "2025-01-04 19:02",
+    "from": "puttestraat",
+    "to": "puttestraat",
+    "status": "drop",
+    "note": "not relevant (Nathan)"
+   },
+   {
+    "n": 7,
+    "file": "20250127-1614-other-13466536100.gpx",
+    "when": "2025-01-27 16:14",
+    "from": "puttestraat",
+    "to": "puttestraat",
+    "status": "drop",
+    "note": "not relevant (Nathan)"
+   },
+   {
+    "n": 8,
+    "file": "20250320-2020-other-13939708766.gpx",
+    "when": "2025-03-20 20:20",
+    "from": "puttestraat",
+    "to": "puttestraat",
+    "status": "drop",
+    "note": "not relevant (Nathan)"
+   },
+   {
+    "n": 9,
+    "file": "20250707-0854-other-15032235366.gpx",
+    "when": "2025-07-07 08:54",
+    "from": "puttestraat",
+    "to": "puttestraat",
+    "status": "drop",
+    "note": "not relevant (Nathan)"
+   },
+   {
+    "n": 10,
+    "file": "20250928-1823-other-15968044067.gpx",
+    "when": "2025-09-28 18:23",
+    "from": "puttestraat",
+    "to": "puttestraat",
+    "status": "drop",
+    "note": "not relevant (Nathan)"
+   },
+   {
+    "n": 11,
+    "file": "20251221-1923-other-16805320260.gpx",
+    "when": "2025-12-21 19:23",
+    "from": "puttestraat",
+    "to": "puttestraat",
+    "status": "drop",
+    "note": "not relevant (Nathan)"
+   },
+   {
+    "n": 12,
+    "file": "20260308-1834-other-17652421361.gpx",
+    "when": "2026-03-08 18:34",
+    "from": "puttestraat",
+    "to": "puttestraat",
+    "status": "drop",
+    "note": "not relevant (Nathan)"
+   }
+  ],
+  "fosh--puttestraat": [
+   {
+    "n": 1,
+    "file": "20250918-2007-other-15858035901.gpx",
+    "when": "2025-09-18 20:07",
+    "from": "fosh",
+    "to": "puttestraat",
+    "status": "keep",
+    "note": "one route with variations; 1 is the most distinct (0.60\u20130.71)"
+   },
+   {
+    "n": 2,
+    "file": "20250929-1736-other-15977097952.gpx",
+    "when": "2025-09-29 17:36",
+    "from": "fosh",
+    "to": "puttestraat",
+    "status": "keep",
+    "note": "one route with variations; 1 is the most distinct (0.60\u20130.71)"
+   },
+   {
+    "n": 3,
+    "file": "20251015-1947-other-16152230608.gpx",
+    "when": "2025-10-15 19:47",
+    "from": "fosh",
+    "to": "puttestraat",
+    "status": "keep",
+    "note": "one route with variations; 1 is the most distinct (0.60\u20130.71)"
+   },
+   {
+    "n": 4,
+    "file": "20251016-1736-other-16161509065.gpx",
+    "when": "2025-10-16 17:36",
+    "from": "fosh",
+    "to": "puttestraat",
+    "status": "keep",
+    "note": "one route with variations; 1 is the most distinct (0.60\u20130.71)"
+   },
+   {
+    "n": 5,
+    "file": "20251104-1943-other-16355935991.gpx",
+    "when": "2025-11-04 19:43",
+    "from": "fosh",
+    "to": "puttestraat",
+    "status": "keep",
+    "note": "one route with variations; 1 is the most distinct (0.60\u20130.71)"
+   },
+   {
+    "n": 6,
+    "file": "20251203-2217-other-16642898333.gpx",
+    "when": "2025-12-03 22:17",
+    "from": "fosh",
+    "to": "puttestraat",
+    "status": "keep",
+    "note": "one route with variations; 1 is the most distinct (0.60\u20130.71)"
+   },
+   {
+    "n": 7,
+    "file": "20251218-2111-other-16779831898.gpx",
+    "when": "2025-12-18 21:11",
+    "from": "fosh",
+    "to": "puttestraat",
+    "status": "keep",
+    "note": "one route with variations; 1 is the most distinct (0.60\u20130.71)"
+   },
+   {
+    "n": 8,
+    "file": "20251223-1842-other-16822648921.gpx",
+    "when": "2025-12-23 18:42",
+    "from": "fosh",
+    "to": "puttestraat",
+    "status": "keep",
+    "note": "one route with variations; 1 is the most distinct (0.60\u20130.71)"
+   }
+  ],
+  "fosh--work": [
+   {
+    "n": 1,
+    "file": "20250929-1633-other-15975967194.gpx",
+    "when": "2025-09-29 16:33",
+    "from": "work",
+    "to": "fosh",
+    "status": "ignore",
+    "note": "superseded by 2"
+   },
+   {
+    "n": 2,
+    "file": "20251008-1526-other-16074664423.gpx",
+    "when": "2025-10-08 15:26",
+    "from": "work",
+    "to": "fosh",
+    "status": "keep",
+    "note": "more accurate"
+   }
+  ]
+ }
+}

@@ -1,0 +1,148 @@
+{
+ "schemaVersion": 1,
+ "landmarks": [
+  {
+   "id": "home",
+   "label": "home",
+   "lat": 50.8365,
+   "lon": 4.6382,
+   "radiusM": 120,
+   "activeFromMs": 0,
+   "activeUntilMs": null,
+   "offerAtStart": true
+  },
+  {
+   "id": "work",
+   "label": "work",
+   "lat": 50.8635,
+   "lon": 4.6883,
+   "radiusM": 130,
+   "activeFromMs": 0,
+   "activeUntilMs": null,
+   "offerAtStart": true
+  },
+  {
+   "id": "puttestraat",
+   "label": "family home (Puttestraat)",
+   "lat": 50.822078,
+   "lon": 4.505119,
+   "radiusM": 120,
+   "activeFromMs": 0,
+   "activeUntilMs": 1776038400000,
+   "offerAtStart": false
+  },
+  {
+   "id": "station",
+   "label": "Leuven station",
+   "lat": 50.8812,
+   "lon": 4.7151,
+   "radiusM": 251,
+   "activeFromMs": 0,
+   "activeUntilMs": null,
+   "offerAtStart": true
+  },
+  {
+   "id": "fosh",
+   "label": "fosh",
+   "lat": 50.879122,
+   "lon": 4.702835,
+   "radiusM": 256,
+   "activeFromMs": 0,
+   "activeUntilMs": null,
+   "offerAtStart": true
+  },
+  {
+   "id": "church",
+   "label": "church",
+   "lat": 50.857749,
+   "lon": 4.697827,
+   "radiusM": 234,
+   "activeFromMs": 0,
+   "activeUntilMs": null,
+   "offerAtStart": true
+  }
+ ],
+ "ways": [
+  {
+   "id": "home>work",
+   "startLandmarkId": "home",
+   "endLandmarkId": "work",
+   "routeIds": [
+    "Morning"
+   ]
+  },
+  {
+   "id": "work>home",
+   "startLandmarkId": "work",
+   "endLandmarkId": "home",
+   "routeIds": [
+    "EveningA",
+    "EveningB"
+   ]
+  }
+ ],
+ "routes": [
+  {
+   "id": "Morning",
+   "wayId": "home>work",
+   "refLineId": "Morning",
+   "gateSetVersion": 1,
+   "seeded": true
+  },
+  {
+   "id": "EveningA",
+   "wayId": "work>home",
+   "refLineId": "EveningA",
+   "gateSetVersion": 1,
+   "seeded": true
+  },
+  {
+   "id": "EveningB",
+   "wayId": "work>home",
+   "refLineId": "EveningB",
+   "gateSetVersion": 1,
+   "seeded": true
+  }
+ ],
+ "gateSets": [
+  {
+   "routeId": "Morning",
+   "version": 1,
+   "chainageM": [
+    162.0,
+    1312.0,
+    2662.0,
+    4212.0,
+    5487.0
+   ],
+   "createdAtMs": 0,
+   "note": "D-016 measured gates (data/analysis/gates_proposal.csv)"
+  },
+  {
+   "routeId": "EveningA",
+   "version": 1,
+   "chainageM": [
+    162.0,
+    1487.0,
+    2987.0,
+    4037.0,
+    5387.0
+   ],
+   "createdAtMs": 0,
+   "note": "D-016 measured gates (data/analysis/gates_proposal.csv)"
+  },
+  {
+   "routeId": "EveningB",
+   "version": 1,
+   "chainageM": [
+    162.0,
+    1487.0,
+    2812.0,
+    4037.0,
+    5237.0
+   ],
+   "createdAtMs": 0,
+   "note": "D-016 measured gates (data/analysis/gates_proposal.csv)"
+  }
+ ]
+}

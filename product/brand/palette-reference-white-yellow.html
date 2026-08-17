@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>White/Yellow palette reference</title>
+<style>
+  body { font-family: system-ui, sans-serif; background:#fafafa; color:#222; margin:2rem; }
+  h1 { font-size:1.2rem; } p.src { color:#777; font-size:.85rem; }
+  .pal { margin:1rem 0; }
+  .pal h2 { font-size:.95rem; margin:0 0 .3rem; font-weight:600; }
+  .row { display:flex; gap:4px; }
+  .sw { flex:1; height:64px; border-radius:6px; border:1px solid #ddd;
+        display:flex; align-items:flex-end; justify-content:center;
+        font-size:.7rem; padding-bottom:4px; font-family:monospace;
+        text-shadow:0 0 3px #fff, 0 0 3px #fff; }
+</style>
+</head>
+<body>
+<h1>White/Yellow palettes — visual reference</h1>
+<p class="src">Source: piktochart.com/blog/white-yellow-color-palette/ · saved 2026-08-15 · not a brand decision, just reference</p>
+<div id="root"></div>
+<script>
+const palettes = [
+ ["Sunlit Meadow","#F4D03F","#FFFFFF","#8E44AD"],
+ ["Lemon Meringue","#F4D03F","#F39C12"],
+ ["Golden Hour","#F1C40F","#F39C12","#FFFFFF","#E74C3C","#8E44AD"],
+ ["Buttercream Bliss","#F9E79F","#F7DC6F","#D5DBDB"],
+ ["Sunny Citrus","#F4D03F","#F9E79F","#FFFFFF","#76D7C4","#1ABC9C"],
+ ["Creamy Sunrise","#F9E79F","#F7DC6F","#FFFFFF","#F1948A","#E67E22"],
+ ["Daffodil Dream","#F4D03F","#F9E79F","#FFFFFF","#85C1AE","#2980B9"],
+ ["Soft Lemonade","#F6E58D","#F9CA24","#FFFFFF","#FF6F61","#6A5B8A"],
+ ["Bright Horizon","#F1C40F","#F39C12","#FFFFFF","#2ECC71","#3498DB"],
+ ["Vanilla Sunshine","#F7DC6F","#F9E79F","#FFFFFF","#EAB8A1","#D35400"],
+ ["Mellow Yellow","#F9E79F","#F4D03F","#FFFFFF","#F5B041","#E67E22"],
+ ["Radiant Fields","#F6E58D","#F9CA24","#FFFFFF","#FFB142","#D35400"],
+ ["Citrus Burst","#F4D03F","#F9E79F","#FFFFFF","#E74C3C","#8E44AD"],
+ ["Sunny Delight","#F9E79F","#F6E58D","#FFFFFF","#F39C12","#D5DBDB"],
+ ["Lemon Sorbet","#F7DC6F","#F9E79F","#FFFFFF","#F1948A","#AAB7B8"],
+];
+document.getElementById('root').innerHTML = palettes.map(([name, ...cols]) =>
+  `<div class="pal"><h2>${name}</h2><div class="row">` +
+  cols.map(c => `<div class="sw" style="background:${c}">${c}</div>`).join('') +
+  `</div></div>`).join('');
+</script>
+</body>
+</html>

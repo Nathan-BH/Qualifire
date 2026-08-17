@@ -1,0 +1,57 @@
+/**
+ * Active-ride marker, persisted to disk.
+ *
+ * Why this exists: the background location task can wake this JS bundle
+ * headlessly (app killed, foreground service still delivering fixes). All
+ * module state is gone in that launch, but the task still needs to know which
+ * rideId to append to. A tiny JSON marker in the app's document directory is
+ * the source of truth for "a ride is being recorded".
+ *
+ * Uses expo-file-system (legacy API — stable, well-documented). The native
+ * module is already inside dev build 944bcc6f because expo-file-system is a
+ * direct dependency of the `expo` package (verified in node_modules:
+ * expo@56.0.19 depends on expo-file-system ~56.0.9), so no APK rebuild is
+ * needed. [UNTESTED ON DEVICE]
+ */
+import * as FileSystem from 'expo-file-system/legacy';
+
+export interface ActiveSession {
+  rideId: string;
+  startedAtMs: number;
+}
+
+function markerUri(): string {
+  // documentDirectory is null only on web; this app is Android-only.
+  const dir = FileSystem.documentDirectory;
+  if (!dir) throw new Error('No document directory available');
+  return `${dir}qualifire-active-ride.json`;
+}
+
+export async function saveSession(s: ActiveSession): Promise<void> {
+  await FileSystem.writeAsStringAsync(markerUri(), JSON.stringify(s));
+}
+
+export async function loadSession(): Promise<ActiveSession | null> {
+  try {
+    const info = await FileSystem.getInfoAsync(markerUri());
+    if (!info.exists) return null;
+    const raw = await FileSystem.readAsStringAsync(markerUri());
+    const parsed = JSON.parse(raw) as Partial<ActiveSession>;
+    if (typeof parsed.rideId === 'string' && typeof parsed.startedAtMs === 'number') {
+      return { rideId: parsed.rideId, startedAtMs: parsed.startedAtMs };
+    }
+    // Corrupt marker: discard rather than crash the task forever.
+    await clearSession();
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export async function clearSession(): Promise<void> {
+  try {
+    await FileSystem.deleteAsync(markerUri(), { idempotent: true });
+  } catch {
+    // Best-effort; a stale marker is handled by loadSession/recovery.
+  }
+}

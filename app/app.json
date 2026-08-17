@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "Qualifire",
+    "slug": "qualifire",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#101014",
+    "platforms": [
+      "android"
+    ],
+    "android": {
+      "package": "com.nathanbonher.qualifire",
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.WAKE_LOCK",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#17171b"
+      }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Qualifire uses your location to time your commute sectors.",
+          "locationAlwaysAndWhenInUsePermission": "Qualifire keeps recording your ride while the app is in the background or the screen is off.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      "expo-status-bar",
+      "expo-audio"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "a9f51461-f939-49a2-8c47-087fc39dc5f3"
+      }
+    },
+    "owner": "nahtanhbs-team",
+    "icon": "./assets/icon.png"
+  }
+}

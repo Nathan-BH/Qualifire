@@ -1,0 +1,40 @@
+{
+ "landmarks": [
+  {
+   "id": "home",
+   "lat": 50.8365,
+   "lon": 4.6382,
+   "radiusM": 120
+  },
+  {
+   "id": "work",
+   "lat": 50.8635,
+   "lon": 4.6883,
+   "radiusM": 130
+  },
+  {
+   "id": "puttestraat",
+   "lat": 50.822078,
+   "lon": 4.505119,
+   "radiusM": 120
+  },
+  {
+   "id": "station",
+   "lat": 50.8812,
+   "lon": 4.7151,
+   "radiusM": 251
+  },
+  {
+   "id": "fosh",
+   "lat": 50.879122,
+   "lon": 4.702835,
+   "radiusM": 256
+  },
+  {
+   "id": "church",
+   "lat": 50.857749,
+   "lon": 4.697827,
+   "radiusM": 234
+  }
+ ]
+}

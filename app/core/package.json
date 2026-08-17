@@ -1,0 +1,15 @@
+{
+  "name": "@qualifire/core",
+  "version": "0.1.0",
+  "description": "Qualifire timing core: GPX parsing, chainage projection (D-011 + D-016 amendments), live gate detection, moving time, sector timing. Zero runtime dependencies; platform-free TypeScript imported unchanged by the Expo app. Parity with the validated Python pipeline proven in PARITY.md.",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "parity": "node --experimental-strip-types harness/parity.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "typescript": "^5.6.0"
+  }
+}

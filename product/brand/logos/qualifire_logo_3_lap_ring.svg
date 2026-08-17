@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" viewBox="0 0 512 512" width="512" height="512">
+<g id="background" inkscape:label="background_lap_ring">
+<rect id="bg" inkscape:label="background_paddock_charcoal" x="0" y="0" width="512" height="512" rx="0" fill="#17171b"/>
+</g>
+<g id="mark" inkscape:label="mark_lap_ring">
+<path id="arc1" inkscape:label="arc_s1_neutral_yellow" d="M 274.28 107.12 A 150 150 0 0 1 404.88 237.72" fill="none" stroke="#F5C542" stroke-width="40" stroke-linecap="round"/>
+<path id="arc2" inkscape:label="arc_s2_neutral_yellow" d="M 404.88 274.28 A 150 150 0 0 1 274.28 404.88" fill="none" stroke="#F5C542" stroke-width="40" stroke-linecap="round"/>
+<path id="arc3" inkscape:label="arc_s3_green" d="M 237.72 404.88 A 150 150 0 0 1 107.12 274.28" fill="none" stroke="#3ED598" stroke-width="40" stroke-linecap="round"/>
+<path id="arc4" inkscape:label="arc_s4_purple" d="M 107.12 237.72 A 150 150 0 0 1 219.71 110.46" fill="none" stroke="#A667F0" stroke-width="40" stroke-linecap="round"/>
+<line id="start_tick" inkscape:label="start_gate_tick_ink" x1="248" y1="72" x2="264" y2="140" fill="none" stroke="#F4F2EC" stroke-width="14" stroke-linecap="round"/>
+</g>
+</svg>

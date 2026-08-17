@@ -1,0 +1,1562 @@
+[
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260731-1034-home2work-19539495549",
+  "startedAtMs": 1785486893000,
+  "routeId": "Morning",
+  "source": "archive",
+  "lap": {
+   "rawS": 857.8438391685486,
+   "movingS": 857.8438391685486,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1312,
+    "rawS": 202.38909721374512,
+    "movingS": 202.38909721374512,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1312,
+    "toChainageM": 2662,
+    "rawS": 204.10679483413696,
+    "movingS": 204.10679483413696,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2662,
+    "toChainageM": 4212,
+    "rawS": 238.98073315620422,
+    "movingS": 238.98073315620422,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4212,
+    "toChainageM": 5487,
+    "rawS": 212.36721396446228,
+    "movingS": 212.36721396446228,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260804-0944-home2work-19593459794",
+  "startedAtMs": 1785829491000,
+  "routeId": "Morning",
+  "source": "archive",
+  "lap": {
+   "rawS": 858.1811189651489,
+   "movingS": 858.1811189651489,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1312,
+    "rawS": 197.5863857269287,
+    "movingS": 197.5863857269287,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1312,
+    "toChainageM": 2662,
+    "rawS": 205.672869682312,
+    "movingS": 205.672869682312,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2662,
+    "toChainageM": 4212,
+    "rawS": 243.61277627944946,
+    "movingS": 243.61277627944946,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4212,
+    "toChainageM": 5487,
+    "rawS": 211.30908727645874,
+    "movingS": 211.30908727645874,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260805-1034-home2work-19609112346",
+  "startedAtMs": 1785918893000,
+  "routeId": null,
+  "source": "archive",
+  "lap": {
+   "rawS": 0,
+   "movingS": null,
+   "quality": "missed"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1312,
+    "rawS": 0,
+    "movingS": null,
+    "quality": "missed"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1312,
+    "toChainageM": 2662,
+    "rawS": 201.04905462265015,
+    "movingS": 201.04905462265015,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2662,
+    "toChainageM": 4212,
+    "rawS": 242.85727882385254,
+    "movingS": 242.85727882385254,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4212,
+    "toChainageM": 5487,
+    "rawS": 205.15898203849792,
+    "movingS": 205.15898203849792,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260806-0857-home2work-19622830015",
+  "startedAtMs": 1785999444000,
+  "routeId": "Morning",
+  "source": "archive",
+  "lap": {
+   "rawS": 829.3025553226471,
+   "movingS": 829.3025553226471,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1312,
+    "rawS": 181.83732271194458,
+    "movingS": 181.83732271194458,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1312,
+    "toChainageM": 2662,
+    "rawS": 202.07441449165344,
+    "movingS": 202.07441449165344,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2662,
+    "toChainageM": 4212,
+    "rawS": 240.24189734458923,
+    "movingS": 240.24189734458923,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4212,
+    "toChainageM": 5487,
+    "rawS": 205.14892077445984,
+    "movingS": 205.14892077445984,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260807-1732-home2work-19642526095",
+  "startedAtMs": 1786116730000,
+  "routeId": "Morning",
+  "source": "archive",
+  "lap": {
+   "rawS": 828.7084422111511,
+   "movingS": 828.7084422111511,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1312,
+    "rawS": 185.42007613182068,
+    "movingS": 185.42007613182068,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1312,
+    "toChainageM": 2662,
+    "rawS": 201.7176535129547,
+    "movingS": 201.7176535129547,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2662,
+    "toChainageM": 4212,
+    "rawS": 240.0700180530548,
+    "movingS": 240.0700180530548,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4212,
+    "toChainageM": 5487,
+    "rawS": 201.50069451332092,
+    "movingS": 201.50069451332092,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260808-0848-home2work-19649577531",
+  "startedAtMs": 1786171680000,
+  "routeId": "Morning",
+  "source": "archive",
+  "lap": {
+   "rawS": 816.6750566959381,
+   "movingS": 816.6750566959381,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1312,
+    "rawS": 181.48587441444397,
+    "movingS": 181.48587441444397,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1312,
+    "toChainageM": 2662,
+    "rawS": 201.42210626602173,
+    "movingS": 201.42210626602173,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2662,
+    "toChainageM": 4212,
+    "rawS": 237.57422804832458,
+    "movingS": 237.57422804832458,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4212,
+    "toChainageM": 5487,
+    "rawS": 196.19284796714783,
+    "movingS": 196.19284796714783,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260810-0923-home2work-19677438031",
+  "startedAtMs": 1786346583000,
+  "routeId": "Morning",
+  "source": "archive",
+  "lap": {
+   "rawS": 835.6328139305115,
+   "movingS": 835.6328139305115,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1312,
+    "rawS": 187.05831503868103,
+    "movingS": 187.05831503868103,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1312,
+    "toChainageM": 2662,
+    "rawS": 205.1329300403595,
+    "movingS": 205.1329300403595,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2662,
+    "toChainageM": 4212,
+    "rawS": 238.54119873046875,
+    "movingS": 238.54119873046875,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4212,
+    "toChainageM": 5487,
+    "rawS": 204.9003701210022,
+    "movingS": 204.9003701210022,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260811-0828-home2work-19691203692",
+  "startedAtMs": 1786429691000,
+  "routeId": "Morning",
+  "source": "archive",
+  "lap": {
+   "rawS": 835.8065423965454,
+   "movingS": 835.8065423965454,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1312,
+    "rawS": 185.24102544784546,
+    "movingS": 185.24102544784546,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1312,
+    "toChainageM": 2662,
+    "rawS": 207.09582591056824,
+    "movingS": 207.09582591056824,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2662,
+    "toChainageM": 4212,
+    "rawS": 236.79570603370667,
+    "movingS": 236.79570603370667,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4212,
+    "toChainageM": 5487,
+    "rawS": 206.67398500442505,
+    "movingS": 206.67398500442505,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260812-1445-home2work-19710858960",
+  "startedAtMs": 1786538712000,
+  "routeId": "Morning",
+  "source": "archive",
+  "lap": {
+   "rawS": 843.128705739975,
+   "movingS": 843.128705739975,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1312,
+    "rawS": 188.8823356628418,
+    "movingS": 188.8823356628418,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1312,
+    "toChainageM": 2662,
+    "rawS": 206.57763671875,
+    "movingS": 206.57763671875,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2662,
+    "toChainageM": 4212,
+    "rawS": 244.29233026504517,
+    "movingS": 244.29233026504517,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4212,
+    "toChainageM": 5487,
+    "rawS": 203.376403093338,
+    "movingS": 203.376403093338,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260813-0831-home2work-19720913908",
+  "startedAtMs": 1786602677000,
+  "routeId": "Morning",
+  "source": "archive",
+  "lap": {
+   "rawS": 902.9439895153046,
+   "movingS": 902.9439895153046,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1312,
+    "rawS": 200.82297778129578,
+    "movingS": 200.82297778129578,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1312,
+    "toChainageM": 2662,
+    "rawS": 218.21915125846863,
+    "movingS": 218.21915125846863,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2662,
+    "toChainageM": 4212,
+    "rawS": 260.72368144989014,
+    "movingS": 260.72368144989014,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4212,
+    "toChainageM": 5487,
+    "rawS": 223.17817902565002,
+    "movingS": 223.17817902565002,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260728-1619-work2home-19501080034",
+  "startedAtMs": 1785248354000,
+  "routeId": "EveningA",
+  "source": "archive",
+  "lap": {
+   "rawS": 1277.9736936092377,
+   "movingS": 1253.9736936092377,
+   "quality": "interrupted"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1487,
+    "rawS": 350.94087648391724,
+    "movingS": 350.94087648391724,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1487,
+    "toChainageM": 2987,
+    "rawS": 336.077184677124,
+    "movingS": 336.077184677124,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2987,
+    "toChainageM": 4037,
+    "rawS": 222.56211256980896,
+    "movingS": 222.56211256980896,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4037,
+    "toChainageM": 5387,
+    "rawS": 368.39351987838745,
+    "movingS": 344.39351987838745,
+    "quality": "interrupted"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260730-1834-work2home-19531457200",
+  "startedAtMs": 1785429258000,
+  "routeId": "EveningA",
+  "source": "archive",
+  "lap": {
+   "rawS": 964.3984088897705,
+   "movingS": 957.3984088897705,
+   "quality": "interrupted"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1487,
+    "rawS": 245.05883741378784,
+    "movingS": 245.05883741378784,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1487,
+    "toChainageM": 2987,
+    "rawS": 265.91518568992615,
+    "movingS": 265.91518568992615,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2987,
+    "toChainageM": 4037,
+    "rawS": 186.8470664024353,
+    "movingS": 186.8470664024353,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4037,
+    "toChainageM": 5387,
+    "rawS": 266.5773193836212,
+    "movingS": 259.5773193836212,
+    "quality": "interrupted"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260731-1851-work2home-19545118665",
+  "startedAtMs": 1785516668000,
+  "routeId": "EveningA",
+  "source": "archive",
+  "lap": {
+   "rawS": 836.063467502594,
+   "movingS": 836.063467502594,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1487,
+    "rawS": 214.930180311203,
+    "movingS": 214.930180311203,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1487,
+    "toChainageM": 2987,
+    "rawS": 234.44559574127197,
+    "movingS": 234.44559574127197,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2987,
+    "toChainageM": 4037,
+    "rawS": 162.05623126029968,
+    "movingS": 162.05623126029968,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4037,
+    "toChainageM": 5387,
+    "rawS": 224.63146018981934,
+    "movingS": 224.63146018981934,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260803-2005-work2home-19586484852",
+  "startedAtMs": 1785780300000,
+  "routeId": "EveningA",
+  "source": "archive",
+  "lap": {
+   "rawS": 831.3945915699005,
+   "movingS": 831.3945915699005,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1487,
+    "rawS": 217.5181930065155,
+    "movingS": 217.5181930065155,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1487,
+    "toChainageM": 2987,
+    "rawS": 237.72812628746033,
+    "movingS": 237.72812628746033,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2987,
+    "toChainageM": 4037,
+    "rawS": 157.7979929447174,
+    "movingS": 157.7979929447174,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4037,
+    "toChainageM": 5387,
+    "rawS": 218.35027933120728,
+    "movingS": 218.35027933120728,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260804-1859-work2home-19608991543",
+  "startedAtMs": 1785862783000,
+  "routeId": "EveningA",
+  "source": "archive",
+  "lap": {
+   "rawS": 845.3995020389557,
+   "movingS": 845.3995020389557,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1487,
+    "rawS": 217.7427623271942,
+    "movingS": 217.7427623271942,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1487,
+    "toChainageM": 2987,
+    "rawS": 236.8259379863739,
+    "movingS": 236.8259379863739,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2987,
+    "toChainageM": 4037,
+    "rawS": 165.8061408996582,
+    "movingS": 165.8061408996582,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4037,
+    "toChainageM": 5387,
+    "rawS": 225.02466082572937,
+    "movingS": 225.02466082572937,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260805-1852-work2home-19615380701",
+  "startedAtMs": 1785948775000,
+  "routeId": "EveningA",
+  "source": "archive",
+  "lap": {
+   "rawS": 868.6008019447327,
+   "movingS": 833.6008019447327,
+   "quality": "interrupted"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1487,
+    "rawS": 252.32164764404297,
+    "movingS": 217.32164764404297,
+    "quality": "interrupted"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1487,
+    "toChainageM": 2987,
+    "rawS": 228.68849849700928,
+    "movingS": 228.68849849700928,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2987,
+    "toChainageM": 4037,
+    "rawS": 160.85890793800354,
+    "movingS": 160.85890793800354,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4037,
+    "toChainageM": 5387,
+    "rawS": 226.73174786567688,
+    "movingS": 226.73174786567688,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260806-1516-work2home-19627136592",
+  "startedAtMs": 1786022167000,
+  "routeId": "EveningA",
+  "source": "archive",
+  "lap": {
+   "rawS": 812.5497715473175,
+   "movingS": 812.5497715473175,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1487,
+    "rawS": 205.70915722846985,
+    "movingS": 205.70915722846985,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1487,
+    "toChainageM": 2987,
+    "rawS": 228.68512058258057,
+    "movingS": 228.68512058258057,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2987,
+    "toChainageM": 4037,
+    "rawS": 158.5460503101349,
+    "movingS": 158.5460503101349,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4037,
+    "toChainageM": 5387,
+    "rawS": 219.6094434261322,
+    "movingS": 219.6094434261322,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260807-1847-work2home-19643453356",
+  "startedAtMs": 1786121222000,
+  "routeId": "EveningA",
+  "source": "archive",
+  "lap": {
+   "rawS": 818.4107210636139,
+   "movingS": 818.4107210636139,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1487,
+    "rawS": 210.95669102668762,
+    "movingS": 210.95669102668762,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1487,
+    "toChainageM": 2987,
+    "rawS": 228.88882851600647,
+    "movingS": 228.88882851600647,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2987,
+    "toChainageM": 4037,
+    "rawS": 157.38126516342163,
+    "movingS": 157.38126516342163,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4037,
+    "toChainageM": 5387,
+    "rawS": 221.18393635749817,
+    "movingS": 221.18393635749817,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260808-1955-work2home-19658451877",
+  "startedAtMs": 1786211714000,
+  "routeId": "EveningA",
+  "source": "archive",
+  "lap": {
+   "rawS": 816.7490818500519,
+   "movingS": 816.7490818500519,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1487,
+    "rawS": 212.1449635028839,
+    "movingS": 212.1449635028839,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1487,
+    "toChainageM": 2987,
+    "rawS": 228.8343756198883,
+    "movingS": 228.8343756198883,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2987,
+    "toChainageM": 4037,
+    "rawS": 160.25091934204102,
+    "movingS": 160.25091934204102,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4037,
+    "toChainageM": 5387,
+    "rawS": 215.51882338523865,
+    "movingS": 215.51882338523865,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260813-1618-work2home-19726172105",
+  "startedAtMs": 1786630738000,
+  "routeId": "EveningA",
+  "source": "archive",
+  "lap": {
+   "rawS": 810.00412774086,
+   "movingS": 810.00412774086,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1487,
+    "rawS": 174.86799931526184,
+    "movingS": 174.86799931526184,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1487,
+    "toChainageM": 2987,
+    "rawS": 240.62273812294006,
+    "movingS": 240.62273812294006,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2987,
+    "toChainageM": 4037,
+    "rawS": 167.84404134750366,
+    "movingS": 167.84404134750366,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4037,
+    "toChainageM": 5387,
+    "rawS": 226.66934895515442,
+    "movingS": 226.66934895515442,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260615-2359-work2home-18935332720",
+  "startedAtMs": 1781560799000,
+  "routeId": "EveningB",
+  "source": "archive",
+  "lap": {
+   "rawS": 778.1300668716431,
+   "movingS": 778.1300668716431,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1487,
+    "rawS": 209.4728820323944,
+    "movingS": 209.4728820323944,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1487,
+    "toChainageM": 2812,
+    "rawS": 199.44832634925842,
+    "movingS": 199.44832634925842,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2812,
+    "toChainageM": 4037,
+    "rawS": 182.20782613754272,
+    "movingS": 182.20782613754272,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4037,
+    "toChainageM": 5237,
+    "rawS": 187.0010323524475,
+    "movingS": 187.0010323524475,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260616-2230-work2home-18949259562",
+  "startedAtMs": 1781641822000,
+  "routeId": "EveningB",
+  "source": "archive",
+  "lap": {
+   "rawS": 760.6936824321747,
+   "movingS": 760.6936824321747,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1487,
+    "rawS": 205.6928195953369,
+    "movingS": 205.6928195953369,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1487,
+    "toChainageM": 2812,
+    "rawS": 194.16149067878723,
+    "movingS": 194.16149067878723,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2812,
+    "toChainageM": 4037,
+    "rawS": 179.68723130226135,
+    "movingS": 179.68723130226135,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4037,
+    "toChainageM": 5237,
+    "rawS": 181.15214085578918,
+    "movingS": 181.15214085578918,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260617-2220-work2home-18963316789",
+  "startedAtMs": 1781727600000,
+  "routeId": "EveningB",
+  "source": "archive",
+  "lap": {
+   "rawS": 799.7118661403656,
+   "movingS": null,
+   "quality": "missed"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1487,
+    "rawS": 212.16148495674133,
+    "movingS": 206.16148495674133,
+    "quality": "interrupted"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1487,
+    "toChainageM": 2812,
+    "rawS": 196.4695839881897,
+    "movingS": 196.4695839881897,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2812,
+    "toChainageM": 4037,
+    "rawS": 0,
+    "movingS": null,
+    "quality": "missed"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4037,
+    "toChainageM": 5237,
+    "rawS": 175.2536542415619,
+    "movingS": 175.2536542415619,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260618-2310-work2home-18976919847",
+  "startedAtMs": 1781817023000,
+  "routeId": "EveningB",
+  "source": "archive",
+  "lap": {
+   "rawS": 886.4148910045624,
+   "movingS": null,
+   "quality": "missed"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1487,
+    "rawS": 207.4875214099884,
+    "movingS": 207.4875214099884,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1487,
+    "toChainageM": 2812,
+    "rawS": 194.41379618644714,
+    "movingS": 194.41379618644714,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2812,
+    "toChainageM": 4037,
+    "rawS": 185.11838030815125,
+    "movingS": 185.11838030815125,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4037,
+    "toChainageM": 5237,
+    "rawS": 0,
+    "movingS": null,
+    "quality": "missed"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260620-0001-work2home-18989339700",
+  "startedAtMs": 1781906477000,
+  "routeId": "EveningB",
+  "source": "archive",
+  "lap": {
+   "rawS": 773.4628672599792,
+   "movingS": 773.4628672599792,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1487,
+    "rawS": 214.59381484985352,
+    "movingS": 214.59381484985352,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1487,
+    "toChainageM": 2812,
+    "rawS": 196.06050038337708,
+    "movingS": 196.06050038337708,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2812,
+    "toChainageM": 4037,
+    "rawS": 179.0003740787506,
+    "movingS": 179.0003740787506,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4037,
+    "toChainageM": 5237,
+    "rawS": 183.80817794799805,
+    "movingS": 183.80817794799805,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260715-0020-work2home-19315592710",
+  "startedAtMs": 1784067623000,
+  "routeId": "EveningB",
+  "source": "archive",
+  "lap": {
+   "rawS": 813.0849921703339,
+   "movingS": 813.0849921703339,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1487,
+    "rawS": 233.87881445884705,
+    "movingS": 233.87881445884705,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1487,
+    "toChainageM": 2812,
+    "rawS": 202.74687933921814,
+    "movingS": 202.74687933921814,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2812,
+    "toChainageM": 4037,
+    "rawS": 184.42151355743408,
+    "movingS": 184.42151355743408,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4037,
+    "toChainageM": 5237,
+    "rawS": 192.0377848148346,
+    "movingS": 192.0377848148346,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260717-2332-work2home-19354821638",
+  "startedAtMs": 1784323948000,
+  "routeId": "EveningB",
+  "source": "archive",
+  "lap": {
+   "rawS": 774.6625580787659,
+   "movingS": 774.6625580787659,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1487,
+    "rawS": 220.98230838775635,
+    "movingS": 220.98230838775635,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1487,
+    "toChainageM": 2812,
+    "rawS": 203.52911972999573,
+    "movingS": 203.52911972999573,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2812,
+    "toChainageM": 4037,
+    "rawS": 176.20864987373352,
+    "movingS": 176.20864987373352,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4037,
+    "toChainageM": 5237,
+    "rawS": 173.94248008728027,
+    "movingS": 173.94248008728027,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260723-2147-work2home-19436961849",
+  "startedAtMs": 1784836034000,
+  "routeId": "EveningB",
+  "source": "archive",
+  "lap": {
+   "rawS": 757.6524665355682,
+   "movingS": 757.6524665355682,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1487,
+    "rawS": 205.95197772979736,
+    "movingS": 205.95197772979736,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1487,
+    "toChainageM": 2812,
+    "rawS": 197.58291006088257,
+    "movingS": 197.58291006088257,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2812,
+    "toChainageM": 4037,
+    "rawS": 178.08110404014587,
+    "movingS": 178.08110404014587,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4037,
+    "toChainageM": 5237,
+    "rawS": 176.03647470474243,
+    "movingS": 176.03647470474243,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260727-2325-work2home-19491419206",
+  "startedAtMs": 1785187529000,
+  "routeId": "EveningB",
+  "source": "archive",
+  "lap": {
+   "rawS": 772.4626348018646,
+   "movingS": 772.4626348018646,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1487,
+    "rawS": 212.4733488559723,
+    "movingS": 212.4733488559723,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1487,
+    "toChainageM": 2812,
+    "rawS": 201.05300903320312,
+    "movingS": 201.05300903320312,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2812,
+    "toChainageM": 4037,
+    "rawS": 181.1873540878296,
+    "movingS": 181.1873540878296,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4037,
+    "toChainageM": 5237,
+    "rawS": 177.74892282485962,
+    "movingS": 177.74892282485962,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ },
+ {
+  "kind": "rideResult",
+  "schemaVersion": 1,
+  "rideId": "seed:20260809-1900-work2home-19677298540",
+  "startedAtMs": 1786294833000,
+  "routeId": "EveningB",
+  "source": "archive",
+  "lap": {
+   "rawS": 804.5202538967133,
+   "movingS": 804.5202538967133,
+   "quality": "clean"
+  },
+  "sectors": [
+   {
+    "index": 1,
+    "fromChainageM": 162,
+    "toChainageM": 1487,
+    "rawS": 217.63527488708496,
+    "movingS": 217.63527488708496,
+    "quality": "clean"
+   },
+   {
+    "index": 2,
+    "fromChainageM": 1487,
+    "toChainageM": 2812,
+    "rawS": 211.83617162704468,
+    "movingS": 211.83617162704468,
+    "quality": "clean"
+   },
+   {
+    "index": 3,
+    "fromChainageM": 2812,
+    "toChainageM": 4037,
+    "rawS": 191.87272572517395,
+    "movingS": 191.87272572517395,
+    "quality": "clean"
+   },
+   {
+    "index": 4,
+    "fromChainageM": 4037,
+    "toChainageM": 5237,
+    "rawS": 183.17608165740967,
+    "movingS": 183.17608165740967,
+    "quality": "clean"
+   }
+  ],
+  "derivedBy": {
+   "engineVersion": "core-2026-08-15",
+   "gateSetVersion": 1,
+   "resultSchemaVersion": 1
+  }
+ }
+]

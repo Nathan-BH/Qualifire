@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" viewBox="0 0 512 512" width="512" height="512">
+<g id="background" inkscape:label="background_sector_strip">
+<rect id="bg" inkscape:label="background_paddock_charcoal" x="0" y="0" width="512" height="512" rx="0" fill="#17171b"/>
+</g>
+<g id="mark" inkscape:label="mark_sector_strip">
+<rect id="slot1" inkscape:label="slot1_unlit" x="59.0" y="216" width="88" height="80" rx="18" fill="none" stroke="#2a2a30" stroke-width="10" stroke-linecap="round"/>
+<rect id="slot2" inkscape:label="slot2_unlit" x="161.0" y="216" width="88" height="80" rx="18" fill="none" stroke="#2a2a30" stroke-width="10" stroke-linecap="round"/>
+<rect id="slot3" inkscape:label="slot3_unlit" x="263.0" y="216" width="88" height="80" rx="18" fill="none" stroke="#2a2a30" stroke-width="10" stroke-linecap="round"/>
+<rect id="slot4" inkscape:label="slot4_lit_yellow" x="365.0" y="216" width="88" height="80" rx="18" fill="#F5C542"/>
+</g>
+</svg>

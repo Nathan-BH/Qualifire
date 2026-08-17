@@ -1,0 +1,10 @@
+node_modules/
+.expo/
+err.log
+*.log
+*.bak
+safe_to_delete/
+data/activities/
+data/*.zip
+data/analysis/cache/
+/*.gpx

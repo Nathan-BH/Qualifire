@@ -1,0 +1,75 @@
+# Backlog
+
+Open work. The Product Owner owns the items — adding, wording, IDs, and the order they sit in. The Team Principal owns only the **Status** column. Items move to `DECISIONS.md` when settled.
+
+Status: `OPEN` · `IN CYCLE` · `NEEDS NATHAN` · `DONE`
+
+---
+
+## Now — concept definition
+
+| ID | Item | Owner role | Status |
+|---|---|---|---|
+| B-01 | Settle the colour model: how many tiers, which horizons, rollover behaviour | Race Engineer + Designer | DONE → D-007, D-008 |
+| B-02 | Define sector boundaries: fixed-distance vs landmark vs variance-derived | Race Engineer | PART-DONE → D-016: 4 sectors/track proposed from data (`gates_proposal.csv`); awaiting Nathan's map eyeball |
+| B-03 | Reference lap semantics: deliberate vs automatic, reset cadence | Product Owner | DONE → D-009 (PROVISIONAL, awaiting Nathan) |
+| B-04 | Decide whether to/from work are separate boards | Product Owner | DONE → D-010 |
+| B-05 | Confounder policy: stopped time, traffic lights, weather | Race Engineer | OPEN |
+| B-06 | Safety stance: post-ride feedback only, or live? | Product Owner | DONE → D-006 (live) |
+| B-07 | Sketch the post-ride results screen (the F1 timing board) — superseded by B-29 (board v2) | Designer | SUPERSEDED → B-29 |
+| B-15 | Design the **live** in-ride display under D-006's constraints — glanceable, audio/haptic-first, no ticking countdown — being reworked under B-30 (IDEAS §16); reconciliation pending | Designer | RESOLVED → D-027 (reconciliation recorded; live v2 in LAYOUT §2) |
+| B-16 | Real-time sector detection: cross a boundary and compute a time *while riding*, on a noisy trace | Race Engineer | CODE COMPLETE headless (cycle 006 → D-025) — awaiting first on-device commute |
+| B-17 | Obtain recorded commute traces to measure σ_s and validate D-011 offline | Nathan | DONE — Strava archive received 2026-08-14: 624 GPX files in `strava_export-20260814.zip` |
+| B-18 | Prior-art survey: Strava segments mechanic, OpenTracks, Open Pace; and building blocks (gpxpy, leaflet-gpx, map-matching libs) for an offline trace-replay validation tool | Race Engineer + Mobile Dev | OPEN |
+| B-19 | Phase-0 validation harness (per D-012): parse the Strava archive, auto-detect commute rides by start/end clustering, measure per-sector variance σ_s, replay D-011 sectoring | Race Engineer + Mobile Dev | OPEN |
+| B-20 | Define sector-of-the-day metric and gate-move history-invalidation semantics (exported from LAYOUT.md) | Race Engineer | OPEN |
+| B-21 | Comparability study: Strava-archive vs app-recorded traces | Race Engineer | DONE → D-018 resolved: pre-seed with guards |
+| B-22 | Redesign reference-ride semantics as a deliberate event per D-017 | Product Owner | DONE → D-021 "Quali Day" |
+| B-23 | Fold D-019 into LAYOUT.md; spec the three tier earcons | Designer | DONE — earcons audible in demos/mockup.html |
+| B-24 | Phase-1 wiring: FGS task + trace storage + GPX export | Mobile Dev + Backend Dev | DONE — acceptance passed 2026-08-15 (real export GPX; exposed F-2, fixed + regression-locked same cycle) |
+| B-25 | "REFERENCE SET" ceremonial frame + defended/set wording | Designer | DONE — LAYOUT §3a + mockup demo state |
+| B-26 | D-022 lap scoring into LAYOUT + mockup | Designer + Race Engineer | DONE — LAYOUT §2a; lap chip + two-part final-gate earcon audible in mockup |
+| B-27 | On-bike audibility test: earcon bands vs wind at 25 km/h — now doubly needed (lap voice sits at 330–494 Hz, below the wind-safe band) | Nathan + Designer | OPEN — needs a real ride with sound |
+| B-28 | **Timing tower** (IDEAS §15): rank today's lap among the trailing-28-day lap set, per track. Semantics per PO cycle-007 spec: clean + interrupted moving-time laps rank; estimated laps never rank (today's own shows unranked "NO TIME"); P1 = pole of the 28-day session; Quali reference (D-021) carries a REF badge, distinct from P1 — "defending pole" = REF==P1; PB badge dot kept (D-007); archive-seeded laps rank as marked ghosts, demoted to unranked if the D-024 cruise-σ tripwire fires. Builds on the benchmark store | Product Owner + Race Engineer + Backend Dev | PART-DONE → D-028 semantics settled; tower UI built demo-side (cycle 007); real population awaits benchmark store |
+| B-29 | **Post-run board v2** (IDEAS §17): tower as headline (today's row slots in — the reveal ceremony lives here) → four sector rows → quarantined ideal-lap line (untiered, D-022); "Sector of the day" dropped (Nathan's word); Quali ceremonial frame (B-25) wraps the board only when armed. Position is a fact, colour comes only from the lap tier — bottom-half positions carry no failure styling (D-013). Replaces the delta plot ("instead of plotting the points") | Designer + Product Owner | CODE COMPLETE (cycle 007 — app preview + mockup.html) — device feel pending |
+| B-30 | **Live-screen redesign** (IDEAS §16): dominant 0.1 s ticking counter + sector blocks that flash the checkpoint time in the earned colour; final-gate handover additionally shows the tower position as a static chip beside the lap tier, no new earcon. **Conflicts with B-15/D-006 no-ticking rule — the safety reconciliation is part of this item; the Principal adjudicates** (proposed, unratified: audio stays primary on-bike, rich ticking display is the glance/stopped view). Demo must remain on the shared render path (§17 obligation) | Designer | CODE COMPLETE (cycle 007 → D-027; live v2 in app + mockup) — on-device feel Monday |
+| B-31 | **Gate-eyeball upgrade to `demos/gates-check.html`** — unblocks B-02, PART-DONE since D-016 "awaiting Nathan's map eyeball". Upgrade the existing Leaflet demo; do **not** create a new file. Per gate it must draw: the gate **line**, perpendicular to the reference polyline at its true half-width (never a dot — a dot hides a line clipping a parallel road or a second roundabout arm); the reference polyline; the cloud of actual crossing points from the 125 cached rides in `data/analysis/cache/*.npz`; the engine's 50 m arming window as an interval; and a label carrying the incoming sector's σ_s plus `median_speed_kmh` / `stop_frac` from `data/analysis/gates_proposal.csv`. Every gate readout carries a **Google Maps link** for its coordinates. Acceptance: Nathan opens the file and can say "move gate 2", one gate at a time. Zero build, independent of Monday's commute | Race Engineer + Designer | OPEN |
+| B-32 | **Basemap ground: light wash vs near-monochrome dark** — D-031 shipped a **light** ground (`#FAF7EE` wash at 22%, `BASE_SAT 0.45`). Cycle 010's Art Director independently specified a **near-monochrome dark** basemap (land `#101014`, roads a neutral warm-grey ramp, all POI labels off, hard rule: nothing on the basemap in HSL hue 130–165, 30–55 at S>25%, or 260–290, so the map can never speak the tier language). Both are defensible; the two cannot both be right. A dark ground on a sunlit screen was the Art Director's own stated risk, answered by a floor-lift boost rather than by a light basemap. Acceptance: Nathan looks at one rendering of each and picks | Art Director + Nathan | OPEN |
+| B-33 | **OSM traffic-signal chainages, extracted offline** — one CSV per route in `data/analysis/`, from Overpass or a Geofabrik extract, **not** from the rendered tiles (which carry no topology and no stable way IDs). Feeds B-05 (confounder policy): a stop at a known signal chainage is luck, a stop elsewhere is not. Also makes "gates go tens of metres downstream of the junction exit" computable rather than eyeballed, serving IDEAS §22. Honest caveat: 624 rides of stop locations would reveal the same signals eventually — OSM only names them sooner | Race Engineer | OPEN |
+| B-34 | **Live-ride map overlay — NON-GOAL.** Closed by D-033 (map-matching/snapping rejected on the numbers); recorded here so it is not re-proposed. Acceptance to reopen: Nathan, having ridden live v2 on-device, says he wants a map while moving | Product Owner | NON-GOAL → D-033 |
+| B-35 | Cold-start ladder: verdict-free ride-1 board + the "ride n of 5" progress line + the two one-time announcements at n=5 and n=10 (§28). Ride 1 shows times and within-ride shape, never a tier, never a rank — "P1 of 1" is a joke, not a fact. The countdown is the ride-1 product: it converts an empty app from *broken* into *loading* | Product Owner + Designer | OPEN |
+| B-36 | Retroactive way creation: name start/end at STOP when no landmarks exist; landmarks born from visited endpoints rather than mined from the archive (§28). This is the inversion the cold start forces — on a virgin install setup is retroactive, and §21's START→autodetect→pick-destination flow is archive-dependent end to end | Mobile Dev + Backend Dev | OPEN |
+| B-37 | Provisional gates from 2 matched traces (equal-chainage split), superseded by measured gates once history allows (§28, §22). Overlaps the geometric gate proposal in B-46's routing design — the Race Engineer owns one algorithm, not two | Race Engineer + Backend Dev | OPEN |
+| B-38 | Sector count scales with a way's length/duration instead of a fixed four. Four sectors over a 4-minute errand are 60 s blocks dominated by GPS noise; over a 2-hour ride they are useless | Race Engineer | OPEN |
+| B-39 | De-hardcode route identity: `FALLBACK_ROUTE`, literal route IDs in `ResultScreen.tsx` and the shipped `results.seed.json` become data; empty-seed install path. Blocks every user-created way | Mobile Dev + Backend Dev | OPEN |
+| B-40 | Persist the comparison window across app restarts — fold into the benchmark-store item. `recordedResults()` is memory-only (`lastRide.ts`), so the window resets on every restart: Nathan already lives a miniature cold start daily. Cold-start is a second, independent argument for the store | Backend Dev | OPEN |
+| B-41 | Alternatives: multiple ways sharing one endpoint pair, auto-matched at route lock rather than pre-declared, grouped but never colour-compared (§28, D-010/D-015). The rider should not have to declare which road they will take | Backend Dev + Product Owner | OPEN |
+| B-42 | Reference traject pick: ride 1 is the reference by default; promote any clean complete lap afterwards (§28) | Product Owner + Mobile Dev | OPEN |
+| B-43 | Empty-state pass: "0 rides found", no route lock on ride 1, tower below MIN_HISTORY, and an explanation for the sector-grey-while-lap-coloured asymmetry (clean-only sector history vs any-quality lap history — correct per D-008, reads as a bug on a new way) | Designer | OPEN |
+| B-44 | **BUG, verified in code by the Principal this cycle: today's own lap sits inside its own comparison history.** `ghostsFor()` = `[...GHOSTS, ...recordedResults()]` and `rememberRide()` calls `pushRecorded(last)`, so by the time `ResultScreen.tsx:53` sets `others = laps` for a real finished ride, today's lap is already in `laps`. Consequences: `value < st.best` can never be true, so **a personal best can never render purple on the Result screen**; `positionAmong` prepends the value to a history that already contains it, so 10 rides read "P1 of 11"; and MIN_HISTORY is reached one ride early. Acceptance: a regression test that finishes a ride faster than every ghost and asserts purple + correct field size | QA + Mobile Dev | DONE — fixed 2026-08-17 (cycle 013): `ghostsFor(routeId, excludeRideId?)` excludes today's `session:` id before the window slice; regression tests in `tests/live_colour_suite.ts` (pre-fix FAIL verified; suite 96: 93 pass / 0 fail / 3 skip; independently inspected) |
+| B-45 | Reconcile D-028's 28-day tower window with `WINDOW_N = 10` | Team Principal + Product Owner | DONE → D-037 |
+| B-46 | **MapLibre install spike, costing zero EAS builds** — branch, `expo install`, plugin entry, local `expo prebuild --clean --platform android`, `tsc --noEmit`, `expo export --platform android`, read the generated manifest. Settles the only two things reading cannot: resolution under this repo's Metro conventions, and whether the native build links. Condition 1 of D-035. **Do not run until §29 is adopted** — the trigger is armed, not fired | Mobile Dev | OPEN — gated on Nathan adopting §29 |
+| B-47 | **Battery A/B: PNG vs MapLibre**, two back-to-back commutes, same phone, same brightness, same route, `dumpsys batterystats --reset` before and Battery Historian after; read the difference, not the absolute. Condition 2 of D-035, and the answer also settles `STATE.md`'s standing battery question either way | Nathan + Mobile Dev | OPEN — needs two commutes |
+| B-48 | **Replay the routing numbers on the 624-ride archive before anyone trusts them.** Overlap tolerance 25 m and minimum shared length 800 m contiguous + one whole sector; segmentation `n = clamp(L/1400, 3, 6)` with a 300 m floor and 2500 m ceiling. All are starting values chosen from measured evidence, none has been on the test bench. Also benchmark stage-3 chainage projection on device (~236k point-projections for 100 survivors, `[UNVERIFIED]`) before a screen is built around it | Navigation Engineer + Race Engineer | OPEN |
+| B-49 | **Price a routing native module for Expo.** No maintained React Native / Expo binding exists for BRouter, Valhalla or GraphHopper — every path is custom native work. Also: 74.7 MB of BRouter segment data must be a *downloaded* asset, not bundled, and must survive an update. Offline routing is CPU-bursty at plan time and zero-cost while riding — no background service, no radio, no mid-ride drain | Mobile Dev | OPEN |
+
+## Next — once the concept holds still
+
+| ID | Item | Owner role | Status |
+|---|---|---|---|
+| B-08 | Confirm tech stack (RN/Expo vs alternatives) | Mobile Dev | DONE → D-012 |
+| B-09 | Route-matching approach: is this ride "the commute"? | Race Engineer | PART-DONE → D-015 offline; live auto-lock built + headless-verified (cycle 006, D-025) — device validation pending |
+| B-10 | Data model for rides, sectors, sector times, benchmarks | Backend Dev | OPEN |
+| B-11 | GPS quality plan: drift, urban canyons, background-execution limits | Mobile Dev | OPEN |
+| B-12 | Test strategy — including replaying recorded traces as fixtures | QA | DONE — replay-fixture harness in effect (63 tests, cycle 006) |
+
+## Later
+
+| ID | Item | Owner role | Status |
+|---|---|---|---|
+| B-13 | Theoretical best lap (best of every sector combined), F1-style | Race Engineer | OPEN |
+| B-14 | Season / championship framing over a longer horizon | Product Owner | OPEN |
+
+---
+
+**Rule:** an item may only be `IN CYCLE` if it appears on the current cycle's agenda. No more than three at once.

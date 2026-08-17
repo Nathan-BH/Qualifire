@@ -1,0 +1,64 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Qualifire — ghost tower</title>
+<style>
+ body{margin:0;padding:22px;font:14.5px/1.5 system-ui,sans-serif;background:#111;color:#eee;max-width:760px}
+ h1{font-size:19px;margin:0 0 3px} .sub{color:#9aa;font-size:13px;margin-bottom:16px}
+ .tabs{display:flex;gap:8px;margin-bottom:14px}
+ .tab{border:1px solid #333;border-radius:16px;padding:5px 14px;cursor:pointer;font-size:13px}
+ .tab.on{background:#ffd400;color:#111;border-color:#ffd400;font-weight:700}
+ .ctl{border:1px solid #333;border-radius:10px;padding:12px 14px;margin-bottom:16px}
+ .ctl label{color:#9aa;font-size:12.5px;letter-spacing:1px;text-transform:uppercase}
+ input[type=range]{width:100%;margin:9px 0 2px}
+ .big{font-size:31px;font-weight:800;font-variant-numeric:tabular-nums}
+ table{width:100%;border-collapse:collapse} td{padding:7px 9px;border-bottom:1px solid #222}
+ .pos{width:44px;color:#9aa;font-weight:700;font-variant-numeric:tabular-nums}
+ .t{text-align:right;font-variant-numeric:tabular-nums;width:82px}
+ .ghost td{color:#9aa} .ghost .dot{opacity:.55}
+ .me{background:#1d2b28} .me td{color:#2ec4b6;font-weight:700}
+ .dot{display:inline-block;width:7px;height:7px;border-radius:7px;background:#888;margin-right:8px}
+ .p1 .dot{background:#b04ce6} .gap{color:#666;font-size:12px;margin-left:8px}
+ .note{color:#9aa;font-size:12.5px;margin-top:16px;border-left:3px solid #ffd400;padding-left:11px}
+</style></head><body>
+<h1>Ghost tower — where a lap would place</h1>
+<div class="sub">Real archive ghosts: the last 10 rides per route, recomputed by our own pipeline
+(D-018 pre-seed, D-028 ranking). Drag to see where a lap slots in.</div>
+<div class="tabs" id="tabs"></div>
+<div class="ctl"><label>your lap (moving time)</label>
+ <div class="big" id="lap">0:00</div>
+ <input type="range" id="sl" min="0" max="100" value="50">
+</div>
+<table id="tower"></table>
+<div class="note" id="note"></div>
+<script>
+const DATA = {"Morning": [{"id": "20260808-0848-home2work-19649577531", "movingS": 816.7, "q": "clean", "sectors": [{"i": 1, "movingS": 181.5, "q": "clean"}, {"i": 2, "movingS": 201.4, "q": "clean"}, {"i": 3, "movingS": 237.6, "q": "clean"}, {"i": 4, "movingS": 196.2, "q": "clean"}]}, {"id": "20260807-1732-home2work-19642526095", "movingS": 828.7, "q": "clean", "sectors": [{"i": 1, "movingS": 185.4, "q": "clean"}, {"i": 2, "movingS": 201.7, "q": "clean"}, {"i": 3, "movingS": 240.1, "q": "clean"}, {"i": 4, "movingS": 201.5, "q": "clean"}]}, {"id": "20260806-0857-home2work-19622830015", "movingS": 829.3, "q": "clean", "sectors": [{"i": 1, "movingS": 181.8, "q": "clean"}, {"i": 2, "movingS": 202.1, "q": "clean"}, {"i": 3, "movingS": 240.2, "q": "clean"}, {"i": 4, "movingS": 205.1, "q": "clean"}]}, {"id": "20260810-0923-home2work-19677438031", "movingS": 835.6, "q": "clean", "sectors": [{"i": 1, "movingS": 187.1, "q": "clean"}, {"i": 2, "movingS": 205.1, "q": "clean"}, {"i": 3, "movingS": 238.5, "q": "clean"}, {"i": 4, "movingS": 204.9, "q": "clean"}]}, {"id": "20260811-0828-home2work-19691203692", "movingS": 835.8, "q": "clean", "sectors": [{"i": 1, "movingS": 185.2, "q": "clean"}, {"i": 2, "movingS": 207.1, "q": "clean"}, {"i": 3, "movingS": 236.8, "q": "clean"}, {"i": 4, "movingS": 206.7, "q": "clean"}]}, {"id": "20260812-1445-home2work-19710858960", "movingS": 843.1, "q": "clean", "sectors": [{"i": 1, "movingS": 188.9, "q": "clean"}, {"i": 2, "movingS": 206.6, "q": "clean"}, {"i": 3, "movingS": 244.3, "q": "clean"}, {"i": 4, "movingS": 203.4, "q": "clean"}]}, {"id": "20260731-1034-home2work-19539495549", "movingS": 857.8, "q": "clean", "sectors": [{"i": 1, "movingS": 202.4, "q": "clean"}, {"i": 2, "movingS": 204.1, "q": "clean"}, {"i": 3, "movingS": 239.0, "q": "clean"}, {"i": 4, "movingS": 212.4, "q": "clean"}]}, {"id": "20260804-0944-home2work-19593459794", "movingS": 858.2, "q": "clean", "sectors": [{"i": 1, "movingS": 197.6, "q": "clean"}, {"i": 2, "movingS": 205.7, "q": "clean"}, {"i": 3, "movingS": 243.6, "q": "clean"}, {"i": 4, "movingS": 211.3, "q": "clean"}]}, {"id": "20260813-0831-home2work-19720913908", "movingS": 902.9, "q": "clean", "sectors": [{"i": 1, "movingS": 200.8, "q": "clean"}, {"i": 2, "movingS": 218.2, "q": "clean"}, {"i": 3, "movingS": 260.7, "q": "clean"}, {"i": 4, "movingS": 223.2, "q": "clean"}]}], "EveningA": [{"id": "20260813-1618-work2home-19726172105", "movingS": 810.0, "q": "clean", "sectors": [{"i": 1, "movingS": 174.9, "q": "clean"}, {"i": 2, "movingS": 240.6, "q": "clean"}, {"i": 3, "movingS": 167.8, "q": "clean"}, {"i": 4, "movingS": 226.7, "q": "clean"}]}, {"id": "20260806-1516-work2home-19627136592", "movingS": 812.5, "q": "clean", "sectors": [{"i": 1, "movingS": 205.7, "q": "clean"}, {"i": 2, "movingS": 228.7, "q": "clean"}, {"i": 3, "movingS": 158.5, "q": "clean"}, {"i": 4, "movingS": 219.6, "q": "clean"}]}, {"id": "20260808-1955-work2home-19658451877", "movingS": 816.7, "q": "clean", "sectors": [{"i": 1, "movingS": 212.1, "q": "clean"}, {"i": 2, "movingS": 228.8, "q": "clean"}, {"i": 3, "movingS": 160.3, "q": "clean"}, {"i": 4, "movingS": 215.5, "q": "clean"}]}, {"id": "20260807-1847-work2home-19643453356", "movingS": 818.4, "q": "clean", "sectors": [{"i": 1, "movingS": 211.0, "q": "clean"}, {"i": 2, "movingS": 228.9, "q": "clean"}, {"i": 3, "movingS": 157.4, "q": "clean"}, {"i": 4, "movingS": 221.2, "q": "clean"}]}, {"id": "20260803-2005-work2home-19586484852", "movingS": 831.4, "q": "clean", "sectors": [{"i": 1, "movingS": 217.5, "q": "clean"}, {"i": 2, "movingS": 237.7, "q": "clean"}, {"i": 3, "movingS": 157.8, "q": "clean"}, {"i": 4, "movingS": 218.4, "q": "clean"}]}, {"id": "20260805-1852-work2home-19615380701", "movingS": 833.6, "q": "interrupted", "sectors": [{"i": 1, "movingS": 217.3, "q": "interrupted"}, {"i": 2, "movingS": 228.7, "q": "clean"}, {"i": 3, "movingS": 160.9, "q": "clean"}, {"i": 4, "movingS": 226.7, "q": "clean"}]}, {"id": "20260731-1851-work2home-19545118665", "movingS": 836.1, "q": "clean", "sectors": [{"i": 1, "movingS": 214.9, "q": "clean"}, {"i": 2, "movingS": 234.4, "q": "clean"}, {"i": 3, "movingS": 162.1, "q": "clean"}, {"i": 4, "movingS": 224.6, "q": "clean"}]}, {"id": "20260804-1859-work2home-19608991543", "movingS": 845.4, "q": "clean", "sectors": [{"i": 1, "movingS": 217.7, "q": "clean"}, {"i": 2, "movingS": 236.8, "q": "clean"}, {"i": 3, "movingS": 165.8, "q": "clean"}, {"i": 4, "movingS": 225.0, "q": "clean"}]}, {"id": "20260730-1834-work2home-19531457200", "movingS": 957.4, "q": "interrupted", "sectors": [{"i": 1, "movingS": 245.1, "q": "clean"}, {"i": 2, "movingS": 265.9, "q": "clean"}, {"i": 3, "movingS": 186.8, "q": "clean"}, {"i": 4, "movingS": 259.6, "q": "interrupted"}]}, {"id": "20260728-1619-work2home-19501080034", "movingS": 1254.0, "q": "interrupted", "sectors": [{"i": 1, "movingS": 350.9, "q": "clean"}, {"i": 2, "movingS": 336.1, "q": "clean"}, {"i": 3, "movingS": 222.6, "q": "clean"}, {"i": 4, "movingS": 344.4, "q": "interrupted"}]}], "EveningB": [{"id": "20260723-2147-work2home-19436961849", "movingS": 757.7, "q": "clean", "sectors": [{"i": 1, "movingS": 206.0, "q": "clean"}, {"i": 2, "movingS": 197.6, "q": "clean"}, {"i": 3, "movingS": 178.1, "q": "clean"}, {"i": 4, "movingS": 176.0, "q": "clean"}]}, {"id": "20260616-2230-work2home-18949259562", "movingS": 760.7, "q": "clean", "sectors": [{"i": 1, "movingS": 205.7, "q": "clean"}, {"i": 2, "movingS": 194.2, "q": "clean"}, {"i": 3, "movingS": 179.7, "q": "clean"}, {"i": 4, "movingS": 181.2, "q": "clean"}]}, {"id": "20260727-2325-work2home-19491419206", "movingS": 772.5, "q": "clean", "sectors": [{"i": 1, "movingS": 212.5, "q": "clean"}, {"i": 2, "movingS": 201.1, "q": "clean"}, {"i": 3, "movingS": 181.2, "q": "clean"}, {"i": 4, "movingS": 177.7, "q": "clean"}]}, {"id": "20260620-0001-work2home-18989339700", "movingS": 773.5, "q": "clean", "sectors": [{"i": 1, "movingS": 214.6, "q": "clean"}, {"i": 2, "movingS": 196.1, "q": "clean"}, {"i": 3, "movingS": 179.0, "q": "clean"}, {"i": 4, "movingS": 183.8, "q": "clean"}]}, {"id": "20260717-2332-work2home-19354821638", "movingS": 774.7, "q": "clean", "sectors": [{"i": 1, "movingS": 221.0, "q": "clean"}, {"i": 2, "movingS": 203.5, "q": "clean"}, {"i": 3, "movingS": 176.2, "q": "clean"}, {"i": 4, "movingS": 173.9, "q": "clean"}]}, {"id": "20260615-2359-work2home-18935332720", "movingS": 778.1, "q": "clean", "sectors": [{"i": 1, "movingS": 209.5, "q": "clean"}, {"i": 2, "movingS": 199.4, "q": "clean"}, {"i": 3, "movingS": 182.2, "q": "clean"}, {"i": 4, "movingS": 187.0, "q": "clean"}]}, {"id": "20260809-1900-work2home-19677298540", "movingS": 804.5, "q": "clean", "sectors": [{"i": 1, "movingS": 217.6, "q": "clean"}, {"i": 2, "movingS": 211.8, "q": "clean"}, {"i": 3, "movingS": 191.9, "q": "clean"}, {"i": 4, "movingS": 183.2, "q": "clean"}]}, {"id": "20260715-0020-work2home-19315592710", "movingS": 813.1, "q": "clean", "sectors": [{"i": 1, "movingS": 233.9, "q": "clean"}, {"i": 2, "movingS": 202.7, "q": "clean"}, {"i": 3, "movingS": 184.4, "q": "clean"}, {"i": 4, "movingS": 192.0, "q": "clean"}]}]};
+let route = Object.keys(DATA)[0];
+const f = s => Math.floor(s/60)+':'+String(Math.round(s%60)).padStart(2,'0');
+const tabs = document.getElementById('tabs');
+Object.keys(DATA).forEach(k=>{
+  const b=document.createElement('div'); b.className='tab'+(k===route?' on':''); b.textContent=k;
+  b.onclick=()=>{route=k;[...tabs.children].forEach(c=>c.classList.remove('on'));b.classList.add('on');reset();};
+  tabs.appendChild(b);
+});
+const sl=document.getElementById('sl');
+function reset(){
+  const g=DATA[route]; const lo=Math.floor(g[0].movingS-90), hi=Math.ceil(g[g.length-1].movingS+90);
+  sl.min=lo; sl.max=hi; sl.value=Math.round((lo+hi)/2); draw();
+}
+function draw(){
+  const mine=+sl.value, g=DATA[route];
+  document.getElementById('lap').textContent=f(mine);
+  const rows=g.map(x=>({...x,me:false})).concat([{id:'TODAY',movingS:mine,q:'clean',me:true}])
+             .sort((a,b)=>a.movingS-b.movingS);
+  const pole=rows[0].movingS;
+  document.getElementById('tower').innerHTML=rows.map((r,i)=>
+    '<tr class="'+(r.me?'me':'ghost')+(i===0?' p1':'')+'"><td class="pos">P'+(i+1)+'</td>'+
+    '<td><span class="dot"></span>'+(r.me?'TODAY':r.id.slice(0,13))+
+      (r.q==='interrupted'?' &#8214;':'')+'</td>'+
+    '<td class="t">'+f(r.movingS)+'</td>'+
+    '<td class="t gap">'+(i===0?'':'+'+(r.movingS-pole).toFixed(0)+'s')+'</td></tr>').join('');
+  const p=rows.findIndex(r=>r.me)+1;
+  document.getElementById('note').textContent =
+    'P'+p+' of '+rows.length+' — '+(p===1?'pole of the ghost set: this lap beats every archived ride on this route.'
+    :'the ghosts are marked; a seeded lap can hold pole until a real ride beats it, and D-024 keeps them demotable.');
+}
+sl.oninput=draw; reset();
+</script></body></html>

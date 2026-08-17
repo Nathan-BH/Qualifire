@@ -1,0 +1,479 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Qualifire — app mockup</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+:root{
+  --bg:#0d0d0f; --card:#17171b; --line:#2b2b31; --ink:#f2f2f4; --dim:#8b8b96;
+  --accent:#ffd400; --on-accent:#111; --purple:#b04ce6; --green:#2ec4b6; --amber:#ffb300;
+}
+body.day{--bg:#f4f4f6;--card:#fff;--line:#dcdce2;--ink:#16161a;--dim:#6b6b76;--on-accent:#111}
+*{box-sizing:border-box}
+body{margin:0;background:#000;font:15px/1.5 system-ui,-apple-system,sans-serif;color:var(--ink);
+  display:flex;justify-content:center;padding:18px 10px 40px}
+/* Fixed phone height so the SCREEN scrolls, not the page — otherwise the long
+   tabs (routes, settings, result) ran off the bottom of the frame. */
+.phone{width:390px;height:min(840px,94vh);background:var(--bg);border-radius:26px;overflow:hidden;
+  display:flex;flex-direction:column;border:1px solid #222;position:relative}
+.screen{flex:1 1 auto;min-height:0;padding:14px 15px 26px;overflow-y:auto;overscroll-behavior:contain}
+.tabbar{flex:0 0 auto}
+.tabbar{display:flex;border-top:1px solid var(--line);background:var(--card);
+  overflow-x:auto;scrollbar-width:none}
+.tabbar::-webkit-scrollbar{display:none}
+.tabbar div{flex:0 0 auto;min-width:92px;text-align:center;padding:10px 0 12px;font-size:11px;
+  letter-spacing:.6px;color:var(--dim);cursor:pointer;text-transform:uppercase}
+.tabbar div.on{color:var(--accent);font-weight:700;box-shadow:inset 0 2px 0 var(--accent)}
+h2{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin:16px 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin-bottom:10px}
+button{font:inherit}
+.btn{width:100%;border:none;border-radius:14px;padding:16px;font-size:20px;font-weight:800;
+  letter-spacing:4px;cursor:pointer;background:var(--accent);color:var(--on-accent)}
+.btn.slim{padding:11px;font-size:15px;letter-spacing:3px;background:transparent;color:var(--amber);
+  border:2px solid var(--amber);border-radius:11px}
+.btn.flag{background:#d33;color:#fff;letter-spacing:2px;font-size:15px;padding:12px;margin-top:8px}
+#map,#map2{height:190px;border-radius:12px;margin-bottom:10px;filter:saturate(.75)}
+#map2{height:300px}
+.clock{font-size:64px;font-weight:800;text-align:center;font-variant-numeric:tabular-nums;
+  letter-spacing:-2px;line-height:1.05;margin:4px 0}
+.flash{text-align:center;padding:6px 0}
+.flash .lbl{font-size:12px;letter-spacing:3px;color:var(--dim)}
+.flash .val{font-size:50px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-2px}
+.strip{display:flex;gap:7px;margin-top:10px}
+.slot{flex:1;border:1px solid var(--line);border-radius:9px;padding:7px 3px;text-align:center;font-size:11px;color:var(--dim)}
+.slot .t{display:block;font-size:14px;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+.slot.cur{border-color:var(--accent)}
+.tier-purple{color:var(--purple)!important;border-color:var(--purple)!important}
+.tier-green{color:var(--green)!important;border-color:var(--green)!important}
+.tier-neutral{color:var(--accent)!important}
+.tier-yellow{color:#a5a52c!important}
+.status{text-align:center;font-size:11.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--dim);margin-top:9px;min-height:15px}
+table{width:100%;border-collapse:collapse;font-size:14px}
+td{padding:6px 7px;border-bottom:1px solid var(--line)}
+.pos{width:38px;color:var(--dim);font-weight:700;font-variant-numeric:tabular-nums}
+.t{text-align:right;font-variant-numeric:tabular-nums}
+tr.ghost td{color:var(--dim)} tr.me td{color:var(--green);font-weight:700}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:none}
+.row .lab{font-size:14px}.row .hint{font-size:11.5px;color:var(--dim);margin-top:2px;max-width:250px}
+.seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;flex:none}
+.seg button{background:transparent;border:none;color:var(--dim);padding:6px 9px;font-size:11.5px;cursor:pointer}
+.seg button.on{background:var(--accent);color:var(--on-accent);font-weight:700}
+.sw{width:44px;height:25px;border-radius:25px;background:var(--line);position:relative;cursor:pointer;flex:none}
+.sw i{position:absolute;top:3px;left:3px;width:19px;height:19px;border-radius:19px;background:#888;transition:.15s}
+.sw.on{background:var(--accent)} .sw.on i{left:22px;background:#fff}
+.pill{display:inline-block;border:1px solid var(--line);border-radius:14px;padding:4px 11px;font-size:12.5px;margin:0 6px 6px 0;cursor:pointer;color:var(--dim)}
+.pill.on{border-color:var(--accent);color:var(--accent)}
+.muted{color:var(--dim);font-size:12px}
+.big{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums}
+.bar{display:inline-block;width:26px;height:9px;border-radius:5px;background:var(--dim)}
+.bar.tier-purple{background:var(--purple)} .bar.tier-green{background:var(--green)}
+.bar.tier-neutral{background:var(--accent)} .bar.bar-yellow{background:#8a8a20}
+.lmtip{background:rgba(0,0,0,.72)!important;border:none!important;color:#fff!important;font-size:11px!important}
+.lmtip:before{display:none}
+.note{font-size:11.5px;color:var(--dim);border-left:2px solid var(--accent);padding-left:9px;margin-top:10px}
+</style></head>
+<body class="">
+<div class="phone">
+  <div class="screen" id="screen"></div>
+  <div class="tabbar" id="tabbar"></div>
+</div>
+<script>
+const D = /*__DATA__*/null;
+
+// ---------------------------------------------------------------- settings
+const S = {
+  theme:'night', redlight:'auto', startMode:'auto', colour:'avg', // colour is fixed by D-030
+  tower:true, earcons:true, mapLive:true,
+};
+const TABS = [['ride','Ride'],['rides','Rides'],['routes','Routes'],['result','Result'],['settings','Settings'],['demo','Demo']];
+let tab='ride';
+let sel = {from:'home', to:'work', picking:null, way:null};   // start-flow choices
+let saved = [];                                              // rides recorded in this session
+
+const f = s => Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
+const f1 = s => Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60).toFixed(1);
+const el = h => { const d=document.createElement('div'); d.innerHTML=h.trim(); return d.firstChild; };
+
+// ------------------------------------------------------------------- state
+let R = null;              // active ride state
+let map=null, dot=null, trail=null, timer=null, gateMarks=[], follow=true;
+
+function reset(){
+  R = { running:false, t:0, gate:0, flashUntil:-1, flashIdx:-1, paused:false, done:false,
+        sectors:[], startedAt:null };
+}
+reset();
+
+// ghost set for the route being simulated
+const GH = D.towers.Morning;
+const bestSector = i => Math.min(...GH.map(g=>g.sectors[i]).filter(v=>v!==null));
+const avgSector  = i => { const v=GH.map(g=>g.sectors[i]).filter(x=>x!==null);
+                          return v.reduce((a,b)=>a+b,0)/v.length; };
+const sdSector   = i => { const v=GH.map(g=>g.sectors[i]).filter(x=>x!==null), a=avgSector(i);
+                          return Math.sqrt(v.reduce((s,x)=>s+(x-a)**2,0)/v.length); };
+
+/** The colour model is a SETTING here, so the unsettled §19 question can be
+ *  felt rather than argued: 'best' = D-007/D-008 shape (beat the ghost best),
+ *  'avg' = §19 (above/below the last-N average), 'hybrid' = avg ± 1σ deadband. */
+function tierOf(i, val){
+  if(val===null) return 'est';
+  if(S.colour==='best')  return val<bestSector(i) ? 'purple' : val<avgSector(i) ? 'green' : 'neutral';
+  if(S.colour==='avg')   return val<bestSector(i) ? 'purple' : val<avgSector(i) ? 'green' : 'yellow';
+  const sd=sdSector(i), a=avgSector(i);
+  return val<bestSector(i) ? 'purple' : val<a-sd ? 'green' : val>a+sd ? 'yellow' : 'neutral';
+}
+const tierClass = t => t==='purple'?'tier-purple':t==='green'?'tier-green':t==='yellow'?'':'tier-neutral';
+
+// -------------------------------------------------------------------- ride
+function rideScreen(){
+  const s = document.getElementById('screen');
+  s.innerHTML = '';
+  if(!R.running && !R.done){
+    const lm = id => (D.landmarks.find(l=>l.id===id)||{}).label || id;
+    const pickable = D.landmarks.filter(l=>!l.dormant);
+    const wayFor = (a,b) => D.ways.find(w=>(w.ai===a&&w.bi===b)||(w.ai===b&&w.bi===a));
+    const w = wayFor(sel.from, sel.to);
+    const n = w ? w.n : 0;
+    const routes = w && w.routes && w.routes.length>1 ? w.routes : null;
+    const pillRow = (which) => pickable.filter(l=>which==='from'||l.id!==sel.from)
+      .map(l=>`<span class="pill${sel[which]===l.id?' on':''}" data-pick="${which}" data-id="${l.id}">${l.label}</span>`).join('');
+    s.appendChild(el(`<div>
+      <h2>Start</h2>
+      <div class="card">
+        ${S.startMode==='auto' && sel.picking!=='from'
+          ? `<div class="muted">detected start</div>
+             <div style="font-size:20px;font-weight:700">${lm(sel.from)}</div>
+             <div class="muted" style="margin-top:6px">not right?
+               <span class="pill" data-open="from">change</span></div>`
+          : `<div class="muted">where are you starting?</div>
+             <div style="margin-top:7px">${pillRow('from')}</div>`}
+      </div>
+      <div class="card">
+        <div class="muted">going to</div>
+        <div style="margin-top:7px">${pillRow('to')}</div>
+        <div style="margin-top:9px;font-size:13px">
+          ${n ? `<b>${n} rides found</b><span class="muted"> — ${lm(sel.from)} → ${lm(sel.to)}, you are racing ${n} ghosts</span>`
+              : `<b>no rides yet</b><span class="muted"> — first time on this way, nothing to race</span>`}
+        </div>
+        ${routes ? `<div style="margin-top:10px"><div class="muted">which route today?</div>
+          <div style="margin-top:6px">${routes.map((r,i)=>
+            `<span class="pill${(sel.way||routes[0])===r?' on':''}" data-route="${r}">${r}</span>`).join('')}</div></div>`:''}
+      </div>
+      <button class="btn" id="go">START</button>
+      <div class="note">${routes
+        ? 'This way has more than one ratified route, so it asks (§8a). The pick is intent only — ride a different road and the ride scores as the road you actually took.'
+        : 'One route on this way, so no extra step.'}
+        The mockup replays the home → work commute whichever pair you choose.</div>
+    </div>`));
+    document.getElementById('go').onclick = start;
+    return;
+  }
+  s.appendChild(el(`<div>
+    ${S.mapLive?'<div id="map"></div>':''}
+    <div id="clockslot"></div>
+    <div class="strip" id="strip"></div>
+    <div class="status" id="status"></div>
+    ${R.done?'<button class="btn slim" id="stop" style="margin-top:12px">SEE RESULT</button>'
+            :`<button class="btn slim" id="stop" style="margin-top:12px">STOP</button>
+              ${S.redlight==='button'?'<button class="btn flag" id="flag">RED LIGHT — HOLD CLOCK</button>':''}`}
+  </div>`));
+  document.getElementById('stop').onclick = () => { if(R.done){ tab='result'; render(); } else stop(); };
+  const fl = document.getElementById('flag');
+  if(fl) fl.onclick = () => { R.paused=!R.paused; fl.textContent = R.paused?'GO — RELEASE CLOCK':'RED LIGHT — HOLD CLOCK'; };
+  if(S.mapLive) initMap();
+  paint();
+}
+
+function initMap(){
+  // Same pan/zoom freedom as the Routes map — everyone crops it their own way.
+  map = L.map('map',{attributionControl:false});
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+  const pts = D.sim.track.map(p=>[p[0],p[1]]);
+  L.polyline(pts,{color:'#666',weight:3,opacity:.55}).addTo(map);
+  trail = L.polyline([],{color:'#ffd400',weight:4}).addTo(map);
+  // The measured gates (D-016) — they turn the earned colour as you cross them.
+  gateMarks = D.sim.gates.map(g =>
+    L.circleMarker([g.lat,g.lon],{radius:5,color:'#fff',weight:2,fillColor:'#444',fillOpacity:1})
+      .bindTooltip(g.name,{permanent:true,direction:'right',className:'lmtip'}).addTo(map));
+  dot = L.circleMarker(pts[0],{radius:8,color:'#fff',weight:3,fillColor:'#ffd400',fillOpacity:1}).addTo(map);
+  // Tight crop that travels with the rider — a live view, not a route overview.
+  map.setView(pts[0], 16);
+  map.on('dragstart', ()=>{ follow=false; });
+  // Leaflet sizes itself at creation; the container is one tick old here, so
+  // without this the tiles can come up blank.
+  setTimeout(()=>map.invalidateSize(), 0);
+}
+
+function start(){
+  reset(); follow=true; R.running=true; R.startedAt=Date.now();
+  rideScreen();
+  timer = setInterval(()=>{
+    if(!R.paused) R.t += 0.1*RATE;
+    const gt = D.sim.gateTs, off = D.sim.startOffset;
+    // gate crossings, in ride time (the START gate sits ~162 m in)
+    while(R.gate < gt.length-1 && R.t >= off+gt[R.gate+1]){
+      R.gate++;
+      R.sectors.push(D.sim.sectors[R.gate-1]);
+      R.flashIdx = R.gate-1; R.flashUntil = R.t + 2.5;
+      if(R.gate === gt.length-1){ R.done=true; clearInterval(timer); }
+    }
+    paint();
+  }, 100);
+}
+const RATE = 25;           // 25× — a 14-minute commute plays in ~34 s
+
+function stop(){
+  clearInterval(timer); R.running=false; R.done=true;
+  const lap = R.sectors.length ? R.sectors.reduce((a,b)=>a+b,0) : null;
+  saved.unshift({id:'today', ms:Date.now(), route:'Morning', lapS:lap,
+    q: lap?'clean':'partial', n:R.sectors.length, saved:true});   // shows up in the Rides tab
+  tab='result'; render();
+}
+
+function paint(){
+  const cs = document.getElementById('clockslot'); if(!cs) return;
+  const flashing = R.t < R.flashUntil && R.flashIdx>=0;
+  if(flashing){
+    const v = D.sim.sectors[R.flashIdx], t = tierOf(R.flashIdx, v);
+    cs.innerHTML = `<div class="flash"><div class="lbl">S${R.flashIdx+1}</div>
+      <div class="val ${tierClass(t)}">${f1(v)}</div></div>`;
+  } else {
+    cs.innerHTML = `<div class="clock">${f1(Math.max(0,R.t))}</div>`;
+  }
+  document.getElementById('strip').innerHTML = D.sim.sectors.map((v,i)=>{
+    const done = i < R.gate;
+    const t = done ? tierOf(i,v) : '';
+    return `<div class="slot ${i===R.gate?'cur':''} ${done?tierClass(t):''}">S${i+1}
+      ${done?`<span class="t">${f(v)}</span>`:'<span class="t">–</span>'}</div>`;
+  }).join('');
+  // Rotate on REAL seconds, not ride-clock seconds — at 25× the ride clock the
+  // line was changing every ~0.25 s. One item per 10 s, and a line that just
+  // changed (the route lock) holds the slot rather than waiting its turn.
+  const st = document.getElementById('status');
+  const locked = R.gate>0 || R.t>D.sim.startOffset;
+  const items = locked ? ['morning · route locked', 'gps live', (R.t/1|0)+' fixes']
+                       : ['detecting route…','gps live'];
+  if(locked && !R.lockPinAt) R.lockPinAt = Date.now();
+  const realS = (Date.now() - R.startedAt)/1000;
+  const pinned = R.lockPinAt && Date.now()-R.lockPinAt < 8000;
+  st.textContent = R.paused ? 'clock held — red light'
+                 : pinned ? items[0]
+                 : items[Math.floor(realS/10)%items.length];
+  if(map){
+    const tr = D.sim.track;
+    let i = 0; while(i<tr.length-1 && tr[i][2] < R.t) i++;
+    dot.setLatLng([tr[i][0],tr[i][1]]);
+    trail.setLatLngs(tr.slice(0,i+1).map(p=>[p[0],p[1]]));
+    gateMarks.forEach((gm,k)=>{
+      if(k===0) return gm.setStyle({fillColor: R.t>D.sim.startOffset ? '#ffd400':'#444'});
+      const done = k<=R.gate;
+      const tc = done ? tierOf(k-1, D.sim.sectors[k-1]) : null;
+      gm.setStyle({fillColor: !done ? '#444'
+        : tc==='purple'?'#b04ce6': tc==='green'?'#2ec4b6': tc==='yellow'?'#8a8a20':'#ffd400'});
+    });
+    if(follow) map.setView([tr[i][0],tr[i][1]], map.getZoom(), {animate:false});
+  }
+}
+
+// ------------------------------------------------------------------ result
+function resultScreen(){
+  const mine = R.sectors.length ? R.sectors.reduce((a,b)=>a+b,0) : D.sim.lapS;
+  const rows = GH.map(g=>({id:g.id,v:g.movingS,me:false}))
+                 .concat([{id:'TODAY',v:mine,me:true}]).sort((a,b)=>a.v-b.v);
+  const pole = rows[0].v;
+  // the LAP obeys the selected colour model too (it did not, before)
+  const lapBest = Math.min(...GH.map(g=>g.movingS));
+  const lapAvg = GH.reduce((a,g)=>a+g.movingS,0)/GH.length;
+  const lapSd = Math.sqrt(GH.reduce((s,g)=>s+(g.movingS-lapAvg)**2,0)/GH.length);
+  const lapTier = mine<lapBest ? 'purple'
+    : S.colour==='best'   ? (mine<lapAvg ? 'green':'neutral')
+    : S.colour==='avg'    ? (mine<lapAvg ? 'green':'yellow')
+    : (mine<lapAvg-lapSd ? 'green' : mine>lapAvg+lapSd ? 'yellow' : 'neutral');
+  document.getElementById('screen').innerHTML = `
+    <h2>Lap</h2>
+    <div class="card" style="text-align:center">
+      <div class="big ${tierClass(lapTier)}">${f1(mine)}</div>
+      <div class="muted">P${rows.findIndex(r=>r.me)+1} of ${rows.length} · ${GH.length} ghosts</div>
+    </div>
+    ${S.tower?`<h2>Timing tower — last ${GH.length} rides</h2><div class="card"><table>${
+      rows.map((r,i)=>`<tr class="${r.me?'me':'ghost'}"><td class="pos">P${i+1}</td>
+        <td>${r.me?'TODAY':r.id}</td><td class="t">${f(r.v)}</td>
+        <td class="t muted">${i===0?'':'+'+(r.v-pole).toFixed(0)+'s'}</td></tr>`).join('')
+    }</table>
+    <div class="note" style="margin-top:10px"><b>The tower does not change with the colour model —
+      that is intended.</b> Position is a fact (you were 4th of 10); colour is a judgement.
+      D-013 keeps them apart, so a mid-pack position is never dressed as failure. What the model
+      changes is the LAP verdict above and the sector rows below.</div></div>`:''}
+    <h2>Sectors</h2>
+    <div class="card"><table>${D.sim.sectors.map((v,i)=>{
+      const t=tierOf(i,v);
+      // Colour carries the verdict; the tier is never spelled out (Nathan,
+      // 2026-08-16: "we never show the green or yellow text anyway").
+      return `<tr><td class="pos ${tierClass(t)} ${t==='yellow'?'tier-yellow':''}">S${i+1}</td>
+        <td class="t ${tierClass(t)} ${t==='yellow'?'tier-yellow':''}">${f1(v)}</td>
+        <td class="t muted">avg ${f(avgSector(i))}</td></tr>`;}).join('')}</table></div>
+    <div class="note">Colours follow the <b>${S.colour==='best'?'current model (beat the best)'
+      :S.colour==='avg'?'§19 model (above/below the average)':'hybrid (average ± 1σ deadband)'}</b>
+      — switch it in Settings and watch the same ride change verdict. Ghost rows are archive rides,
+      recomputed by our own pipeline, and stay demotable until the D-024 tripwire is settled.</div>
+    <button class="btn slim" style="margin-top:12px" onclick="reset();tab='ride';render()">NEW RIDE</button>`;
+}
+
+// ------------------------------------------------------------------- rides
+function ridesScreen(){
+  const all = saved.concat(D.rides);
+  const when = ms => new Date(ms).toISOString().slice(0,16).replace('T',' ');
+  document.getElementById('screen').innerHTML = `
+    <h2>Recorded rides</h2>
+    <div class="card">${all.map((r,i)=>`
+      <div class="row"><div>
+        <div class="lab">${when(r.ms)} ${r.saved?'<span class="tier-green">· new</span>':''}</div>
+        <div class="hint">${r.route} · ${r.lapS?f1(r.lapS):'no lap'} · ${r.n} sectors
+          ${r.q&&r.q!=='clean'?' · '+r.q:''}</div>
+      </div>
+      <div><span class="pill" data-export="${i}">export gpx</span>
+           <span class="pill" data-del="${i}">delete</span></div>
+      </div>`).join('')}
+    </div>
+    <div id="toast" class="note" style="display:none"></div>
+    <div class="note">Same shape as the dev build's Rides tab: what is on the phone, and a GPX out of
+      each one. Export here just tells you the filename it would write — nothing leaves the page.</div>`;
+}
+
+// ------------------------------------------------------------------ routes
+function routesScreen(){
+  const w = sel.way && D.ways.find(x=>x.id===sel.way);
+  document.getElementById('screen').innerHTML = `
+    <h2>Your places</h2><div id="map2"></div>
+    <h2>Ways you ride</h2>
+    <div class="card">${D.ways.map(x=>`<div class="row" data-way="${x.id}" style="cursor:pointer"><div>
+      <div class="lab">${x.a} ↔ ${x.b}</div><div class="hint">${x.n} kept rides${
+        x.routes&&x.routes.length>1?' · '+x.routes.length+' routes':''}</div></div>
+      <div class="muted">${sel.way===x.id?'▾':'›'}</div></div>
+      ${sel.way===x.id?`<div class="card" style="margin:8px 0 2px;background:transparent">
+        <div class="muted" style="font-size:12px">routes on this way</div>
+        ${(x.routes&&x.routes.length?x.routes:['(one route — not split)']).map(r=>
+          `<span class="pill${r===(x.routes||[])[0]?' on':''}">${r}</span>`).join('')}
+        <div class="hint" style="margin-top:8px">${x.n} rides you kept after review;
+          ignored ones (roadworks detours, bad traces) are excluded and never become a benchmark.</div>
+        <div class="hint" style="margin-top:6px">Gates: 4 sectors, START ~160 m in.
+          Moving them is what §22 is about — a middle gate is cheap, a start or finish gate resets lap history.</div>
+      </div>`:''}`).join('')}</div>
+    <div class="note">Only places you ratified appear here; the family home is kept for history but is
+      never offered as a destination. Tap a way to see its routes.</div>`;
+  // Draggable, zoomable map of the six ratified places: yellow disc = the
+  // landmark's real radius, grey = dormant. Zoom controls ON here (unlike the
+  // ride map, which is inert by D-006).
+  const m2 = L.map('map2',{attributionControl:false}).setView([50.855,4.66],12);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(m2);
+  const g=[];
+  D.landmarks.forEach(l=>{
+    const c=L.circle([l.lat,l.lon],{radius:l.radiusM,color:l.dormant?'#888':'#ffd400',
+      weight:2,fillOpacity:.15}).addTo(m2);
+    c.bindTooltip(l.label+(l.dormant?' · dormant':'')+' · '+l.radiusM+' m',
+      {permanent:true,direction:'top',className:'lmtip'});
+    g.push(c);
+  });
+  try { m2.fitBounds(L.featureGroup(g).getBounds().pad(0.15)); } catch(err){}
+  setTimeout(()=>m2.invalidateSize(), 0);
+}
+
+// ---------------------------------------------------------------- settings
+function seg(key, opts){
+  return `<div class="seg">${opts.map(([v,l])=>
+    `<button data-k="${key}" data-v="${v}" class="${S[key]===v?'on':''}">${l}</button>`).join('')}</div>`;
+}
+function sw(key){ return `<div class="sw ${S[key]?'on':''}" data-t="${key}"><i></i></div>`; }
+
+function settingsScreen(){
+  document.getElementById('screen').innerHTML = `
+    <h2>Appearance</h2>
+    <div class="card"><div class="row"><div><div class="lab">Theme</div>
+      <div class="hint">race surface follows it</div></div>${seg('theme',[['night','night'],['day','day']])}</div></div>
+
+    <h2>On the bike</h2>
+    <div class="card">
+      <div class="row"><div><div class="lab">Red lights</div>
+        <div class="hint">auto-pause is measured and untouchable; a button is yours to press but makes
+        stopped time self-reported (§18, unsettled)</div></div>
+        ${seg('redlight',[['auto','auto'],['button','button'],['off','off']])}</div>
+      <div class="row"><div><div class="lab">Live map</div>
+        <div class="hint">moving dot on the route while riding</div></div>${sw('mapLive')}</div>
+      <div class="row"><div><div class="lab">Earcons</div>
+        <div class="hint">one buzz + tier sound at each gate (D-019)</div></div>${sw('earcons')}</div>
+    </div>
+
+    <h2>Starting a ride</h2>
+    <div class="card"><div class="row"><div><div class="lab">Start place</div>
+      <div class="hint">detect where you are, or pick it yourself (§21)</div></div>
+      ${seg('startMode',[['auto','detect'],['pick','choose']])}</div></div>
+
+    <h2>Scoring</h2>
+    <div class="card">
+      <div class="row"><div><div class="lab">Colour model</div>
+        <div class="hint">SETTLED (D-030): purple beats the window best, green above the recent
+        average, yellow an ordinary lap. No longer a choice.</div></div>
+        <div class="muted">fixed</div></div>
+      <div class="row"><div><div class="lab">Timing tower</div>
+        <div class="hint">rank today against the ghost set</div></div>${sw('tower')}</div>
+    </div>
+    <div class="note">Everything here is a real switch in this mockup — change it, then ride the
+      Ride tab and look at the Result tab. Nothing is saved; reload restores the defaults.</div>`;
+}
+
+// --------------------------------------------------------------------- demo
+function demoScreen(){
+  document.getElementById('screen').innerHTML = `
+    <h2>Demo ride</h2>
+    <div class="card">
+      <div class="muted">One thing only: a real archived Morning lap replayed at 25x, through the
+      same pane and map the Ride tab uses. Buzz at every gate, tier colours as they are earned,
+      the dot following the road actually ridden. Nothing is recorded.</div>
+      <div class="note">In the app this is where the tier tones will play first, once audio
+      assets exist. Today gates buzz and stay silent.</div>
+    </div>
+    <button class="btn" onclick="tab='ride';render()">GO TO THE RIDE TAB TO TRY IT</button>`;
+}
+
+// -------------------------------------------------------------------- shell
+function render(){
+  document.getElementById('tabbar').innerHTML =
+    TABS.map(([k,l])=>`<div class="${k===tab?'on':''}" data-tab="${k}">${l}</div>`).join('');
+  if(tab==='ride') rideScreen();
+  else if(tab==='rides') ridesScreen();
+  else if(tab==='routes') routesScreen();
+  else if(tab==='result') resultScreen();
+  else settingsScreen();
+}
+function toast(msg){
+  const t=document.getElementById('toast');
+  if(t){ t.style.display='block'; t.textContent=msg; }
+}
+document.addEventListener('click', e=>{
+  const t = e.target.closest('[data-tab]');
+  if(t){ if(tab==='ride'&&R.running){ clearInterval(timer); R.running=false; } tab=t.dataset.tab; render(); return; }
+  const b = e.target.closest('[data-k]');
+  if(b){ S[b.dataset.k]=b.dataset.v;
+    document.body.className = S.theme==='day'?'day':''; render(); return; }
+  const s = e.target.closest('[data-t]');
+  if(s){ S[s.dataset.t]=!S[s.dataset.t]; render(); return; }
+  const p = e.target.closest('[data-pick]');
+  if(p){ sel[p.dataset.pick]=p.dataset.id; sel.picking=null;
+    if(sel.to===sel.from) sel.to = (D.landmarks.find(l=>!l.dormant&&l.id!==sel.from)||{}).id;
+    sel.way=null; render(); return; }
+  const o = e.target.closest('[data-open]');
+  if(o){ sel.picking=o.dataset.open; render(); return; }
+  const rt = e.target.closest('[data-route]');
+  if(rt){ sel.way=null; sel.routePick=rt.dataset.route; render(); return; }
+  const w = e.target.closest('[data-way]');
+  if(w){ sel.way = sel.way===w.dataset.way ? null : w.dataset.way; render(); return; }
+  const ex = e.target.closest('[data-export]');
+  if(ex){ const all=saved.concat(D.rides), r=all[+ex.dataset.export];
+    toast('would write qualifire-'+new Date(r.ms).toISOString().slice(0,10).replace(/-/g,'')+'.gpx to Downloads'); return; }
+  const dl = e.target.closest('[data-del]');
+  if(dl){ const i=+dl.dataset.del;
+    if(i<saved.length){ saved.splice(i,1); render(); toast('ride deleted'); }
+    else toast('archive rides are not deletable here — they are your seed history'); return; }
+});
+render();
+</script></body></html>

@@ -1,0 +1,179 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Qualifire — route map preview</title>
+<style>
+ body{background:#0E0E12;color:#E8E6E1;font:14px/1.5 system-ui,sans-serif;margin:0;padding:22px}
+ h1{font-size:17px;margin:0 0 2px}
+ .sub{color:#8B8880;max-width:78ch;margin:0 0 18px}
+ .row{display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap}
+ .panel{display:flex;flex-direction:column;gap:6px}
+ .cap{font:11px ui-monospace,monospace;color:#8B8880;letter-spacing:.06em}
+ /* the app's map box: 350x190 dp, drawn here at 2x so it is judgeable on a laptop */
+ .frame{position:relative;width:700px;height:380px;border-radius:24px;border:2px solid #2A2A32;
+        overflow:hidden;background:#FFF}
+ .frame.fit{height:760px}
+ .frame img{position:absolute;transform-origin:0 0;image-rendering:auto}
+ .gate{position:absolute;width:24px;height:24px;border-radius:24px;border:4px solid #14120C;box-sizing:border-box}
+ .dot{position:absolute;width:28px;height:28px;border-radius:28px;border:4px solid #14120C;
+      background:#C8CDD4;box-sizing:border-box;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+ .credit{position:absolute;right:12px;bottom:12px;font-size:17px;color:#2B2B2B;
+         background:rgba(255,255,255,.6);padding:4px 10px;border-radius:10px}
+ .badge{position:absolute;left:12px;bottom:12px;font-size:21px;letter-spacing:2.4px;
+        color:#F5C542;background:#1A1A20;padding:6px 14px;border-radius:16px}
+ .ctl{display:flex;flex-direction:column;gap:14px;min-width:280px}
+ label{font:12px ui-monospace,monospace;color:#8B8880;display:block;margin-bottom:4px}
+ input[type=range]{width:100%}
+ button,select{background:#1A1A20;color:#E8E6E1;border:1px solid #3A3A44;border-radius:8px;
+                padding:8px 12px;font:13px system-ui;cursor:pointer}
+ button.on{background:#F5C542;color:#111;border-color:#F5C542;font-weight:600}
+ .tiers{display:flex;gap:6px;flex-wrap:wrap}
+ .note{color:#8B8880;font-size:12px;max-width:44ch}
+ .err{color:#E66;font:13px ui-monospace,monospace}
+</style></head><body>
+
+<h1>Route map preview — the real asset, framed the way the app frames it</h1>
+<p class="sub">This draws <code>app/assets/routes/&lt;Route&gt;.png</code> through the same
+<code>projectToPixel()</code> and <code>cropFor()</code> maths as <code>app/src/ui/routeMapView.tsx</code>,
+at 2&times; so it is judgeable on a laptop. The rider walks the recorded polyline. Gate colours here are a
+<em>colour demo</em>, not a timing — nothing on this page is measured.</p>
+
+<div id="err" class="err"></div>
+<div class="row">
+  <div class="panel">
+    <div id="frame" class="frame">
+      <img id="map" alt="">
+      <div id="overlay"></div>
+      <div class="credit">Esri, HERE, Garmin, © OpenStreetMap contributors</div>
+    </div>
+    <div class="cap" id="cap"></div>
+  </div>
+
+  <div class="ctl">
+    <div>
+      <label>ROUTE</label>
+      <select id="route"></select>
+    </div>
+    <div>
+      <label>FRAMING</label>
+      <button data-z="4" class="on">LIVE (zoom 4)</button>
+      <button data-z="2">zoom 2</button>
+      <button data-z="1">FIT whole route</button>
+    </div>
+    <div>
+      <label>POSITION ALONG THE RIDE</label>
+      <input id="t" type="range" min="0" max="1000" value="0">
+      <button id="play">▶ play</button>
+    </div>
+    <div>
+      <label>GATE COLOURS (demo)</label>
+      <div class="tiers">
+        <button data-tier="none" class="on">unscored</button>
+        <button data-tier="mixed">mixed</button>
+        <button data-tier="purple">all purple</button>
+      </div>
+    </div>
+    <p class="note">What to judge: does the yellow line stay traceable against beige and green;
+    do the gate rings read at a glance; is the credit legible without stealing the frame;
+    does the live crop show enough road ahead to be worth anything.</p>
+  </div>
+</div>
+
+<script src="routes-data.js"></script>
+<script>
+// ---- ported verbatim from app/src/ui/routeMapMath.ts ----
+const mercX = lon => lon * Math.PI / 180;
+const mercY = lat => Math.log(Math.tan(Math.PI/4 + (lat*Math.PI/180)/2));
+const projectToPixel = (a,lat,lon) => ({
+  px: a.offx + (mercX(lon) - a.x0) * a.scale,
+  py: a.offy + (a.y1 - mercY(lat)) * a.scale });
+function cropFor(a, at, viewW, viewH, zoom){
+  const base = Math.min(viewW/a.w, viewH/a.h);
+  const scale = base * Math.max(1, zoom);
+  const imgW = a.w*scale, imgH = a.h*scale;
+  let tx = viewW/2 - at.px*scale, ty = viewH/2 - at.py*scale;
+  tx = imgW <= viewW ? (viewW-imgW)/2 : Math.min(0, Math.max(viewW-imgW, tx));
+  ty = imgH <= viewH ? (viewH-imgH)/2 : Math.min(0, Math.max(viewH-imgH, ty));
+  return { scale, translateX: tx, translateY: ty };
+}
+// theme.ts tiers, with the Art Director's light-ground substitutions
+const TIER = { purple:'#7B3FD1', green:'#1E9E6A', yellow:'#F5C542', none:'#E8E4DA' };
+
+const D = window.ROUTES_JSON;
+if (!D) document.getElementById('err').textContent =
+  'demos/routes-data.js not found — run: python3 data/analysis/08_build_route_assets.py';
+
+const el = id => document.getElementById(id);
+const S = { route: D ? Object.keys(D.routes)[0] : null, zoom: 4, t: 0, tier: 'none', playing: false };
+
+if (D) {
+  el('route').innerHTML = Object.keys(D.routes)
+    .map(k => `<option value="${k}">${k}</option>`).join('');
+}
+
+function tierFor(i, passed){
+  if (i > passed || S.tier === 'none') return TIER.none;
+  if (S.tier === 'purple') return TIER.purple;
+  return [TIER.green, TIER.yellow, TIER.purple, TIER.green, TIER.yellow][i % 5];
+}
+
+function render(){
+  if (!D) return;
+  const a = D.routes[S.route];
+  const frame = el('frame');
+  frame.classList.toggle('fit', S.zoom === 1);
+  const viewW = frame.clientWidth, viewH = frame.clientHeight;
+
+  const path = a.path || [];
+  const i = Math.min(path.length - 1, Math.round(S.t / 1000 * (path.length - 1)));
+  const here = path.length ? projectToPixel(a, path[i][0], path[i][1]) : { px: a.w/2, py: a.h/2 };
+  const crop = cropFor(a, here, viewW, viewH, S.zoom);
+
+  const img = el('map');
+  if (!img.src.endsWith(a.image)) img.src = '../app/assets/routes/' + a.image;
+  img.style.width  = a.w * crop.scale + 'px';
+  img.style.height = a.h * crop.scale + 'px';
+  img.style.left = crop.translateX + 'px';
+  img.style.top  = crop.translateY + 'px';
+
+  // how many gates are behind us, by path index
+  const gi = a.gateIdx || [];
+  let passed = -1;
+  for (let k = 0; k < gi.length; k++) if (i >= gi[k]) passed = k;
+
+  el('overlay').innerHTML = a.gates.map((g,k) => {
+    const x = g.px*crop.scale + crop.translateX - 12;
+    const y = g.py*crop.scale + crop.translateY - 12;
+    return `<div class="gate" style="left:${x}px;top:${y}px;background:${tierFor(k,passed)}"></div>`;
+  }).join('') + `<div class="dot" style="left:${here.px*crop.scale+crop.translateX-14}px;` +
+                `top:${here.py*crop.scale+crop.translateY-14}px"></div>`;
+
+  el('cap').textContent =
+    `${S.route}.png ${a.w}x${a.h} · zoom ${S.zoom} · point ${i+1}/${path.length} · ` +
+    `gates passed ${passed+1}/${a.gates.length} · from ${a.sourceRide}`;
+}
+
+el('route').onchange = e => { S.route = e.target.value; render(); };
+el('t').oninput = e => { S.t = +e.target.value; render(); };
+document.querySelectorAll('[data-z]').forEach(b => b.onclick = () => {
+  S.zoom = +b.dataset.z;
+  document.querySelectorAll('[data-z]').forEach(x => x.classList.toggle('on', x === b));
+  render();
+});
+document.querySelectorAll('[data-tier]').forEach(b => b.onclick = () => {
+  S.tier = b.dataset.tier;
+  document.querySelectorAll('[data-tier]').forEach(x => x.classList.toggle('on', x === b));
+  render();
+});
+el('play').onclick = () => {
+  S.playing = !S.playing;
+  el('play').textContent = S.playing ? '❚❚ pause' : '▶ play';
+  (function step(){
+    if (!S.playing) return;
+    S.t = (S.t + 4) % 1000; el('t').value = S.t; render();
+    setTimeout(step, 40);
+  })();
+};
+el('map').onerror = () => { el('err').textContent =
+  'route PNG not found — expected ../app/assets/routes/' + D.routes[S.route].image; };
+render();
+</script>
+</body></html>

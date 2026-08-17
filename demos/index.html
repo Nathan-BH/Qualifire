@@ -1,0 +1,95 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Qualifire — demos</title>
+<style>
+ :root{--ink:#eee;--dim:#9aa;--line:#333;--accent:#ffd400}
+ body{margin:0;padding:26px 26px 60px;font:14.5px/1.55 system-ui,sans-serif;background:#111;color:var(--ink);max-width:900px}
+ h1{font-size:21px;margin:0 0 3px} h2{font-size:14px;letter-spacing:2px;text-transform:uppercase;
+   color:var(--dim);margin:30px 0 10px;border-bottom:1px solid var(--line);padding-bottom:6px}
+ .sub{color:var(--dim);font-size:13px;margin-bottom:6px}
+ .card{border:1px solid var(--line);border-radius:10px;padding:13px 15px;margin-bottom:10px}
+ .card a{color:#7cf;font-size:15.5px;font-weight:600;text-decoration:none}
+ .card a:hover{text-decoration:underline}
+ .card p{margin:5px 0 0;color:#cbd}
+ .check{margin:7px 0 0;color:var(--dim);font-size:13px}
+ .check b{color:var(--accent);font-weight:600}
+ .tag{float:right;font-size:10.5px;letter-spacing:1px;text-transform:uppercase;
+   border:1px solid var(--line);border-radius:9px;padding:2px 8px;color:var(--dim)}
+ .tag.live{color:#2ec4b6;border-color:#2ec4b6}
+ .tag.old{opacity:.6}
+ code{background:#1c1c1c;padding:1px 5px;border-radius:4px;font-size:12.5px}
+ .note{border-left:3px solid var(--accent);padding:2px 0 2px 12px;color:#cbd;margin:14px 0}
+</style></head><body>
+
+<h1>Qualifire — demo surfaces</h1>
+<div class="sub">Every user-testable HTML page lives here (D-020). Open them straight from disk — no server needed.
+Last updated 2026-08-16.</div>
+
+<div class="note">The two <b>current</b> surfaces are the race mockup and the way maps. Everything else is
+either an audition tool or an older data check kept for reference — labelled below so nothing here can
+quietly pass for the live design.</div>
+
+<h2>Race surface</h2>
+
+<div class="card"><span class="tag live">current</span>
+<a href="mockup.html">mockup.html — the whole app, four tabs</a>
+<p>Rebuilt 16 Aug from real data. <b>Ride</b>: start flow (detected landmark or picker, destination,
+"9 rides found"), then a real Morning commute replayed at 25× with a moving dot on a live map, the ticking
+clock, 2.5 s sector flashes, the rotating status line and the slim STOP. <b>Routes</b>: your six landmarks
+with true radii and the 11 curated ways. <b>Result</b>: lap, timing tower against the real archive ghosts,
+sector table. <b>Settings</b>: every toggle live.</p>
+<p class="check"><b>Try this first:</b> Settings → <b>Colour model</b>, switch between <i>best</i> /
+<i>average</i> / <i>hybrid</i>, then look at Result. Same ride, three different verdicts — that is the §19
+question made concrete rather than argued.</p>
+<p class="check"><b>Also switchable:</b> red lights (auto-pause · manual button · off — the button appears on
+the ride screen and holds the clock), start place (detect vs choose), live map on/off, tower on/off, day/night.</p>
+<p class="check">Regenerate after any data change with <code>python3 data/analysis/07_build_mockup.py</code>.
+The cycle-007 design is preserved as <a href="legacy-mockup-cycle007.html">legacy-mockup-cycle007.html</a>.</p></div>
+
+<div class="card"><span class="tag live">new · 16 Aug</span>
+<a href="tower-ghosts.html">tower-ghosts.html — where your lap would place, against real ghosts</a>
+<p>The archive pre-seed made real: the last 10 rides per route (Morning · Evening A · Evening B),
+recomputed by our own pipeline from raw lat/lon/t — never Strava's numbers — and ranked by D-028.
+Drag the slider to see any lap time slot into the tower, with the gap to pole.</p>
+<p class="check"><b>This is what Monday gives you:</b> a real position instead of a null chip. Ghost rows
+are dimmed and stay demotable while D-024's tripwire is unratified. Curated-out rides (roadworks routes,
+the 2.3 km GPS jump) are excluded from the seed, so nothing you have to beat is a bad trace.</p></div>
+
+<div class="card"><span class="tag">audition</span>
+<a href="earcons-audition.html">earcons-audition.html — the three tier sounds + lap voice</a>
+<p>Plays each earcon in isolation (D-019) plus the two-part final-gate lap sound.</p>
+<p class="check"><b>Open question (B-27):</b> play these on the phone speaker outdoors at ~25 km/h — the lap
+voice sits at 330–494 Hz, below the wind-safe band, and nobody has tested it against real wind yet.</p></div>
+
+<h2>Where you ride</h2>
+
+<div class="card"><span class="tag live">current</span>
+<a href="ways/index.html">ways/index.html — every way between your six landmarks</a>
+<p>The 6×6 matrix of start→end pairs, linking to one map per way: 13 pages drawing the real GPX tracks on
+OpenStreetMap, teal one direction and magenta the other, landmark circles at their true radii. Rides are
+numbered, and your curation verdicts are rendered — ignored rides are struck through, grey-dashed and hidden
+by default, so nothing is deleted, only set aside.</p>
+<p class="check"><b>Worth checking:</b> the four station↔work rides and one home↔station ride still marked
+<code>unreviewed</code>; and whether "via fosh" should be one way or two, since out and back use different roads.</p></div>
+
+<div class="card"><span class="tag old">data check · Aug 14</span>
+<a href="routes-check.html">routes-check.html — the original three-track clustering</a>
+<p>How Morning / Evening A / Evening B were first separated out of the archive (D-015). Superseded as a
+browsing tool by the way maps, kept because it is the evidence behind the three-track decision.</p></div>
+
+<div class="card"><span class="tag old">data check · Aug 14</span>
+<a href="gates-check.html">gates-check.html — the measured gate positions</a>
+<p>Where the four sector boundaries sit on each track (D-016), with the speed and stop-fraction reasoning
+that placed them.</p>
+<p class="check"><b>Still open (§22):</b> the START gate sits ~160 m out for GPS-arming reasons. How much
+closer it can safely go is the next thing to measure — and moving a start or finish gate is the one gate
+change that breaks lap history, so it is worth doing once, deliberately.</p></div>
+
+<h2>Not a demo — but where the answers live</h2>
+<div class="card"><span class="tag">reference</span>
+<a href="../data/analysis/way-curation.md">way-curation.md</a> ·
+<a href="../data/analysis/landmarks_proposal.md">landmarks_proposal.md</a> ·
+<a href="../product/DATA-MODEL.md">DATA-MODEL.md</a>
+<p>Your ride-by-ride verdicts and what the traces said about them; how the six landmarks were settled and
+why the radius rule is what it is; and the catalog/results schema the app now builds against.</p></div>
+
+</body></html>
