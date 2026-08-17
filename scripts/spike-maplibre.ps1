@@ -159,17 +159,16 @@ try {
             Ok 'plugin already present in app.json (unexpected on a fresh spike, but not fatal)'
             Record 'app.json plugin: already present'
         } else {
-            $pluginsMatch = [regex]::Match($t, '"plugins"\s*:\s*\[(?<body>.*?)\n\s*\]', 'Singleline')
-            if (-not $pluginsMatch.Success) {
-                throw 'could not locate the "plugins" array in app.json -- add "@maplibre/maplibre-react-native" to expo.plugins by hand instead'
-            }
-            $bodyGroup    = $pluginsMatch.Groups['body']
-            $audioMatches = [regex]::Matches($bodyGroup.Value, '"expo-audio"')
+            # Anchor on the "expo-audio" plugin entry itself (it occurs exactly once
+            # in app.json, as the last plugin). A bracket-matching regex was tried
+            # first and stopped at the nested expo-location array's "]" -- lesson
+            # learned 2026-08-17 on Nathan's first real run.
+            $audioMatches = [regex]::Matches($t, '"expo-audio"')
             if ($audioMatches.Count -ne 1) {
-                throw "expected exactly one `"expo-audio`" entry inside app.json's plugins array to anchor the insertion, found $($audioMatches.Count) -- add `"@maplibre/maplibre-react-native`" to expo.plugins by hand instead"
+                throw "expected exactly one `"expo-audio`" entry in app.json to anchor the insertion, found $($audioMatches.Count) -- add `"@maplibre/maplibre-react-native`" to expo.plugins by hand instead"
             }
-            $lastAudio  = $audioMatches[$audioMatches.Count - 1]
-            $insertAt   = $bodyGroup.Index + $lastAudio.Index + $lastAudio.Length
+            $lastAudio  = $audioMatches[0]
+            $insertAt   = $lastAudio.Index + $lastAudio.Length
             $insertText = ",`n      `"@maplibre/maplibre-react-native`""
             $t = $t.Insert($insertAt, $insertText)
             [IO.File]::WriteAllText($p, $t, [Text.UTF8Encoding]::new($false))
