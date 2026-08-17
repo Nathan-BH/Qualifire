@@ -315,3 +315,14 @@ Contracts: `product/MAP-STACK-OPTIONS.md` (option matrix, change-set), `product/
 Rationale: three seats reached MapLibre independently (fit, cost, control over the palette firewall); the fresh inspector argued the strongest counter-case (expo-maps simplicity, WebView Fast Refresh, Mapbox managed styles) and still landed on MapLibre. What made it "definite" was Nathan's online-first ruling: the whole cycle-011 argument for keeping the PNG rested on a no-network guarantee he does not need.
 Reversibility: cheap in code (the D-031 PNG path is kept as fallback), one build slot in cost.
 Evidence: the three contracts above; inspector corrections logged in `cycles/cycle-014.md`.
+
+## D-042 — Sector and lap timing default to RAW time: luck is part of the race; moving-time modes become opt-in
+Date: 2026-08-17 · Status: ACTIVE — Nathan's ruling, cycle 016 ("I want the element of luck involved; if you have to stop for someone or something, so be it. It will make the smooth rides even special."). NOT YET IMPLEMENTED — scheduled for the next build cycle, deliberately not this one.
+Decision: The red-light setting's three values get real semantics, and the DEFAULT flips to raw time:
+1. **`off` (default): raw wall-clock time.** Stops count against the lap and sector. No stop subtraction anywhere — colours, ranks, averages and the ticking clock all use raw time. A red light is racing luck; a clean run through every green is what makes a special lap special.
+2. **`auto`: the timer pauses automatically while not moving** (stationary detection — the ≥10 m / 6 s machinery from cycle 016's map dim is the natural detector, thresholds to be tuned on device).
+3. **`button` (manual): the rider pauses/resumes the clock himself** with the existing RED LIGHT button, which today is cosmetic.
+Consequences to implement next build (not now): the colour model, tower ranks, posChip and Result board currently compare **moving** time (`movingS`) — under `off` they must compare raw time; comparison sets must be mode-consistent (a raw-time lap must never rank against a moving-time window — mixing modes fabricates a comparison, D-025); the "interrupted sectors excluded from sector averages" rule needs re-examination under `off` (a stopped sector is now just a slow sector); the live clock display follows the mode. Engine records BOTH raw and moving per sector already — no data loss, this is a comparison-layer change.
+Rationale: Nathan had not known the maths silently subtracted stopped time; the honesty rule (D-025) cuts both ways — the app was quietly flattering laps that hit red lights. His call: the default tells the truth of the commute, luck included.
+Reversibility: cheap — both quantities are recorded; the mode only selects which one compares.
+Evidence: engine sector records carry rawS + movingS (`lastRide.ts`, `colourModel.ts` as of cycle 016); Nathan's ruling in chat, 2026-08-17 evening.

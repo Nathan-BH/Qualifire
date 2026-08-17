@@ -2,7 +2,7 @@ Nathan: implement all features not blocked by him, D-039 tiers. Execution cycle,
 
 ## Rulings
 
-Red-light §18 semantics deferred; awaiting Nathan's decision.
+Red-light §18 semantics deferred; awaiting Nathan's decision. (Ruled same evening after this record closed: **D-042** — raw time default, auto/manual pause opt-in; implementation = B-59, next build cycle.)
 
 ## What shipped
 

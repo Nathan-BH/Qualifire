@@ -61,6 +61,7 @@ Status: `OPEN` · `IN CYCLE` · `NEEDS NATHAN` · `DONE`
 | B-56 | **Protomaps PMTiles offline corridor extract** (`pmtiles extract https://build.protomaps.com/YYYYMMDD.pmtiles leuven-z15.pmtiles --bbox=4.60,50.81,4.72,50.89 --maxzoom=15`, copy to `filesDir` on first run) — only if B-52's ambient cache proves insufficient on a real dead-zone commute | Mobile Dev | OPEN — LATER |
 | B-57 | **Result screen "view trace" link** (LAYOUT §3 rule 6) — unbuilt today; worth building now that it opens onto a real map | Designer + Mobile Dev | DONE 2026-08-17 (cycle 016) — VIEW TRACE toggle, route on real streets with today's gate colours; true fix-trace still awaits a JSONL reader (D-023) |
 | B-58 | **Phone-checkable acceptance test for "the map problem is solved"** (`product/MAP-CONTRACT.md` §4), folded into `app/README-dev.md`'s acceptance steps | QA + Product Owner | DONE 2026-08-17 (cycle 016) — step 10 with the explicit FAIL clause |
+| B-59 | **Red-light timing semantics per D-042** — default `off` = RAW time everywhere (luck counts; colours/ranks/tower/clock stop using movingS), `auto` = stationary-detected pause, `button` = manual pause; comparison sets must be mode-consistent (never rank raw against moving, D-025); re-examine the interrupted-sector exclusion under `off` | Race Engineer + Mobile Dev | OPEN — ruled 2026-08-17 (D-042), deliberately NEXT build cycle, not the current tree |
 
 ## Next — once the concept holds still
 
