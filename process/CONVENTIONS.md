@@ -47,7 +47,10 @@ Binding rules:
 - **Fresh-context inspection.** The inspector shares no context with planner or executor. An agent reviewing its own work in-context rationalizes; one with clean context finds what the executor sailed past.
 - **The size threshold.** A subagent costs ~30–80k tokens of overhead before any work happens. A chore — under ~10 lines of mechanical change, or answerable by one read — is done directly by the planner. Tiers pay for themselves on real tasks, not on renames.
 - **Bookkeeping stays with the coordinator.** BACKLOG status, STATE.md, the cycle record — never the executor's job, and never skipped.
+- **The tiers are visible (Nathan, 2026-08-17).** In an interactive chat, every dispatch is announced as it happens — tier, model, one-line mandate — escalations are surfaced verbatim, and the task ends with a readout table: tier | model | tokens | outcome. Nathan judges the distribution by watching it work, not by trusting a summary. Unattended runs put the same readout in their report.
+- **Backlog IDs are for files, not for Nathan (2026-08-17).** When Nathan asks what's pending, translate BACKLOG/STATE into a plain-language menu: for each workable item, one sentence on what it actually means, its rough size, and whether it waits on him. Never assume he remembers what B-NN stands for; he picks from the menu, then the pick runs through the tiers.
 - **Mechanics (Cowork):** dispatch via the Agent tool with `model: "haiku"` / `"sonnet"` / `"fable"`. If a stopped subagent can't be continued (no message channel), re-dispatch a fresh one with the amendment plus a note of any partial state already on disk.
+- **Coordinator mode (Nathan, 2026-08-17): the chat may run on Sonnet.** Planning and inspection then run as `model: "fable"` subagents; the brief-writer reads the code in its own context. Hard rule: Sonnet never rules on an executor escalation — it forwards the stop verbatim to a Fable subagent (accepting the ~30–80k-token dispatch cost) or ends the task and reports. Design-heavy or ambiguous sessions (product forks, unratified rulings) still run in a Fable chat, where escalations are resolved in-context for free.
 
 ---
 

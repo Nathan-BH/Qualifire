@@ -299,3 +299,9 @@ Decision: All work in this project routes through four model tiers — Haiku tri
 Rationale: maximise frontier-model thinking per token by never spending it on mechanical execution. Cycle 013 is the evidence: triage cost ~28k tokens, execution ~158k on Sonnet, inspection ~57k; the stop-on-ambiguity rule caught a planner error (brief claimed 10 Morning seed ghosts, the seed has 9) before it became a wrong hardcoded test, and the fresh-context inspector found two real defects the in-spec executor sailed past.
 Reversibility: cheap — process text only; no code depends on it.
 Evidence: `cycles/cycle-013.md`.
+
+## D-040 — Scheduled cycles: a supervised trial, superseding D-003's "on demand only" for the trial window
+Date: 2026-08-17 · Status: ACTIVE — Nathan's ruling ("lets first do overday task, and then in the evening i can ask for an overnight task")
+Decision: One scheduled, unattended day-cycle runs 2026-08-17 ~15:00 under D-039 tiers on one small unblocked backlog item, Nathan watching. Unattended rules: never stall on a question — pick the stated default, log the assumption; an executor stop-on-ambiguity ends the cycle gracefully with a report. Commits stay local (no push credentials in the sandbox); Nathan pushes via GitHub Desktop. An overnight recurring cadence is a separate ruling, expected the evening of 2026-08-17 after this trial is judged.
+Rationale: D-003's bar for scheduling was "cycles consistently ending with real artifacts landing"; cycle 013 met it once. One supervised run is the cheapest honest test of the second time.
+Reversibility: free — delete the scheduled task.
