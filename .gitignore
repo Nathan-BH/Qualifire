@@ -8,3 +8,5 @@ data/activities/
 data/*.zip
 data/analysis/cache/
 /*.gpx
+app/android/
+app/dist/

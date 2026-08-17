@@ -38,7 +38,8 @@
         }
       ],
       "expo-status-bar",
-      "expo-audio"
+      "expo-audio",
+      "@maplibre/maplibre-react-native"
     ],
     "extra": {
       "eas": {

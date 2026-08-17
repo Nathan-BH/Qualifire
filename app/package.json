@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@maplibre/maplibre-react-native": "^11.3.6",
     "expo": "~56.0.0",
     "expo-audio": "~56.0.13",
     "expo-dev-client": "~56.0.24",
