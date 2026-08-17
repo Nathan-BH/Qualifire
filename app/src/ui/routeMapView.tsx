@@ -12,14 +12,27 @@
  * pin it to the drawn line and make a detour look like a perfect lap. When
  * the rider is off the drawn route the dot goes grey (PNG) / theme-dim
  * (MapLibre) and says so.
+ *
+ * B-51 (per-surface contract, 2026-08-17): the same map now serves TWO
+ * personalities, picked by `variant`/`liveState`/`showRider` —
+ *  - a locked LIVE ribbon while actually riding (moving/stopped): all
+ *    gestures off, zoom bar hidden, labels stripped, course-up bearing —
+ *    exactly today's behaviour, D-006 "no controls while moving";
+ *  - a free BROWSE map everywhere else (before start, at the finish, and on
+ *    the Routes/Result screens): pan/zoom/rotate-off gestures on, zoom bar
+ *    visible, labels on, bearing 0 (or held, at the finish).
+ * `stopped` (a red light) additionally dims the frame — a light is not a
+ * finish, the map must not loosen, but it should look paused rather than
+ * "still fully live and just not moving".
  */
 import { useEffect, useRef, useState } from 'react';
-import { Image, LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, LayoutChangeEvent, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import manifest from '../../assets/routes/routes.json';
 import { cropFor, offRouteM, projectToPixel, type RouteAsset } from './routeMapMath.ts';
 import {
-  bearingBetween, gatesFeatureCollection, riderFeature, routeBounds, routeLineFeature,
+  bearingBetween, gatesFeatureCollection, metresBetween, riderFeature, routeBounds, routeLineFeature,
 } from './routeMapGeo.ts';
+import { patchMapStyle } from './routeMapStyle.ts';
 import { colors, radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
 import type { CameraStop } from '@maplibre/maplibre-react-native';
@@ -53,14 +66,16 @@ const OFF_ROUTE_M = 120;
 const CASING = '#14120C';
 const GROUND_FILL = '#E8E4DA';
 
-/** MapLibre style used for the tile rung — stock dark, deliberately
- * unpatched. Palette-firewall style patching is B-51 work; do not attempt
- * it here. */
+/** MapLibre style used for the tile rung. Fetched once and runtime-patched
+ * (labels + palette firewall, routeMapStyle.ts) — see MapLibreRouteMap. */
 const MAP_STYLE = 'https://tiles.openfreemap.org/styles/dark';
 
 /** Course-up bearing holds until a fix has actually moved this far — cheap
  * jitter guard against a GPS fix wobbling the heading while stationary. */
 const BEARING_MIN_MOVE_M = 8;
+
+type RouteMapVariant = 'live' | 'browse';
+type LiveMapState = 'prestart' | 'moving' | 'stopped' | 'finished';
 
 type RouteMapProps = {
   /** null before the route locks — the map then just shows the candidate */
@@ -73,6 +88,16 @@ type RouteMapProps = {
   /** colour per crossed gate, index 0 = START. Gates ahead stay dark; a gate
    * only takes a colour once its sector has actually been scored. */
   gateColours?: (string | null)[];
+  /** 'live' (default) = the recording ribbon; 'browse' = a free-standing
+   * pannable map with no live semantics (Routes list, Result "view trace"). */
+  variant?: RouteMapVariant;
+  /** Only meaningful for variant 'live'. Default 'moving' — today's locked
+   * ribbon. 'prestart'/'finished' unlock the map like 'browse' does;
+   * 'stopped' keeps it locked but dims it (a red light is not a finish). */
+  liveState?: LiveMapState;
+  /** Default true. false skips the rider dot/source and the waiting-for-GPS
+   * badge — browse surfaces have no rider by contract. */
+  showRider?: boolean;
 };
 
 export default function RouteMapView(props: RouteMapProps) {
@@ -81,20 +106,59 @@ export default function RouteMapView(props: RouteMapProps) {
   return <MapLibreRouteMap {...props} maplibre={ML} onMapFailed={() => setMapFailed(true)} />;
 }
 
-// -------------------------------------------------------------- MapLibre rung
+// --------------------------------------------------------------- attribution
 
-/** Cheap equirectangular distance estimate, good enough at bike-ride scale
- * to decide "did the fix actually move" — not a substitute for a real
- * geodesic when correctness at range matters (see routeMapGeo's
- * bearingBetween for the great-circle bearing itself). */
-function metresBetween(lat0: number, lon0: number, lat1: number, lon1: number): number {
-  const R = 6378137;
-  const rad = Math.PI / 180;
-  const dLat = (lat1 - lat0) * rad;
-  const dLon = (lon1 - lon0) * rad;
-  const x = dLon * Math.cos(((lat0 + lat1) / 2) * rad);
-  return Math.hypot(x, dLat) * R;
+/** Shared by both rungs (design contract C): the credit becomes a Pressable
+ * that opens a "Map data sources" sheet — except while the live ribbon is
+ * actually locked (moving/stopped), where it stays a flat, non-interactive
+ * label so it never reads as one more control on the D-006 no-controls
+ * surface. */
+function Credit(props: { rung: 'maplibre' | 'png'; interactive: boolean }) {
+  const { t } = useTheme();
+  const [open, setOpen] = useState(false);
+  const label = props.rung === 'maplibre'
+    ? 'OpenFreeMap © OpenMapTiles Data from OpenStreetMap'
+    : ATTRIBUTION;
+  const rows = props.rung === 'maplibre'
+    ? [
+      { source: 'OpenFreeMap', role: 'tiles' },
+      { source: '© OpenMapTiles', role: 'schema' },
+      { source: '© OpenStreetMap contributors', role: 'data' },
+    ]
+    : [
+      { source: 'Esri, HERE, Garmin', role: 'imagery' },
+      { source: '© OpenStreetMap contributors', role: 'data' },
+    ];
+  return (
+    <>
+      <Pressable
+        disabled={!props.interactive}
+        onPress={() => setOpen(true)}
+        style={st.credit}
+        hitSlop={4}
+      >
+        <Text style={st.creditText} numberOfLines={1}>{label}</Text>
+      </Pressable>
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={st.sheetBackdrop} onPress={() => setOpen(false)}>
+          <View style={[st.sheetCard, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
+            <Text style={[st.sheetTitle, { color: t.text }]}>Map data sources</Text>
+            {rows.map((r) => (
+              <Text key={r.source} style={[st.sheetRow, { color: t.text2 }]}>
+                {r.source} — {r.role}
+              </Text>
+            ))}
+            <Pressable style={st.sheetClose} onPress={() => setOpen(false)}>
+              <Text style={[st.sheetCloseText, { color: t.accentText }]}>CLOSE</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+    </>
+  );
 }
+
+// -------------------------------------------------------------- MapLibre rung
 
 function MapLibreRouteMap(props: RouteMapProps & {
   maplibre: NonNullable<typeof ML>;
@@ -106,21 +170,40 @@ function MapLibreRouteMap(props: RouteMapProps & {
   const asset = ASSETS[id];
   const h = props.height ?? 190;
 
-  // Two camera modes: 'fit' shows the whole route, 'follow' tracks the
-  // rider. Same re-derive-on-prop-change pattern the PNG rung used for its
-  // zoom state.
-  const [mode, setMode] = useState<'follow' | 'fit'>((props.zoom ?? 4) <= 1 ? 'fit' : 'follow');
+  const variant = props.variant ?? 'live';
+  const liveState = props.liveState ?? 'moving';
+  const showRider = props.showRider ?? true;
+
+  // Behaviour matrix (design contract A). "unlocked" = free browse gestures,
+  // labels on, zoom bar visible: browse surfaces, the pre-start map, and the
+  // finished ribbon (released back to browse). Everything else (moving,
+  // stopped) is today's locked, label-free, control-free ribbon — D-006.
+  const unlocked = variant === 'browse' || liveState === 'prestart' || liveState === 'finished';
+  const dimmed = variant === 'live' && liveState === 'stopped';
+  const interactiveCredit = !(variant === 'live' && (liveState === 'moving' || liveState === 'stopped'));
+
+  const initialMode: 'follow' | 'fit' = variant === 'browse' || liveState === 'prestart'
+    ? 'fit'
+    : liveState === 'finished'
+      ? 'follow' // released back to the zoom bar, not re-fit to the whole route
+      : (props.zoom ?? 4) <= 1 ? 'fit' : 'follow';
+  const [mode, setMode] = useState<'follow' | 'fit'>(initialMode);
   useEffect(() => {
-    setMode((props.zoom ?? 4) <= 1 ? 'fit' : 'follow');
-  }, [props.zoom]);
+    setMode(initialMode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.zoom, variant, liveState]);
 
   const [camZoom, setCamZoom] = useState(16);
 
   // Course-up bearing: holds the last value until a new fix has moved
-  // BEARING_MIN_MOVE_M from the previous one (jitter guard).
+  // BEARING_MIN_MOVE_M from the previous one (jitter guard). Only updates
+  // while actually moving/stopped — 'finished' therefore HOLDS the last
+  // course-up value rather than resetting (design contract A).
   const [bearing, setBearing] = useState(0);
   const prevFixRef = useRef<{ lat: number; lon: number } | null>(null);
+  const bearingLive = variant === 'live' && (liveState === 'moving' || liveState === 'stopped');
   useEffect(() => {
+    if (!bearingLive) return;
     if (props.lat === null || props.lon === null) return;
     const lat = props.lat, lon = props.lon;
     const prev = prevFixRef.current;
@@ -132,7 +215,38 @@ function MapLibreRouteMap(props: RouteMapProps & {
       setBearing(bearingBetween(prev.lat, prev.lon, lat, lon));
       prevFixRef.current = { lat, lon };
     }
-  }, [props.lat, props.lon]);
+  }, [props.lat, props.lon, bearingLive]);
+  // browse/prestart always face north; finished holds whatever `bearing` last
+  // was (bearingLive stopped updating it); moving/stopped read it live.
+  const effectiveBearing = variant === 'browse' || liveState === 'prestart' ? 0 : bearing;
+
+  // Runtime style patch (design contract B): fetch the online style once,
+  // memoize BOTH a labels-on and a labels-off copy. A fetch/parse failure
+  // falls back to the plain MAP_STYLE url — the online, unpatched style —
+  // exactly as before B-51; that is not a map failure (onMapFailed is only
+  // for the Map component's own onDidFailLoadingMap).
+  const [patchedStyles, setPatchedStyles] = useState<{ labelsOn: unknown; labelsOff: unknown } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(MAP_STYLE);
+        const json: unknown = await res.json();
+        if (cancelled) return;
+        setPatchedStyles({
+          labelsOn: patchMapStyle(json, { hideLabels: false }),
+          labelsOff: patchMapStyle(json, { hideLabels: true }),
+        });
+      } catch {
+        // acceptable rung — plain online style, unpatched (see comment above)
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  const hideLabels = !unlocked;
+  const mapStyle = patchedStyles
+    ? (hideLabels ? patchedStyles.labelsOff : patchedStyles.labelsOn)
+    : MAP_STYLE;
 
   if (!asset) return null;
 
@@ -159,21 +273,28 @@ function MapLibreRouteMap(props: RouteMapProps & {
       bearing: 0,
       padding: { top: 20, right: 20, bottom: 20, left: 20 },
     }
-    : { center: centre, zoom: camZoom, bearing, pitch: 0, duration: 500 };
+    : { center: centre, zoom: camZoom, bearing: effectiveBearing, pitch: 0, duration: 500 };
 
   return (
-    <View style={[st.frame, { height: h, backgroundColor: t.race.bg, borderColor: t.cardBorder }]}>
+    <View style={[
+      st.frame,
+      { height: h, backgroundColor: t.race.bg, borderColor: t.cardBorder },
+      dimmed && st.dimmedFrame,
+    ]}>
+      {/* mapStyle is `unknown` on purpose — routeMapStyle.ts stays decoupled
+          from MapLibre's own types (headless-testable). `as never` is the
+          narrowest legal escape hatch through that boundary. */}
       <M.Map
-        mapStyle={MAP_STYLE}
+        mapStyle={mapStyle as never}
         style={{ flex: 1 }}
         onDidFailLoadingMap={onMapFailed}
         attribution={false}
         logo={false}
         compass={false}
-        dragPan={false}
-        touchZoom={false}
-        doubleTapZoom={false}
-        doubleTapHoldZoom={false}
+        dragPan={unlocked}
+        touchZoom={unlocked}
+        doubleTapZoom={unlocked}
+        doubleTapHoldZoom={unlocked}
         touchRotate={false}
         touchPitch={false}
       >
@@ -196,7 +317,7 @@ function MapLibreRouteMap(props: RouteMapProps & {
             'circle-stroke-width': 2,
           }} />
         </M.GeoJSONSource>
-        {here ? (
+        {showRider && here ? (
           <M.GeoJSONSource id="rider" data={riderFeature(props.lat as number, props.lon as number)}>
             <M.Layer id="rider-dot" type="circle" paint={{
               'circle-radius': 7,
@@ -207,27 +328,27 @@ function MapLibreRouteMap(props: RouteMapProps & {
           </M.GeoJSONSource>
         ) : null}
       </M.Map>
-      <View style={st.zoomBar}>
-        <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
-          onPress={() => { setCamZoom((z) => Math.min(18, z + 1)); setMode('follow'); }}>
-          <Text style={[st.zoomText, { color: t.text }]}>+</Text>
-        </Pressable>
-        <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
-          onPress={() => setCamZoom((z) => Math.max(11, z - 1))}>
-          <Text style={[st.zoomText, { color: t.text }]}>−</Text>
-        </Pressable>
-        <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
-          onPress={() => setMode('fit')}>
-          <Text style={[st.zoomText, { color: t.textDim, fontSize: 10.5 }]}>FIT</Text>
-        </Pressable>
-      </View>
-      <Text style={st.credit} numberOfLines={1}>
-        OpenFreeMap © OpenMapTiles Data from OpenStreetMap
-      </Text>
+      {unlocked ? (
+        <View style={st.zoomBar}>
+          <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
+            onPress={() => { setCamZoom((z) => Math.min(18, z + 1)); setMode('follow'); }}>
+            <Text style={[st.zoomText, { color: t.text }]}>+</Text>
+          </Pressable>
+          <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
+            onPress={() => { setCamZoom((z) => Math.max(11, z - 1)); setMode('follow'); }}>
+            <Text style={[st.zoomText, { color: t.text }]}>−</Text>
+          </Pressable>
+          <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
+            onPress={() => setMode('fit')}>
+            <Text style={[st.zoomText, { color: t.textDim, fontSize: 10.5 }]}>FIT</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      <Credit rung="maplibre" interactive={interactiveCredit} />
       {off ? (
         <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card }]}>OFF ROUTE</Text>
       ) : null}
-      {!here ? (
+      {showRider && !here ? (
         <Text style={[st.badge, { color: t.textDim, backgroundColor: t.race.card }]}>waiting for GPS</Text>
       ) : null}
     </View>
@@ -258,6 +379,16 @@ function PngRouteMap(props: RouteMapProps) {
   const img = IMAGES[id];
   const h = props.height ?? 190;
 
+  const variant = props.variant ?? 'live';
+  const liveState = props.liveState ?? 'moving';
+  const showRider = props.showRider ?? true;
+  // B-51: this rung is not rebuilt for the full behaviour matrix — it only
+  // honours showRider, the stopped-dim, and hiding the zoom bar while the
+  // live ribbon is locked (design contract A, PNG rung).
+  const locked = variant === 'live' && (liveState === 'moving' || liveState === 'stopped');
+  const dimmed = variant === 'live' && liveState === 'stopped';
+  const interactiveCredit = !locked;
+
   if (!asset || !img) return null;
 
   const onLayout = (e: LayoutChangeEvent) => {
@@ -265,7 +396,7 @@ function PngRouteMap(props: RouteMapProps) {
     if (width !== box.w || height !== box.h) setBox({ w: width, h: height });
   };
 
-  const here = props.lat !== null && props.lon !== null
+  const here = showRider && props.lat !== null && props.lon !== null
     ? projectToPixel(asset, props.lat, props.lon)
     : null;
   const off = here && props.lat !== null && props.lon !== null
@@ -278,7 +409,11 @@ function PngRouteMap(props: RouteMapProps) {
 
   return (
     <View onLayout={onLayout}
-      style={[st.frame, { height: h, backgroundColor: t.race.bg, borderColor: t.cardBorder }]}>
+      style={[
+        st.frame,
+        { height: h, backgroundColor: t.race.bg, borderColor: t.cardBorder },
+        dimmed && st.dimmedFrame,
+      ]}>
       {crop ? (
         <>
           {!imgFailed ? (
@@ -338,32 +473,32 @@ function PngRouteMap(props: RouteMapProps) {
           ) : null}
         </>
       ) : null}
-      <View style={st.zoomBar}>
-        <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
-          onPress={() => setZoom((z) => Math.min(12, z * 1.6))}>
-          <Text style={[st.zoomText, { color: t.text }]}>+</Text>
-        </Pressable>
-        <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
-          onPress={() => setZoom((z) => Math.max(1, z / 1.6))}>
-          <Text style={[st.zoomText, { color: t.text }]}>−</Text>
-        </Pressable>
-        <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
-          onPress={() => setZoom(1)}>
-          <Text style={[st.zoomText, { color: t.textDim, fontSize: 10.5 }]}>FIT</Text>
-        </Pressable>
-      </View>
+      {!locked ? (
+        <View style={st.zoomBar}>
+          <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
+            onPress={() => setZoom((z) => Math.min(12, z * 1.6))}>
+            <Text style={[st.zoomText, { color: t.text }]}>+</Text>
+          </Pressable>
+          <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
+            onPress={() => setZoom((z) => Math.max(1, z / 1.6))}>
+            <Text style={[st.zoomText, { color: t.text }]}>−</Text>
+          </Pressable>
+          <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
+            onPress={() => setZoom(1)}>
+            <Text style={[st.zoomText, { color: t.textDim, fontSize: 10.5 }]}>FIT</Text>
+          </Pressable>
+        </View>
+      ) : null}
       {imgFailed ? (
         <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card, left: undefined, right: 6, bottom: 6 }]}>
           MAP IMAGE FAILED — drawing the line
         </Text>
       ) : null}
-      {!imgFailed ? (
-        <Text style={st.credit} numberOfLines={1}>{ATTRIBUTION}</Text>
-      ) : null}
+      {!imgFailed ? <Credit rung="png" interactive={interactiveCredit} /> : null}
       {off ? (
         <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card }]}>OFF ROUTE</Text>
       ) : null}
-      {here === null ? (
+      {showRider && here === null ? (
         <Text style={[st.badge, { color: t.textDim, backgroundColor: t.race.card }]}>waiting for GPS</Text>
       ) : null}
     </View>
@@ -372,6 +507,9 @@ function PngRouteMap(props: RouteMapProps) {
 
 const st = StyleSheet.create({
   frame: { alignSelf: 'stretch', borderRadius: radius.card, borderWidth: 1, overflow: 'hidden' },
+  // "stopped" (a red light): tight and dim, not loosened — a light is not a
+  // finish (design contract A).
+  dimmedFrame: { opacity: 0.4 },
   gate: { position: 'absolute', width: 12, height: 12, borderRadius: 12, borderWidth: 2 },
   dot: { position: 'absolute', width: 14, height: 14, borderRadius: 14, borderWidth: 2, borderColor: '#fff' },
   zoomBar: { position: 'absolute', right: 6, top: 6, gap: 5 },
@@ -384,11 +522,22 @@ const st = StyleSheet.create({
   // read as a signal.
   credit: {
     position: 'absolute', right: 6, bottom: 6, maxWidth: '80%',
-    fontSize: 8.5, color: '#2B2B2B', backgroundColor: 'rgba(255,255,255,0.6)',
+    backgroundColor: 'rgba(255,255,255,0.6)',
     paddingHorizontal: 5, paddingVertical: 2, borderRadius: 5, overflow: 'hidden',
   },
+  creditText: { fontSize: 8.5, color: '#2B2B2B' },
   badge: {
     position: 'absolute', bottom: 6, left: 6, fontSize: 10.5, letterSpacing: 1.2,
     paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, overflow: 'hidden',
   },
+  sheetBackdrop: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24,
+  },
+  sheetCard: {
+    borderRadius: radius.card, borderWidth: 1, padding: 18, gap: 8, minWidth: 240, maxWidth: '90%',
+  },
+  sheetTitle: { fontSize: 15, fontWeight: '800', letterSpacing: 0.5, marginBottom: 4 },
+  sheetRow: { fontSize: 13 },
+  sheetClose: { marginTop: 10, alignSelf: 'flex-end', paddingHorizontal: 10, paddingVertical: 6 },
+  sheetCloseText: { fontSize: 12.5, fontWeight: '700', letterSpacing: 1.5 },
 });

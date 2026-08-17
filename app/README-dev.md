@@ -136,6 +136,13 @@ same WiFi with the dev build open.
    After STOP, export the GPX (step 7) — points must be strictly
    chronological (the F-2 scrambled-tail bug is fixed; a re-export of the
    old 20260815-0024 ride also comes out sorted).
+10. **Real map (B-51):** at the rack the Record screen shows real pannable
+    streets before START; while moving the map is heading-up, label-free,
+    control-free and never larger than the ribbon; at a light it stays tight
+    and dims; after FINISH it grows back and labels return; on the board
+    VIEW TRACE opens real streets with a Map-data-sources sheet. If while
+    moving you can pan, read a road name, or the map outgrows the ribbon —
+    FAIL.
 
 Phase 1 is DONE when a real commute produces a clean continuous GPX this way.
 Nothing is done until it has run on a real phone on a real ride.

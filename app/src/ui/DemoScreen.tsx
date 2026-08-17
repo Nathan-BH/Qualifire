@@ -119,7 +119,7 @@ export default function DemoScreen() {
       {settings.liveMap ? (
         <View style={{ marginTop: 12 }}>
           <RouteMapView routeId={ROUTE} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
-            zoom={4} gateColours={gateColours} />
+            zoom={4} gateColours={gateColours} liveState="moving" />
         </View>
       ) : null}
 

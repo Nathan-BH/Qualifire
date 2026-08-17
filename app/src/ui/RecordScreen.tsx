@@ -11,7 +11,7 @@
  * returns null and nothing extra appears (see live/towerSource.ts).
  * No benchmark store yet → every clean sector/lap is NEUTRAL, deltas blank.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   ActiveSession,
@@ -29,6 +29,7 @@ import { liveEngine, type LiveEngineState } from '../live/engine';
 import { getLiveTowerPosition } from '../live/towerSource';
 import { LiveSectorPane, realTimebase, viewModelFromEngine } from './liveView';
 import RouteMapView from './routeMapView';
+import { metresBetween } from './routeMapGeo';
 import { useSettings } from './settings';
 import { chipColors, type Tier } from './chips';
 import { ghostsFor, lapValues, sectorValues, tierFor } from './colourModel';
@@ -43,6 +44,16 @@ import { useTheme } from './themeContext';
  * [ASSUMPTION — tune on device: long enough to survive a glance delay, short
  * enough that the carousel is not effectively disabled.] */
 const PIN_MS = 20000;
+
+/** Stationary detection (B-51, RecordScreen-owned): the live ribbon dims and
+ * releases its zoom-bar lock while genuinely moving is not the same as at a
+ * red light or a junction — a light is not a finish, but the map should
+ * still look paused rather than a fully-live ribbon that just happens not
+ * to be moving right now. [ASSUMPTION — tune on device: 10 m / 6 s were
+ * picked to ignore GPS jitter without lagging a real stop, not measured
+ * against a real ride yet.] */
+const STOPPED_AFTER_MS = 6000;
+const MOVE_EPS_M = 10;
 
 const CATALOG = catalogJson as unknown as Catalog;
 
@@ -79,6 +90,23 @@ export default function RecordScreen() {
 
   // Live sector state from the engine (display-only, derived; D-023).
   useEffect(() => liveEngine.subscribe(setLive), []);
+
+  // Stationary detection for the live map ribbon (B-51): track the last fix
+  // and the last time a fix actually moved >= MOVE_EPS_M (same equirectangular
+  // estimate the map itself uses for its bearing jitter guard — metresBetween
+  // is shared from routeMapGeo.ts so the two "did it move" checks never drift
+  // apart).
+  const lastMovedRef = useRef<number | null>(null);
+  const lastFixRef = useRef<{ lat: number; lon: number } | null>(null);
+  useEffect(() => {
+    if (status.lastLat === null || status.lastLon === null) return;
+    const lat = status.lastLat, lon = status.lastLon;
+    const prev = lastFixRef.current;
+    if (prev === null || metresBetween(prev.lat, prev.lon, lat, lon) >= MOVE_EPS_M) {
+      lastMovedRef.current = Date.now();
+      lastFixRef.current = { lat, lon };
+    }
+  }, [status.lastLat, status.lastLon]);
 
   // LAYOUT §2a: the lap chip appears ~1.1 s after the final gate, with the
   // lap earcon — never simultaneously with the sector chip.
@@ -131,6 +159,10 @@ export default function RecordScreen() {
   const onStart = useCallback(async () => {
     setBusy(true);
     setLastSummary(null);
+    // A fresh ride must not inherit the previous one's "last moved" clock —
+    // otherwise the map could read stationary for a moment at the very start.
+    lastMovedRef.current = null;
+    lastFixRef.current = null;
     try {
       const outcome = await ensurePermissions();
       if (outcome === 'denied' || outcome === 'services-off') {
@@ -164,6 +196,9 @@ export default function RecordScreen() {
   }, []);
 
   const recording = session != null;
+  const hasFix = status.lastLat !== null && status.lastLon !== null;
+  const stationary = recording && hasFix && lastMovedRef.current !== null
+    && (now - lastMovedRef.current) > STOPPED_AFTER_MS;
   const lastFixAgeS =
     status.lastFixMs != null ? Math.round((now - status.lastFixMs) / 1000) : null;
 
@@ -308,15 +343,6 @@ export default function RecordScreen() {
               per Nathan's lap-clock ruling). posChip is null until the B-28
               benchmark/ride-history store exists — no chip renders, never a
               fake rank. */}
-          {settings.liveMap ? (
-            <RouteMapView
-              routeId={live.track}
-              lat={status.lastLat}
-              lon={status.lastLon}
-              zoom={4}
-              gateColours={gateColours}
-            />
-          ) : null}
           <LiveSectorPane
             vm={viewModelFromEngine(
               live,
@@ -326,6 +352,22 @@ export default function RecordScreen() {
             )}
             showLap={showLap}
           />
+          {/* B-51: the map lives BELOW the sector strip now — a ribbon under
+              the clock/strip row, not a headline element. Slim (120) while
+              actually moving/stopped so it stays clearly subordinate to the
+              clock (D-027); it grows back to 190 once FINISH releases it. */}
+          {settings.liveMap ? (
+            <RouteMapView
+              routeId={live.track}
+              lat={status.lastLat}
+              lon={status.lastLon}
+              zoom={4}
+              gateColours={gateColours}
+              variant="live"
+              liveState={live.phase === 'finished' ? 'finished' : (stationary ? 'stopped' : 'moving')}
+              height={live.phase === 'finished' ? 190 : 120}
+            />
+          ) : null}
           {/* One rotating status slot (IDEAS §24, 2026-08-16): route / fixes /
               GPS cycle every 6 s instead of stacking three lines. Warnings
               (storage errors) stay permanent below — never rotated away. */}
@@ -361,6 +403,24 @@ export default function RecordScreen() {
             <View style={styles.logoSlash} />
           </View>
           <Text style={styles.appTitle}>Qualifire</Text>
+          {/* B-51: at the rack, before START — real pannable streets, the
+              candidate route (whichever way/route is picked so far; falls
+              back to 'Morning' inside RouteMapView when nothing is picked
+              yet, which is acceptable as the candidate). */}
+          {settings.liveMap ? (
+            <View style={{ alignSelf: 'stretch' }}>
+              <RouteMapView
+                routeId={way ? wayRoutes[0]?.refLineId ?? null : null}
+                lat={status.lastLat}
+                lon={status.lastLon}
+                zoom={1}
+                showRider
+                variant="live"
+                liveState="prestart"
+                height={200}
+              />
+            </View>
+          ) : null}
           <View style={styles.startFlow}>
             <Text style={styles.flowLabel}>
               {settings.startMode === 'auto'

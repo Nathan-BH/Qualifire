@@ -89,6 +89,19 @@ export function tierFor(value: number | null, history: number[]): UiTier {
   return value < st.mean ? 'green' : 'yellow';
 }
 
+/** All-time best moving lap for a route — NOT window-limited: every seed and
+ * session result that passes ranks() counts. Feeds the tower's PB ● (D-007),
+ * which marks the all-time best, not merely the best of the last N. */
+export function allTimeBestLapS(routeId: string): number | null {
+  let best: number | null = null;
+  for (const r of [...GHOSTS, ...recordedResults()]) {
+    if (r.routeId !== routeId || !ranks(r)) continue;
+    const v = r.lap.movingS as number;
+    if (best === null || v < best) best = v;
+  }
+  return best;
+}
+
 /** Where a lap would place among the ghosts (D-028: position is a fact). */
 export function positionAmong(value: number, history: number[]): { pos: number; of: number } {
   const all = [...history, value].sort((a, b) => a - b);

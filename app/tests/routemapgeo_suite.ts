@@ -7,7 +7,7 @@
 import * as path from 'node:path';
 import { assert, loadJson, test, TESTS_DIR } from './lib.ts';
 import {
-  bearingBetween, gatesFeatureCollection, riderFeature, routeBounds, routeLineFeature,
+  bearingBetween, gatesFeatureCollection, metresBetween, riderFeature, routeBounds, routeLineFeature,
 } from '../src/ui/routeMapGeo.ts';
 import type { RouteAsset } from '../src/ui/routeMapMath.ts';
 
@@ -60,6 +60,19 @@ test('routemapgeo: gatesFeatureCollection has 5 features and omits colour when a
       }
     });
   }
+});
+
+test("routemapgeo: gatesFeatureCollection treats an empty-string colour as no colour (B-50 hardening)", () => {
+  const a = manifest.routes.Morning;
+  const withEmpty = gatesFeatureCollection(a, [null, '', '#123456', null, null]);
+  assert(withEmpty.features.length === 5, 'expected 5 gate features with an empty-string colour in the mix');
+  withEmpty.features.forEach((feat, i) => {
+    if (i === 2) {
+      assert(feat.properties.colour === '#123456', `gate 2 expected colour #123456, got ${feat.properties.colour}`);
+    } else {
+      assert(!('colour' in feat.properties), `gate ${i} should have no colour property (index 1 was '' -> treated as null)`);
+    }
+  });
 });
 
 test('routemapgeo: gatesFeatureCollection swaps coordinates to [lon,lat]', () => {
@@ -124,4 +137,11 @@ test('routemapgeo: bearingBetween — cardinal directions and range', () => {
     const b = bearingBetween(lat0, lon0, lat1, lon1);
     assert(b >= 0 && b < 360, `bearing ${b} out of [0,360) range`);
   }
+});
+
+test('routemapgeo: metresBetween — zero for an identical fix, ~111km per degree of latitude', () => {
+  const lat = 50.85, lon = 4.65;
+  assert(metresBetween(lat, lon, lat, lon) === 0, 'identical fix must read 0 m');
+  const oneDegLat = metresBetween(lat, lon, lat + 1, lon);
+  assert(oneDegLat > 110_000 && oneDegLat < 112_000, `1 degree of latitude should be ~111km, got ${oneDegLat}`);
 });

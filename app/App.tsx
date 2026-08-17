@@ -22,6 +22,8 @@ import {
   Text,
   View,
 } from 'react-native';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LaunchAnimation } from './src/ui/launchAnimation';
 import RecordScreen from './src/ui/RecordScreen';
 import RidesScreen from './src/ui/RidesScreen';
 import RoutesScreen from './src/ui/RoutesScreen';
@@ -42,20 +44,23 @@ type Tab = 'record' | 'rides' | 'routes' | 'result' | 'settings' | 'demo';
 
 /**
  * Android 15 forces edge-to-edge: the app draws under the system navigation
- * bar and is expected to pad itself using WindowInsets. Reading insets needs
- * react-native-safe-area-context — a NATIVE module not in build 2. STOPGAP:
- * hardcoded 48dp (standard 3-button nav height on Nathan's phone).
- * TODO(build 3): add react-native-safe-area-context (batch with the audio
- * module for earcons) and replace this with useSafeAreaInsets().bottom.
+ * bar and is expected to pad itself using WindowInsets. Build 2's stopgap was
+ * a hardcoded 48dp; react-native-safe-area-context ships since build 3, so
+ * the bar now reads the REAL inset via useSafeAreaInsets (Shell sits inside
+ * SafeAreaProvider — see App below). Floor of 12dp so a gesture-nav phone,
+ * which can report a near-zero inset, keeps a minimum thumb gap
+ * [ASSUMPTION — verify on device].
  */
-const NAV_BAR_STOPGAP = 48;
+const NAV_BAR_MIN_PAD = 12;
 
 function Shell() {
   const [tab, setTab] = useState<Tab>('record');
   const { t } = useTheme();
+  const insets = useSafeAreaInsets();
+  const bottomPad = Math.max(insets.bottom, NAV_BAR_MIN_PAD);
   // The demo renders night-mode regardless of app theme.
   const chrome: PaddockTheme = tab === 'demo' ? night : t;
-  const styles = useMemo(() => makeStyles(chrome), [chrome]);
+  const styles = useMemo(() => makeStyles(chrome, bottomPad), [chrome, bottomPad]);
 
   // System back: other tabs → Record; from Record, default behaviour (app
   // backgrounds). PreviewScreen registers its own handler (runs first) to walk
@@ -117,16 +122,27 @@ function Shell() {
 }
 
 export default function App() {
+  // BRAND.md ratified motion (Nathan 2026-08-17, "must feature"): cold-start
+  // launch animation overlay, mounted above Shell but inside ThemeProvider
+  // (LaunchAnimation calls useTheme). `booting` lives HERE, not in Shell, so
+  // Shell still mounts immediately underneath — B-40 boot hydration is not
+  // delayed — and the overlay plays exactly once per cold JS start (App
+  // never remounts on resume; a headless relaunch mounts no components here
+  // at all, so this is a no-op there too).
+  const [booting, setBooting] = useState(true);
   return (
-    <ThemeProvider>
-      <SettingsProvider>
-      <Shell />
-    </SettingsProvider>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <SettingsProvider>
+          <Shell />
+        </SettingsProvider>
+        {booting && <LaunchAnimation onDone={() => setBooting(false)} />}
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
 
-const makeStyles = (t: PaddockTheme) =>
+const makeStyles = (t: PaddockTheme, bottomPad: number) =>
   StyleSheet.create({
     // Top inset: RN's SafeAreaView is iOS-only, but Android exposes the status
     // bar height in JS — no native module needed (unlike the bottom nav bar).
@@ -136,7 +152,7 @@ const makeStyles = (t: PaddockTheme) =>
       flexGrow: 0,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: t.cardBorder,
-      paddingBottom: NAV_BAR_STOPGAP,
+      paddingBottom: bottomPad,
     },
     // Each tab keeps a readable width; the bar scrolls when they overflow.
     tabBarContent: { flexDirection: 'row', alignItems: 'stretch' },

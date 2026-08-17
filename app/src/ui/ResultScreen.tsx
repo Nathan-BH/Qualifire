@@ -7,15 +7,25 @@
  * chosen in Settings. Until a real ride exists this screen shows the most
  * recent ghost as "today" so the layout can be judged; that is labelled.
  */
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { MIN_HISTORY, fmt, ghostsFor, lapValues, positionAmong, sectorValues, tierFor, type UiTier }
-  from './colourModel.ts';
+import { useEffect, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { chipColors } from './chips.tsx';
+import { MIN_HISTORY, allTimeBestLapS, fmt, ghostsFor, lapValues, positionAmong, sectorValues,
+  tierFor, type UiTier } from './colourModel.ts';
 import { getLastRide } from './lastRide.ts';
+import { TimingTower } from './tower.tsx';
+import { buildTowerModel } from './towerModel.ts';
+import RouteMapView from './routeMapView.tsx';
 import { useSettings } from './settings.tsx';
 import { PaddockTheme, colors, radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
 
 const FALLBACK_ROUTE = 'Morning'; // only used when no ride has finished yet
+
+/** The slot-in plays exactly once per FINISHED ride, never on revisit (§3b.3,
+ * guarded here AND inside tower.tsx). Module-level so remounts (tab away and
+ * back) remember which rides already animated; keyed by the ride's atMs. */
+const ANIMATED_RIDES = new Set<number>();
 
 function tierColour(tier: UiTier, t: PaddockTheme): string {
   switch (tier) {
@@ -30,6 +40,8 @@ function tierColour(tier: UiTier, t: PaddockTheme): string {
 export default function ResultScreen() {
   const { t } = useTheme();
   const { s } = useSettings();
+  // Hooks must run unconditionally — declared before the early returns below.
+  const [traceOpen, setTraceOpen] = useState(false);
   const ride = getLastRide();                       // the ride you just finished
   const ROUTE = ride?.routeId ?? FALLBACK_ROUTE;
   // B-44: today's own recorded ride must not sit inside its own comparison
@@ -37,6 +49,12 @@ export default function ResultScreen() {
   const sessionId = ride ? `session:${ride.atMs}` : undefined;
   const ghosts = ghostsFor(ROUTE, sessionId);
   const laps = lapValues(ROUTE, sessionId);
+  // Slot-in arming: true only the first time THIS finished ride's board is
+  // rendered; the effect below marks it seen after that first render.
+  const justFinished = ride !== null && !ANIMATED_RIDES.has(ride.atMs);
+  useEffect(() => {
+    if (ride !== null) ANIMATED_RIDES.add(ride.atMs);
+  }, [ride?.atMs]);
 
   if (ghosts.length === 0) {
     return (
@@ -69,9 +87,23 @@ export default function ResultScreen() {
   const ranked = !(ride?.estimated ?? false) && others.length >= MIN_HISTORY;
   const { pos, of } = positionAmong(mine, others);
   const lapTier = ride?.estimated ? 'est' : tierFor(mine, others);
-  const rows = [...others.map((v) => ({ v, me: false })), { v: mine, me: true }]
-    .sort((a, b) => a.v - b.v);
-  const pole = rows[0].v;
+
+  // B-57: gate colours for the "view trace" browse map — mirrors
+  // RecordScreen's gateColours memo, but keyed off the finished ride's OWN
+  // sectors (there is no live engine on this screen). Only a clean sector
+  // with a real moving time earns a colour; index 0 (START) never does.
+  const resultGateColours: (string | null)[] = ride
+    ? [
+      null,
+      ...[...ride.sectors].sort((a, b) => a.index - b.index).map((sec) =>
+        sec.quality === 'clean' && sec.movingS !== null
+          ? chipColors(
+            tierFor(sec.movingS, sectorValues(ROUTE, sec.index, sessionId).filter((v) => v !== sec.movingS)),
+            t,
+          ).text
+          : null),
+    ]
+    : [];
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
@@ -87,27 +119,41 @@ export default function ResultScreen() {
         </Text>
       </View>
 
+      {ride !== null ? (
+        <>
+          <Pressable style={st.traceLink} onPress={() => setTraceOpen((v) => !v)}>
+            <Text style={[st.traceLinkText, { color: t.textDim }]}>
+              {traceOpen ? '‹ HIDE TRACE' : 'VIEW TRACE ›'}
+            </Text>
+          </Pressable>
+          {traceOpen ? (
+            // Shows the ROUTE on real streets with today's gate colours; the
+            // true ridden trace needs a JSONL reader (future work, D-023).
+            <RouteMapView variant="browse" routeId={ride.routeId} lat={null} lon={null}
+              zoom={1} height={300} showRider={false} gateColours={resultGateColours} />
+          ) : null}
+        </>
+      ) : null}
+
       {s.tower && ranked ? (
         <>
           <Text style={[st.h2, { color: t.textDim }]}>TIMING TOWER — LAST {others.length} RIDES</Text>
-          <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-            {rows.map((r, i) => (
-              <View key={i} style={[st.row, { borderBottomColor: t.cardBorder }]}>
-                <Text style={[st.pos, { color: t.textDim }]}>P{i + 1}</Text>
-                <Text style={{ flex: 1, color: r.me ? t.text : t.textDim, fontWeight: r.me ? '700' : '400' }}>
-                  {r.me ? 'TODAY' : 'ghost'}
-                </Text>
-                <Text style={[st.num, { color: r.me ? t.text : t.textDim }]}>{fmt(r.v)}</Text>
-                <Text style={[st.num, { color: t.textDim, width: 56 }]}>
-                  {i === 0 ? '' : `+${(r.v - pole).toFixed(0)}s`}
-                </Text>
-              </View>
-            ))}
-            <Text style={{ color: t.textDim, fontSize: 11.5, paddingVertical: 9 }}>
-              The tower does not change with the colour model, by design: position is a fact,
-              colour is a judgement (D-013).
-            </Text>
-          </View>
+          {/* B-28 wired: the real tower (anatomy + slot-in) fed by the pure
+              builder — one render path with the Preview demo (LAYOUT §3.8). */}
+          <TimingTower
+            model={buildTowerModel(
+              // No real ride: the newest ghost stands in as "today" (see above),
+              // so it must leave the past-row window — same exclusion `others`
+              // makes — or the tower would show the stand-in twice.
+              ride ? ghosts : ghosts.slice(0, -1),
+              mine, ride?.estimated ?? false, ride?.atMs ?? Date.now(), allTimeBestLapS(ROUTE),
+            )}
+            justFinished={justFinished}
+          />
+          <Text style={{ color: t.textDim, fontSize: 11.5, paddingVertical: 9 }}>
+            The tower does not change with the colour model, by design: position is a fact,
+            colour is a judgement (D-013).
+          </Text>
         </>
       ) : null}
 
@@ -152,4 +198,6 @@ const st = StyleSheet.create({
   pos: { width: 40, fontWeight: '700' },
   num: { fontVariant: ['tabular-nums'], textAlign: 'right', width: 66 },
   big: { fontSize: 34, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  traceLink: { alignSelf: 'center', marginVertical: 6, paddingVertical: 6, paddingHorizontal: 10 },
+  traceLinkText: { fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase' },
 });

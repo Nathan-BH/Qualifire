@@ -68,7 +68,11 @@ export function gatesFeatureCollection(
   return {
     type: 'FeatureCollection',
     features: a.gates.map((g, i) => {
-      const colour = gateColours?.[i] ?? null;
+      // B-50 hardening: an empty string is "no colour yet", same as null —
+      // without this a stray '' (e.g. a defensive `?? ''` upstream) would
+      // set the paint expression's ['has','colour'] true with nothing to draw.
+      const raw = gateColours?.[i] ?? null;
+      const colour = raw === '' ? null : raw;
       const properties: GateProperties = colour !== null
         ? { name: g.name, colour }
         : { name: g.name };
@@ -106,6 +110,21 @@ export function routeBounds(a: RouteAsset): LonLatBoundsBox | null {
     if (lat > maxLat) maxLat = lat;
   }
   return { minLon, minLat, maxLon, maxLat };
+}
+
+/** Cheap equirectangular distance estimate (metres), good enough at
+ * bike-ride scale to decide "did the fix actually move" — not a substitute
+ * for a real geodesic when correctness at range matters (see bearingBetween
+ * for the great-circle bearing itself). Shared by routeMapView's course-up
+ * jitter guard and RecordScreen's stationary detection (B-51) so the two
+ * "did it move" checks never drift apart. */
+export function metresBetween(lat0: number, lon0: number, lat1: number, lon1: number): number {
+  const R = 6378137;
+  const rad = Math.PI / 180;
+  const dLat = (lat1 - lat0) * rad;
+  const dLon = (lon1 - lon0) * rad;
+  const x = dLon * Math.cos(((lat0 + lat1) / 2) * rad);
+  return Math.hypot(x, dLat) * R;
 }
 
 /** Initial great-circle bearing from (lat0,lon0) to (lat1,lon1), degrees,

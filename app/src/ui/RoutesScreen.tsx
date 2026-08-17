@@ -9,19 +9,15 @@
  * they are places and routes (DATA-MODEL §8a).
  */
 import { useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import catalogJson from '../store/catalog.seed.json';
 import type { Catalog } from '../store/types.ts';
 import { ghostsFor } from './colourModel.ts';
+import RouteMapView from './routeMapView.tsx';
 import { radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
 
 const CATALOG = catalogJson as unknown as Catalog;
-const ROUTE_IMAGES: Record<string, number> = {
-  Morning: require('../../assets/routes/Morning.png'),
-  EveningA: require('../../assets/routes/EveningA.png'),
-  EveningB: require('../../assets/routes/EveningB.png'),
-};
 
 export default function RoutesScreen() {
   const { t } = useTheme();
@@ -80,16 +76,17 @@ export default function RoutesScreen() {
               <View style={{ paddingBottom: 12 }}>
                 {routes.map((r) => {
                   const n = ghostsFor(r.id).length;
-                  const img = ROUTE_IMAGES[r.refLineId];
                   return (
                     <View key={r.id} style={{ marginTop: 10 }}>
                       <Text style={{ color: t.text, fontSize: 13.5 }}>{r.id}</Text>
                       <Text style={{ color: t.textDim, fontSize: 11.5, marginBottom: 6 }}>
                         {n} ghost lap{n === 1 ? '' : 's'} seeded · 4 sectors · START ~160 m in
                       </Text>
-                      {img ? (
-                        <Image source={img} style={st.routeImg} resizeMode="contain" />
-                      ) : null}
+                      {/* B-51: real pannable streets in place of the old static
+                          route image — uncoloured gate rings (nothing has been
+                          scored on THIS screen), no rider (browse, not live). */}
+                      <RouteMapView variant="browse" routeId={r.refLineId} lat={null} lon={null}
+                        zoom={1} height={260} showRider={false} />
                     </View>
                   );
                 })}
@@ -111,5 +108,4 @@ const st = StyleSheet.create({
   h2: { fontSize: 12, letterSpacing: 2, marginTop: 16, marginBottom: 8 },
   card: { borderWidth: 1, borderRadius: radius.card, paddingHorizontal: 13 },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 9, borderBottomWidth: 1 },
-  routeImg: { width: '100%', height: 260, borderRadius: 10 },
 });
