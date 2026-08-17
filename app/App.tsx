@@ -30,6 +30,8 @@ import SettingsScreen, { SettingsProvider } from './src/ui/settings';
 import DemoScreen from './src/ui/DemoScreen';
 import { PaddockTheme, night } from './src/ui/theme';
 import { ThemeProvider, useTheme } from './src/ui/themeContext';
+import { initRecordedPersistence } from './src/ui/lastRide';
+import { createExpoFsAdapter } from './src/storage/expoFsAdapter';
 
 // 'demo' = the old Preview tab, renamed (IDEAS §26, 2026-08-16): the real
 // screens ARE the latest design now; this tab remains only as the quick
@@ -68,6 +70,18 @@ function Shell() {
     });
     return () => sub.remove();
   }, [tab]);
+
+  // B-40: rehydrate the comparison window once per launch. Fire-and-forget —
+  // boot never blocks or fails on the cache (D-023: it is a convenience, the
+  // JSONL stays the only truth). The state bump re-renders once when history
+  // arrives so ghost counts on the idle screen refresh without a location tick.
+  const [, setWindowHydrated] = useState(false);
+  useEffect(() => {
+    initRecordedPersistence(createExpoFsAdapter()).then(
+      () => setWindowHydrated(true),
+      () => {},
+    );
+  }, []);
 
   return (
     <View style={styles.root}>

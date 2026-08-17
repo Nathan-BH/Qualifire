@@ -6,7 +6,7 @@
 
 So there is no conflict with D-004. A fact should never appear both here and there. Where a summary line here has drifted from its record, the drift is a bug in *this* file and the Principal regenerates it — the detailed record is never edited to match a stale summary.
 
-Last updated: 2026-08-17 · After cycle 014
+Last updated: 2026-08-17 · After cycle 015
 
 ---
 
@@ -20,7 +20,7 @@ D-001 … D-041. **Cycle 014 (2026-08-17) — maps, definitively:** **D-041** (r
 
 ## The map — settled, first act is Nathan's
 
-**D-041.** Contracts: `product/MAP-STACK-OPTIONS.md` (why MapLibre over expo-maps / Mapbox / WebView / PNG), `product/MAP-TILES.md` (style URLs, ToS, degradation, PMTiles command, palette firewall with real positron layer ids, attribution strings), `product/MAP-CONTRACT.md` (per-surface behaviour, the four live states, Strava verdicts, acceptance test §4). Sequence: **B-46 spike — PASSED 2026-08-17 14:5x on Nathan's PC** (install, prebuild, `tsc`, `expo export` all clean; changes committed on local branch `spike/maplibre`, main untouched; report in `safe_to_delete/spike-maplibre-report.txt`) → **B-50** MapLibre base + GeoJSON layers on the dev client (one rebuild) → **B-51** wire every screen → **B-47** battery A/B before the preview APK ships → B-52/B-53/B-57. Nothing else in the map thread is blocked on a ruling. The cloud sandbox cannot reach npm/PyPI/tile servers (403, found cycle 014) — install work is Nathan's PC or a scheduled task with network, never this sandbox.
+**D-041.** Contracts: `product/MAP-STACK-OPTIONS.md` (why MapLibre over expo-maps / Mapbox / WebView / PNG), `product/MAP-TILES.md` (style URLs, ToS, degradation, PMTiles command, palette firewall with real positron layer ids, attribution strings), `product/MAP-CONTRACT.md` (per-surface behaviour, the four live states, Strava verdicts, acceptance test §4). Sequence: **B-46 spike — PASSED 2026-08-17 14:5x on Nathan's PC** (report in `safe_to_delete/spike-maplibre-report.txt`) → **B-50 — CODE DONE 2026-08-17 (cycle 015)**: `routeMapView.tsx` is now a MapLibre map (v11 declarative, OpenFreeMap `dark`, route/gates/dot as GeoJSON layers from new pure `routeMapGeo.ts`, course-up bearing from engine fixes, degradation ladder MapLibre → PNG → drawn segments via lazy require, so the old dev client keeps working); on `spike/maplibre`, uncommitted; inspector PASS; **needs build 5 (dev profile) + on-device acceptance** → **B-51** wire every screen (incl. palette firewall + label hiding, deferred from B-50) → **B-47** battery A/B before the preview APK ships → B-52/B-53/B-57. Nothing else in the map thread is blocked on a ruling. The cloud sandbox cannot reach npm/PyPI/tile servers (403, found cycle 014) — install work is Nathan's PC or a scheduled task with network, never this sandbox.
 
 ## The other open question — IDEAS §29
 
@@ -36,7 +36,7 @@ D-001 … D-041. **Cycle 014 (2026-08-17) — maps, definitively:** **D-041** (r
 
 1. **B-44 — FIXED 2026-08-17 (cycle 013).** Today's lap no longer sits inside its own comparison history: `ghostsFor(routeId, excludeRideId?)` drops today's `session:` id before the window slice, threaded through lap and sector paths. Regression-locked in `tests/live_colour_suite.ts` (pre-fix FAIL verified; 93 pass / 0 fail). Two minor follow-ups logged in `cycles/cycle-013.md`.
 2. **Monday's commute** — first ride with live v2 on the handlebars. Acceptance step 9 in `app/README-dev.md`; on-device checklist in `BUILD-4-RUNBOOK.md` §5. Launch on home WiFi and don't reload mid-ride, or use `npx.cmd expo start --tunnel`.
-3. **Benchmark/ride-history store** — unlocks real tiers, real tower population (B-28's other half) and, per B-40, a comparison window that survives a restart. Pure TS, blocked by nothing.
+3. **Benchmark/ride-history store** — unlocks real tiers, real tower population (B-28's other half). **B-40's slice of this — the comparison window surviving a restart — is CODE COMPLETE as of cycle 015** (`lastRide.ts` persists to `results-cache.json`, rehydrated at boot; 108 tests, 0 fail; see cycle-015) but sits **uncommitted**: the sandbox found `spike/maplibre` checked out with unrelated, unreviewed map WIP (`routeMapView.tsx`, `routeMapGeo.ts`, `routemapgeo_suite.ts`) already uncommitted and sharing a touched file (`tests/run.ts`) with the B-40 diff. The cycle judged an unattended surgical/partial commit too risky and stopped rather than guess — **Nathan: `git status` on his PC will show both diffs; commit B-40's four files (`app/src/ui/lastRide.ts`, `app/App.tsx`, `app/tests/results_cache_suite.ts`, and only the one added import line in `app/tests/run.ts`) separately from the map WIP, or say whether the map WIP is itself ready to land.**
 4. **The §28 cold-start slate, B-35 … B-43** — verdict-free ride 1 with a "ride n of 5" countdown, retroactive way creation at STOP, provisional gates from 2 matched traces, sector count that scales with length, de-hardcoding route identity, the empty-state pass.
 5. **The map slate, B-46, B-50 … B-58 (D-041)** — see "The map" above. **The §29 slate, B-48 … B-49** — gated on the §29 ruling: B-48 replay the 25 m / 800 m / 1400 m numbers on the archive, B-49 price a routing native module (no maintained Expo binding for BRouter, Valhalla or GraphHopper).
 6. Older, still open: B-31 (gate eyeball → unblocks B-02, zero build), B-32 (basemap ground — now a style-URL swap, Nathan's eye after B-50), B-33 (OSM signal chainages → B-05), B-20 (gate-move semantics), B-27 (earcon audibility — Monday).
@@ -45,11 +45,12 @@ D-001 … D-041. **Cycle 014 (2026-08-17) — maps, definitively:** **D-041** (r
 
 ## Blockers
 
-None in code. The map slate is unblocked (spike passed); the §29 slate waits on his ruling; the rest waits on the commute or the store.
+None in code. The map slate is unblocked (spike passed); the §29 slate waits on his ruling; the rest waits on the commute or the store. **B-40's fix (cycle 015) is code-complete but git-blocked** — see "Open work" #3 and "Awaiting Nathan" below.
 
 ## Awaiting Nathan
 
-1. **Say "go" on B-50** — the MapLibre base on the dev client, from the `spike/maplibre` branch; ends in one dev-client build (build 5).
+0. **Commit or triage cycle 015's working tree** — B-40's persistence fix is done and tested but uncommitted, sharing `spike/maplibre`'s checkout with uncommitted map WIP the cloud sandbox didn't create and didn't touch. Sort the two apart (or confirm the map WIP is also ready) before anything else lands on this branch.
+1. **Commit `spike/maplibre` and run build 5** — B-50 code is done and inspected; `.\build4.ps1 -BuildProfile development` (replaces the dev client). Then the first Fast Refresh session's on-device checklist (cycle-015 record).
 2. **The §29 ruling** — the fork above; no longer holds the map hostage.
 3. **Monday commute** with the app recording; check acceptance step 9; export the GPX into the project root.
 4. **B-32 — basemap ground**, after B-50: one render dark, one light, told which surface each is for.
@@ -62,7 +63,7 @@ None in code. The map slate is unblocked (spike passed); the §29 slate waits on
 
 ## Ground truth — what actually exists
 
-- **Code:** `app/core/` (engine, parity-proven 500/500); `app/src/live/`; `app/src/ui/` — liveView v2, `tower.tsx`, board v2, `colourModel.ts` (D-030's `tierFor()`, `WINDOW_N = 10`, `MIN_HISTORY = 5`). `app/tests/` last recorded at **94 tests, 91 pass / 0 fail / 3 benign skips**, `tsc` clean (cycle 009) — rerun before quoting it.
+- **Code:** `app/core/` (engine, parity-proven 500/500); `app/src/live/`; `app/src/ui/` — liveView v2, `tower.tsx`, board v2, `colourModel.ts` (D-030's `tierFor()`, `WINDOW_N = 10`, `MIN_HISTORY = 5`). `app/tests/` last recorded at **108 tests, 105 pass / 0 fail / 3 benign skips**, `tsc` clean (cycle 015, rerun by inspector) — rerun before quoting it.
 - **Maps — today still the PNG; D-041 replaces it.** A real basemap is on the phone, with no native module. `app/assets/routes/` now holds both the raw OSM crops `{Morning,EveningA,EveningB}-base.png` **and** the rendered PNGs + `routes.json`, all regenerated **2026-08-17 03:06–03:10**. Renderer: `data/analysis/08_build_route_assets.py` (canonical); crops captured by `demos/basemap-capture.html`. The seam a live map would slot into is `projectToPixel(asset, lat, lon)` in `routeMapMath.ts`. **Note for anyone reading cycle 011's spike:** `product/MAPLIBRE-SPIKE.md` §5 says no `-base.png` exists and that the assets total 200 KB — both were true when it was written and are now stale. The rendered PNGs are ~1.3 MB each; route assets total **~10.5 MB**, bundle impact unmeasured.
 - **On the phone:** dev-client APK (build `944bcc6f…`); record→store→export proven. Live v2 UNTESTED ON DEVICE (clock jank, flash hold, slot-in feel — Monday). **Unresolved drift:** cycle 010 recorded build 3 as still held under D-029, while `BUILD-4-RUNBOOK.md` opens "Build 3 shipped the native slate" and `scripts/build4.ps1` is written and preflight-green. One of the two is stale and only Nathan's phone can say which.
 - **Paper, not code — everything in these files is UNBUILT:** `product/MAPLIBRE-SPIKE.md` (cycle 011; its §5 uses v10 prop names — v11 differs, see `MAP-STACK-OPTIONS.md` §7), `product/MAP-STACK-OPTIONS.md`, `product/MAP-TILES.md`, `product/MAP-CONTRACT.md`, `scripts/spike-maplibre.ps1` (run 2026-08-17: PASS), `product/ROUTING-AND-SEGMENTATION.md`, `product/COLD-START.md`, `product/SETUP-UX.md`.
