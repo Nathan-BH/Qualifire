@@ -42,3 +42,8 @@ Thinks in schemas and in what will be painful to change in a year. Keenly aware 
 - Rebuild verdict: expo-file-system@56.0.9 already ships inside `expo`'s install and is autolinked into the existing dev client — importing it needs **no package.json change and no native rebuild**; recommend `npx expo install expo-file-system` later purely to pin the version (still JS-only).
 - Standing questions answered for v1 (in storage README): sector identity = (track, gate-pair chainage) not GPS points; v1 stores no benchmark times at all (recompute from raw; v2 caches ride pointers); direction/track is derived metadata, never written into the trace.
 - Fixed QA finding F-1: resume-append onto a torn ride file (mid-write kill, no trailing `\n`) glued the new record onto the fragment, losing the first post-crash record. Added pure `healTornTail` in `jsonl.ts`, applied in `core.ts` on appendFix-resume and endRide paths (heals with a lone `\n`, never rewrites records); flipped QA's marked assertion in `tests/storage_suite.ts` to expect recovery, one-line README note. Rerun: 44 tests — 41 pass, 0 fail, 3 skip.
+
+### Cycle 014 — 2026-08-17
+- Seconded to tiles: wrote `product/MAP-TILES.md` — OpenFreeMap style URLs (liberty/bright/positron; `dark` confirmed by inspector), ToS clause quoted, ambient-cache-vs-OfflineManager ToS reading marked as interpretation.
+- PMTiles extract command for bbox 4.60,50.81,4.72,50.89 (z0–15 only, host `build.protomaps.com`); Esri imagery now keyed (satellite: not worth it), AWS terrarium keyless but MapLibre Native terrain unshipped (not worth it).
+- Palette-firewall style overrides with real positron layer ids, attribution strings.
