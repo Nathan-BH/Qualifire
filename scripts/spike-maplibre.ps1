@@ -134,9 +134,22 @@ try {
     try {
         $r = Invoke-Native { npx.cmd expo install '@maplibre/maplibre-react-native' }
         $r.Output | ForEach-Object { Say $_ }
-        if ($r.Code -ne 0) { throw 'expo install failed -- see output above' }
-        Ok 'installed'
-        Record 'expo install @maplibre/maplibre-react-native: OK'
+        # expo install exits non-zero when it cannot auto-write the plugin into a
+        # DYNAMIC config (this repo has app.config.js) -- "Cannot automatically
+        # write to dynamic config". The npm install itself has already succeeded
+        # by then, and step 6 below writes the plugin into app.json ourselves.
+        # So: non-zero is fatal only if the dependency did not land.
+        $pkgText = [IO.File]::ReadAllText((Join-Path $app 'package.json'))
+        if ($pkgText -notmatch '"@maplibre/maplibre-react-native"') {
+            throw 'expo install failed -- @maplibre/maplibre-react-native is not in app/package.json; see output above'
+        }
+        if ($r.Code -ne 0) {
+            Warn 'expo install exited non-zero, but only because it could not auto-edit the dynamic app.config.js -- the dependency landed; step 6 adds the plugin to app.json'
+            Record 'expo install @maplibre/maplibre-react-native: dependency added (expo could not auto-write plugin to dynamic config; handled in step 6)'
+        } else {
+            Ok 'installed'
+            Record 'expo install @maplibre/maplibre-react-native: OK'
+        }
 
         # ------------------------------------------------- 6. app.json plugin
         Step '6. Add plugin to app.json'
