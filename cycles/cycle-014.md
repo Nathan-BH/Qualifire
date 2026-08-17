@@ -20,4 +20,6 @@ OpenFreeMap `dark` style EXISTS (tiles doc said no); Protomaps host `build.proto
 
 Cloud sandbox has NO npm/tile-server access (403) — spikes run on Nathan's PC. Tokens: Haiku ~28k; Sonnet members ~98k/~87k/~115k; Fable inspector ~100k; Sonnet fixes ~132k; Haiku check ~42k; Librarian ~46k.
 
-Status: Cycle 014 files LANDED; Nathan runs spike; §29 ruling now independent of map; B-32 dark/light after B-50.
+Spike run by Nathan 2026-08-17 14:3x–14:5x: three script bugs surfaced only on the real machine (expo install exits non-zero on the dynamic `app.config.js` — now tolerated; plugin-insert regex stopped at the nested expo-location `]` — re-anchored; a re-delivered patch failed to reach disk once — verified by size thereafter). Fourth run **PASS**: prebuild, tsc, export clean; committed on `spike/maplibre`. Gradle grep finds no "maplibre" — expected under Expo autolinking, not a fault.
+
+Status: Cycle 014 files LANDED; B-46 DONE; §29 ruling now independent of map; B-32 dark/light after B-50.

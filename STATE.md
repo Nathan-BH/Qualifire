@@ -20,7 +20,7 @@ D-001 … D-041. **Cycle 014 (2026-08-17) — maps, definitively:** **D-041** (r
 
 ## The map — settled, first act is Nathan's
 
-**D-041.** Contracts: `product/MAP-STACK-OPTIONS.md` (why MapLibre over expo-maps / Mapbox / WebView / PNG), `product/MAP-TILES.md` (style URLs, ToS, degradation, PMTiles command, palette firewall with real positron layer ids, attribution strings), `product/MAP-CONTRACT.md` (per-surface behaviour, the four live states, Strava verdicts, acceptance test §4). Sequence: **B-46 spike** (`scripts/spike-maplibre.ps1`, Nathan's PC, zero EAS builds) → **B-50** MapLibre base + GeoJSON layers on the dev client (one rebuild) → **B-51** wire every screen → **B-47** battery A/B before the preview APK ships → B-52/B-53/B-57. Nothing else in the map thread is blocked on a ruling. The cloud sandbox cannot reach npm/PyPI/tile servers (403, found cycle 014) — install work is Nathan's PC or a scheduled task with network, never this sandbox.
+**D-041.** Contracts: `product/MAP-STACK-OPTIONS.md` (why MapLibre over expo-maps / Mapbox / WebView / PNG), `product/MAP-TILES.md` (style URLs, ToS, degradation, PMTiles command, palette firewall with real positron layer ids, attribution strings), `product/MAP-CONTRACT.md` (per-surface behaviour, the four live states, Strava verdicts, acceptance test §4). Sequence: **B-46 spike — PASSED 2026-08-17 14:5x on Nathan's PC** (install, prebuild, `tsc`, `expo export` all clean; changes committed on local branch `spike/maplibre`, main untouched; report in `safe_to_delete/spike-maplibre-report.txt`) → **B-50** MapLibre base + GeoJSON layers on the dev client (one rebuild) → **B-51** wire every screen → **B-47** battery A/B before the preview APK ships → B-52/B-53/B-57. Nothing else in the map thread is blocked on a ruling. The cloud sandbox cannot reach npm/PyPI/tile servers (403, found cycle 014) — install work is Nathan's PC or a scheduled task with network, never this sandbox.
 
 ## The other open question — IDEAS §29
 
@@ -45,11 +45,11 @@ D-001 … D-041. **Cycle 014 (2026-08-17) — maps, definitively:** **D-041** (r
 
 ## Blockers
 
-None in code. The map slate waits on Nathan running the spike script (5 minutes, zero builds); the §29 slate waits on his ruling; the rest waits on the commute or the store.
+None in code. The map slate is unblocked (spike passed); the §29 slate waits on his ruling; the rest waits on the commute or the store.
 
 ## Awaiting Nathan
 
-1. **Run `scripts/spike-maplibre.ps1`** from the repo root on a clean tree (B-46). PASS → the team briefs B-50 and one dev-client build. FAIL → the report file in `safe_to_delete/` comes back to the Mobile Dev.
+1. **Say "go" on B-50** — the MapLibre base on the dev client, from the `spike/maplibre` branch; ends in one dev-client build (build 5).
 2. **The §29 ruling** — the fork above; no longer holds the map hostage.
 3. **Monday commute** with the app recording; check acceptance step 9; export the GPX into the project root.
 4. **B-32 — basemap ground**, after B-50: one render dark, one light, told which surface each is for.
@@ -65,7 +65,7 @@ None in code. The map slate waits on Nathan running the spike script (5 minutes,
 - **Code:** `app/core/` (engine, parity-proven 500/500); `app/src/live/`; `app/src/ui/` — liveView v2, `tower.tsx`, board v2, `colourModel.ts` (D-030's `tierFor()`, `WINDOW_N = 10`, `MIN_HISTORY = 5`). `app/tests/` last recorded at **94 tests, 91 pass / 0 fail / 3 benign skips**, `tsc` clean (cycle 009) — rerun before quoting it.
 - **Maps — today still the PNG; D-041 replaces it.** A real basemap is on the phone, with no native module. `app/assets/routes/` now holds both the raw OSM crops `{Morning,EveningA,EveningB}-base.png` **and** the rendered PNGs + `routes.json`, all regenerated **2026-08-17 03:06–03:10**. Renderer: `data/analysis/08_build_route_assets.py` (canonical); crops captured by `demos/basemap-capture.html`. The seam a live map would slot into is `projectToPixel(asset, lat, lon)` in `routeMapMath.ts`. **Note for anyone reading cycle 011's spike:** `product/MAPLIBRE-SPIKE.md` §5 says no `-base.png` exists and that the assets total 200 KB — both were true when it was written and are now stale. The rendered PNGs are ~1.3 MB each; route assets total **~10.5 MB**, bundle impact unmeasured.
 - **On the phone:** dev-client APK (build `944bcc6f…`); record→store→export proven. Live v2 UNTESTED ON DEVICE (clock jank, flash hold, slot-in feel — Monday). **Unresolved drift:** cycle 010 recorded build 3 as still held under D-029, while `BUILD-4-RUNBOOK.md` opens "Build 3 shipped the native slate" and `scripts/build4.ps1` is written and preflight-green. One of the two is stale and only Nathan's phone can say which.
-- **Paper, not code — everything in these files is UNBUILT:** `product/MAPLIBRE-SPIKE.md` (cycle 011; its §5 uses v10 prop names — v11 differs, see `MAP-STACK-OPTIONS.md` §7), `product/MAP-STACK-OPTIONS.md`, `product/MAP-TILES.md`, `product/MAP-CONTRACT.md`, `scripts/spike-maplibre.ps1` (written, never run), `product/ROUTING-AND-SEGMENTATION.md`, `product/COLD-START.md`, `product/SETUP-UX.md`.
+- **Paper, not code — everything in these files is UNBUILT:** `product/MAPLIBRE-SPIKE.md` (cycle 011; its §5 uses v10 prop names — v11 differs, see `MAP-STACK-OPTIONS.md` §7), `product/MAP-STACK-OPTIONS.md`, `product/MAP-TILES.md`, `product/MAP-CONTRACT.md`, `scripts/spike-maplibre.ps1` (run 2026-08-17: PASS), `product/ROUTING-AND-SEGMENTATION.md`, `product/COLD-START.md`, `product/SETUP-UX.md`.
 - **Browser demos:** `demos/` — `mockup.html` (regenerated with every shipped design change), `gates-check.html`, `routes-check.html`, `basemap-capture.html`, `earcons-audition.html`, `tower-ghosts.html`, `index.html`, `legacy-mockup-cycle007.html`, `ways/`.
 - **Known stubs/flags:** real tower population UNBUILT (B-28); comparison window memory-only (B-40); route identity hardcoded — `FALLBACK_ROUTE`, literal IDs, `results.seed.json` (B-39); the start pick is cosmetic; stationary clock-dim UNBUILT.
 - Brand: `product/brand/` incl. `make_brandboard.py` (canonical hexes). Data analysis: `data/analysis/` (all measured). `safe_to_delete/` — Nathan empties periodically.
