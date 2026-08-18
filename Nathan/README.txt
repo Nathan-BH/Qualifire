@@ -1,1 +1,1 @@
-Claude should never write to this folder, it is for Nathan only.
+Claude should never write to this folder, except if asked explicitly (for example if Nathan asks to provide a feeback file on notes he wrote)
