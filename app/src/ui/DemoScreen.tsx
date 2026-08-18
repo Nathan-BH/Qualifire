@@ -23,7 +23,7 @@ import { useTheme } from './themeContext';
 
 const ROUTE = 'Morning';
 const RATE = 25;              // a ~14-minute commute plays in ~34 s
-const TICK_MS = 100;
+const TICK_MS = 33;           // ~30 fps redraw; sim time is wall-clock anchored so RATE is exact
 
 const ASSET = (manifest as unknown as { routes: Record<string, RouteAsset> }).routes[ROUTE];
 
@@ -63,16 +63,20 @@ export default function DemoScreen() {
     prevGates.current = 0;
     setClockS(0);
     setRunning(true);
+    // Simulated seconds = real elapsed × RATE, read off the wall clock each
+    // tick — the tick only sets how OFTEN the dot redraws, never how fast
+    // simulated time advances (setInterval drift cannot slow the ride).
+    const startedAtMs = Date.now();
     timer.current = setInterval(() => {
-      setClockS((c) => {
-        const next = c + (TICK_MS / 1000) * RATE;
-        if (next >= script.lap) {
-          if (timer.current) clearInterval(timer.current);
-          setRunning(false);
-          return script.lap;
-        }
-        return next;
-      });
+      const next = ((Date.now() - startedAtMs) / 1000) * RATE;
+      if (next >= script.lap) {
+        if (timer.current) clearInterval(timer.current);
+        timer.current = null;
+        setRunning(false);
+        setClockS(script.lap);
+        return;
+      }
+      setClockS(next);
     }, TICK_MS);
   };
 
@@ -118,8 +122,10 @@ export default function DemoScreen() {
 
       {settings.liveMap ? (
         <View style={{ marginTop: 12 }}>
+          {/* browse = pannable/zoomable preview with the zoom bar (Nathan
+              2026-08-18); the rider dot still rides the real line. */}
           <RouteMapView routeId={ROUTE} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
-            zoom={4} gateColours={gateColours} liveState="moving" />
+            zoom={4} gateColours={gateColours} variant="browse" />
         </View>
       ) : null}
 

@@ -66,9 +66,12 @@ const OFF_ROUTE_M = 120;
 const CASING = '#14120C';
 const GROUND_FILL = '#E8E4DA';
 
-/** MapLibre style used for the tile rung. Fetched once and runtime-patched
+/** MapLibre styles used for the tile rung, one per theme mode (Nathan
+ * 2026-08-18): dark basemap at night (yellow line on black is the brand),
+ * OpenFreeMap positron (light grey) in daylight. Fetched and runtime-patched
  * (labels + palette firewall, routeMapStyle.ts) — see MapLibreRouteMap. */
-const MAP_STYLE = 'https://tiles.openfreemap.org/styles/dark';
+const MAP_STYLE_NIGHT = 'https://tiles.openfreemap.org/styles/dark';
+const MAP_STYLE_DAY = 'https://tiles.openfreemap.org/styles/positron';
 
 /** Course-up bearing holds until a fix has actually moved this far — cheap
  * jitter guard against a GPS fix wobbling the heading while stationary. */
@@ -165,7 +168,8 @@ function MapLibreRouteMap(props: RouteMapProps & {
   onMapFailed: () => void;
 }) {
   const { maplibre: M, onMapFailed } = props;
-  const { t } = useTheme();
+  const { t, mode: themeMode } = useTheme();
+  const styleUrl = themeMode === 'night' ? MAP_STYLE_NIGHT : MAP_STYLE_DAY;
   const id = props.routeId ?? 'Morning';
   const asset = ASSETS[id];
   const h = props.height ?? 190;
@@ -191,7 +195,7 @@ function MapLibreRouteMap(props: RouteMapProps & {
   useEffect(() => {
     setMode(initialMode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.zoom, variant, liveState]);
+  }, [props.zoom, variant, liveState, props.routeId]);
 
   const [camZoom, setCamZoom] = useState(16);
 
@@ -222,7 +226,7 @@ function MapLibreRouteMap(props: RouteMapProps & {
 
   // Runtime style patch (design contract B): fetch the online style once,
   // memoize BOTH a labels-on and a labels-off copy. A fetch/parse failure
-  // falls back to the plain MAP_STYLE url — the online, unpatched style —
+  // falls back to the plain styleUrl (day/night pick) — the online, unpatched style —
   // exactly as before B-51; that is not a map failure (onMapFailed is only
   // for the Map component's own onDidFailLoadingMap).
   const [patchedStyles, setPatchedStyles] = useState<{ labelsOn: unknown; labelsOff: unknown } | null>(null);
@@ -230,7 +234,7 @@ function MapLibreRouteMap(props: RouteMapProps & {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(MAP_STYLE);
+        const res = await fetch(styleUrl);
         const json: unknown = await res.json();
         if (cancelled) return;
         setPatchedStyles({
@@ -242,11 +246,11 @@ function MapLibreRouteMap(props: RouteMapProps & {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [styleUrl]);
   const hideLabels = !unlocked;
   const mapStyle = patchedStyles
     ? (hideLabels ? patchedStyles.labelsOff : patchedStyles.labelsOn)
-    : MAP_STYLE;
+    : styleUrl;
 
   if (!asset) return null;
 

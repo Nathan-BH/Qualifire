@@ -12,7 +12,7 @@
  * No benchmark store yet → every clean sector/lap is NEUTRAL, deltas blank.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   ActiveSession,
   PermissionOutcome,
@@ -36,7 +36,7 @@ import { ghostsFor, lapValues, sectorValues, tierFor } from './colourModel';
 import { rememberRide } from './lastRide';
 import catalogJson from '../store/catalog.seed.json';
 import { landmarkAt } from '../store/catalog';
-import type { Catalog } from '../store/types';
+import type { Catalog, Route } from '../store/types';
 import { PaddockTheme, colors, radius } from './theme';
 import { useTheme } from './themeContext';
 
@@ -66,6 +66,30 @@ function fmtElapsed(ms: number): string {
   return h > 0 ? `${h}:${p(m)}:${p(sec)}` : `${m}:${p(sec)}`;
 }
 
+/** Presentational label for a route id — the Route type has no label field
+ * (schema untouched): "EveningA" -> "Evening A", "Morning" -> "Morning". */
+function routeLabel(id: string): string {
+  return id.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+}
+
+/** §8a default: the most-ridden recent route on the way — most ghost rides in
+ * the recent window (ghostsFor = last WINDOW_N ranked rides, ascending by
+ * startedAtMs), tie -> the one ridden most recently, tie -> catalog order. */
+function defaultRouteFor(routes: Route[]): Route | null {
+  let best: Route | null = null;
+  let bestN = -1;
+  let bestLast = -Infinity;
+  for (const r of routes) {
+    const g = ghostsFor(r.id);
+    const n = g.length;
+    const last = n > 0 ? g[n - 1].startedAtMs : -Infinity;
+    if (n > bestN || (n === bestN && last > bestLast)) {
+      best = r; bestN = n; bestLast = last;
+    }
+  }
+  return best;
+}
+
 export default function RecordScreen() {
   const { t, mode, toggleMode } = useTheme();
   const { s: settings } = useSettings();
@@ -84,6 +108,16 @@ export default function RecordScreen() {
   // scores against whatever road is actually ridden (§8a: the pick is intent).
   const [from, setFrom] = useState('home');
   const [to, setTo] = useState('work');
+  // §8a route pick (Nathan 2026-08-16, re-confirmed 2026-08-18): only asked
+  // when the way has >1 ratified route. Stored WITH its wayId so a pick can
+  // never leak onto a different way when START / GOING TO change — a stale
+  // pair silently falls back to the §8a default. Intent, not truth: the
+  // engine still scores whatever road is actually ridden.
+  const [routePick, setRoutePick] = useState<{ wayId: string; routeId: string } | null>(null);
+  // The pick frozen at START — the pre-lock candidate for the LIVE map. Frozen
+  // because `fromId` can drift mid-ride in auto mode (detected landmark goes
+  // null once you leave the disc), which would silently change `way`.
+  const [rideRouteHint, setRideRouteHint] = useState<string | null>(null);
 
   // Live status from the location layer.
   useEffect(() => subscribe(setStatus), []);
@@ -170,6 +204,7 @@ export default function RecordScreen() {
         return;
       }
       setProblem(outcome === 'foreground-only' ? 'foreground-only' : null);
+      setRideRouteHint(pickedRouteRef.current?.refLineId ?? null);
       const s = await startTracking();
       setRecovered(false);
       setSession(s);
@@ -221,7 +256,7 @@ export default function RecordScreen() {
   const routeLocked = live.phase === 'locked' || live.phase === 'finished';
   const routeLine = routeLocked
     ? `${live.track ?? ''} · route locked${live.onRoute ? '' : ' · off route'}`
-    : 'detecting route…';
+    : rideRouteHint ? `detecting route… · you picked ${routeLabel(rideRouteHint)}` : 'detecting route…';
   const statusItems = gpsTrouble
     ? [gpsLine, routeLine, `${status.fixesThisLaunch} fixes`] // trouble leads
     : [routeLine, `${status.fixesThisLaunch} fixes`, gpsLine];
@@ -290,10 +325,22 @@ export default function RecordScreen() {
   );
   const wayRoutes = way ? CATALOG.routes.filter((r) => r.wayId === way.id) : [];
   const ghostCount = wayRoutes.reduce((n, r) => n + ghostsFor(r.id).length, 0);
+  const pickedRoute: Route | null = way
+    ? (routePick && routePick.wayId === way.id
+        ? (wayRoutes.find((r) => r.id === routePick.routeId) ?? defaultRouteFor(wayRoutes))
+        : defaultRouteFor(wayRoutes))
+    : null;
+  // Mirror for onStart's [] useCallback closure (it must read the CURRENT pick).
+  const pickedRouteRef = useRef<Route | null>(null);
+  pickedRouteRef.current = pickedRoute;
 
   return (
     // Race mode (BRAND P1): recording switches to the theme's race surface.
-    <View style={[styles.container, recording && { backgroundColor: t.race.bg }]}>
+    <ScrollView
+      style={[styles.scroll, recording && { backgroundColor: t.race.bg }]}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
       {/* Theme toggle — settings-lite; hidden while recording (inert surface). */}
       {!recording && (
         <Pressable style={styles.modePill} onPress={toggleMode}>
@@ -358,7 +405,7 @@ export default function RecordScreen() {
               clock (D-027); it grows back to 190 once FINISH releases it. */}
           {settings.liveMap ? (
             <RouteMapView
-              routeId={live.track}
+              routeId={live.track ?? rideRouteHint}
               lat={status.lastLat}
               lon={status.lastLon}
               zoom={4}
@@ -410,7 +457,7 @@ export default function RecordScreen() {
           {settings.liveMap ? (
             <View style={{ alignSelf: 'stretch' }}>
               <RouteMapView
-                routeId={way ? wayRoutes[0]?.refLineId ?? null : null}
+                routeId={pickedRoute?.refLineId ?? null}
                 lat={status.lastLat}
                 lon={status.lastLon}
                 zoom={1}
@@ -446,6 +493,24 @@ export default function RecordScreen() {
                 </Pressable>
               ))}
             </View>
+            {way && wayRoutes.length > 1 ? (
+              <>
+                <Text style={styles.flowLabel}>WHICH ROUTE TODAY?</Text>
+                <View style={styles.pillRow}>
+                  {wayRoutes.map((r) => (
+                    <Pressable key={r.id} onPress={() => setRoutePick({ wayId: way.id, routeId: r.id })}
+                      style={[styles.pill, pickedRoute?.id === r.id && styles.pillOn]}>
+                      <Text style={[styles.pillText, pickedRoute?.id === r.id && styles.pillTextOn]}>
+                        {routeLabel(r.id)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Text style={styles.sub}>
+                  the pick is intent — ride a different road and the ride scores as the road you actually took (§8a)
+                </Text>
+              </>
+            ) : null}
             <Text style={styles.sub}>
               {!way
                 ? 'no route known for this pair yet — the ride records, but nothing is scored'
@@ -453,11 +518,6 @@ export default function RecordScreen() {
                   ? `${ghostCount} rides found — you are racing ${ghostCount} ghosts`
                   : 'no history on this way yet — nothing to race'}
             </Text>
-            {wayRoutes.length > 1 ? (
-              <Text style={styles.sub}>
-                {wayRoutes.length} routes on this way — whichever you ride is the one scored (§8a)
-              </Text>
-            ) : null}
           </View>
           {lastSummary ? (
             <Text style={styles.sub}>
@@ -494,12 +554,18 @@ export default function RecordScreen() {
         </Pressable>
       )}
 
-    </View>
+    </ScrollView>
   );
 }
 
 const makeStyles = (t: PaddockTheme) => StyleSheet.create({
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20, gap: 22 },
+  scroll: { flex: 1 },
+  // flexGrow + centre: short content still sits centred as before; tall
+  // content (map on) scrolls instead of shoving START under the tab bar.
+  content: {
+    flexGrow: 1, alignItems: 'center', justifyContent: 'center',
+    padding: 20, paddingBottom: 36, gap: 22,
+  },
   modePill: {
     position: 'absolute',
     top: 14,
