@@ -1,0 +1,1 @@
+Claude should never write to this folder, it is for Nathan only.

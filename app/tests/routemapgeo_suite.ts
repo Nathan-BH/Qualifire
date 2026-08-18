@@ -28,8 +28,11 @@ test('routemapgeo: routeLineFeature swaps [lat,lon] -> [lon,lat] and keeps every
     assert(lon0 === path0[0][1] && lat0 === path0[0][0],
       `${id}: first coordinate [${lon0},${lat0}] is not the swap of path[0] [${path0[0]}]`);
     for (const [lon, lat] of f!.geometry.coordinates) {
-      assert(lon > 4.6 && lon < 4.7, `${id}: lon ${lon} out of expected Leuven range — swap regression?`);
-      assert(lat > 50.8 && lat < 50.9, `${id}: lat ${lat} out of expected Leuven range — swap regression?`);
+      // Widened cycle 019 (station/church/fosh ways extend east/north of the
+      // original 3-route window): 4.6–4.7 -> 4.6–4.73, still tight enough to
+      // catch a real lat/lon swap (which would land coordinates in West Africa).
+      assert(lon > 4.6 && lon < 4.73, `${id}: lon ${lon} out of expected Leuven range — swap regression?`);
+      assert(lat > 50.8 && lat < 50.89, `${id}: lat ${lat} out of expected Leuven range — swap regression?`);
     }
   }
 });

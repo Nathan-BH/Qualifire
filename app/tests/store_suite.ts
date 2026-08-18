@@ -273,7 +273,7 @@ test('store: the seeded catalog (ratified landmarks + D-016 gates) validates', (
   assert(!putt.offerAtStart && putt.activeUntilMs !== null, 'family home must be dormant');
   assert(startableLandmarks(seed, AUG2026).length === 5, 'five offerable places today');
   assert(needsRoutePick(seed, 'work>home'), 'Evening A/B ⇒ the way needs a route pick');
-  assert(!needsRoutePick(seed, 'home>work'), 'one morning route today (ride 7 unbuilt)');
+  assert(needsRoutePick(seed, 'home>work'), 'home>work now has two catalog routes (Morning, MorningB — MorningB is a cold-start candidate, not yet ratified) — needs a route pick');
 });
 
 test('store: derive rebuilds a real ride from raw fixes and matches the offline pipeline', () => {

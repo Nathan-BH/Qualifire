@@ -68,7 +68,8 @@
    "startLandmarkId": "home",
    "endLandmarkId": "work",
    "routeIds": [
-    "Morning"
+    "Morning",
+    "MorningB"
    ]
   },
   {
@@ -78,6 +79,98 @@
    "routeIds": [
     "EveningA",
     "EveningB"
+   ]
+  },
+  {
+   "id": "work>station",
+   "startLandmarkId": "work",
+   "endLandmarkId": "station",
+   "routeIds": [
+    "WorkStationA",
+    "WorkStationB"
+   ]
+  },
+  {
+   "id": "station>work",
+   "startLandmarkId": "station",
+   "endLandmarkId": "work",
+   "routeIds": [
+    "StationWorkAlt",
+    "StationWorkStd"
+   ]
+  },
+  {
+   "id": "home>station",
+   "startLandmarkId": "home",
+   "endLandmarkId": "station",
+   "routeIds": [
+    "HomeStationPreferred",
+    "HomeStationViaFosh"
+   ]
+  },
+  {
+   "id": "station>home",
+   "startLandmarkId": "station",
+   "endLandmarkId": "home",
+   "routeIds": [
+    "StationHomePreferred"
+   ]
+  },
+  {
+   "id": "work>church",
+   "startLandmarkId": "work",
+   "endLandmarkId": "church",
+   "routeIds": [
+    "WorkChurchA",
+    "WorkChurchB"
+   ]
+  },
+  {
+   "id": "home>church",
+   "startLandmarkId": "home",
+   "endLandmarkId": "church",
+   "routeIds": [
+    "HomeChurch"
+   ]
+  },
+  {
+   "id": "church>home",
+   "startLandmarkId": "church",
+   "endLandmarkId": "home",
+   "routeIds": [
+    "ChurchHome"
+   ]
+  },
+  {
+   "id": "home>fosh",
+   "startLandmarkId": "home",
+   "endLandmarkId": "fosh",
+   "routeIds": [
+    "HomeFosh"
+   ]
+  },
+  {
+   "id": "fosh>home",
+   "startLandmarkId": "fosh",
+   "endLandmarkId": "home",
+   "routeIds": [
+    "FoshHome"
+   ]
+  },
+  {
+   "id": "work>fosh",
+   "startLandmarkId": "work",
+   "endLandmarkId": "fosh",
+   "routeIds": [
+    "WorkFosh"
+   ]
+  },
+  {
+   "id": "church>fosh",
+   "startLandmarkId": "church",
+   "endLandmarkId": "fosh",
+   "routeIds": [
+    "ChurchFosh"
    ]
   }
  ],
@@ -102,6 +195,118 @@
    "refLineId": "EveningB",
    "gateSetVersion": 1,
    "seeded": true
+  },
+  {
+   "id": "MorningB",
+   "wayId": "home>work",
+   "refLineId": "MorningB",
+   "gateSetVersion": 1,
+   "seeded": false
+  },
+  {
+   "id": "WorkStationA",
+   "wayId": "work>station",
+   "refLineId": "WorkStationA",
+   "gateSetVersion": 1,
+   "seeded": false
+  },
+  {
+   "id": "WorkStationB",
+   "wayId": "work>station",
+   "refLineId": "WorkStationB",
+   "gateSetVersion": 1,
+   "seeded": false
+  },
+  {
+   "id": "StationWorkAlt",
+   "wayId": "station>work",
+   "refLineId": "StationWorkAlt",
+   "gateSetVersion": 1,
+   "seeded": false
+  },
+  {
+   "id": "StationWorkStd",
+   "wayId": "station>work",
+   "refLineId": "StationWorkStd",
+   "gateSetVersion": 1,
+   "seeded": false
+  },
+  {
+   "id": "HomeStationPreferred",
+   "wayId": "home>station",
+   "refLineId": "HomeStationPreferred",
+   "gateSetVersion": 1,
+   "seeded": false
+  },
+  {
+   "id": "HomeStationViaFosh",
+   "wayId": "home>station",
+   "refLineId": "HomeStationViaFosh",
+   "gateSetVersion": 1,
+   "seeded": false
+  },
+  {
+   "id": "StationHomePreferred",
+   "wayId": "station>home",
+   "refLineId": "StationHomePreferred",
+   "gateSetVersion": 1,
+   "seeded": false
+  },
+  {
+   "id": "WorkChurchA",
+   "wayId": "work>church",
+   "refLineId": "WorkChurchA",
+   "gateSetVersion": 1,
+   "seeded": false
+  },
+  {
+   "id": "WorkChurchB",
+   "wayId": "work>church",
+   "refLineId": "WorkChurchB",
+   "gateSetVersion": 1,
+   "seeded": false
+  },
+  {
+   "id": "HomeChurch",
+   "wayId": "home>church",
+   "refLineId": "HomeChurch",
+   "gateSetVersion": 1,
+   "seeded": false
+  },
+  {
+   "id": "ChurchHome",
+   "wayId": "church>home",
+   "refLineId": "ChurchHome",
+   "gateSetVersion": 1,
+   "seeded": false
+  },
+  {
+   "id": "HomeFosh",
+   "wayId": "home>fosh",
+   "refLineId": "HomeFosh",
+   "gateSetVersion": 1,
+   "seeded": false
+  },
+  {
+   "id": "FoshHome",
+   "wayId": "fosh>home",
+   "refLineId": "FoshHome",
+   "gateSetVersion": 1,
+   "seeded": false
+  },
+  {
+   "id": "WorkFosh",
+   "wayId": "work>fosh",
+   "refLineId": "WorkFosh",
+   "gateSetVersion": 1,
+   "seeded": false
+  },
+  {
+   "id": "ChurchFosh",
+   "wayId": "church>fosh",
+   "refLineId": "ChurchFosh",
+   "gateSetVersion": 1,
+   "seeded": false
   }
  ],
  "gateSets": [
@@ -143,6 +348,214 @@
    ],
    "createdAtMs": 0,
    "note": "D-016 measured gates (data/analysis/gates_proposal.csv)"
+  },
+  {
+   "routeId": "MorningB",
+   "version": 1,
+   "chainageM": [
+    164.7,
+    1433.1,
+    2852.9,
+    4280.5,
+    5517.2
+   ],
+   "createdAtMs": 0,
+   "note": "cold-start equal-chainage placeholder (COLD-START.md \u00a73/B-33 substitute, not measured, not ratified as a real gate set) from a demos/ways trace 2026-06-12 10:42 (home \u2192 work), total ~5694.7 m \u2014 replace once \u226510 rides exist"
+  },
+  {
+   "routeId": "WorkStationA",
+   "version": 1,
+   "chainageM": [
+    106.2,
+    917.0,
+    1833.8,
+    2739.3,
+    3531.9
+   ],
+   "createdAtMs": 0,
+   "note": "cold-start equal-chainage placeholder (COLD-START.md \u00a73/B-33 substitute, not measured, not ratified as a real gate set) from a demos/ways trace 2026-04-28 18:02 (work \u2192 Leuven station), total ~3642.7 m \u2014 replace once \u226510 rides exist"
+  },
+  {
+   "routeId": "WorkStationB",
+   "version": 1,
+   "chainageM": [
+    80.3,
+    724.0,
+    1443.0,
+    2154.6,
+    2789.2
+   ],
+   "createdAtMs": 0,
+   "note": "cold-start equal-chainage placeholder (COLD-START.md \u00a73/B-33 substitute, not measured, not ratified as a real gate set) from a demos/ways trace 2026-08-08 09:58 (work \u2192 Leuven station), total ~2881.8 m \u2014 replace once \u226510 rides exist"
+  },
+  {
+   "routeId": "StationWorkAlt",
+   "version": 1,
+   "chainageM": [
+    108.3,
+    847.4,
+    1676.0,
+    2529.5,
+    3255.8
+   ],
+   "createdAtMs": 0,
+   "note": "cold-start equal-chainage placeholder (COLD-START.md \u00a73/B-33 substitute, not measured, not ratified as a real gate set) from a demos/ways trace 2026-05-01 20:49 (Leuven station \u2192 work), total ~3362.2 m \u2014 replace once \u226510 rides exist"
+  },
+  {
+   "routeId": "StationWorkStd",
+   "version": 1,
+   "chainageM": [
+    87.0,
+    716.8,
+    1445.8,
+    2151.2,
+    2793.7
+   ],
+   "createdAtMs": 0,
+   "note": "cold-start equal-chainage placeholder (COLD-START.md \u00a73/B-33 substitute, not measured, not ratified as a real gate set) from a demos/ways trace 2026-08-08 18:41 (Leuven station \u2192 work), total ~2880.6 m \u2014 replace once \u226510 rides exist"
+  },
+  {
+   "routeId": "HomeStationPreferred",
+   "version": 1,
+   "chainageM": [
+    286.8,
+    2158.3,
+    4279.9,
+    6443.8,
+    8320.3
+   ],
+   "createdAtMs": 0,
+   "note": "cold-start equal-chainage placeholder (COLD-START.md \u00a73/B-33 substitute, not measured, not ratified as a real gate set) from a demos/ways trace 2026-07-21 11:32 (home \u2192 Leuven station), total ~8606.3 m \u2014 replace once \u226510 rides exist"
+  },
+  {
+   "routeId": "HomeStationViaFosh",
+   "version": 1,
+   "chainageM": [
+    287.2,
+    2241.3,
+    4483.8,
+    6702.8,
+    8655.7
+   ],
+   "createdAtMs": 0,
+   "note": "cold-start equal-chainage placeholder (COLD-START.md \u00a73/B-33 substitute, not measured, not ratified as a real gate set) from a demos/ways trace 2026-07-17 16:16 (home \u2192 Leuven station), total ~8955.0 m \u2014 replace once \u226510 rides exist"
+  },
+  {
+   "routeId": "StationHomePreferred",
+   "version": 1,
+   "chainageM": [
+    262.6,
+    2164.7,
+    4294.4,
+    6398.8,
+    8318.0
+   ],
+   "createdAtMs": 0,
+   "note": "cold-start equal-chainage placeholder (COLD-START.md \u00a73/B-33 substitute, not measured, not ratified as a real gate set) from a demos/ways trace 2026-07-21 20:48 (Leuven station \u2192 home), total ~8547.5 m \u2014 replace once \u226510 rides exist"
+  },
+  {
+   "routeId": "WorkChurchA",
+   "version": 1,
+   "chainageM": [
+    50.5,
+    428.5,
+    879.9,
+    1324.6,
+    1707.4
+   ],
+   "createdAtMs": 0,
+   "note": "cold-start equal-chainage placeholder (COLD-START.md \u00a73/B-33 substitute, not measured, not ratified as a real gate set) from a demos/ways trace 2026-06-07 10:21 (work \u2192 church), total ~1756.5 m \u2014 replace once \u226510 rides exist"
+  },
+  {
+   "routeId": "WorkChurchB",
+   "version": 1,
+   "chainageM": [
+    59.8,
+    529.7,
+    1043.7,
+    1566.2,
+    2036.3
+   ],
+   "createdAtMs": 0,
+   "note": "cold-start equal-chainage placeholder (COLD-START.md \u00a73/B-33 substitute, not measured, not ratified as a real gate set) from a demos/ways trace 2026-08-09 10:11 (work \u2192 church), total ~2107.2 m \u2014 replace once \u226510 rides exist"
+  },
+  {
+   "routeId": "HomeChurch",
+   "version": 1,
+   "chainageM": [
+    206.0,
+    1580.5,
+    3122.7,
+    4692.4,
+    6083.1
+   ],
+   "createdAtMs": 0,
+   "note": "cold-start equal-chainage placeholder (COLD-START.md \u00a73/B-33 substitute, not measured, not ratified as a real gate set) from a demos/ways trace 2026-05-24 10:12 (home \u2192 church), total ~6253.1 m \u2014 replace once \u226510 rides exist"
+  },
+  {
+   "routeId": "ChurchHome",
+   "version": 1,
+   "chainageM": [
+    202.0,
+    1708.0,
+    3397.7,
+    5074.0,
+    6574.9
+   ],
+   "createdAtMs": 0,
+   "note": "cold-start equal-chainage placeholder (COLD-START.md \u00a73/B-33 substitute, not measured, not ratified as a real gate set) from a demos/ways trace 2026-06-07 12:13 (church \u2192 home), total ~6770.5 m \u2014 replace once \u226510 rides exist"
+  },
+  {
+   "routeId": "HomeFosh",
+   "version": 1,
+   "chainageM": [
+    264.0,
+    2010.4,
+    4011.2,
+    5959.3,
+    7709.3
+   ],
+   "createdAtMs": 0,
+   "note": "cold-start equal-chainage placeholder (COLD-START.md \u00a73/B-33 substitute, not measured, not ratified as a real gate set) from a demos/ways trace 2026-04-21 17:57 (home \u2192 fosh), total ~7965.5 m \u2014 replace once \u226510 rides exist"
+  },
+  {
+   "routeId": "FoshHome",
+   "version": 1,
+   "chainageM": [
+    235.1,
+    1997.7,
+    4030.7,
+    6013.4,
+    7779.2
+   ],
+   "createdAtMs": 0,
+   "note": "cold-start equal-chainage placeholder (COLD-START.md \u00a73/B-33 substitute, not measured, not ratified as a real gate set) from a demos/ways trace 2026-06-14 14:25 (fosh \u2192 home), total ~8011.1 m \u2014 replace once \u226510 rides exist"
+  },
+  {
+   "routeId": "WorkFosh",
+   "version": 1,
+   "chainageM": [
+    78.8,
+    637.2,
+    1276.5,
+    1920.3,
+    2476.1
+   ],
+   "createdAtMs": 0,
+   "note": "cold-start equal-chainage placeholder (COLD-START.md \u00a73/B-33 substitute, not measured, not ratified as a real gate set) from a demos/ways trace 2025-10-08 15:26 (work \u2192 fosh), total ~2562.0 m \u2014 replace once \u226510 rides exist"
+  },
+  {
+   "routeId": "ChurchFosh",
+   "version": 1,
+   "chainageM": [
+    77.2,
+    654.1,
+    1320.1,
+    1984.1,
+    2552.7
+   ],
+   "createdAtMs": 0,
+   "note": "cold-start equal-chainage placeholder (COLD-START.md \u00a73/B-33 substitute, not measured, not ratified as a real gate set) from a demos/ways trace 2026-06-14 12:21 (church \u2192 fosh), total ~2637.3 m \u2014 replace once \u226510 rides exist"
   }
  ]
 }

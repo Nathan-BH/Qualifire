@@ -20,9 +20,16 @@ const manifest = loadJson<Manifest>(
   path.join(TESTS_DIR, '..', 'assets', 'routes', 'routes.json'));
 
 test('routemap: every ratified route has an asset with its five gates', () => {
-  const ids = Object.keys(manifest.routes).sort();
-  assert(JSON.stringify(ids) === JSON.stringify(['EveningA', 'EveningB', 'Morning']),
-    `unexpected routes: ${ids}`);
+  const catalog = loadJson<{ routes: { refLineId: string }[] }>(
+    path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
+  const catalogRefIds = new Set(catalog.routes.map((r) => r.refLineId));
+  const assetIds = new Set(Object.keys(manifest.routes));
+  for (const refId of catalogRefIds) {
+    assert(assetIds.has(refId), `catalog route refLineId ${refId} has no asset in routes.json`);
+  }
+  for (const assetId of assetIds) {
+    assert(catalogRefIds.has(assetId), `routes.json asset ${assetId} is not referenced by any catalog route`);
+  }
   assert(manifest.projection === 'web-mercator',
     'the projection must stay Web Mercator so a real basemap could line up later');
   for (const [id, a] of Object.entries(manifest.routes)) {

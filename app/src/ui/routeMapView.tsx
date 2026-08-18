@@ -393,7 +393,7 @@ function PngRouteMap(props: RouteMapProps) {
   const dimmed = variant === 'live' && liveState === 'stopped';
   const interactiveCredit = !locked;
 
-  if (!asset || !img) return null;
+  if (!asset) return null;
 
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
@@ -420,7 +420,7 @@ function PngRouteMap(props: RouteMapProps) {
       ]}>
       {crop ? (
         <>
-          {!imgFailed ? (
+          {!imgFailed && img ? (
             <Image source={img}
               onError={() => setImgFailed(true)}
               style={{
@@ -498,7 +498,7 @@ function PngRouteMap(props: RouteMapProps) {
           MAP IMAGE FAILED — drawing the line
         </Text>
       ) : null}
-      {!imgFailed ? <Credit rung="png" interactive={interactiveCredit} /> : null}
+      {!imgFailed && img ? <Credit rung="png" interactive={interactiveCredit} /> : null}
       {off ? (
         <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card }]}>OFF ROUTE</Text>
       ) : null}
