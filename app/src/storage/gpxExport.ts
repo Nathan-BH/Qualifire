@@ -10,16 +10,16 @@
 import type { DecodedRide } from './types.ts';
 
 /** Numbers must never render in exponent form or the core regex drops the point. */
-function num(n: number): string {
+export function num(n: number): string {
   const s = String(n);
   return /[eE]/.test(s) ? n.toFixed(9) : s;
 }
 
-function isoTime(unixMs: number): string {
+export function isoTime(unixMs: number): string {
   return new Date(unixMs).toISOString(); // always YYYY-MM-DDTHH:MM:SS.sssZ
 }
 
-function escapeXml(s: string): string {
+export function escapeXml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 

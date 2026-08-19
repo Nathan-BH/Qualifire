@@ -9,10 +9,12 @@
  * or unreadable.
  */
 import type { FsAdapter } from './fsAdapter.ts';
-import type { Fix, IndexEntry, RideIndex, RideMeta } from './types.ts';
+import type { Fix, IndexEntry, RideEvent, RideIndex, RideMeta } from './types.ts';
 import { decodeRideFile, deriveMeta, encodeEnd, encodeFix, encodeHeader, healTornTail } from './jsonl.ts';
 import { decodeIndex, emptyIndex, encodeIndex, removeEntry, upsertEntry } from './rideIndex.ts';
 import { buildGpx } from './gpxExport.ts';
+import { encodeEvent, decodeEventsFile } from './eventsJsonl.ts';
+import { buildGpxPlus } from './gpxPlusExport.ts';
 
 const RIDES_DIR = 'rides';
 const INDEX_FILE = 'index.json';
@@ -23,6 +25,11 @@ export interface RideStorage {
   endRide(rideId: string): Promise<RideMeta>;
   listRides(): Promise<RideMeta[]>;
   exportGpx(rideId: string): Promise<string>;
+  /** Appends one diagnostics event to the ride's sidecar (rides/<rideId>.events.jsonl).
+   * The raw ride file is untouched (D-023). Never required for a ride to be valid. */
+  appendEvent(rideId: string, ev: RideEvent): Promise<void>;
+  /** GPX 1.1 + <extensions> diagnostics (GPX+). Standard exportGpx stays byte-identical. */
+  exportGpxPlus(rideId: string): Promise<string>;
   /** Permanently removes a ride (file + index entry). Refuses while recording. */
   deleteRide(rideId: string): Promise<void>;
 }
@@ -52,6 +59,10 @@ function rideFile(rideId: string): string {
   return `${RIDES_DIR}/${rideId}.jsonl`;
 }
 
+function eventsFile(rideId: string): string {
+  return `${RIDES_DIR}/${rideId}.events.jsonl`;
+}
+
 export function createStorage(fs: FsAdapter, opts: StorageOptions = {}): RideStorage {
   const now = opts.now ?? (() => Date.now());
   const randomSuffix =
@@ -70,6 +81,10 @@ export function createStorage(fs: FsAdapter, opts: StorageOptions = {}): RideSto
    * Chaining guarantees file order == call order; the JSONL format itself is
    * untouched (D-023). */
   const appendTail = new Map<string, Promise<void>>();
+  /** Same F-2 serialization discipline for the events sidecar, plus the
+   * torn-tail-healed "have we seen this ride's sidecar live yet" memory. */
+  const eventsTail = new Map<string, Promise<void>>();
+  const eventsLive = new Set<string>();
 
   async function loadIndex(): Promise<RideIndex> {
     const text = await fs.readText(INDEX_FILE);
@@ -85,6 +100,7 @@ export function createStorage(fs: FsAdapter, opts: StorageOptions = {}): RideSto
     let index = emptyIndex();
     for (const name of await fs.listDir(RIDES_DIR)) {
       if (!name.endsWith('.jsonl')) continue;
+      if (name.endsWith('.events.jsonl')) continue;
       const rideId = name.slice(0, -'.jsonl'.length);
       const text = await fs.readText(`${RIDES_DIR}/${name}`);
       if (text === null) continue;
@@ -217,14 +233,57 @@ export function createStorage(fs: FsAdapter, opts: StorageOptions = {}): RideSto
       return buildGpx(decodeRideFile(text), rideId);
     },
 
+    async appendEvent(rideId, ev) {
+      const doAppend = async (): Promise<void> => {
+        if (!Number.isFinite(ev.tUnixMs)) {
+          throw new Error(`appendEvent: non-finite tUnixMs for ride ${rideId}`);
+        }
+        if (!eventsLive.has(rideId)) {
+          const text = await fs.readText(eventsFile(rideId));
+          // F-1-style healing for the sidecar: isolate a torn tail onto its
+          // own line before resuming appends (mirrors the ride file's
+          // healTornTail discipline). The file may not exist yet — that's
+          // fine, appendText creates it per the FsAdapter contract.
+          const heal = healTornTail(text);
+          if (heal !== '') await fs.appendText(eventsFile(rideId), heal);
+          eventsLive.add(rideId);
+        }
+        await fs.appendText(eventsFile(rideId), encodeEvent(ev));
+      };
+      // Same F-2 serializer as appendFix: no ride-existence check and no
+      // ended-ride check — diagnostics writes must never be refused (an
+      // 'end' button event legitimately arrives around endRide time).
+      const prev = eventsTail.get(rideId) ?? Promise.resolve();
+      const run = prev.then(doAppend, doAppend);
+      eventsTail.set(
+        rideId,
+        run.catch(() => {}),
+      );
+      return run;
+    },
+
+    async exportGpxPlus(rideId) {
+      const text = await fs.readText(rideFile(rideId));
+      if (text === null) throw new Error(`exportGpxPlus: unknown ride ${rideId}`);
+      const evText = await fs.readText(eventsFile(rideId));
+      return buildGpxPlus(
+        decodeRideFile(text),
+        evText === null ? null : decodeEventsFile(evText),
+        rideId,
+      );
+    },
+
     async deleteRide(rideId) {
       if (live.has(rideId)) {
         throw new Error(`deleteRide: ride ${rideId} is still recording — stop it first`);
       }
       await fs.deleteFile(rideFile(rideId));
+      await fs.deleteFile(eventsFile(rideId));
       const index = await loadIndex();
       await fs.writeText(INDEX_FILE, encodeIndex(removeEntry(index, rideId)));
       endedThisProcess.delete(rideId);
+      eventsLive.delete(rideId);
+      eventsTail.delete(rideId);
     },
   };
 }

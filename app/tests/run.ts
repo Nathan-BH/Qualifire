@@ -8,6 +8,7 @@
  */
 import './engine_suite.ts';
 import './storage_suite.ts';
+import './gpxplus_suite.ts';
 import './live_suite.ts';
 import './store_suite.ts';
 import './routemap_suite.ts';

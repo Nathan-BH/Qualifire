@@ -4,7 +4,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import { deleteRide, exportGpx, listRides } from '../storage';
+import { deleteRide, exportGpxPlus, listRides } from '../storage';
 import { gpxBaseName, saveGpx } from './saveGpx';
 import { PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
@@ -84,7 +84,7 @@ export default function RidesScreen() {
   const onExport = useCallback(async (ride: RideRow) => {
     setExporting(ride.rideId);
     try {
-      const gpx = await exportGpx(ride.rideId);
+      const gpx = await exportGpxPlus(ride.rideId);
       const base = gpxBaseName(ride.startMs);
       const result = await saveGpx(base, gpx);
       if (result.method === 'saf') {
@@ -150,7 +150,7 @@ export default function RidesScreen() {
                   onPress={() => onExport(item)}
                 >
                   <Text style={styles.exportText}>
-                    {exporting === item.rideId ? '…' : 'Export GPX'}
+                    {exporting === item.rideId ? '…' : 'Export GPX+'}
                   </Text>
                 </Pressable>
                 <Pressable

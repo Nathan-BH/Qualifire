@@ -9,7 +9,7 @@
  * Backed by expo-file-system (this import chain touches expo — headless tests
  * should import core.ts + fsAdapter.ts instead; see README.md).
  */
-import type { Fix, RideMeta } from './types.ts';
+import type { Fix, RideEvent, RideMeta } from './types.ts';
 import { createStorage, type RideStorage } from './core.ts';
 import { createExpoFsAdapter } from './expoFsAdapter.ts';
 
@@ -55,8 +55,18 @@ export function deleteRide(rideId: string): Promise<void> {
   return storage().deleteRide(rideId);
 }
 
+/** Appends one diagnostics event to the ride's GPX+ sidecar. Fire-and-forget safe. */
+export function appendRideEvent(rideId: string, ev: RideEvent): Promise<void> {
+  return storage().appendEvent(rideId, ev);
+}
+
+/** GPX 1.1 + qf: extensions (GPX+ diagnostics). exportGpx stays byte-identical. */
+export function exportGpxPlus(rideId: string): Promise<string> {
+  return storage().exportGpxPlus(rideId);
+}
+
 // Re-exports for tests and future callers (pure modules; no expo in their chains).
-export type { Fix, RideMeta };
+export type { Fix, RideEvent, RideMeta };
 export { createStorage, type RideStorage, type StorageOptions } from './core.ts';
 export { createMemoryFsAdapter, type FsAdapter } from './fsAdapter.ts';
 export { SCHEMA_VERSION } from './types.ts';

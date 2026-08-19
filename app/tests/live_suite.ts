@@ -313,3 +313,42 @@ test('live: subscribe contract — one emit per feed (+start), snapshot equals g
   engine.feed(f.fixes.lat[n - 1], f.fixes.lon[n - 1], (f.fixes.t[n - 1] + 1) * 1000);
   assert(engine.getState().fixesFed === n + 1, 'post-unsubscribe feed not buffered');
 });
+
+// ------------------------------------------------------- GPX+ engine events
+
+test('live: engine events (GPX+) — clean_morning emits exactly one lock + gate events matching the live snapshot', () => {
+  const f = loadFixture('clean_morning');
+  const engine = new LiveEngine();
+  const evts: { type: string; track: TrackId; atChainageM?: number; gateIndex?: number; t?: number; estimated?: boolean }[] = [];
+  const unsub = engine.subscribeEvents((e) => evts.push(e));
+  for (let i = 0; i < f.fixes.t.length; i++) {
+    engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
+  }
+  unsub();
+  const locks = evts.filter((e) => e.type === 'lock');
+  assert(locks.length === 1, `${locks.length} lock events, want exactly 1`);
+  assert(locks[0].track === f.track, `lock track ${locks[0].track}, want ${f.track}`);
+  assert(locks[0].atChainageM! >= LOCK_MIN_ADVANCE_M,
+    `lock atChainageM ${locks[0].atChainageM} below the lock-advance threshold ${LOCK_MIN_ADVANCE_M}`);
+  const gates = evts.filter((e) => e.type === 'gate');
+  const expected = f.expected.live.events;
+  assert(gates.length === expected.length, `${gates.length} gate events, want ${expected.length}`);
+  for (let i = 0; i < expected.length; i++) {
+    assert(gates[i].track === f.track, `gate ${i} track ${gates[i].track}, want ${f.track}`);
+    assert(gates[i].gateIndex === expected[i].g, `gate ${i} gateIndex ${gates[i].gateIndex} != ${expected[i].g}`);
+    assert(gates[i].estimated === expected[i].est, `gate ${i} estimated ${gates[i].estimated} != ${expected[i].est}`);
+    assert(numEq(gates[i].t!, expected[i].t, 1e-6), `gate ${i} t ${gates[i].t} != ${expected[i].t}`);
+  }
+});
+
+test('live: engine events (GPX+) — stationary doorstep loop (real export) never locks, emits zero events', () => {
+  const gpx = nodeFs.readFileSync(path.join(FIXTURES_DIR, 'qualifire-20260815-0024.gpx'), 'utf8');
+  const p = parseGpx(gpx, 'qualifire-20260815-0024');
+  const order = Array.from(p.t.keys()).sort((a, b) => p.t[a] - p.t[b]); // F-2 sorted view
+  const engine = new LiveEngine();
+  const evts: unknown[] = [];
+  const unsub = engine.subscribeEvents((e) => evts.push(e));
+  for (const i of order) engine.feed(p.lat[i], p.lon[i], p.t[i] * 1000);
+  unsub();
+  assert(evts.length === 0, `${evts.length} engine events emitted while the engine never locked`);
+});

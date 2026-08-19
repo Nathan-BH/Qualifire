@@ -66,3 +66,51 @@ export interface RideIndex {
   schemaVersion: number;
   rides: IndexEntry[];
 }
+
+/** GPX+ events sidecar (rides/<rideId>.events.jsonl). Append-only, one JSON
+ * object per line, same torn-tail discipline as the ride file. The ride JSONL
+ * itself never changes (D-023); events are a separate, replayable record. */
+export interface MetaEvent {
+  kind: 'meta';
+  tUnixMs: number;
+  schemaVersion: number;
+  appVersion?: string;
+}
+export interface ButtonEvent {
+  kind: 'button';
+  tUnixMs: number;
+  button: 'start' | 'pause' | 'resume' | 'end';
+}
+export interface LockEvent {
+  kind: 'lock';
+  tUnixMs: number;
+  track: string;
+  atChainageM: number;
+  /** epoch s of the fix that produced the lock */
+  atT: number;
+}
+export interface GateFireEvent {
+  kind: 'gate';
+  tUnixMs: number;
+  track: string;
+  gateIndex: number;
+  /** interpolated crossing time, epoch s (GateEvent.time verbatim) */
+  t: number;
+  estimated: boolean;
+}
+export interface StorageErrorEvent {
+  kind: 'storageError';
+  tUnixMs: number;
+  message: string;
+}
+export interface RelaunchEvent {
+  kind: 'relaunch';
+  tUnixMs: number;
+}
+export type RideEvent =
+  | MetaEvent | ButtonEvent | LockEvent | GateFireEvent | StorageErrorEvent | RelaunchEvent;
+
+export interface DecodedEvents {
+  events: RideEvent[];
+  nDropped: number;
+}

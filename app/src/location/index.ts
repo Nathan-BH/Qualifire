@@ -11,13 +11,13 @@
  *  - relaunch recovery via a persisted active-ride marker (./session).
  *
  * Storage (../storage) is the Backend Dev's module per the interface
- * contract; it is imported, never implemented here. Until it lands, tsc
- * reports "Cannot find module '../storage'" — expected, see README-dev.md.
+ * contract; it is imported, never implemented here.
  */
 import { Vibration } from 'react-native';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
-import { appendFix, startRide, endRide } from '../storage';
+import Constants from 'expo-constants'; // [UNTESTED ON DEVICE]
+import { appendFix, startRide, endRide, appendRideEvent } from '../storage';
 import { liveEngine } from '../live/engine';
 import { ActiveSession, saveSession, loadSession, clearSession } from './session';
 
@@ -30,6 +30,12 @@ export interface RideSummary {
   nFixes: number;
   startMs: number;
   endMs: number;
+}
+
+/** GPX+ diagnostics logging. Swallow-everything — never disturb recording,
+ * same doctrine as the engine-feed try/catch below. */
+function logEvent(rideId: string, ev: import('../storage').RideEvent): void {
+  appendRideEvent(rideId, ev).catch(() => { /* diagnostics only — never disturb recording */ });
 }
 
 // ---------------------------------------------------------------------------
@@ -98,6 +104,9 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
       emit();
       return;
     }
+    // Freshly restored (not already live in memory) means this JS launch
+    // never saw the session before now — the mark of a mid-ride relaunch.
+    const hadLiveSession = session !== null;
     const s = await ensureSession();
     if (!s) {
       // Orphan: fixes arriving with no active ride (marker lost/cleared).
@@ -108,6 +117,9 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
         /* already stopped */
       }
       return;
+    }
+    if (!hadLiveSession) {
+      logEvent(s.rideId, { kind: 'relaunch', tUnixMs: Date.now() });
     }
     const locations = data?.locations ?? [];
     for (const loc of locations) {
@@ -127,6 +139,7 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
         // Never let one bad write kill the service; count and surface it.
         storageErrors += 1;
         lastError = e instanceof Error ? e.message : String(e);
+        logEvent(s.rideId, { kind: 'storageError', tUnixMs: Date.now(), message: lastError });
       }
       // Live sectors (cycle 006): display-only derived state, fed AFTER the
       // raw append so the JSONL can never depend on it. Engine errors are
@@ -171,6 +184,7 @@ export async function ensurePermissions(): Promise<PermissionOutcome> {
 // ---------------------------------------------------------------------------
 
 export async function startTracking(): Promise<ActiveSession> {
+  const pressedAtMs = Date.now();
   const existing = await ensureSession();
   if (existing) return existing; // already recording; be idempotent
 
@@ -209,6 +223,11 @@ export async function startTracking(): Promise<ActiveSession> {
   storageErrors = 0;
   lastError = null;
   liveEngine.start(); // fresh live-sector state for this ride
+  logEvent(rideId, {
+    kind: 'meta', tUnixMs: pressedAtMs, schemaVersion: 1,
+    ...(Constants.expoConfig?.version ? { appVersion: Constants.expoConfig.version } : {}),
+  });
+  logEvent(rideId, { kind: 'button', tUnixMs: pressedAtMs, button: 'start' });
   emit();
   return s;
 }
@@ -224,6 +243,7 @@ export async function stopTracking(): Promise<RideSummary | null> {
   }
   let summary: RideSummary | null = null;
   if (s) {
+    logEvent(s.rideId, { kind: 'button', tUnixMs: Date.now(), button: 'end' });
     summary = await endRide(s.rideId);
   }
   await clearSession();
@@ -263,6 +283,33 @@ liveEngine.subscribe((st) => {
     }
   }
   buzzedFires = st.gateFires;
+});
+
+// ---------------------------------------------------------------------------
+// GPX+ button log. The UI layer calls noteButtonPress on PAUSE/RESUME taps;
+// START/END are logged internally by startTracking/stopTracking above.
+// ---------------------------------------------------------------------------
+
+/** No-op when no ride is active. */
+export function noteButtonPress(button: 'pause' | 'resume'): void {
+  if (session) logEvent(session.rideId, { kind: 'button', tUnixMs: Date.now(), button });
+}
+
+// GPX+ engine events (route lock + gate fires) — subscribed at module scope
+// for the same headless-relaunch reason as the buzz subscription above.
+liveEngine.subscribeEvents((ev) => {
+  if (!session) return; // cannot attribute; headless relaunch re-locks after ensureSession restores it
+  if (ev.type === 'lock') {
+    logEvent(session.rideId, {
+      kind: 'lock', tUnixMs: Math.round(ev.atT * 1000),
+      track: ev.track, atChainageM: ev.atChainageM, atT: ev.atT,
+    });
+  } else {
+    logEvent(session.rideId, {
+      kind: 'gate', tUnixMs: Math.round(ev.t * 1000),
+      track: ev.track, gateIndex: ev.gateIndex, t: ev.t, estimated: ev.estimated,
+    });
+  }
 });
 
 /**

@@ -80,6 +80,12 @@ export interface LiveLap {
   estimated: boolean;
 }
 
+/** Raw engine events for the GPX+ sidecar: emitted only for the locked track
+ * (at lock, the pre-lock history of the winning candidate is replayed). */
+export type EngineEvent =
+  | { type: 'lock'; track: TrackId; atChainageM: number; atT: number }
+  | { type: 'gate'; track: TrackId; gateIndex: number; t: number; estimated: boolean };
+
 export interface LiveEngineState {
   phase: 'idle' | 'detecting' | 'locked' | 'finished';
   track: TrackId | null;
@@ -128,6 +134,7 @@ export class LiveEngine {
   private latBuf: number[] = [];
   private lonBuf: number[] = [];
   private listeners = new Set<(s: LiveEngineState) => void>();
+  private evListeners = new Set<(e: EngineEvent) => void>();
 
   start(): void {
     this.phase = 'detecting';
@@ -178,11 +185,19 @@ export class LiveEngine {
 
     let fired = false;
     if (this.locked) {
-      fired = this.feedCandidate(this.locked, lat, lon, tSec);
+      const evs = this.feedCandidate(this.locked, lat, lon, tSec);
+      fired = evs.length > 0;
+      for (const e of evs) {
+        this.emitEvent({
+          type: 'gate', track: this.locked.track, gateIndex: e.gateIndex, t: e.time, estimated: e.estimated,
+        });
+      }
       this.onRoute = this.locked.onRoute;
     } else {
       for (const c of this.cands) {
-        if (this.feedCandidate(c, lat, lon, tSec)) fired = true;
+        // Speculative fires from losing candidates must not enter the record —
+        // only emit once a candidate becomes the locked one (below).
+        if (this.feedCandidate(c, lat, lon, tSec).length > 0) fired = true;
       }
       const lead = this.leader();
       this.onRoute = lead ? lead.onRoute : false;
@@ -195,6 +210,12 @@ export class LiveEngine {
         this.phase = 'locked';
         this.cands = [lead];
         fired = true; // force a recompute over the pre-lock event history
+        this.emitEvent({ type: 'lock', track: lead.track, atChainageM: lead.proj.chainage, atT: tSec });
+        for (const e of lead.events) {
+          this.emitEvent({
+            type: 'gate', track: lead.track, gateIndex: e.gateIndex, t: e.time, estimated: e.estimated,
+          });
+        }
       }
     }
     if (fired && this.locked) this.recompute();
@@ -236,7 +257,16 @@ export class LiveEngine {
     };
   }
 
+  subscribeEvents(fn: (e: EngineEvent) => void): () => void {
+    this.evListeners.add(fn);
+    return () => { this.evListeners.delete(fn); };
+  }
+
   // ------------------------------------------------------------------ private
+
+  private emitEvent(e: EngineEvent): void {
+    this.evListeners.forEach((fn) => { try { fn(e); } catch { /* diagnostics only */ } });
+  }
 
   private leader(): Candidate | null {
     let best: Candidate | null = null;
@@ -244,7 +274,7 @@ export class LiveEngine {
     return best;
   }
 
-  private feedCandidate(c: Candidate, lat: number, lon: number, tSec: number): boolean {
+  private feedCandidate(c: Candidate, lat: number, lon: number, tSec: number): GateEvent[] {
     // Per-fix planar transform in this candidate's track frame (same toXY as
     // the parity pipeline; two tiny arrays per call — negligible at 1 Hz).
     const xy = toXY([lat], [lon], c.ref.lat0, c.ref.lon0);
@@ -253,9 +283,9 @@ export class LiveEngine {
     c.adv = c.proj.chainage - c.baseS;
     c.onRoute = fix.onRoute;
     const events = c.det.update(tSec, fix.s);
-    if (events.length === 0) return false;
+    if (events.length === 0) return events;
     c.events.push(...events);
-    return true;
+    return events;
   }
 
   /** Rebuild sector/lap state: live events say WHEN and whether estimated;
