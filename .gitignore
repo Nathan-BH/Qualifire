@@ -4,9 +4,10 @@ err.log
 *.log
 *.bak
 safe_to_delete/
-data/activities/
 data/*.zip
 data/analysis/cache/
 /*.gpx
 app/android/
 app/dist/
+*.gpx
+data/analysis/cache/
