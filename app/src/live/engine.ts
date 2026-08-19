@@ -18,8 +18,9 @@
  *  - this file      route auto-detection, sector/lap state assembly, and a
  *                   subscribe() feed for the UI.
  *
- * Route auto-detection: all three tracks run as candidates. A candidate whose
- * chainage ADVANCES is being ridden; a wrong-direction or diverged candidate
+ * Route auto-detection: all four tracks run as candidates (cycle 020 adds
+ * MorningB). A candidate whose chainage ADVANCES is being ridden; a
+ * wrong-direction or diverged candidate
  * freezes (forward-only projection) or falls off-corridor. Lock when the
  * leader has advanced >= LOCK_MIN_ADVANCE_M and leads every other candidate
  * by >= LOCK_MARGIN_M. Morning vs Evening locks in the first ~400 m; Evening
@@ -109,7 +110,7 @@ interface Candidate {
   onRoute: boolean;
 }
 
-const N_SECTORS_DEFAULT = 4; // all three tracks have 4 sectors (D-016 gates)
+const N_SECTORS_DEFAULT = 4; // all four tracks have 4 sectors (D-016 gates)
 
 function pendingSectors(n: number): LiveSector[] {
   return Array.from({ length: n }, () => ({ kind: 'pending' as const }));

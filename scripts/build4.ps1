@@ -26,6 +26,7 @@
         cd "C:\Users\natha\Claude personal projects\Qualifire\scripts"
         .\build4.ps1 -DryRun    # run every check, spend nothing
         .\build4.ps1            # run every check, then spend the build (development -- the default)
+        .\build4.ps1 -BuildProfile preview -Standalone   # standalone "Qualifire Preview" commute APK (2026-08-19)
 
     One script, two halves: PREFLIGHT (sections 0-6 -- reads only, changes
     nothing, costs no build slot) and BUILD (sections 7-8 -- ~10-20 min on
@@ -43,6 +44,10 @@ param(
     [switch]$SkipTests,
     [switch]$NoWait,
     [switch]$Force,
+    # Nathan 2026-08-19 (cycle 021): explicit opt-in for the standalone "Qualifire
+    # Preview" APK -- a rebuildable commute build, NOT the final app. Separate
+    # from -Force so preflight failures still stop a preview build.
+    [switch]$Standalone,
     [ValidateSet('preview', 'development')]
     [string]$BuildProfile = 'development'
 )
@@ -87,11 +92,11 @@ try {
     # -------------------------------------------- 0. profile gate (Nathan, 2026-08-17)
     if ($BuildProfile -eq 'preview') {
         Step '0. Profile gate -- standalone/preview is barred until the app is finalized'
-        if (-not $Force) {
-            Warn "preview/standalone builds are barred until the app is finalized (Nathan, 2026-08-17); build 3's stale-JS failure is the precedent."
-            $problems += 'BuildProfile preview requires -Force: standalone builds are barred until the app is finalized (Nathan, 2026-08-17).'
+        if (-not ($Force -or $Standalone)) {
+            Warn "preview/standalone builds need -Standalone (Nathan 2026-08-19: a rebuildable commute APK that bakes in the CURRENT working tree; build 3's stale-JS failure is the precedent -- commit first, rebuild after every change you want on the bike)."
+            $problems += 'BuildProfile preview requires -Standalone (or -Force).'
         } else {
-            Warn 'preview requested WITH -Force -- proceeding despite the standalone bar. This is Nathan overriding his own rule for one run, not the script relaxing it.'
+            Warn 'preview requested with -Standalone/-Force -- the APK freezes whatever JS is in app/ RIGHT NOW. Make sure every feature you want is in the working tree (git status clean is the easy check).'
         }
     }
 
@@ -230,6 +235,7 @@ try {
         $names = @($rj.routes.PSObject.Properties)
         Ok "$($names.Count) pre-rendered routes in routes.json"
         foreach ($n in $names) {
+            if (-not $n.Value.image) { Ok "  $($n.Name) -> (no PNG; MapLibre/path rung only)"; continue }
             $png = Join-Path $routesDir $n.Value.image
             if (Test-Path $png) {
                 Ok "  $($n.Name) -> $($n.Value.image)"

@@ -1,7 +1,8 @@
 /** The approved gate set (D-016; Nathan 2026-08-14 "fine for now, can still be
  * updated anytime"). Values verbatim from data/analysis/gates_proposal.csv.
  * Chainages are metres along each track's cycle-003 reference polyline
- * (Morning 5651 m, EveningA 5556 m, EveningB 5838 m medoid references).
+ * (Morning 5651 m, EveningA 5556 m, EveningB 5838 m medoid references;
+ * MorningB 5861 m single-ride reference, cycle 020).
  * B-20 (gate-move invalidation semantics) owns what happens when these change. */
 import type { Gate, TrackId } from './types.ts';
 
@@ -26,6 +27,16 @@ export const PROPOSED_GATES: Record<TrackId, Gate[]> = {
     { name: 'G2',     chainage: 2812, lat: 50.84241, lon: 4.66960 },
     { name: 'G3',     chainage: 4037, lat: 50.83719, lon: 4.65665 },
     { name: 'FINISH', chainage: 5237, lat: 50.83801, lon: 4.64333 },
+  ],
+  // MorningB (cycle 020, Nathan 2026-08-19): home>work "route B" = route 5
+  // (20260520-2317) reversed; gate positions = EveningB's gates reversed +
+  // START at ~162 m; cold-start, unratified (B-20 owns moves).
+  MorningB: [
+    { name: 'START',  chainage: 163,  lat: 50.83779, lon: 4.63917 },
+    { name: 'G1',     chainage: 1802, lat: 50.83719, lon: 4.65665 },
+    { name: 'G2',     chainage: 3027, lat: 50.84241, lon: 4.66960 },
+    { name: 'G3',     chainage: 4352, lat: 50.85318, lon: 4.67684 },
+    { name: 'FINISH', chainage: 5677, lat: 50.86211, lon: 4.68696 },
   ],
 };
 

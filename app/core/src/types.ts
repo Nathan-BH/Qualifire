@@ -34,7 +34,7 @@ export interface Gate {
   lon: number;
 }
 
-export type TrackId = 'Morning' | 'EveningA' | 'EveningB';
+export type TrackId = 'Morning' | 'EveningA' | 'EveningB' | 'MorningB';
 
 export type SectorFlag = 'clean' | 'interrupted' | 'excluded_nocross' | 'excluded_offroute';
 

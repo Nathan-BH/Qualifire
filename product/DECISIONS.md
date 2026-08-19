@@ -326,3 +326,10 @@ Consequences to implement next build (not now): the colour model, tower ranks, p
 Rationale: Nathan had not known the maths silently subtracted stopped time; the honesty rule (D-025) cuts both ways — the app was quietly flattering laps that hit red lights. His call: the default tells the truth of the commute, luck included.
 Reversibility: cheap — both quantities are recorded; the mode only selects which one compares.
 Evidence: engine sector records carry rawS + movingS (`lastRide.ts`, `colourModel.ts` as of cycle 016); Nathan's ruling in chat, 2026-08-17 evening.
+
+## D-043 — A standalone "Qualifire Preview" commute APK is allowed again, as a rebuildable riding build beside the dev client
+Date: 2026-08-19 · Status: ACTIVE — Nathan's ruling, cycle 021, amending his 2026-08-17 "no standalone APK until finalized" rule.
+Decision: The dev client stays the development build (Fast Refresh from Metro). In addition, the `preview` EAS profile (`Qualifire Preview`, package `com.nathanbonher.qualifire.preview`, D-026) is rebuilt whenever Nathan wants the current tree on the bike with no PC / Metro / network dependency — the dev client lost its JS when Android evicted it during the day (2026-08-18 evening) and could not re-fetch it. The preview APK bakes the working tree's JS at build time, so: commit (or at least check `git status`) before building; rebuild after any change that must ride. `scripts/build4.ps1 -BuildProfile preview -Standalone` is the command; `-Standalone` is separate from `-Force` so preflight failures still stop a build.
+Rationale: build 3's failure was a stale bundle frozen *before* the changes, not a flaw of standalone builds; a build that is rebuilt on demand is a riding tool, not "the final app".
+Reversibility: free — stop rebuilding it.
+Evidence: `scripts/build4.ps1` sections 0 and 8; `BUILD-4-RUNBOOK.md` §7.

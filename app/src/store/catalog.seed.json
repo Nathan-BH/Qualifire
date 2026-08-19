@@ -353,14 +353,14 @@
    "routeId": "MorningB",
    "version": 1,
    "chainageM": [
-    164.7,
-    1433.1,
-    2852.9,
-    4280.5,
-    5517.2
+    163,
+    1802,
+    3027,
+    4352,
+    5677
    ],
    "createdAtMs": 0,
-   "note": "cold-start equal-chainage placeholder (COLD-START.md \u00a73/B-33 substitute, not measured, not ratified as a real gate set) from a demos/ways trace 2026-06-12 10:42 (home \u2192 work), total ~5694.7 m \u2014 replace once \u226510 rides exist"
+   "note": "cycle 020 (2026-08-19): route 5 (20260520-2317) reversed; gates = EveningB's reversed + START ~162 m; cold-start, unratified \u2014 replace once \u226510 rides exist"
   },
   {
    "routeId": "WorkStationA",

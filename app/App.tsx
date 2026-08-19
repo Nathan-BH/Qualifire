@@ -2,7 +2,8 @@
  * Qualifire — Phase 1 tracker (B-24) + Preview tab + two-mode theming.
  *
  * Theming: DAYLIGHT default / NIGHT toggle (persisted; see themeContext).
- * Race mode follows the theme. Preview renders in night always (mockup).
+ * Race mode follows the theme. Demo tab follows the theme too (Cycle 020,
+ * Nathan 2026-08-19: it no longer forces night).
  *
  * IMPORTANT: `./src/location` must be imported at module scope. It calls
  * TaskManager.defineTask, and when Android relaunches this bundle headlessly
@@ -30,7 +31,7 @@ import RoutesScreen from './src/ui/RoutesScreen';
 import ResultScreen from './src/ui/ResultScreen';
 import SettingsScreen, { SettingsProvider } from './src/ui/settings';
 import DemoScreen from './src/ui/DemoScreen';
-import { PaddockTheme, night } from './src/ui/theme';
+import { PaddockTheme } from './src/ui/theme';
 import { ThemeProvider, useTheme } from './src/ui/themeContext';
 import { initRecordedPersistence } from './src/ui/lastRide';
 import { createExpoFsAdapter } from './src/storage/expoFsAdapter';
@@ -58,8 +59,9 @@ function Shell() {
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomPad = Math.max(insets.bottom, NAV_BAR_MIN_PAD);
-  // The demo renders night-mode regardless of app theme.
-  const chrome: PaddockTheme = tab === 'demo' ? night : t;
+  // Cycle 020 (Nathan 2026-08-19): the demo tab follows the day/night theme
+  // like every other tab, rather than being forced into night mode.
+  const chrome: PaddockTheme = t;
   const styles = useMemo(() => makeStyles(chrome, bottomPad), [chrome, bottomPad]);
 
   // System back: other tabs → Record; from Record, default behaviour (app

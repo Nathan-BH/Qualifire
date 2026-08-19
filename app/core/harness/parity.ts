@@ -23,7 +23,10 @@ const DATA = process.argv[2] ?? path.resolve(import.meta.dirname, '../../../data
 const PY_CSV = process.argv[3] ?? '/tmp/parity/py_sector_times.csv';
 const OUT_DIR = path.dirname(PY_CSV);
 
-const TRACKS: Record<TrackId, [string, string]> = {
+// Cycle 020: TrackId gained MorningB (a single-ride reference, not a
+// medoid) — this parity harness still only handles the three
+// parity-anchored, multi-ride tracks it always has.
+const TRACKS: Record<Exclude<TrackId, 'MorningB'>, [string, string]> = {
   Morning: ['home2work', 'main'],
   EveningA: ['work2home', 'A'],
   EveningB: ['work2home', 'B'],
@@ -62,7 +65,7 @@ const index = loadIndex();
 const tsRows: string[] = ['track,ride,sector,t_a,t_b,raw_s,stopped_s,moving_s,flag'];
 const perTrack = new Map<TrackId, { ref: RefLine; rides: RideAnalysis[] }>();
 
-for (const track of Object.keys(TRACKS) as TrackId[]) {
+for (const track of Object.keys(TRACKS) as Exclude<TrackId, 'MorningB'>[]) {
   const [route, variant] = TRACKS[track];
   const files = (index.get(`${route}|${variant}`) ?? []).slice().sort();
   const rides: RidePoints[] = files.map((f) =>

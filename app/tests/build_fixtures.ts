@@ -30,14 +30,17 @@ import {
 const DATA = process.argv[2] ?? path.resolve(import.meta.dirname, '../../data');
 const PY_CSV = process.argv[3] ?? '/tmp/parity/py_sector_times.csv';
 
-const TRACKS: Record<TrackId, [string, string]> = {
+// Cycle 020: TrackId gained MorningB (a single-ride reference built by
+// tests/build_track_ref.ts, not a medoid) — this builder still only handles
+// the three parity-anchored, multi-ride tracks.
+const TRACKS: Record<Exclude<TrackId, 'MorningB'>, [string, string]> = {
   Morning: ['home2work', 'main'],
   EveningA: ['work2home', 'A'],
   EveningB: ['work2home', 'B'],
 };
 
 /** PARITY.md ground truth — the builder refuses to emit refs that disagree. */
-const PARITY_REFS: Record<TrackId, { medoid: string; length: number }> = {
+const PARITY_REFS: Record<Exclude<TrackId, 'MorningB'>, { medoid: string; length: number }> = {
   Morning: { medoid: '20260430-1208-home2work-18317063653', length: 5651.278 },
   EveningA: { medoid: '20260724-1838-work2home-19448004625', length: 5556.478 },
   EveningB: { medoid: '20260612-2223-work2home-18895067518', length: 5837.910 },
@@ -184,7 +187,7 @@ console.log(py ? `python parity dump found: ${PY_CSV}` : `NOTE: no python parity
 const refs: Partial<RefsFile['tracks']> = {};
 const perTrack = new Map<TrackId, { ref: RefLine; rides: Analyzed[]; medoid: string }>();
 
-for (const track of Object.keys(TRACKS) as TrackId[]) {
+for (const track of Object.keys(TRACKS) as Exclude<TrackId, 'MorningB'>[]) {
   const [route, variant] = TRACKS[track];
   const files = (index.get(`${route}|${variant}`) ?? []).slice().sort();
   const rides: RidePoints[] = files.map((f) =>
@@ -305,12 +308,25 @@ function analyzeOfflineS(fixes: FixtureFixes, refLine: RefLine): Float64Array {
 
 for (const f of fixtures) writeFixture(f);
 
+// Cycle 020: refs.json also carries non-parity tracks (MorningB, written by
+// tests/build_track_ref.ts). Merge them back in so a rebuild never silently
+// drops a track the live engine's TRACK_IDS depends on.
+const refsPath = path.join(FIXTURES_DIR, 'refs.json');
+const prior: Partial<RefsFile> = fs.existsSync(refsPath)
+  ? (JSON.parse(fs.readFileSync(refsPath, 'utf8')) as RefsFile) : {};
+const keptTracks = Object.fromEntries(
+  Object.entries(prior.tracks ?? {}).filter(([id]) => !(id in TRACKS)),
+);
+const keptChecks = (prior.builderChecks ?? []).filter((c) => c.name.startsWith('build_track_ref'));
 const refsOut: RefsFile = {
   generated: new Date().toISOString(),
-  builderChecks: failures.length === 0
-    ? [{ name: 'all build-time checks', pass: true, detail: 'medoids+lengths match PARITY.md; python rows verified where embedded' }]
-    : failures.map((m) => ({ name: 'build-time check', pass: false, detail: m })),
-  tracks: refs as RefsFile['tracks'],
+  builderChecks: [
+    ...(failures.length === 0
+      ? [{ name: 'all build-time checks', pass: true, detail: 'medoids+lengths match PARITY.md; python rows verified where embedded' }]
+      : failures.map((m) => ({ name: 'build-time check', pass: false, detail: m }))),
+    ...keptChecks,
+  ],
+  tracks: { ...keptTracks, ...refs } as RefsFile['tracks'],
 };
 fs.writeFileSync(path.join(FIXTURES_DIR, 'refs.json'), JSON.stringify(refsOut) + '\n');
 

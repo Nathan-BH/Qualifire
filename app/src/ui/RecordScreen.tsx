@@ -10,6 +10,9 @@
  * renders ONLY when a tower source exists — B-28 UNBUILT, so the stub
  * returns null and nothing extra appears (see live/towerSource.ts).
  * No benchmark store yet → every clean sector/lap is NEUTRAL, deltas blank.
+ * Cycle 020 (Nathan 2026-08-19): race mode is a full-height column — map on
+ * top (≈half the screen), clock, sectors, status, PAUSE→RESUME/END at the
+ * bottom.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -104,6 +107,11 @@ export default function RecordScreen() {
   const [live, setLive] = useState<LiveEngineState>(liveEngine.getState());
   const [showLap, setShowLap] = useState(false);
   const [held, setHeld] = useState(false); // manual red-light hold (§18)
+  // PAUSE → RESUME | END (Cycle 020, Nathan 2026-08-19): an accidental-stop
+  // guard, NOT a real pause — the recording service and lap clock keep
+  // running underneath (D-042: raw time is the truth; no engine or location
+  // changes happen here).
+  const [pauseMenu, setPauseMenu] = useState(false);
   // Start flow (§21): where from, where to. Detected-or-picked; the ride still
   // scores against whatever road is actually ridden (§8a: the pick is intent).
   const [from, setFrom] = useState('home');
@@ -197,6 +205,7 @@ export default function RecordScreen() {
     // otherwise the map could read stationary for a moment at the very start.
     lastMovedRef.current = null;
     lastFixRef.current = null;
+    setPauseMenu(false);
     try {
       const outcome = await ensurePermissions();
       if (outcome === 'denied' || outcome === 'services-off') {
@@ -215,7 +224,7 @@ export default function RecordScreen() {
     }
   }, []);
 
-  const onStop = useCallback(async () => {
+  const onEnd = useCallback(async () => {
     setBusy(true);
     try {
       rememberRide(liveEngine.getState()); // hand the finished ride to Result
@@ -223,6 +232,7 @@ export default function RecordScreen() {
       setSession(null);
       setRecovered(false);
       setLastSummary(sum);
+      setPauseMenu(false);
     } catch (e) {
       Alert.alert('Could not stop cleanly', e instanceof Error ? e.message : String(e));
     } finally {
@@ -334,20 +344,10 @@ export default function RecordScreen() {
   const pickedRouteRef = useRef<Route | null>(null);
   pickedRouteRef.current = pickedRoute;
 
-  return (
-    // Race mode (BRAND P1): recording switches to the theme's race surface.
-    <ScrollView
-      style={[styles.scroll, recording && { backgroundColor: t.race.bg }]}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Theme toggle — settings-lite; hidden while recording (inert surface). */}
-      {!recording && (
-        <Pressable style={styles.modePill} onPress={toggleMode}>
-          <Text style={styles.modePillText}>{mode === 'daylight' ? '☾ night' : '☀ day'}</Text>
-        </Pressable>
-      )}
-      {/* Problem states */}
+  // Shared between both branches below — unchanged position/behaviour, just
+  // no longer duplicated between an idle ScrollView and a recording column.
+  const problemStates = (
+    <>
       {problem === 'services-off' && (
         <Text style={styles.warn}>
           Location (GPS) is turned off on this phone. Enable it in quick settings, then press
@@ -375,35 +375,29 @@ export default function RecordScreen() {
           </Pressable>
         </View>
       )}
+    </>
+  );
 
-      {/* Live readout */}
-      {recording ? (
-        <View style={styles.readoutLive}>
-          {recovered && (
-            <Text style={styles.recovered}>
-              Recovered after relaunch — still recording. Counter shows fixes since relaunch;
-              nothing was lost on disk.
-            </Text>
-          )}
-          {/* LIVE surface v2 (LAYOUT §2/§2a) — real engine feed, real clock:
-              rate-1 timebase anchored at recording start (whole-ride elapsed,
-              per Nathan's lap-clock ruling). posChip is null until the B-28
-              benchmark/ride-history store exists — no chip renders, never a
-              fake rank. */}
-          <LiveSectorPane
-            vm={viewModelFromEngine(
-              live,
-              realTimebase(session.startedAtMs),
-              getLiveTowerPosition(live), // real position once the lap lands
-              tierOf,
-            )}
-            showLap={showLap}
-          />
-          {/* B-51: the map lives BELOW the sector strip now — a ribbon under
-              the clock/strip row, not a headline element. Slim (120) while
-              actually moving/stopped so it stays clearly subordinate to the
-              clock (D-027); it grows back to 190 once FINISH releases it. */}
-          {settings.liveMap ? (
+  // Cycle 020 (Nathan 2026-08-19): while recording, do not use the centred
+  // idle ScrollView — a full-height column instead, so the map/clock/status/
+  // PAUSE fill the tab edge to edge (no centring, no blank bands). The idle
+  // screen (below) is unchanged.
+  if (session) {
+    return (
+      <View style={styles.raceColumn}>
+        {problemStates}
+        {recovered && (
+          <Text style={styles.recovered}>
+            Recovered after relaunch — still recording. Counter shows fixes since relaunch;
+            nothing was lost on disk.
+          </Text>
+        )}
+        {/* The live map, big, at the top (Cycle 020) — was a slim ribbon below
+            the clock/strip; Nathan's ruling overrules B-51's "subordinate
+            ribbon" layout for race mode. flex:1 spacer keeps the rest pinned
+            to the bottom even when the map is switched off. */}
+        {settings.liveMap ? (
+          <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch' }}>
             <RouteMapView
               routeId={live.track ?? rideRouteHint}
               lat={status.lastLat}
@@ -412,147 +406,198 @@ export default function RecordScreen() {
               gateColours={gateColours}
               variant="live"
               liveState={live.phase === 'finished' ? 'finished' : (stationary ? 'stopped' : 'moving')}
-              height={live.phase === 'finished' ? 190 : 120}
+              fill
             />
-          ) : null}
-          {/* One rotating status slot (IDEAS §24, 2026-08-16): route / fixes /
-              GPS cycle every 6 s instead of stacking three lines. Warnings
-              (storage errors) stay permanent below — never rotated away. */}
-          <Text style={styles.trackLine}>{statusLine}</Text>
-          {settings.redLight === 'button' && (
-            <Pressable
-              style={[styles.redFlag, held && { opacity: 0.6 }]}
-              onPress={() => setHeld((h) => !h)}
-            >
-              <Text style={styles.redFlagText}>
-                {held ? 'GO - RELEASE CLOCK' : 'RED LIGHT - HOLD CLOCK'}
-              </Text>
-              <Text style={styles.stopSlimSub}>
-                self-reported stop - the measured clock keeps its own truth
-              </Text>
-            </Pressable>
-          )}
-          {status.storageErrors > 0 && (
-            <Text style={styles.warn}>
-              {status.storageErrors} storage errors — last: {status.lastError}
-            </Text>
-          )}
-        </View>
-      ) : (
-        <View style={styles.readout}>
-          {/* The mark, measured off product/brand/logos/qualifire_logo_1_gate_q.png
-              rather than eyeballed: on a 512 canvas the ring is 309 px across
-              with a 34 px stroke, and the slash is a 238 px diagonal 36 px thick
-              whose bbox starts at the ring's centre — a Q's tail, not a bar
-              through the whole mark. Scaled here to a 122 px wrap. */}
-          <View style={styles.logoWrap}>
-            <View style={styles.logoRing} />
-            <View style={styles.logoSlash} />
           </View>
-          <Text style={styles.appTitle}>Qualifire</Text>
-          {/* B-51: at the rack, before START — real pannable streets, the
-              candidate route (whichever way/route is picked so far; falls
-              back to 'Morning' inside RouteMapView when nothing is picked
-              yet, which is acceptable as the candidate). */}
-          {settings.liveMap ? (
-            <View style={{ alignSelf: 'stretch' }}>
-              <RouteMapView
-                routeId={pickedRoute?.refLineId ?? null}
-                lat={status.lastLat}
-                lon={status.lastLon}
-                zoom={1}
-                showRider
-                variant="live"
-                liveState="prestart"
-                height={200}
-              />
-            </View>
-          ) : null}
-          <View style={styles.startFlow}>
-            <Text style={styles.flowLabel}>
-              {settings.startMode === 'auto'
-                ? (detected ? 'DETECTED START' : 'START NOT DETECTED — PICK ONE')
-                : 'STARTING FROM'}
-            </Text>
-            <View style={styles.pillRow}>
-              {startable.map((l) => (
-                <Pressable key={l.id} onPress={() => setFrom(l.id)}
-                  style={[styles.pill, fromId === l.id && styles.pillOn]}>
-                  <Text style={[styles.pillText, fromId === l.id && styles.pillTextOn]}>
-                    {l.label}{detected?.id === l.id ? ' ✓' : ''}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-            <Text style={styles.flowLabel}>GOING TO</Text>
-            <View style={styles.pillRow}>
-              {startable.filter((l) => l.id !== fromId).map((l) => (
-                <Pressable key={l.id} onPress={() => setTo(l.id)}
-                  style={[styles.pill, to === l.id && styles.pillOn]}>
-                  <Text style={[styles.pillText, to === l.id && styles.pillTextOn]}>{l.label}</Text>
-                </Pressable>
-              ))}
-            </View>
-            {way && wayRoutes.length > 1 ? (
-              <>
-                <Text style={styles.flowLabel}>WHICH ROUTE TODAY?</Text>
-                <View style={styles.pillRow}>
-                  {wayRoutes.map((r) => (
-                    <Pressable key={r.id} onPress={() => setRoutePick({ wayId: way.id, routeId: r.id })}
-                      style={[styles.pill, pickedRoute?.id === r.id && styles.pillOn]}>
-                      <Text style={[styles.pillText, pickedRoute?.id === r.id && styles.pillTextOn]}>
-                        {routeLabel(r.id)}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-                <Text style={styles.sub}>
-                  the pick is intent — ride a different road and the ride scores as the road you actually took (§8a)
-                </Text>
-              </>
-            ) : null}
-            <Text style={styles.sub}>
-              {!way
-                ? 'no route known for this pair yet — the ride records, but nothing is scored'
-                : ghostCount > 0
-                  ? `${ghostCount} rides found — you are racing ${ghostCount} ghosts`
-                  : 'no history on this way yet — nothing to race'}
-            </Text>
-          </View>
-          {lastSummary ? (
-            <Text style={styles.sub}>
-              Ride saved: {lastSummary.nFixes} fixes,{' '}
-              {fmtElapsed(lastSummary.endMs - lastSummary.startMs)}. Find it in Rides.
-            </Text>
-          ) : (
-            <Text style={styles.sub}>Ready to record.</Text>
+        ) : (
+          <View style={{ flex: 1 }} />
+        )}
+        {/* LIVE surface v2 (LAYOUT §2/§2a) — real engine feed, real clock:
+            rate-1 timebase anchored at recording start (whole-ride elapsed,
+            per Nathan's lap-clock ruling). posChip is null until the B-28
+            benchmark/ride-history store exists — no chip renders, never a
+            fake rank. */}
+        <LiveSectorPane
+          vm={viewModelFromEngine(
+            live,
+            realTimebase(session.startedAtMs),
+            getLiveTowerPosition(live), // real position once the lap lands
+            tierOf,
           )}
-        </View>
-      )}
-
-      {/* START stays the big slab; STOP shrinks to a slim bar (IDEAS §24) —
-          recording is the live surface's moment, not the button's. Amber, no red (D-013). */}
-      {recording ? (
-        <Pressable
-          style={[styles.stopSlim, busy && styles.busy]}
-          disabled={busy}
-          onPress={onStop}
-        >
-          <Text style={styles.stopSlimText}>STOP</Text>
-          <Text style={styles.stopSlimSub}>ends & saves</Text>
-        </Pressable>
-      ) : (
-        <Pressable
-          style={[styles.bigBtn, styles.startYellow, busy && styles.busy]}
-          disabled={busy}
-          onPress={onStart}
-        >
-          <Text style={[styles.bigBtnText, styles.startText]}>START</Text>
-          <Text style={[styles.bigBtnSub, styles.startSub]}>
-            records the ride · screen can go off
+          showLap={showLap}
+        />
+        {/* One rotating status slot (IDEAS §24, 2026-08-16): route / fixes /
+            GPS cycle every 6 s instead of stacking three lines. Warnings
+            (storage errors) stay permanent below — never rotated away. */}
+        <Text style={styles.trackLine}>{statusLine}</Text>
+        {settings.redLight === 'button' && (
+          <Pressable
+            style={[styles.redFlag, held && { opacity: 0.6 }]}
+            onPress={() => setHeld((h) => !h)}
+          >
+            <Text style={styles.redFlagText}>
+              {held ? 'GO - RELEASE CLOCK' : 'RED LIGHT - HOLD CLOCK'}
+            </Text>
+            <Text style={styles.stopSlimSub}>
+              self-reported stop - the measured clock keeps its own truth
+            </Text>
+          </Pressable>
+        )}
+        {status.storageErrors > 0 && (
+          <Text style={styles.warn}>
+            {status.storageErrors} storage errors — last: {status.lastError}
           </Text>
-        </Pressable>
-      )}
+        )}
+        {/* PAUSE → RESUME | END (Cycle 020): a safety catch, not a real pause
+            — the recording service and lap clock keep running underneath
+            (D-042). Amber, no red (D-013). */}
+        {!pauseMenu ? (
+          <Pressable
+            style={[styles.stopSlim, busy && styles.busy]}
+            disabled={busy}
+            onPress={() => setPauseMenu(true)}
+          >
+            <Text style={styles.stopSlimText}>PAUSE</Text>
+            <Text style={styles.stopSlimSub}>recording continues · resume or end</Text>
+          </Pressable>
+        ) : (
+          <View style={{ flexDirection: 'row', gap: 10, alignSelf: 'stretch' }}>
+            <Pressable
+              style={[styles.stopSlim, { flex: 1 }, busy && styles.busy]}
+              disabled={busy}
+              onPress={() => setPauseMenu(false)}
+            >
+              <Text style={styles.stopSlimText}>RESUME</Text>
+              <Text style={styles.stopSlimSub}>back to the ride</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.stopSlim, { flex: 1 }, busy && styles.busy]}
+              disabled={busy}
+              onPress={onEnd}
+            >
+              <Text style={styles.stopSlimText}>END</Text>
+              <Text style={styles.stopSlimSub}>ends & saves</Text>
+            </Pressable>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.content}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Theme toggle — settings-lite; hidden while recording (inert surface). */}
+      <Pressable style={styles.modePill} onPress={toggleMode}>
+        <Text style={styles.modePillText}>{mode === 'daylight' ? '☾ night' : '☀ day'}</Text>
+      </Pressable>
+      {problemStates}
+
+      {/* Idle readout */}
+      <View style={styles.readout}>
+        {/* The mark, measured off product/brand/logos/qualifire_logo_1_gate_q.png
+            rather than eyeballed: on a 512 canvas the ring is 309 px across
+            with a 34 px stroke, and the slash is a 238 px diagonal 36 px thick
+            whose bbox starts at the ring's centre — a Q's tail, not a bar
+            through the whole mark. Scaled here to a 122 px wrap. */}
+        <View style={styles.logoWrap}>
+          <View style={styles.logoRing} />
+          <View style={styles.logoSlash} />
+        </View>
+        <Text style={styles.appTitle}>Qualifire</Text>
+        {/* B-51: at the rack, before START — real pannable streets, the
+            candidate route (whichever way/route is picked so far; falls
+            back to 'Morning' inside RouteMapView when nothing is picked
+            yet, which is acceptable as the candidate). */}
+        {settings.liveMap ? (
+          <View style={{ alignSelf: 'stretch' }}>
+            <RouteMapView
+              routeId={pickedRoute?.refLineId ?? null}
+              lat={status.lastLat}
+              lon={status.lastLon}
+              zoom={1}
+              showRider
+              variant="live"
+              liveState="prestart"
+              height={200}
+            />
+          </View>
+        ) : null}
+        <View style={styles.startFlow}>
+          <Text style={styles.flowLabel}>
+            {settings.startMode === 'auto'
+              ? (detected ? 'DETECTED START' : 'START NOT DETECTED — PICK ONE')
+              : 'STARTING FROM'}
+          </Text>
+          <View style={styles.pillRow}>
+            {startable.map((l) => (
+              <Pressable key={l.id} onPress={() => setFrom(l.id)}
+                style={[styles.pill, fromId === l.id && styles.pillOn]}>
+                <Text style={[styles.pillText, fromId === l.id && styles.pillTextOn]}>
+                  {l.label}{detected?.id === l.id ? ' ✓' : ''}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Text style={styles.flowLabel}>GOING TO</Text>
+          <View style={styles.pillRow}>
+            {startable.filter((l) => l.id !== fromId).map((l) => (
+              <Pressable key={l.id} onPress={() => setTo(l.id)}
+                style={[styles.pill, to === l.id && styles.pillOn]}>
+                <Text style={[styles.pillText, to === l.id && styles.pillTextOn]}>{l.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+          {way && wayRoutes.length > 1 ? (
+            <>
+              <Text style={styles.flowLabel}>WHICH ROUTE TODAY?</Text>
+              <View style={styles.pillRow}>
+                {wayRoutes.map((r) => (
+                  <Pressable key={r.id} onPress={() => setRoutePick({ wayId: way.id, routeId: r.id })}
+                    style={[styles.pill, pickedRoute?.id === r.id && styles.pillOn]}>
+                    <Text style={[styles.pillText, pickedRoute?.id === r.id && styles.pillTextOn]}>
+                      {routeLabel(r.id)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={styles.sub}>
+                the pick is intent — ride a different road and the ride scores as the road you actually took (§8a)
+              </Text>
+            </>
+          ) : null}
+          <Text style={styles.sub}>
+            {!way
+              ? 'no route known for this pair yet — the ride records, but nothing is scored'
+              : ghostCount > 0
+                ? `${ghostCount} rides found — you are racing ${ghostCount} ghosts`
+                : 'no history on this way yet — nothing to race'}
+          </Text>
+        </View>
+        {lastSummary ? (
+          <Text style={styles.sub}>
+            Ride saved: {lastSummary.nFixes} fixes,{' '}
+            {fmtElapsed(lastSummary.endMs - lastSummary.startMs)}. Find it in Rides.
+          </Text>
+        ) : (
+          <Text style={styles.sub}>Ready to record.</Text>
+        )}
+      </View>
+
+      {/* START stays the big slab (IDEAS §24). Amber, no red (D-013). */}
+      <Pressable
+        style={[styles.bigBtn, styles.startYellow, busy && styles.busy]}
+        disabled={busy}
+        onPress={onStart}
+      >
+        <Text style={[styles.bigBtnText, styles.startText]}>START</Text>
+        <Text style={[styles.bigBtnSub, styles.startSub]}>
+          records the ride · screen can go off
+        </Text>
+      </Pressable>
 
     </ScrollView>
   );
@@ -577,6 +622,12 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
     paddingVertical: 6,
   },
   modePillText: { color: t.text2, fontSize: 12 },
+  // Cycle 020 (Nathan 2026-08-19): race mode's full-height column — no
+  // centring, no blank bands; fills the tab area edge to edge.
+  raceColumn: {
+    flex: 1, alignSelf: 'stretch', backgroundColor: t.race.bg,
+    paddingHorizontal: 12, paddingTop: 8, paddingBottom: 10, gap: 8,
+  },
   readout: { alignItems: 'center', gap: 6 },
   appTitle: {
     color: t.text,
@@ -622,6 +673,7 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
+    textAlign: 'center',
     marginTop: 10,
   },
   counter: {

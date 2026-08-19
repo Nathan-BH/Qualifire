@@ -291,3 +291,19 @@ note, and anything phrased as "since build 3" against the standalone app.
   structurally not build 3's failure recurring.
 - **"App not installed" / signature mismatch.** The keystore was regenerated.
   See section 4.
+
+## 7. Standalone commute APK — "Qualifire Preview" (D-043, 2026-08-19)
+
+Why: the dev client only holds its JS in memory. If Android evicts the app during the day and the PC/Metro is unreachable in the evening, it cannot reload — that is what happened on 2026-08-18. The preview profile bakes the JS into the APK: no PC, no Metro, no network needed, survives eviction.
+
+Rule of thumb: **what is in `app/` at the moment you run the command is what rides.** Commit first (GitHub Desktop) so `git status` is clean and you know exactly which tree you froze; rebuild after any change you want on the bike.
+
+```powershell
+cd "C:\Users\natha\Claude personal projects\Qualifire\scripts"
+.\build4.ps1 -BuildProfile preview -Standalone -DryRun   # preflight only
+.\build4.ps1 -BuildProfile preview -Standalone           # ~10–20 min on EAS; reuse the keystore
+```
+
+Install over the existing "Qualifire Preview" icon (same package id, same keystore → in-place update; settings/rides of the OLD preview app are kept, the dev client is untouched). First open: grant location "Allow all the time" + notifications again if asked; Settings → battery → Unrestricted. Then the usual acceptance steps.
+
+Phone-side hygiene that also helps the dev client: battery Unrestricted, lock the app in Recents, don't swipe it away.

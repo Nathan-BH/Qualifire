@@ -15,15 +15,23 @@
  *
  * B-51 (per-surface contract, 2026-08-17): the same map now serves TWO
  * personalities, picked by `variant`/`liveState`/`showRider` —
- *  - a locked LIVE ribbon while actually riding (moving/stopped): all
- *    gestures off, zoom bar hidden, labels stripped, course-up bearing —
- *    exactly today's behaviour, D-006 "no controls while moving";
+ *  - a locked LIVE ribbon while actually riding (moving/stopped): labels
+ *    stripped, course-up bearing — exactly today's behaviour, D-006 "no
+ *    controls while moving" (relaxed for map GESTURES by Nathan 2026-08-19,
+ *    Cycle 020 — see below);
  *  - a free BROWSE map everywhere else (before start, at the finish, and on
  *    the Routes/Result screens): pan/zoom/rotate-off gestures on, zoom bar
  *    visible, labels on, bearing 0 (or held, at the finish).
  * `stopped` (a red light) additionally dims the frame — a light is not a
  * finish, the map must not loosen, but it should look paused rather than
  * "still fully live and just not moving".
+ *
+ * Cycle 020 (Nathan 2026-08-19): the race-mode map must be draggable and
+ * zoomable like the RECORD tab's preview map. Pan/pinch-zoom gestures and
+ * the zoom bar are now on unconditionally (D-006 relaxed for gestures only —
+ * labels/dimming/course-up above are untouched); dragging or pinching flips
+ * `mode` to 'free' so a new GPS fix never yanks the camera back, and a `fill`
+ * prop lets the map fill its parent instead of taking a fixed height.
  */
 import { useEffect, useRef, useState } from 'react';
 import { Image, LayoutChangeEvent, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -36,6 +44,13 @@ import { patchMapStyle } from './routeMapStyle.ts';
 import { colors, radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
 import type { CameraStop } from '@maplibre/maplibre-react-native';
+
+/** Shape of the MapLibre `onRegionWillChange` event we actually read.
+ * Typed structurally rather than importing `ViewStateChangeEvent` (Cycle
+ * 020: no node_modules in this sandbox to confirm the root-level re-export
+ * resolves; this is the brief's documented fallback — narrow but correct
+ * for what we use). */
+type RegionWillChangeEvent = { nativeEvent: { userInteraction: boolean } };
 
 // Lazy native-module load, at module scope: the dev client installed before
 // build 4 has no MapLibre native module, so a bare `import` would crash the
@@ -88,6 +103,9 @@ type RouteMapProps = {
   /** 1 = whole route, 4 = tight live crop */
   zoom?: number;
   height?: number;
+  /** fill the parent instead of a fixed height — race mode (Cycle 020,
+   * Nathan 2026-08-19). Takes precedence over `height` when true. */
+  fill?: boolean;
   /** colour per crossed gate, index 0 = START. Gates ahead stay dark; a gate
    * only takes a colour once its sector has actually been scored. */
   gateColours?: (string | null)[];
@@ -191,11 +209,16 @@ function MapLibreRouteMap(props: RouteMapProps & {
     : liveState === 'finished'
       ? 'follow' // released back to the zoom bar, not re-fit to the whole route
       : (props.zoom ?? 4) <= 1 ? 'fit' : 'follow';
-  const [mode, setMode] = useState<'follow' | 'fit'>(initialMode);
+  const [mode, setMode] = useState<'follow' | 'fit' | 'free'>(initialMode);
+  // Cycle 020 (Nathan 2026-08-19): a red light flips liveState
+  // moving<->stopped without the ride actually changing phase — collapsing
+  // both onto the same key keeps the mode-reset effect below from snapping a
+  // dragged ('free') map back to follow every time the rider stops/starts.
+  const phaseKey = liveState === 'stopped' ? 'moving' : liveState;
   useEffect(() => {
     setMode(initialMode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.zoom, variant, liveState, props.routeId]);
+  }, [props.zoom, variant, phaseKey, props.routeId]);
 
   const [camZoom, setCamZoom] = useState(16);
 
@@ -271,18 +294,23 @@ function MapLibreRouteMap(props: RouteMapProps & {
       ? [(bounds.minLon + bounds.maxLon) / 2, (bounds.minLat + bounds.maxLat) / 2]
       : [asset.gates[0].lon, asset.gates[0].lat];
 
-  const cameraProps: Partial<CameraStop> = mode === 'fit' && boundsTuple
-    ? {
-      bounds: boundsTuple,
-      bearing: 0,
-      padding: { top: 20, right: 20, bottom: 20, left: 20 },
-    }
-    : { center: centre, zoom: camZoom, bearing: effectiveBearing, pitch: 0, duration: 500 };
+  // 'free' (Cycle 020, after a user drag/pinch): no center/zoom/bounds/bearing
+  // at all, so a new GPS fix never yanks the camera back under the rider.
+  const cameraProps: Partial<CameraStop> = mode === 'free'
+    ? {}
+    : mode === 'fit' && boundsTuple
+      ? {
+        bounds: boundsTuple,
+        bearing: 0,
+        padding: { top: 20, right: 20, bottom: 20, left: 20 },
+      }
+      : { center: centre, zoom: camZoom, bearing: effectiveBearing, pitch: 0, duration: 500 };
 
   return (
     <View style={[
       st.frame,
-      { height: h, backgroundColor: t.race.bg, borderColor: t.cardBorder },
+      props.fill ? { flex: 1, alignSelf: 'stretch' } : { height: h },
+      { backgroundColor: t.race.bg, borderColor: t.cardBorder },
       dimmed && st.dimmedFrame,
     ]}>
       {/* mapStyle is `unknown` on purpose — routeMapStyle.ts stays decoupled
@@ -292,13 +320,21 @@ function MapLibreRouteMap(props: RouteMapProps & {
         mapStyle={mapStyle as never}
         style={{ flex: 1 }}
         onDidFailLoadingMap={onMapFailed}
+        // Cycle 020 (Nathan 2026-08-19): D-006 "no controls while moving" is
+        // relaxed for map GESTURES — the race-mode map must be draggable and
+        // zoomable like the RECORD tab's preview map. Labels stay hidden and
+        // the ribbon stays dimmed while moving/stopped (hideLabels/dimmed
+        // above, unchanged); only pan/zoom gestures and the zoom bar open up.
+        onRegionWillChange={(e: RegionWillChangeEvent) => {
+          if (e?.nativeEvent?.userInteraction) setMode('free');
+        }}
         attribution={false}
         logo={false}
         compass={false}
-        dragPan={unlocked}
-        touchZoom={unlocked}
-        doubleTapZoom={unlocked}
-        doubleTapHoldZoom={unlocked}
+        dragPan={true}
+        touchZoom={true}
+        doubleTapZoom={true}
+        doubleTapHoldZoom={true}
         touchRotate={false}
         touchPitch={false}
       >
@@ -332,22 +368,28 @@ function MapLibreRouteMap(props: RouteMapProps & {
           </M.GeoJSONSource>
         ) : null}
       </M.Map>
-      {unlocked ? (
-        <View style={st.zoomBar}>
+      {/* Cycle 020: the zoom bar is always visible now, not gated on
+          `unlocked` — the race-mode ribbon is draggable/zoomable too. */}
+      <View style={st.zoomBar}>
+        <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
+          onPress={() => { setCamZoom((z) => Math.min(18, z + 1)); setMode('follow'); }}>
+          <Text style={[st.zoomText, { color: t.text }]}>+</Text>
+        </Pressable>
+        <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
+          onPress={() => { setCamZoom((z) => Math.max(11, z - 1)); setMode('follow'); }}>
+          <Text style={[st.zoomText, { color: t.text }]}>−</Text>
+        </Pressable>
+        <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
+          onPress={() => setMode('fit')}>
+          <Text style={[st.zoomText, { color: t.textDim, fontSize: 10.5 }]}>FIT</Text>
+        </Pressable>
+        {showRider ? (
           <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
-            onPress={() => { setCamZoom((z) => Math.min(18, z + 1)); setMode('follow'); }}>
-            <Text style={[st.zoomText, { color: t.text }]}>+</Text>
+            onPress={() => setMode('follow')}>
+            <Text style={[st.zoomText, { color: t.textDim, fontSize: 10.5 }]}>ME</Text>
           </Pressable>
-          <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
-            onPress={() => { setCamZoom((z) => Math.max(11, z - 1)); setMode('follow'); }}>
-            <Text style={[st.zoomText, { color: t.text }]}>−</Text>
-          </Pressable>
-          <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
-            onPress={() => setMode('fit')}>
-            <Text style={[st.zoomText, { color: t.textDim, fontSize: 10.5 }]}>FIT</Text>
-          </Pressable>
-        </View>
-      ) : null}
+        ) : null}
+      </View>
       <Credit rung="maplibre" interactive={interactiveCredit} />
       {off ? (
         <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card }]}>OFF ROUTE</Text>
@@ -387,8 +429,8 @@ function PngRouteMap(props: RouteMapProps) {
   const liveState = props.liveState ?? 'moving';
   const showRider = props.showRider ?? true;
   // B-51: this rung is not rebuilt for the full behaviour matrix — it only
-  // honours showRider, the stopped-dim, and hiding the zoom bar while the
-  // live ribbon is locked (design contract A, PNG rung).
+  // honours showRider, the stopped-dim and the non-interactive credit while
+  // the live ribbon is locked (zoom bar always shown since cycle 020).
   const locked = variant === 'live' && (liveState === 'moving' || liveState === 'stopped');
   const dimmed = variant === 'live' && liveState === 'stopped';
   const interactiveCredit = !locked;
@@ -415,7 +457,8 @@ function PngRouteMap(props: RouteMapProps) {
     <View onLayout={onLayout}
       style={[
         st.frame,
-        { height: h, backgroundColor: t.race.bg, borderColor: t.cardBorder },
+        props.fill ? { flex: 1, alignSelf: 'stretch' } : { height: h },
+        { backgroundColor: t.race.bg, borderColor: t.cardBorder },
         dimmed && st.dimmedFrame,
       ]}>
       {crop ? (
@@ -477,22 +520,22 @@ function PngRouteMap(props: RouteMapProps) {
           ) : null}
         </>
       ) : null}
-      {!locked ? (
-        <View style={st.zoomBar}>
-          <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
-            onPress={() => setZoom((z) => Math.min(12, z * 1.6))}>
-            <Text style={[st.zoomText, { color: t.text }]}>+</Text>
-          </Pressable>
-          <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
-            onPress={() => setZoom((z) => Math.max(1, z / 1.6))}>
-            <Text style={[st.zoomText, { color: t.text }]}>−</Text>
-          </Pressable>
-          <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
-            onPress={() => setZoom(1)}>
-            <Text style={[st.zoomText, { color: t.textDim, fontSize: 10.5 }]}>FIT</Text>
-          </Pressable>
-        </View>
-      ) : null}
+      {/* Cycle 020: the zoom bar is always visible now, not gated on
+          `locked` — the race-mode ribbon is draggable/zoomable too. */}
+      <View style={st.zoomBar}>
+        <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
+          onPress={() => setZoom((z) => Math.min(12, z * 1.6))}>
+          <Text style={[st.zoomText, { color: t.text }]}>+</Text>
+        </Pressable>
+        <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
+          onPress={() => setZoom((z) => Math.max(1, z / 1.6))}>
+          <Text style={[st.zoomText, { color: t.text }]}>−</Text>
+        </Pressable>
+        <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
+          onPress={() => setZoom(1)}>
+          <Text style={[st.zoomText, { color: t.textDim, fontSize: 10.5 }]}>FIT</Text>
+        </Pressable>
+      </View>
       {imgFailed ? (
         <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card, left: undefined, right: 6, bottom: 6 }]}>
           MAP IMAGE FAILED — drawing the line
