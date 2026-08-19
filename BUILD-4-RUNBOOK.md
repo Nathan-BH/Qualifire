@@ -300,9 +300,12 @@ Rule of thumb: **what is in `app/` at the moment you run the command is what rid
 
 ```powershell
 cd "C:\Users\natha\Claude personal projects\Qualifire\scripts"
-.\build4.ps1 -BuildProfile preview -Standalone -DryRun   # preflight only
-.\build4.ps1 -BuildProfile preview -Standalone           # ~10–20 min on EAS; reuse the keystore
+powershell -ExecutionPolicy Bypass -File .\build5.ps1 -DryRun   # preflight only (wrapper = build4.ps1 -BuildProfile preview -Standalone)
+powershell -ExecutionPolicy Bypass -File .\build5.ps1           # ~10–20 min on EAS; reuse the keystore
 ```
+Nathan's PC needs the `-ExecutionPolicy Bypass` prefix every time — all build commands in this repo are written that way. Alternative: double-click `scripts\build5.cmd` (same thing, with a pause at the end); `build5.cmd dry` runs the dry run.
+
+Which app it overwrites: `-BuildProfile preview` → `eas.json` preview profile → `APP_VARIANT=preview` → `app.config.js` renames the app "Qualifire Preview" with package `com.nathanbonher.qualifire.preview`. Android updates the installed app with that same package id + signing key (the old preview icon) and leaves the dev client (`com.nathanbonher.qualifire`) untouched. This is build 5; build 4 was the dev client.
 
 Install over the existing "Qualifire Preview" icon (same package id, same keystore → in-place update; settings/rides of the OLD preview app are kept, the dev client is untouched). First open: grant location "Allow all the time" + notifications again if asked; Settings → battery → Unrestricted. Then the usual acceptance steps.
 

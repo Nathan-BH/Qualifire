@@ -24,9 +24,10 @@
     MapLibre rebuild; there is no build 5 for that.
 
         cd "C:\Users\natha\Claude personal projects\Qualifire\scripts"
-        .\build4.ps1 -DryRun    # run every check, spend nothing
-        .\build4.ps1            # run every check, then spend the build (development -- the default)
-        .\build4.ps1 -BuildProfile preview -Standalone   # standalone "Qualifire Preview" commute APK (2026-08-19)
+        powershell -ExecutionPolicy Bypass -File .\build4.ps1 -DryRun    # run every check, spend nothing
+        powershell -ExecutionPolicy Bypass -File .\build4.ps1            # run every check, then spend the build (development -- the default)
+        powershell -ExecutionPolicy Bypass -File .\build5.ps1            # standalone "Qualifire Preview" commute APK (build 5, 2026-08-19)
+    (Nathan's machine needs the -ExecutionPolicy Bypass prefix every time.)
 
     One script, two halves: PREFLIGHT (sections 0-6 -- reads only, changes
     nothing, costs no build slot) and BUILD (sections 7-8 -- ~10-20 min on
