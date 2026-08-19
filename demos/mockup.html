@@ -115,7 +115,7 @@ tr.ghost td{color:var(--dim)} tr.me td{color:var(--green);font-weight:700}
 .qf-anim-fwd #qf-ring{animation:qf-draw-ring 1.4s cubic-bezier(.2,.7,.2,1) forwards;}
 .qf-anim-fwd #qf-tail{animation:qf-draw-tail .5s ease-out forwards;animation-delay:1.15s;}
 .qf-anim-rev #qf-tail{animation:qf-undraw-tail .5s ease-in forwards;}
-.qf-anim-rev #qf-ring{animation:qf-undraw-ring 1.4s cubic-bezier(.2,.7,.2,1) forwards;animation-delay:.5s;}
+.qf-anim-rev #qf-ring{animation:qf-undraw-ring 1.4s cubic-bezier(.2,.7,.2,1) both;animation-delay:.5s;}
 @keyframes qf-draw-ring{to{stroke-dashoffset:0;}}
 @keyframes qf-draw-tail{0%{stroke-dashoffset:136;opacity:1;}100%{stroke-dashoffset:0;opacity:1;}}
 @keyframes qf-undraw-tail{0%{stroke-dashoffset:0;opacity:1;}100%{stroke-dashoffset:136;opacity:0;}}
