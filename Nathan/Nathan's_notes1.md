@@ -19,6 +19,7 @@
     * again would not go into specifics like 162 meters (1) its not always 162 meters and 2) I just wouldn't talk about it anyways) Just saying press start, do your normal route, save it and the next time you do it you have something to race for. If you have already preferred routes, load them in the app and challenge your self directly!
   * I have never been a fan of this whole colour scarcity idea so I think it should be removed entirely from our brand idea and identity.I even pushed away from the dark version and introduced different pallettes to brighten it up. Its just something claude came up with. The reason we use colours is because it is easy, intuitive and relatable to something that exists. I am happy with the current night and day designs and they could be expanded with more themes in the future as well.
   * Once you start scrolling down the site the Q and Qualifire name disappear and are never seen again. In some websites when you scroll down, they still show a fixed ribbon, we should have this with the logo, name + a "download app" or "try it out" button ?
+  * NEW ADDITION ON 20260826: have a live demo of the app on the website so people can have a feel of what it would be like.
 * I am a bit confused with demos\\ways folder:
 
   * I felt like I did a pass through all the routes it showed and annotated them as to which one I want to use but it has not stuck yet into the app the way I wanted it too.

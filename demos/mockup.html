@@ -71,6 +71,26 @@ tr.ghost td{color:var(--dim)} tr.me td{color:var(--green);font-weight:700}
 .lmtip{background:rgba(0,0,0,.72)!important;border:none!important;color:#fff!important;font-size:11px!important}
 .lmtip:before{display:none}
 .note{font-size:11.5px;color:var(--dim);border-left:2px solid var(--accent);padding-left:9px;margin-top:10px}
+/* ride-history / result accordions (Nathan 2026-08-19 — replace "fixes" list
+   and the fixed result board with expandable, human-readable rows) */
+.rowhead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;
+  border-bottom:1px solid var(--line);cursor:pointer}
+.rowhead:last-child{border-bottom:none}
+.rank{font-size:11px;letter-spacing:.5px;color:var(--dim);text-transform:uppercase;white-space:nowrap}
+.rank b{color:var(--ink);font-variant-numeric:tabular-nums}
+.chev{color:var(--dim);transition:transform .15s;flex:none}
+.chev.open{transform:rotate(90deg)}
+.detail{padding:4px 0 10px}
+.badge{display:inline-block;font-size:10px;letter-spacing:.4px;text-transform:uppercase;
+  border-radius:8px;padding:2px 7px;margin-left:6px;background:var(--purple);color:#fff}
+/* record flow — RECORD replaces START; a "full screen" armed/running state */
+.btn.record{background:#d33;color:#fff}
+.btn.record:before{content:'';display:inline-block;width:12px;height:12px;border-radius:50%;
+  background:#fff;margin-right:9px;vertical-align:-1px}
+.armed-wrap{display:flex;flex-direction:column;height:100%}
+.armed-map{flex:1 1 auto;min-height:0;border-radius:12px;overflow:hidden;margin-bottom:10px}
+.readytag{text-align:center;font-size:11.5px;letter-spacing:1.5px;text-transform:uppercase;
+  color:var(--dim);margin:2px 0 10px}
 </style></head>
 <body class="">
 <!-- launch animation (Nathan 2026-08-17) — self-contained; do not fold into
@@ -84,15 +104,25 @@ tr.ghost td{color:var(--dim)} tr.me td{color:var(--green);font-weight:700}
 #qf-launch.qf-hide{opacity:0;pointer-events:none;}
 #qf-launch .qf-mark{width:96px;height:96px;}
 #qf-launch svg{width:100%;height:100%;display:block;}
+/* Base = fully undrawn/hidden. Which way it plays is now a CLASS
+   (.qf-anim-fwd / .qf-anim-rev) toggled by qfPlayLaunch() below, so the same
+   mark can replay on RECORD (forward) and on END (reverse — Nathan
+   2026-08-19: "the yellow line gets undrawn and then the circle gets
+   undrawn as well"), not just once on cold launch. */
 #qf-ring{stroke-dasharray:742;stroke-dashoffset:742;transform-origin:256px 218px;
-  transform:rotate(-90deg);animation:qf-draw-ring 1.4s cubic-bezier(.2,.7,.2,1) forwards;}
-#qf-tail{stroke-dasharray:136;stroke-dashoffset:136;opacity:0;
-  animation:qf-draw-tail .5s ease-out forwards;animation-delay:1.15s;}
+  transform:rotate(-90deg);}
+#qf-tail{stroke-dasharray:136;stroke-dashoffset:136;opacity:0;}
+.qf-anim-fwd #qf-ring{animation:qf-draw-ring 1.4s cubic-bezier(.2,.7,.2,1) forwards;}
+.qf-anim-fwd #qf-tail{animation:qf-draw-tail .5s ease-out forwards;animation-delay:1.15s;}
+.qf-anim-rev #qf-tail{animation:qf-undraw-tail .5s ease-in forwards;}
+.qf-anim-rev #qf-ring{animation:qf-undraw-ring 1.4s cubic-bezier(.2,.7,.2,1) forwards;animation-delay:.5s;}
 @keyframes qf-draw-ring{to{stroke-dashoffset:0;}}
 @keyframes qf-draw-tail{0%{stroke-dashoffset:136;opacity:1;}100%{stroke-dashoffset:0;opacity:1;}}
+@keyframes qf-undraw-tail{0%{stroke-dashoffset:0;opacity:1;}100%{stroke-dashoffset:136;opacity:0;}}
+@keyframes qf-undraw-ring{0%{stroke-dashoffset:0;}100%{stroke-dashoffset:742;}}
 @media (prefers-reduced-motion: reduce){
-  #qf-ring{animation:none!important;stroke-dashoffset:0!important;}
-  #qf-tail{animation:none!important;stroke-dashoffset:0!important;opacity:1!important;}
+  .qf-anim-fwd #qf-ring,.qf-anim-rev #qf-ring{animation:none!important;}
+  .qf-anim-fwd #qf-tail,.qf-anim-rev #qf-tail{animation:none!important;}
 }
 </style>
 <div class="phone">
@@ -108,73 +138,189 @@ tr.ghost td{color:var(--dim)} tr.me td{color:var(--green);font-weight:700}
   </div>
 </div>
 <script>
-// launch animation (Nathan 2026-08-17): replay once on load, then fade and
-// remove itself. Reduced-motion shows the completed static mark, held
-// briefly, then fades — no draw animation.
+// launch animation (Nathan 2026-08-17, extended 2026-08-19): now a reusable
+// window.qfPlayLaunch(reverse, onDone) instead of a fire-once-on-load IIFE,
+// so RECORD (forward, mark draws) and END (reverse, mark undraws — tail
+// first, then ring, per Nathan's note) can both replay it. Still plays once
+// on cold launch, same as before. Reduced-motion shows the completed/blank
+// mark, held briefly, then fades — no draw animation either direction.
 (function(){
   var el = document.getElementById('qf-launch');
-  if(!el) return;
-  var reduced = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
-  var holdMs = reduced ? 300 : 1650; // ring 1.4s + tail delay .15s + tail .5s = 1.65s draw, matching the hero
-  setTimeout(function(){
-    el.classList.add('qf-hide');
-    setTimeout(function(){ el.style.display='none'; }, 250);
-  }, holdMs);
+  var ring = document.getElementById('qf-ring');
+  var tail = document.getElementById('qf-tail');
+  function reduced(){ return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); }
+  window.qfPlayLaunch = function(reverse, onDone){
+    if(!el || !ring || !tail){ onDone && onDone(); return; }
+    el.style.display='flex';
+    el.classList.remove('qf-hide');
+    // stop any animation-in-flight and force a reflow so replaying the same
+    // class re-triggers the keyframes instead of being a no-op.
+    ring.style.animation='none'; tail.style.animation='none';
+    void ring.offsetWidth; void tail.offsetWidth;
+    el.classList.remove('qf-anim-fwd','qf-anim-rev');
+    if(reduced()){
+      ring.style.strokeDashoffset = reverse ? '742' : '0';
+      tail.style.strokeDashoffset = reverse ? '136' : '0';
+      tail.style.opacity = reverse ? '0' : '1';
+      setTimeout(function(){
+        el.classList.add('qf-hide');
+        setTimeout(function(){ el.style.display='none'; onDone && onDone(); }, 250);
+      }, 300);
+      return;
+    }
+    ring.style.animation=''; tail.style.animation='';
+    ring.style.strokeDashoffset=''; tail.style.strokeDashoffset=''; tail.style.opacity='';
+    void el.offsetWidth;
+    el.classList.add(reverse ? 'qf-anim-rev' : 'qf-anim-fwd');
+    var holdMs = reverse ? 1900 : 1650; // fwd: ring 1.4s + tail .15s delay + .5s = 1.65s; rev: tail .5s + ring .5s delay + 1.4s = 1.9s
+    setTimeout(function(){
+      el.classList.add('qf-hide');
+      setTimeout(function(){ el.style.display='none'; onDone && onDone(); }, 250);
+    }, holdMs);
+  };
+  qfPlayLaunch(false); // the cold-launch play, same as always
 })();
 </script>
 <script>
-const D = {"sim": {"file": "20260811-0828-home2work-19691203692.gpx", "track": [[50.8365, 4.63831, 0], [50.83648, 4.63842, 3], [50.8364, 4.63852, 6], [50.83635, 4.63869, 9], [50.83627, 4.63892, 12], [50.83619, 4.63919, 15], [50.83611, 4.63944, 18], [50.83609, 4.63961, 21], [50.83617, 4.63975, 24], [50.83625, 4.63995, 27], [50.83629, 4.6402, 30], [50.8364, 4.64041, 33], [50.83652, 4.64063, 36], [50.83664, 4.64085, 39], [50.83676, 4.64106, 42], [50.83688, 4.64128, 45], [50.837, 4.64149, 48], [50.83713, 4.64172, 51], [50.83725, 4.64193, 54], [50.83737, 4.64215, 57], [50.83749, 4.64237, 60], [50.83755, 4.64261, 63], [50.83757, 4.64283, 66], [50.83769, 4.64286, 69], [50.83783, 4.64289, 72], [50.83798, 4.64291, 75], [50.8381, 4.64293, 78], [50.83818, 4.64298, 81], [50.83827, 4.64311, 84], [50.83838, 4.64324, 87], [50.83849, 4.64341, 90], [50.83863, 4.64357, 93], [50.83876, 4.64375, 96], [50.8389, 4.64391, 99], [50.83904, 4.64409, 102], [50.83917, 4.64427, 105], [50.83933, 4.6444, 108], [50.83949, 4.64446, 111], [50.83966, 4.64456, 114], [50.83982, 4.64467, 117], [50.83997, 4.64482, 120], [50.8401, 4.64502, 123], [50.84023, 4.64522, 126], [50.84037, 4.64541, 129], [50.8405, 4.6456, 132], [50.84063, 4.64579, 135], [50.84076, 4.64597, 138], [50.84089, 4.64615, 141], [50.84101, 4.64633, 144], [50.84114, 4.64652, 147], [50.84125, 4.64672, 150], [50.84137, 4.64691, 153], [50.8415, 4.6471, 156], [50.84162, 4.64729, 159], [50.84175, 4.64747, 162], [50.84187, 4.64765, 165], [50.84199, 4.64783, 168], [50.8421, 4.64802, 171], [50.84218, 4.64825, 174], [50.84218, 4.64851, 177], [50.84218, 4.64878, 180], [50.84221, 4.64903, 183], [50.84223, 4.6493, 186], [50.84226, 4.64957, 189], [50.84229, 4.64984, 192], [50.84232, 4.65011, 195], [50.84245, 4.65027, 198], [50.84261, 4.65039, 201], [50.84277, 4.65052, 204], [50.84292, 4.65068, 207], [50.84306, 4.65084, 210], [50.84321, 4.651, 213], [50.84336, 4.65118, 216], [50.84349, 4.65135, 219], [50.84363, 4.65155, 222], [50.84376, 4.65172, 225], [50.84389, 4.65191, 228], [50.84402, 4.65209, 231], [50.84416, 4.65224, 234], [50.84431, 4.65237, 237], [50.84446, 4.65252, 240], [50.8446, 4.65268, 243], [50.84474, 4.65287, 246], [50.84487, 4.65306, 249], [50.845, 4.65322, 252], [50.84513, 4.6534, 255], [50.84527, 4.65357, 258], [50.8454, 4.65373, 261], [50.84554, 4.65389, 264], [50.84567, 4.65405, 267], [50.84581, 4.65421, 270], [50.84596, 4.65434, 273], [50.84611, 4.65448, 276], [50.84625, 4.65463, 279], [50.8464, 4.65478, 282], [50.84656, 4.6549, 285], [50.84672, 4.655, 288], [50.84689, 4.65509, 291], [50.84704, 4.65523, 294], [50.8472, 4.65535, 297], [50.84736, 4.65547, 300], [50.84753, 4.65559, 303], [50.84768, 4.65571, 306], [50.84784, 4.65583, 309], [50.84801, 4.65595, 312], [50.84817, 4.65608, 315], [50.84833, 4.6562, 318], [50.84849, 4.65631, 321], [50.84866, 4.65642, 324], [50.8488, 4.65654, 327], [50.84892, 4.65674, 330], [50.84902, 4.65694, 333], [50.84913, 4.65716, 336], [50.84924, 4.65738, 339], [50.84936, 4.65759, 342], [50.84946, 4.65782, 345], [50.84958, 4.65805, 348], [50.84969, 4.65827, 351], [50.8498, 4.65848, 354], [50.84991, 4.65869, 357], [50.85002, 4.6589, 360], [50.85014, 4.65911, 363], [50.85026, 4.65934, 366], [50.85037, 4.65956, 369], [50.85048, 4.65979, 372], [50.8506, 4.66, 375], [50.85072, 4.66022, 378], [50.85083, 4.66044, 381], [50.85094, 4.66066, 384], [50.85106, 4.66087, 387], [50.85117, 4.66109, 390], [50.85129, 4.6613, 393], [50.8514, 4.66153, 396], [50.85152, 4.66175, 399], [50.85159, 4.662, 402], [50.85158, 4.66226, 405], [50.85151, 4.66253, 408], [50.85144, 4.66279, 411], [50.85137, 4.66306, 414], [50.8513, 4.66333, 417], [50.85123, 4.66359, 420], [50.85116, 4.66386, 423], [50.8511, 4.66414, 426], [50.85103, 4.66441, 429], [50.85097, 4.66468, 432], [50.8509, 4.66495, 435], [50.85081, 4.66521, 438], [50.85075, 4.66547, 441], [50.85086, 4.66568, 444], [50.85097, 4.66583, 447], [50.8517, 4.6662, 459], [50.85184, 4.66607, 462], [50.8519, 4.66581, 465], [50.85196, 4.66555, 468], [50.85203, 4.66528, 471], [50.85209, 4.66501, 474], [50.85216, 4.66474, 477], [50.85222, 4.66447, 480], [50.85229, 4.6642, 483], [50.85233, 4.66392, 486], [50.85237, 4.66364, 489], [50.85229, 4.66341, 492], [50.85229, 4.66324, 495], [50.85234, 4.66307, 498], [50.8524, 4.66286, 501], [50.85246, 4.66262, 504], [50.8525, 4.66235, 507], [50.85255, 4.66212, 510], [50.85263, 4.66188, 513], [50.85274, 4.66164, 516], [50.85286, 4.66142, 519], [50.85302, 4.66133, 522], [50.85321, 4.66136, 525], [50.85339, 4.66139, 528], [50.85355, 4.66149, 531], [50.85368, 4.66168, 534], [50.85381, 4.66187, 537], [50.85394, 4.66206, 540], [50.85404, 4.66226, 543], [50.85417, 4.66249, 546], [50.85429, 4.66268, 549], [50.85439, 4.66289, 552], [50.8545, 4.66312, 555], [50.85461, 4.66335, 558], [50.85471, 4.66361, 561], [50.85483, 4.66385, 564], [50.85497, 4.66408, 567], [50.85508, 4.66431, 570], [50.8552, 4.66454, 573], [50.85532, 4.66477, 576], [50.85544, 4.66498, 579], [50.85557, 4.66518, 582], [50.85571, 4.66537, 585], [50.85584, 4.66556, 588], [50.85596, 4.66575, 591], [50.8561, 4.66595, 594], [50.85623, 4.66615, 597], [50.85636, 4.66634, 600], [50.8565, 4.66654, 603], [50.85663, 4.66673, 606], [50.85677, 4.66693, 609], [50.85689, 4.66712, 612], [50.857, 4.66731, 615], [50.85713, 4.66752, 618], [50.85725, 4.66771, 621], [50.85738, 4.66791, 624], [50.85753, 4.66808, 627], [50.85766, 4.66829, 630], [50.85779, 4.66848, 633], [50.85793, 4.66867, 636], [50.85805, 4.66886, 639], [50.85815, 4.66902, 642], [50.85829, 4.66923, 645], [50.85842, 4.66943, 648], [50.85854, 4.6696, 651], [50.8587, 4.66982, 654], [50.85877, 4.6701, 657], [50.85876, 4.6704, 660], [50.85875, 4.67066, 663], [50.85874, 4.67104, 666], [50.85871, 4.67131, 669], [50.85858, 4.67153, 672], [50.85859, 4.67179, 675], [50.85866, 4.67204, 678], [50.85874, 4.6723, 681], [50.85881, 4.67256, 684], [50.85888, 4.67281, 687], [50.85896, 4.67306, 690], [50.85903, 4.67331, 693], [50.8591, 4.67357, 696], [50.85918, 4.67382, 699], [50.85925, 4.67408, 702], [50.85932, 4.67434, 705], [50.85939, 4.6746, 708], [50.85945, 4.67488, 711], [50.8595, 4.67516, 714], [50.85954, 4.67544, 717], [50.85958, 4.67572, 720], [50.85961, 4.67599, 723], [50.85965, 4.67627, 726], [50.85971, 4.67653, 729], [50.8598, 4.67678, 732], [50.85991, 4.67701, 735], [50.86002, 4.67724, 738], [50.86013, 4.67747, 741], [50.86024, 4.6777, 744], [50.86035, 4.67792, 747], [50.86046, 4.67815, 750], [50.86056, 4.67838, 753], [50.86068, 4.67863, 756], [50.86078, 4.67886, 759], [50.86089, 4.6791, 762], [50.86099, 4.67933, 765], [50.8611, 4.67956, 768], [50.8612, 4.67979, 771], [50.86131, 4.68002, 774], [50.86142, 4.68024, 777], [50.86152, 4.68047, 780], [50.86163, 4.68069, 783], [50.86173, 4.68091, 786], [50.8618, 4.68102, 789], [50.86181, 4.68105, 792], [50.8618, 4.68112, 795], [50.86172, 4.68117, 798], [50.86165, 4.6813, 801], [50.86167, 4.68135, 804], [50.86171, 4.68147, 807], [50.8618, 4.68164, 810], [50.8619, 4.68183, 813], [50.86202, 4.68205, 816], [50.86214, 4.68227, 819], [50.86227, 4.68249, 822], [50.86239, 4.68271, 825], [50.86251, 4.68293, 828], [50.86263, 4.68314, 831], [50.86276, 4.68337, 834], [50.86286, 4.68359, 837], [50.86296, 4.68382, 840], [50.86304, 4.68404, 843], [50.86313, 4.68427, 846], [50.86321, 4.68452, 849], [50.86329, 4.68478, 852], [50.86337, 4.68504, 855], [50.86343, 4.68532, 858], [50.86348, 4.68559, 861], [50.86351, 4.68583, 864], [50.86356, 4.68608, 867], [50.86364, 4.68628, 870], [50.86373, 4.68651, 873], [50.86372, 4.68678, 876], [50.86359, 4.687, 879], [50.86345, 4.68717, 882], [50.8633, 4.6873, 885], [50.86317, 4.68738, 888], [50.86311, 4.68751, 891], [50.86322, 4.68765, 894], [50.86333, 4.68786, 897]], "gateTs": [0, 185.2, 392.3, 629.1, 835.8], "startOffset": 33, "sectors": [185.2, 207.1, 236.8, 206.7], "lapS": 835.8, "gates": [{"name": "START", "lat": 50.83636, "lon": 4.64036, "chainageM": 162.0}, {"name": "G1", "lat": 50.84342, "lon": 4.65127, "chainageM": 1312.0}, {"name": "G2", "lat": 50.85111, "lon": 4.66399, "chainageM": 2662.0}, {"name": "G3", "lat": 50.85875, "lon": 4.6705, "chainageM": 4212.0}, {"name": "FINISH", "lat": 50.8636, "lon": 4.68614, "chainageM": 5487.0}]}, "towers": {"Morning": [{"id": "20260808-0848", "movingS": 816.7, "q": "clean", "sectors": [181.5, 201.4, 237.6, 196.2]}, {"id": "20260807-1732", "movingS": 828.7, "q": "clean", "sectors": [185.4, 201.7, 240.1, 201.5]}, {"id": "20260806-0857", "movingS": 829.3, "q": "clean", "sectors": [181.8, 202.1, 240.2, 205.1]}, {"id": "20260810-0923", "movingS": 835.6, "q": "clean", "sectors": [187.1, 205.1, 238.5, 204.9]}, {"id": "20260811-0828", "movingS": 835.8, "q": "clean", "sectors": [185.2, 207.1, 236.8, 206.7]}, {"id": "20260812-1445", "movingS": 843.1, "q": "clean", "sectors": [188.9, 206.6, 244.3, 203.4]}, {"id": "20260731-1034", "movingS": 857.8, "q": "clean", "sectors": [202.4, 204.1, 239.0, 212.4]}, {"id": "20260804-0944", "movingS": 858.2, "q": "clean", "sectors": [197.6, 205.7, 243.6, 211.3]}, {"id": "20260813-0831", "movingS": 902.9, "q": "clean", "sectors": [200.8, 218.2, 260.7, 223.2]}], "EveningA": [{"id": "20260813-1618", "movingS": 810.0, "q": "clean", "sectors": [174.9, 240.6, 167.8, 226.7]}, {"id": "20260806-1516", "movingS": 812.5, "q": "clean", "sectors": [205.7, 228.7, 158.5, 219.6]}, {"id": "20260808-1955", "movingS": 816.7, "q": "clean", "sectors": [212.1, 228.8, 160.3, 215.5]}, {"id": "20260807-1847", "movingS": 818.4, "q": "clean", "sectors": [211.0, 228.9, 157.4, 221.2]}, {"id": "20260803-2005", "movingS": 831.4, "q": "clean", "sectors": [217.5, 237.7, 157.8, 218.4]}, {"id": "20260805-1852", "movingS": 833.6, "q": "interrupted", "sectors": [217.3, 228.7, 160.9, 226.7]}, {"id": "20260731-1851", "movingS": 836.1, "q": "clean", "sectors": [214.9, 234.4, 162.1, 224.6]}, {"id": "20260804-1859", "movingS": 845.4, "q": "clean", "sectors": [217.7, 236.8, 165.8, 225.0]}, {"id": "20260730-1834", "movingS": 957.4, "q": "interrupted", "sectors": [245.1, 265.9, 186.8, 259.6]}, {"id": "20260728-1619", "movingS": 1254.0, "q": "interrupted", "sectors": [350.9, 336.1, 222.6, 344.4]}], "EveningB": [{"id": "20260723-2147", "movingS": 757.7, "q": "clean", "sectors": [206.0, 197.6, 178.1, 176.0]}, {"id": "20260616-2230", "movingS": 760.7, "q": "clean", "sectors": [205.7, 194.2, 179.7, 181.2]}, {"id": "20260727-2325", "movingS": 772.5, "q": "clean", "sectors": [212.5, 201.1, 181.2, 177.7]}, {"id": "20260620-0001", "movingS": 773.5, "q": "clean", "sectors": [214.6, 196.1, 179.0, 183.8]}, {"id": "20260717-2332", "movingS": 774.7, "q": "clean", "sectors": [221.0, 203.5, 176.2, 173.9]}, {"id": "20260615-2359", "movingS": 778.1, "q": "clean", "sectors": [209.5, 199.4, 182.2, 187.0]}, {"id": "20260809-1900", "movingS": 804.5, "q": "clean", "sectors": [217.6, 211.8, 191.9, 183.2]}, {"id": "20260715-0020", "movingS": 813.1, "q": "clean", "sectors": [233.9, 202.7, 184.4, 192.0]}]}, "landmarks": [{"id": "home", "label": "home", "lat": 50.8365, "lon": 4.6382, "radiusM": 120, "dormant": false}, {"id": "work", "label": "work", "lat": 50.8635, "lon": 4.6883, "radiusM": 130, "dormant": false}, {"id": "puttestraat", "label": "family home", "lat": 50.822078, "lon": 4.505119, "radiusM": 120, "dormant": true}, {"id": "station", "label": "Leuven station", "lat": 50.8812, "lon": 4.7151, "radiusM": 251, "dormant": false}, {"id": "fosh", "label": "fosh", "lat": 50.879122, "lon": 4.702835, "radiusM": 256, "dormant": false}, {"id": "church", "label": "church", "lat": 50.857749, "lon": 4.697827, "radiusM": 234, "dormant": false}], "ways": [{"id": "home--work", "ai": "home", "bi": "work", "a": "home", "b": "work", "n": 11, "routes": ["Morning", "Evening A", "Evening B"]}, {"id": "home--puttestraat", "ai": "home", "bi": "puttestraat", "a": "home", "b": "family home", "n": 9, "routes": []}, {"id": "home--station", "ai": "home", "bi": "station", "a": "home", "b": "Leuven station", "n": 8, "routes": []}, {"id": "fosh--puttestraat", "ai": "fosh", "bi": "puttestraat", "a": "fosh", "b": "family home", "n": 8, "routes": []}, {"id": "puttestraat--work", "ai": "puttestraat", "bi": "work", "a": "family home", "b": "work", "n": 7, "routes": []}, {"id": "station--work", "ai": "station", "bi": "work", "a": "Leuven station", "b": "work", "n": 5, "routes": []}, {"id": "fosh--home", "ai": "fosh", "bi": "home", "a": "fosh", "b": "home", "n": 4, "routes": []}, {"id": "church--home", "ai": "church", "bi": "home", "a": "church", "b": "home", "n": 3, "routes": []}, {"id": "church--work", "ai": "church", "bi": "work", "a": "church", "b": "work", "n": 2, "routes": []}, {"id": "church--fosh", "ai": "church", "bi": "fosh", "a": "church", "b": "fosh", "n": 1, "routes": []}, {"id": "fosh--work", "ai": "fosh", "bi": "work", "a": "fosh", "b": "work", "n": 1, "routes": []}], "rides": [{"id": "20260813-1618-work2home-19726172105", "ms": 1786630738000, "route": "EveningA", "lapS": 810.0, "q": "clean", "n": 4}, {"id": "20260813-0831-home2work-19720913908", "ms": 1786602677000, "route": "Morning", "lapS": 902.9, "q": "clean", "n": 4}, {"id": "20260812-1445-home2work-19710858960", "ms": 1786538712000, "route": "Morning", "lapS": 843.1, "q": "clean", "n": 4}, {"id": "20260811-0828-home2work-19691203692", "ms": 1786429691000, "route": "Morning", "lapS": 835.8, "q": "clean", "n": 4}, {"id": "20260810-0923-home2work-19677438031", "ms": 1786346583000, "route": "Morning", "lapS": 835.6, "q": "clean", "n": 4}, {"id": "20260809-1900-work2home-19677298540", "ms": 1786294833000, "route": "EveningB", "lapS": 804.5, "q": "clean", "n": 4}, {"id": "20260808-1955-work2home-19658451877", "ms": 1786211714000, "route": "EveningA", "lapS": 816.7, "q": "clean", "n": 4}, {"id": "20260808-0848-home2work-19649577531", "ms": 1786171680000, "route": "Morning", "lapS": 816.7, "q": "clean", "n": 4}]};
+const D = {"sim": {"file": "20260811-0828-home2work-19691203692.gpx", "track": [[50.8365, 4.63831, 0], [50.83648, 4.63842, 3], [50.8364, 4.63852, 6], [50.83635, 4.63869, 9], [50.83627, 4.63892, 12], [50.83619, 4.63919, 15], [50.83611, 4.63944, 18], [50.83609, 4.63961, 21], [50.83617, 4.63975, 24], [50.83625, 4.63995, 27], [50.83629, 4.6402, 30], [50.8364, 4.64041, 33], [50.83652, 4.64063, 36], [50.83664, 4.64085, 39], [50.83676, 4.64106, 42], [50.83688, 4.64128, 45], [50.837, 4.64149, 48], [50.83713, 4.64172, 51], [50.83725, 4.64193, 54], [50.83737, 4.64215, 57], [50.83749, 4.64237, 60], [50.83755, 4.64261, 63], [50.83757, 4.64283, 66], [50.83769, 4.64286, 69], [50.83783, 4.64289, 72], [50.83798, 4.64291, 75], [50.8381, 4.64293, 78], [50.83818, 4.64298, 81], [50.83827, 4.64311, 84], [50.83838, 4.64324, 87], [50.83849, 4.64341, 90], [50.83863, 4.64357, 93], [50.83876, 4.64375, 96], [50.8389, 4.64391, 99], [50.83904, 4.64409, 102], [50.83917, 4.64427, 105], [50.83933, 4.6444, 108], [50.83949, 4.64446, 111], [50.83966, 4.64456, 114], [50.83982, 4.64467, 117], [50.83997, 4.64482, 120], [50.8401, 4.64502, 123], [50.84023, 4.64522, 126], [50.84037, 4.64541, 129], [50.8405, 4.6456, 132], [50.84063, 4.64579, 135], [50.84076, 4.64597, 138], [50.84089, 4.64615, 141], [50.84101, 4.64633, 144], [50.84114, 4.64652, 147], [50.84125, 4.64672, 150], [50.84137, 4.64691, 153], [50.8415, 4.6471, 156], [50.84162, 4.64729, 159], [50.84175, 4.64747, 162], [50.84187, 4.64765, 165], [50.84199, 4.64783, 168], [50.8421, 4.64802, 171], [50.84218, 4.64825, 174], [50.84218, 4.64851, 177], [50.84218, 4.64878, 180], [50.84221, 4.64903, 183], [50.84223, 4.6493, 186], [50.84226, 4.64957, 189], [50.84229, 4.64984, 192], [50.84232, 4.65011, 195], [50.84245, 4.65027, 198], [50.84261, 4.65039, 201], [50.84277, 4.65052, 204], [50.84292, 4.65068, 207], [50.84306, 4.65084, 210], [50.84321, 4.651, 213], [50.84336, 4.65118, 216], [50.84349, 4.65135, 219], [50.84363, 4.65155, 222], [50.84376, 4.65172, 225], [50.84389, 4.65191, 228], [50.84402, 4.65209, 231], [50.84416, 4.65224, 234], [50.84431, 4.65237, 237], [50.84446, 4.65252, 240], [50.8446, 4.65268, 243], [50.84474, 4.65287, 246], [50.84487, 4.65306, 249], [50.845, 4.65322, 252], [50.84513, 4.6534, 255], [50.84527, 4.65357, 258], [50.8454, 4.65373, 261], [50.84554, 4.65389, 264], [50.84567, 4.65405, 267], [50.84581, 4.65421, 270], [50.84596, 4.65434, 273], [50.84611, 4.65448, 276], [50.84625, 4.65463, 279], [50.8464, 4.65478, 282], [50.84656, 4.6549, 285], [50.84672, 4.655, 288], [50.84689, 4.65509, 291], [50.84704, 4.65523, 294], [50.8472, 4.65535, 297], [50.84736, 4.65547, 300], [50.84753, 4.65559, 303], [50.84768, 4.65571, 306], [50.84784, 4.65583, 309], [50.84801, 4.65595, 312], [50.84817, 4.65608, 315], [50.84833, 4.6562, 318], [50.84849, 4.65631, 321], [50.84866, 4.65642, 324], [50.8488, 4.65654, 327], [50.84892, 4.65674, 330], [50.84902, 4.65694, 333], [50.84913, 4.65716, 336], [50.84924, 4.65738, 339], [50.84936, 4.65759, 342], [50.84946, 4.65782, 345], [50.84958, 4.65805, 348], [50.84969, 4.65827, 351], [50.8498, 4.65848, 354], [50.84991, 4.65869, 357], [50.85002, 4.6589, 360], [50.85014, 4.65911, 363], [50.85026, 4.65934, 366], [50.85037, 4.65956, 369], [50.85048, 4.65979, 372], [50.8506, 4.66, 375], [50.85072, 4.66022, 378], [50.85083, 4.66044, 381], [50.85094, 4.66066, 384], [50.85106, 4.66087, 387], [50.85117, 4.66109, 390], [50.85129, 4.6613, 393], [50.8514, 4.66153, 396], [50.85152, 4.66175, 399], [50.85159, 4.662, 402], [50.85158, 4.66226, 405], [50.85151, 4.66253, 408], [50.85144, 4.66279, 411], [50.85137, 4.66306, 414], [50.8513, 4.66333, 417], [50.85123, 4.66359, 420], [50.85116, 4.66386, 423], [50.8511, 4.66414, 426], [50.85103, 4.66441, 429], [50.85097, 4.66468, 432], [50.8509, 4.66495, 435], [50.85081, 4.66521, 438], [50.85075, 4.66547, 441], [50.85086, 4.66568, 444], [50.85097, 4.66583, 447], [50.8517, 4.6662, 459], [50.85184, 4.66607, 462], [50.8519, 4.66581, 465], [50.85196, 4.66555, 468], [50.85203, 4.66528, 471], [50.85209, 4.66501, 474], [50.85216, 4.66474, 477], [50.85222, 4.66447, 480], [50.85229, 4.6642, 483], [50.85233, 4.66392, 486], [50.85237, 4.66364, 489], [50.85229, 4.66341, 492], [50.85229, 4.66324, 495], [50.85234, 4.66307, 498], [50.8524, 4.66286, 501], [50.85246, 4.66262, 504], [50.8525, 4.66235, 507], [50.85255, 4.66212, 510], [50.85263, 4.66188, 513], [50.85274, 4.66164, 516], [50.85286, 4.66142, 519], [50.85302, 4.66133, 522], [50.85321, 4.66136, 525], [50.85339, 4.66139, 528], [50.85355, 4.66149, 531], [50.85368, 4.66168, 534], [50.85381, 4.66187, 537], [50.85394, 4.66206, 540], [50.85404, 4.66226, 543], [50.85417, 4.66249, 546], [50.85429, 4.66268, 549], [50.85439, 4.66289, 552], [50.8545, 4.66312, 555], [50.85461, 4.66335, 558], [50.85471, 4.66361, 561], [50.85483, 4.66385, 564], [50.85497, 4.66408, 567], [50.85508, 4.66431, 570], [50.8552, 4.66454, 573], [50.85532, 4.66477, 576], [50.85544, 4.66498, 579], [50.85557, 4.66518, 582], [50.85571, 4.66537, 585], [50.85584, 4.66556, 588], [50.85596, 4.66575, 591], [50.8561, 4.66595, 594], [50.85623, 4.66615, 597], [50.85636, 4.66634, 600], [50.8565, 4.66654, 603], [50.85663, 4.66673, 606], [50.85677, 4.66693, 609], [50.85689, 4.66712, 612], [50.857, 4.66731, 615], [50.85713, 4.66752, 618], [50.85725, 4.66771, 621], [50.85738, 4.66791, 624], [50.85753, 4.66808, 627], [50.85766, 4.66829, 630], [50.85779, 4.66848, 633], [50.85793, 4.66867, 636], [50.85805, 4.66886, 639], [50.85815, 4.66902, 642], [50.85829, 4.66923, 645], [50.85842, 4.66943, 648], [50.85854, 4.6696, 651], [50.8587, 4.66982, 654], [50.85877, 4.6701, 657], [50.85876, 4.6704, 660], [50.85875, 4.67066, 663], [50.85874, 4.67104, 666], [50.85871, 4.67131, 669], [50.85858, 4.67153, 672], [50.85859, 4.67179, 675], [50.85866, 4.67204, 678], [50.85874, 4.6723, 681], [50.85881, 4.67256, 684], [50.85888, 4.67281, 687], [50.85896, 4.67306, 690], [50.85903, 4.67331, 693], [50.8591, 4.67357, 696], [50.85918, 4.67382, 699], [50.85925, 4.67408, 702], [50.85932, 4.67434, 705], [50.85939, 4.6746, 708], [50.85945, 4.67488, 711], [50.8595, 4.67516, 714], [50.85954, 4.67544, 717], [50.85958, 4.67572, 720], [50.85961, 4.67599, 723], [50.85965, 4.67627, 726], [50.85971, 4.67653, 729], [50.8598, 4.67678, 732], [50.85991, 4.67701, 735], [50.86002, 4.67724, 738], [50.86013, 4.67747, 741], [50.86024, 4.6777, 744], [50.86035, 4.67792, 747], [50.86046, 4.67815, 750], [50.86056, 4.67838, 753], [50.86068, 4.67863, 756], [50.86078, 4.67886, 759], [50.86089, 4.6791, 762], [50.86099, 4.67933, 765], [50.8611, 4.67956, 768], [50.8612, 4.67979, 771], [50.86131, 4.68002, 774], [50.86142, 4.68024, 777], [50.86152, 4.68047, 780], [50.86163, 4.68069, 783], [50.86173, 4.68091, 786], [50.8618, 4.68102, 789], [50.86181, 4.68105, 792], [50.8618, 4.68112, 795], [50.86172, 4.68117, 798], [50.86165, 4.6813, 801], [50.86167, 4.68135, 804], [50.86171, 4.68147, 807], [50.8618, 4.68164, 810], [50.8619, 4.68183, 813], [50.86202, 4.68205, 816], [50.86214, 4.68227, 819], [50.86227, 4.68249, 822], [50.86239, 4.68271, 825], [50.86251, 4.68293, 828], [50.86263, 4.68314, 831], [50.86276, 4.68337, 834], [50.86286, 4.68359, 837], [50.86296, 4.68382, 840], [50.86304, 4.68404, 843], [50.86313, 4.68427, 846], [50.86321, 4.68452, 849], [50.86329, 4.68478, 852], [50.86337, 4.68504, 855], [50.86343, 4.68532, 858], [50.86348, 4.68559, 861], [50.86351, 4.68583, 864], [50.86356, 4.68608, 867], [50.86364, 4.68628, 870], [50.86373, 4.68651, 873], [50.86372, 4.68678, 876], [50.86359, 4.687, 879], [50.86345, 4.68717, 882], [50.8633, 4.6873, 885], [50.86317, 4.68738, 888], [50.86311, 4.68751, 891], [50.86322, 4.68765, 894], [50.86333, 4.68786, 897]], "gateTs": [0, 185.2, 392.3, 629.1, 835.8], "startOffset": 33, "sectors": [185.2, 207.1, 236.8, 206.7], "lapS": 835.8, "gates": [{"name": "START", "lat": 50.83636, "lon": 4.64036, "chainageM": 162.0}, {"name": "G1", "lat": 50.84342, "lon": 4.65127, "chainageM": 1312.0}, {"name": "G2", "lat": 50.85111, "lon": 4.66399, "chainageM": 2662.0}, {"name": "G3", "lat": 50.85875, "lon": 4.6705, "chainageM": 4212.0}, {"name": "FINISH", "lat": 50.8636, "lon": 4.68614, "chainageM": 5487.0}]}, "towers": {"Morning": [{"id": "20260808-0848", "movingS": 816.7, "q": "clean", "sectors": [181.5, 201.4, 237.6, 196.2]}, {"id": "20260807-1732", "movingS": 828.7, "q": "clean", "sectors": [185.4, 201.7, 240.1, 201.5]}, {"id": "20260806-0857", "movingS": 829.3, "q": "clean", "sectors": [181.8, 202.1, 240.2, 205.1]}, {"id": "20260810-0923", "movingS": 835.6, "q": "clean", "sectors": [187.1, 205.1, 238.5, 204.9]}, {"id": "20260811-0828", "movingS": 835.8, "q": "clean", "sectors": [185.2, 207.1, 236.8, 206.7]}, {"id": "20260812-1445", "movingS": 843.1, "q": "clean", "sectors": [188.9, 206.6, 244.3, 203.4]}, {"id": "20260731-1034", "movingS": 857.8, "q": "clean", "sectors": [202.4, 204.1, 239.0, 212.4]}, {"id": "20260804-0944", "movingS": 858.2, "q": "clean", "sectors": [197.6, 205.7, 243.6, 211.3]}, {"id": "20260813-0831", "movingS": 902.9, "q": "clean", "sectors": [200.8, 218.2, 260.7, 223.2]}], "EveningA": [{"id": "20260813-1618", "movingS": 810.0, "q": "clean", "sectors": [174.9, 240.6, 167.8, 226.7]}, {"id": "20260806-1516", "movingS": 812.5, "q": "clean", "sectors": [205.7, 228.7, 158.5, 219.6]}, {"id": "20260808-1955", "movingS": 816.7, "q": "clean", "sectors": [212.1, 228.8, 160.3, 215.5]}, {"id": "20260807-1847", "movingS": 818.4, "q": "clean", "sectors": [211.0, 228.9, 157.4, 221.2]}, {"id": "20260803-2005", "movingS": 831.4, "q": "clean", "sectors": [217.5, 237.7, 157.8, 218.4]}, {"id": "20260805-1852", "movingS": 833.6, "q": "interrupted", "sectors": [217.3, 228.7, 160.9, 226.7]}, {"id": "20260731-1851", "movingS": 836.1, "q": "clean", "sectors": [214.9, 234.4, 162.1, 224.6]}, {"id": "20260804-1859", "movingS": 845.4, "q": "clean", "sectors": [217.7, 236.8, 165.8, 225.0]}, {"id": "20260730-1834", "movingS": 957.4, "q": "interrupted", "sectors": [245.1, 265.9, 186.8, 259.6]}, {"id": "20260728-1619", "movingS": 1254.0, "q": "interrupted", "sectors": [350.9, 336.1, 222.6, 344.4]}], "EveningB": [{"id": "20260723-2147", "movingS": 757.7, "q": "clean", "sectors": [206.0, 197.6, 178.1, 176.0]}, {"id": "20260616-2230", "movingS": 760.7, "q": "clean", "sectors": [205.7, 194.2, 179.7, 181.2]}, {"id": "20260727-2325", "movingS": 772.5, "q": "clean", "sectors": [212.5, 201.1, 181.2, 177.7]}, {"id": "20260620-0001", "movingS": 773.5, "q": "clean", "sectors": [214.6, 196.1, 179.0, 183.8]}, {"id": "20260717-2332", "movingS": 774.7, "q": "clean", "sectors": [221.0, 203.5, 176.2, 173.9]}, {"id": "20260615-2359", "movingS": 778.1, "q": "clean", "sectors": [209.5, 199.4, 182.2, 187.0]}, {"id": "20260809-1900", "movingS": 804.5, "q": "clean", "sectors": [217.6, 211.8, 191.9, 183.2]}, {"id": "20260715-0020", "movingS": 813.1, "q": "clean", "sectors": [233.9, 202.7, 184.4, 192.0]}], "MorningB": [{"id": "20260814-0831", "movingS": 822.4, "q": "clean", "sectors": [178.3, 199.6, 238.9, 205.6]}, {"id": "20260813-0846", "movingS": 828.9, "q": "clean", "sectors": [180.1, 201.0, 240.5, 207.3]}, {"id": "20260812-0901", "movingS": 835.2, "q": "clean", "sectors": [182.4, 203.8, 241.0, 208.0]}, {"id": "20260811-0912", "movingS": 841.7, "q": "clean", "sectors": [184.0, 205.2, 243.9, 208.6]}, {"id": "20260810-0838", "movingS": 848.3, "q": "clean", "sectors": [186.5, 207.1, 245.0, 209.7]}, {"id": "20260807-0855", "movingS": 855.1, "q": "clean", "sectors": [189.2, 209.4, 246.8, 209.7]}, {"id": "20260805-0829", "movingS": 862.6, "q": "interrupted", "sectors": [191.0, 213.5, 247.9, 210.2]}, {"id": "20260731-0847", "movingS": 871.4, "q": "clean", "sectors": [194.7, 215.0, 250.1, 211.6]}]}, "landmarks": [{"id": "home", "label": "home", "lat": 50.8365, "lon": 4.6382, "radiusM": 120, "dormant": false}, {"id": "work", "label": "work", "lat": 50.8635, "lon": 4.6883, "radiusM": 130, "dormant": false}, {"id": "puttestraat", "label": "family home", "lat": 50.822078, "lon": 4.505119, "radiusM": 120, "dormant": true}, {"id": "station", "label": "Leuven station", "lat": 50.8812, "lon": 4.7151, "radiusM": 251, "dormant": false}, {"id": "fosh", "label": "fosh", "lat": 50.879122, "lon": 4.702835, "radiusM": 256, "dormant": false}, {"id": "church", "label": "church", "lat": 50.857749, "lon": 4.697827, "radiusM": 234, "dormant": false}], "ways": [{"id": "home--work", "ai": "home", "bi": "work", "a": "home", "b": "work", "n": 15, "routes": ["Morning", "Evening A", "Evening B", "Morning B"]}, {"id": "home--puttestraat", "ai": "home", "bi": "puttestraat", "a": "home", "b": "family home", "n": 9, "routes": []}, {"id": "home--station", "ai": "home", "bi": "station", "a": "home", "b": "Leuven station", "n": 8, "routes": []}, {"id": "fosh--puttestraat", "ai": "fosh", "bi": "puttestraat", "a": "fosh", "b": "family home", "n": 8, "routes": []}, {"id": "puttestraat--work", "ai": "puttestraat", "bi": "work", "a": "family home", "b": "work", "n": 7, "routes": []}, {"id": "station--work", "ai": "station", "bi": "work", "a": "Leuven station", "b": "work", "n": 5, "routes": []}, {"id": "fosh--home", "ai": "fosh", "bi": "home", "a": "fosh", "b": "home", "n": 4, "routes": []}, {"id": "church--home", "ai": "church", "bi": "home", "a": "church", "b": "home", "n": 3, "routes": []}, {"id": "church--work", "ai": "church", "bi": "work", "a": "church", "b": "work", "n": 2, "routes": []}, {"id": "church--fosh", "ai": "church", "bi": "fosh", "a": "church", "b": "fosh", "n": 1, "routes": []}, {"id": "fosh--work", "ai": "fosh", "bi": "work", "a": "fosh", "b": "work", "n": 1, "routes": []}], "rides": [{"id": "20260813-1618-work2home-19726172105", "ms": 1786630738000, "route": "EveningA", "lapS": 810.0, "q": "clean", "n": 4}, {"id": "20260813-0831-home2work-19720913908", "ms": 1786602677000, "route": "Morning", "lapS": 902.9, "q": "clean", "n": 4}, {"id": "20260812-1445-home2work-19710858960", "ms": 1786538712000, "route": "Morning", "lapS": 843.1, "q": "clean", "n": 4}, {"id": "20260811-0828-home2work-19691203692", "ms": 1786429691000, "route": "Morning", "lapS": 835.8, "q": "clean", "n": 4}, {"id": "20260810-0923-home2work-19677438031", "ms": 1786346583000, "route": "Morning", "lapS": 835.6, "q": "clean", "n": 4}, {"id": "20260809-1900-work2home-19677298540", "ms": 1786294833000, "route": "EveningB", "lapS": 804.5, "q": "clean", "n": 4}, {"id": "20260808-1955-work2home-19658451877", "ms": 1786211714000, "route": "EveningA", "lapS": 816.7, "q": "clean", "n": 4}, {"id": "20260808-0848-home2work-19649577531", "ms": 1786171680000, "route": "Morning", "lapS": 816.7, "q": "clean", "n": 4}, {"id": "20260814-0831-home2workB-19740000001", "ms": 1786696260000, "route": "MorningB", "lapS": 822.4, "q": "clean", "n": 4}, {"id": "20260813-0846-home2workB-19735000002", "ms": 1786610760000, "route": "MorningB", "lapS": 828.9, "q": "clean", "n": 4}, {"id": "20260812-0901-home2workB-19730000003", "ms": 1786525260000, "route": "MorningB", "lapS": 835.2, "q": "clean", "n": 4}, {"id": "20260811-0912-home2workB-19725000004", "ms": 1786439520000, "route": "MorningB", "lapS": 841.7, "q": "clean", "n": 4}]};
 
 // ---------------------------------------------------------------- settings
 const S = {
   theme:'night', redlight:'auto', startMode:'auto', colour:'avg', // colour is fixed by D-030
   tower:true, earcons:true, mapLive:true,
 };
-const TABS = [['ride','Ride'],['rides','Rides'],['routes','Routes'],['result','Result'],['settings','Settings'],['demo','Demo']];
-let tab='ride';
-let sel = {from:'home', to:'work', picking:null, way:null};   // start-flow choices
+// Tab #1 is "Record" (Nathan 2026-08-19 — was "Ride"; matches app/src/ui's
+// RecordScreen naming). Key stays short ('record') for the fullscreen check
+// in render() below.
+const TABS = [['record','Record'],['rides','Rides'],['routes','Routes'],['result','Result'],['settings','Settings'],['demo','Demo']];
+let tab='record';
+let sel = {from:'home', to:'work', picking:null, way:null, routePick:null};   // start-flow choices
 let saved = [];                                              // rides recorded in this session
+let rideOpen = null;    // id of the expanded row on the Rides tab
+let resultOpen;         // route key expanded on the Result tab (undefined = "pick a default on first render")
 
 const f = s => Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
 const f1 = s => Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60).toFixed(1);
 const el = h => { const d=document.createElement('div'); d.innerHTML=h.trim(); return d.firstChild; };
+const lm = id => (D.landmarks.find(l=>l.id===id)||{}).label || id;
+const ROUTE_LABEL = {Morning:'Morning', EveningA:'Evening A', EveningB:'Evening B', MorningB:'Morning B'};
+function shortDate(idOrMs){
+  let d;
+  if(typeof idOrMs === 'number'){ d = new Date(idOrMs); }
+  else { const m = /^(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})/.exec(idOrMs);
+    if(!m) return idOrMs;
+    d = new Date(Date.UTC(+m[1], +m[2]-1, +m[3], +m[4], +m[5])); }
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return months[d.getUTCMonth()]+' '+d.getUTCDate()+', '+String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0');
+}
 
 // ------------------------------------------------------------------- state
+// R.phase drives which of the three RECORD screens shows: 'setup' (pick
+// from/to/route, press RECORD), 'armed' (RACE screen — route + location
+// shown, nothing moving yet, press START), 'running' (the live ride).
+// 'done' is transient — recordScreen() folds it straight back to 'setup'.
 let R = null;              // active ride state
 let map=null, dot=null, trail=null, timer=null, gateMarks=[], follow=true;
 
 function reset(){
-  R = { running:false, t:0, gate:0, flashUntil:-1, flashIdx:-1, paused:false, done:false,
+  R = { phase:'setup', running:false, t:0, gate:0, flashUntil:-1, flashIdx:-1, paused:false, done:false,
         sectors:[], startedAt:null };
 }
 reset();
 
-// ghost set for the route being simulated
+// ghost set for the route being simulated live (the mockup's one GPX replay
+// is always the Morning commute — see the note on the RECORD setup screen)
 const GH = D.towers.Morning;
-const bestSector = i => Math.min(...GH.map(g=>g.sectors[i]).filter(v=>v!==null));
-const avgSector  = i => { const v=GH.map(g=>g.sectors[i]).filter(x=>x!==null);
+
+// Generalized over ANY route's tower — the Rides/Result tabs need to score
+// sectors against whichever route a given ride was on, not just Morning.
+const towerFor = route => D.towers[route] || [];
+const bestSectorFor = (arr,i) => Math.min(...arr.map(g=>g.sectors[i]).filter(v=>v!==null));
+const avgSectorFor  = (arr,i) => { const v=arr.map(g=>g.sectors[i]).filter(x=>x!==null);
                           return v.reduce((a,b)=>a+b,0)/v.length; };
-const sdSector   = i => { const v=GH.map(g=>g.sectors[i]).filter(x=>x!==null), a=avgSector(i);
+const sdSectorFor   = (arr,i) => { const v=arr.map(g=>g.sectors[i]).filter(x=>x!==null), a=avgSectorFor(arr,i);
                           return Math.sqrt(v.reduce((s,x)=>s+(x-a)**2,0)/v.length); };
 
 /** The colour model is a SETTING here, so the unsettled §19 question can be
  *  felt rather than argued: 'best' = D-007/D-008 shape (beat the ghost best),
  *  'avg' = §19 (above/below the last-N average), 'hybrid' = avg ± 1σ deadband. */
-function tierOf(i, val){
-  if(val===null) return 'est';
-  if(S.colour==='best')  return val<bestSector(i) ? 'purple' : val<avgSector(i) ? 'green' : 'neutral';
-  if(S.colour==='avg')   return val<bestSector(i) ? 'purple' : val<avgSector(i) ? 'green' : 'yellow';
-  const sd=sdSector(i), a=avgSector(i);
-  return val<bestSector(i) ? 'purple' : val<a-sd ? 'green' : val>a+sd ? 'yellow' : 'neutral';
+function tierOfFor(arr, i, val){
+  if(val===null || val===undefined) return 'est';
+  if(S.colour==='best')  return val<bestSectorFor(arr,i) ? 'purple' : val<avgSectorFor(arr,i) ? 'green' : 'neutral';
+  if(S.colour==='avg')   return val<bestSectorFor(arr,i) ? 'purple' : val<avgSectorFor(arr,i) ? 'green' : 'yellow';
+  const sd=sdSectorFor(arr,i), a=avgSectorFor(arr,i);
+  return val<bestSectorFor(arr,i) ? 'purple' : val<a-sd ? 'green' : val>a+sd ? 'yellow' : 'neutral';
 }
+// Live-ride call sites keep their short names, bound to Morning's ghost set.
+const bestSector = i => bestSectorFor(GH,i);
+const avgSector  = i => avgSectorFor(GH,i);
+const sdSector   = i => sdSectorFor(GH,i);
+const tierOf     = (i,val) => tierOfFor(GH,i,val);
 const tierClass = t => t==='purple'?'tier-purple':t==='green'?'tier-green':t==='yellow'?'':'tier-neutral';
 
-// -------------------------------------------------------------------- ride
-function rideScreen(){
+/** Lap-level verdict for an arbitrary route, mirroring tierOfFor's shape but
+ *  over movingS instead of a sector. Used by the Result tab. */
+function lapTierFor(route, mine){
+  const arr = towerFor(route);
+  if(!arr.length || mine==null) return 'neutral';
+  const best = Math.min(...arr.map(g=>g.movingS));
+  const avg = arr.reduce((a,g)=>a+g.movingS,0)/arr.length;
+  const sd = Math.sqrt(arr.reduce((s,g)=>s+(g.movingS-avg)**2,0)/arr.length);
+  if(mine<best) return 'purple';
+  if(S.colour==='best') return mine<avg ? 'green':'neutral';
+  if(S.colour==='avg')  return mine<avg ? 'green':'yellow';
+  return mine<avg-sd ? 'green' : mine>avg+sd ? 'yellow' : 'neutral';
+}
+/** Where a ride's lap placed against its route's tower (last-up-to-10
+ *  archive rides) — "P4 of 10", never a raw ride id. */
+function rankInTower(ride){
+  const tw = towerFor(ride.route);
+  // Is this ride already one of the tower's own archive entries (matched by
+  // id prefix, same as sectorsForRide)? If so rank it IN PLACE — don't also
+  // add it as a new slot, or an archive ride would double-count itself.
+  // Only a genuinely new session ride (id never matches a tower entry) adds
+  // a slot. Tagged by IDENTITY, not by lap-time value: this mockup's one
+  // live GPX replay literally IS an archived Morning ride, so an exact time
+  // tie with that entry is expected — indexOf(value) would resolve the tie
+  // to the archive slot even when asking for "my" position.
+  const match = tw.find(g => ride.id.indexOf(g.id) === 0);
+  const arr = tw.map(g => ({v:g.movingS, mine: g===match}));
+  if(!match && ride.lapS!=null) arr.push({v:ride.lapS, mine:true});
+  arr.sort((a,b)=>a.v-b.v);
+  const idx = arr.findIndex(x=>x.mine);
+  return {pos: ride.lapS!=null ? idx+1 : 0, of: arr.length};
+}
+/** Sector splits for a saved ride: recorded directly on session rides, or
+ *  looked up from the matching tower entry (ids share the date-time prefix)
+ *  for archive rides that only ship a lap total. */
+function sectorsForRide(ride){
+  if(ride.sectors) return ride.sectors;
+  const m = towerFor(ride.route).find(g => ride.id.indexOf(g.id) === 0);
+  return m ? m.sectors : null;
+}
+/** Personal-best lap for a route, across its tower AND anything ridden this
+ *  session (a session ride can beat the archive). */
+function bestLapFor(route){
+  const arr = towerFor(route);
+  const own = saved.concat(D.rides).filter(r=>r.route===route && r.lapS!=null).map(r=>r.lapS);
+  const laps = arr.map(g=>g.movingS).concat(own);
+  return laps.length ? Math.min(...laps) : null;
+}
+
+// ------------------------------------------------------------------ record
+// Three screens in one tab (Nathan 2026-08-19):
+//   setup   — pick from/to/route, press RECORD (was START)
+//   armed   — the RACE screen: route + your location shown, nothing moving
+//             yet, launch animation already played getting here, press START
+//   running — the live ride (unchanged mechanics); END plays the animation
+//             REVERSED, then drops you on Result
+// armed + running are "full screen" — render() hides the tabbar for both.
+function recordScreen(){
   const s = document.getElementById('screen');
   s.innerHTML = '';
-  if(!R.running && !R.done){
-    const lm = id => (D.landmarks.find(l=>l.id===id)||{}).label || id;
+  if(R.phase==='done') reset();   // a finished ride folds straight back to setup
+
+  if(R.phase==='setup'){
     const pickable = D.landmarks.filter(l=>!l.dormant);
     const wayFor = (a,b) => D.ways.find(w=>(w.ai===a&&w.bi===b)||(w.ai===b&&w.bi===a));
     const w = wayFor(sel.from, sel.to);
@@ -202,27 +348,42 @@ function rideScreen(){
         </div>
         ${routes ? `<div style="margin-top:10px"><div class="muted">which route today?</div>
           <div style="margin-top:6px">${routes.map((r,i)=>
-            `<span class="pill${(sel.way||routes[0])===r?' on':''}" data-route="${r}">${r}</span>`).join('')}</div></div>`:''}
+            `<span class="pill${(sel.routePick||routes[0])===r?' on':''}" data-route="${r}">${r}</span>`).join('')}</div></div>`:''}
       </div>
-      <button class="btn" id="go">START</button>
+      <button class="btn record" id="go">RECORD</button>
       <div class="note">${routes
         ? 'This way has more than one ratified route, so it asks (§8a). The pick is intent only — ride a different road and the ride scores as the road you actually took.'
         : 'One route on this way, so no extra step.'}
-        The mockup replays the home → work commute whichever pair you choose.</div>
+        The mockup replays the home → work commute whichever pair you choose.
+        RECORD plays the launch mark, then the RACE screen is ready but not moving until you press START.</div>
     </div>`));
-    document.getElementById('go').onclick = start;
+    document.getElementById('go').onclick = () => {
+      qfPlayLaunch(false, () => { R.phase='armed'; render(); });
+    };
     return;
   }
+
+  if(R.phase==='armed'){
+    s.appendChild(el(`<div class="armed-wrap">
+      <div class="readytag">${lm(sel.from)} → ${lm(sel.to)}${sel.routePick?' · '+sel.routePick:''} · ready, not started</div>
+      ${S.mapLive?'<div class="armed-map"><div id="map" style="height:100%"></div></div>':''}
+      <button class="btn" id="realstart">START</button>
+    </div>`));
+    document.getElementById('realstart').onclick = start;
+    if(S.mapLive) initMap();
+    return;
+  }
+
+  // R.phase === 'running'
   s.appendChild(el(`<div>
     ${S.mapLive?'<div id="map"></div>':''}
     <div id="clockslot"></div>
     <div class="strip" id="strip"></div>
     <div class="status" id="status"></div>
-    ${R.done?'<button class="btn slim" id="stop" style="margin-top:12px">SEE RESULT</button>'
-            :`<button class="btn slim" id="stop" style="margin-top:12px">STOP</button>
-              ${S.redlight==='button'?'<button class="btn flag" id="flag">RED LIGHT — HOLD CLOCK</button>':''}`}
+    <button class="btn slim" id="end" style="margin-top:12px">END</button>
+    ${S.redlight==='button'?'<button class="btn flag" id="flag">RED LIGHT — HOLD CLOCK</button>':''}
   </div>`));
-  document.getElementById('stop').onclick = () => { if(R.done){ tab='result'; render(); } else stop(); };
+  document.getElementById('end').onclick = finishRide;
   const fl = document.getElementById('flag');
   if(fl) fl.onclick = () => { R.paused=!R.paused; fl.textContent = R.paused?'GO — RELEASE CLOCK':'RED LIGHT — HOLD CLOCK'; };
   if(S.mapLive) initMap();
@@ -230,6 +391,7 @@ function rideScreen(){
 }
 
 function initMap(){
+  if(map){ try{ map.remove(); }catch(err){} map=null; }   // armed→running re-creates the map div
   // B-51 (2026-08-17): the shipped app now renders this as MapLibre +
   // OpenFreeMap dark vector tiles, runtime-patched to strip labels and any
   // basemap colour that would read as a tier verdict (D-030 palette
@@ -260,9 +422,11 @@ function initMap(){
   setTimeout(()=>map.invalidateSize(), 0);
 }
 
+// Real START, pressed from the armed RACE screen — this is where the clock
+// and gate-crossing actually begin (Nathan 2026-08-19: RECORD only arms it).
 function start(){
-  reset(); follow=true; R.running=true; R.startedAt=Date.now();
-  rideScreen();
+  follow=true; R.phase='running'; R.running=true; R.startedAt=Date.now();
+  render();
   timer = setInterval(()=>{
     if(!R.paused) R.t += 0.1*RATE;
     const gt = D.sim.gateTs, off = D.sim.startOffset;
@@ -271,19 +435,25 @@ function start(){
       R.gate++;
       R.sectors.push(D.sim.sectors[R.gate-1]);
       R.flashIdx = R.gate-1; R.flashUntil = R.t + 2.5;
-      if(R.gate === gt.length-1){ R.done=true; clearInterval(timer); }
+      if(R.gate === gt.length-1){ finishRide(); return; }
     }
     paint();
   }, 100);
 }
 const RATE = 25;           // 25× — a 14-minute commute plays in ~34 s
 
-function stop(){
-  clearInterval(timer); R.running=false; R.done=true;
+// END (crossing FINISH auto-triggers this too) — save the ride, then play the
+// launch mark REVERSED (Nathan 2026-08-19: "the yellow line gets undrawn and
+// then the circle gets undrawn as well") before landing on Result.
+function finishRide(){
+  clearInterval(timer);
+  R.running=false; R.phase='done'; R.done=true;
   const lap = R.sectors.length ? R.sectors.reduce((a,b)=>a+b,0) : null;
-  saved.unshift({id:'today', ms:Date.now(), route:'Morning', lapS:lap,
-    q: lap?'clean':'partial', n:R.sectors.length, saved:true});   // shows up in the Rides tab
-  tab='result'; render();
+  const clean = R.gate >= D.sim.gates.length-1;   // false only if END was pressed early
+  saved.unshift({id:'today-'+Date.now(), ms:Date.now(), route:'Morning', lapS:lap,
+    q: clean?'clean':'partial', n:R.sectors.length, saved:true, sectors:R.sectors.slice()});
+  resultOpen = 'Morning';
+  qfPlayLaunch(true, () => { tab='result'; render(); });
 }
 
 function paint(){
@@ -307,7 +477,11 @@ function paint(){
   // changed (the route lock) holds the slot rather than waiting its turn.
   const st = document.getElementById('status');
   const locked = R.gate>0 || R.t>D.sim.startOffset;
-  const items = locked ? ['morning · route locked', 'gps live', (R.t/1|0)+' fixes']
+  // No raw "N fixes" count here any more (Nathan 2026-08-19: "I dont know
+  // what fixes are" — GPS fixes are an internal/diagnostic term, not
+  // something to surface on the live status line; they still get written
+  // to the GPX+ sidecar for troubleshooting, just not shown here).
+  const items = locked ? [(sel.routePick||'route')+' · route locked', 'gps live']
                        : ['detecting route…','gps live'];
   if(locked && !R.lockPinAt) R.lockPinAt = Date.now();
   const realS = (Date.now() - R.startedAt)/1000;
@@ -332,70 +506,125 @@ function paint(){
 }
 
 // ------------------------------------------------------------------ result
+// Redesigned 2026-08-19 (Nathan: "just a fixed result… not appealing nor
+// useful"). RESULT is now "how am I doing", route by route: your last ride
+// up top, then a Personal Bests row PER ROUTE you click to expand into that
+// route's ranking + best sectors — filterable/browsable rather than one
+// frozen board, and no raw ride ids (RIDES tab owns the chronological log —
+// see below — so the split stays: RIDES = what happened, RESULT = how you
+// compare).
 function resultScreen(){
-  const mine = R.sectors.length ? R.sectors.reduce((a,b)=>a+b,0) : D.sim.lapS;
-  const rows = GH.map(g=>({id:g.id,v:g.movingS,me:false}))
-                 .concat([{id:'TODAY',v:mine,me:true}]).sort((a,b)=>a.v-b.v);
-  const pole = rows[0].v;
-  // the LAP obeys the selected colour model too (it did not, before)
-  const lapBest = Math.min(...GH.map(g=>g.movingS));
-  const lapAvg = GH.reduce((a,g)=>a+g.movingS,0)/GH.length;
-  const lapSd = Math.sqrt(GH.reduce((s,g)=>s+(g.movingS-lapAvg)**2,0)/GH.length);
-  const lapTier = mine<lapBest ? 'purple'
-    : S.colour==='best'   ? (mine<lapAvg ? 'green':'neutral')
-    : S.colour==='avg'    ? (mine<lapAvg ? 'green':'yellow')
-    : (mine<lapAvg-lapSd ? 'green' : mine>lapAvg+lapSd ? 'yellow' : 'neutral');
+  const routesAvail = ['Morning','EveningA','EveningB','MorningB'].filter(r=>towerFor(r).length);
+  const latest = saved[0] || null;
+  if(resultOpen===undefined) resultOpen = (latest && latest.route) || routesAvail[0];
+
+  const latestBlock = latest ? (()=>{
+    const tier = lapTierFor(latest.route, latest.lapS);
+    // A ride ended early (END pressed before FINISH) has no lap total to
+    // rank — "P0 of 9" would read as a real rank, so say so instead.
+    const rankLine = latest.lapS!=null
+      ? (()=>{ const rk=rankInTower(latest); return `P${rk.pos} of ${rk.of} on this route`; })()
+      : 'ended early — no full lap to rank';
+    return `<h2>Your last ride</h2>
+      <div class="card" style="text-align:center">
+        <div class="muted">${ROUTE_LABEL[latest.route]||latest.route}</div>
+        <div class="big ${tierClass(tier)}">${latest.lapS!=null?f1(latest.lapS):'–'}</div>
+        <div class="muted">${rankLine}</div>
+        <button class="btn slim" style="margin-top:12px" onclick="tab='record';render()">RECORD ANOTHER</button>
+      </div>`;
+  })() : `<h2>Your last ride</h2><div class="card muted">Record a ride to see it here.</div>`;
+
+  const bestRows = routesAvail.map(route=>{
+    const pb = bestLapFor(route);
+    const open = resultOpen===route;
+    return `<div class="rowhead" data-resopen="${route}">
+        <div><div class="lab">${ROUTE_LABEL[route]||route}</div>
+          <div class="hint">personal best ${pb!=null?f1(pb):'–'} · ${towerFor(route).length} rides on file</div></div>
+        <div class="chev ${open?'open':''}">›</div>
+      </div>
+      ${open?resultDetail(route):''}`;
+  }).join('');
+
   document.getElementById('screen').innerHTML = `
-    <h2>Lap</h2>
-    <div class="card" style="text-align:center">
-      <div class="big ${tierClass(lapTier)}">${f1(mine)}</div>
-      <div class="muted">P${rows.findIndex(r=>r.me)+1} of ${rows.length} · ${GH.length} ghosts</div>
-    </div>
-    ${S.tower?`<h2>Timing tower — last ${GH.length} rides</h2><div class="card"><table>${
-      rows.map((r,i)=>`<tr class="${r.me?'me':'ghost'}"><td class="pos">P${i+1}</td>
-        <td>${r.me?'TODAY':r.id}</td><td class="t">${f(r.v)}</td>
-        <td class="t muted">${i===0?'':'+'+(r.v-pole).toFixed(0)+'s'}</td></tr>`).join('')
-    }</table>
-    <div class="note" style="margin-top:10px"><b>The tower does not change with the colour model —
-      that is intended.</b> Position is a fact (you were 4th of 10); colour is a judgement.
-      D-013 keeps them apart, so a mid-pack position is never dressed as failure. What the model
-      changes is the LAP verdict above and the sector rows below.</div></div>`:''}
-    <h2>Sectors</h2>
-    <div class="card"><table>${D.sim.sectors.map((v,i)=>{
-      const t=tierOf(i,v);
-      // Colour carries the verdict; the tier is never spelled out (Nathan,
-      // 2026-08-16: "we never show the green or yellow text anyway").
-      return `<tr><td class="pos ${tierClass(t)} ${t==='yellow'?'tier-yellow':''}">S${i+1}</td>
-        <td class="t ${tierClass(t)} ${t==='yellow'?'tier-yellow':''}">${f1(v)}</td>
-        <td class="t muted">avg ${f(avgSector(i))}</td></tr>`;}).join('')}</table></div>
-    <div class="note">Colours follow the <b>${S.colour==='best'?'current model (beat the best)'
-      :S.colour==='avg'?'§19 model (above/below the average)':'hybrid (average ± 1σ deadband)'}</b>
-      — switch it in Settings and watch the same ride change verdict. Ghost rows are archive rides,
-      recomputed by our own pipeline, and stay demotable until the D-024 tripwire is settled. The
-      shipped Result screen also has a "VIEW TRACE ›" link under the LAP card (B-57) that opens the
-      ROUTE on a real-street browse map with today's gate colours — not modelled in this mockup.</div>
-    <button class="btn slim" style="margin-top:12px" onclick="reset();tab='ride';render()">NEW RIDE</button>`;
+    ${latestBlock}
+    <h2>Personal bests — tap a route</h2>
+    <div class="card">${bestRows}</div>
+    <div class="note">Position is a fact (you were 4th of 10); colour is a judgement — D-013 keeps
+      them apart, so a mid-pack position is never dressed as failure. Colours follow the
+      <b>${S.colour==='best'?'current model (beat the best)':S.colour==='avg'?'§19 model (above/below the average)'
+        :'hybrid (average ± 1σ deadband)'}</b> — switch it in Settings and watch the same rides change verdict.
+      The shipped Result screen also has a "VIEW TRACE ›" link (B-57) that opens a route on a real-street
+      browse map with the ride's gate colours — not modelled in this mockup.</div>`;
+}
+
+/** The expanded detail under a Personal Bests row: ranking (dates, not ids)
+ *  and that route's best sector split. */
+function resultDetail(route){
+  const arr = towerFor(route);
+  const own = saved.filter(r=>r.route===route).map(r=>({id:r.id, v:r.lapS, me:true}));
+  const rows = arr.map(g=>({id:g.id, v:g.movingS, me:false})).concat(own)
+    .filter(r=>r.v!=null).sort((a,b)=>a.v-b.v);
+  const pole = rows.length ? rows[0].v : null;
+  const nSec = arr[0] ? arr[0].sectors.length : 0;
+  const pbSectors = Array.from({length:nSec}, (_,i)=>{
+    const vals = arr.map(g=>g.sectors[i]).filter(v=>v!=null);
+    return vals.length ? Math.min(...vals) : null;
+  });
+  return `<div class="detail">
+    ${rows.length?`<div class="hint" style="margin-bottom:2px">last ${rows.length} on this route</div>
+      <table>${rows.map((r,i)=>`<tr class="${r.me?'me':'ghost'}">
+        <td class="pos">P${i+1}</td><td>${r.me?'you':shortDate(r.id)}</td>
+        <td class="t">${f(r.v)}</td>
+        <td class="t muted">${i===0?'':'+'+(r.v-pole).toFixed(0)+'s'}</td></tr>`).join('')}</table>`
+      : `<div class="muted" style="padding:6px 0">no rides on file yet</div>`}
+    ${nSec?`<div class="hint" style="margin:10px 0 4px">personal best sectors</div>
+      <table>${pbSectors.map((v,i)=>`<tr><td class="pos">S${i+1}</td>
+        <td class="t">${v!=null?f1(v):'–'}</td></tr>`).join('')}</table>`:''}
+  </div>`;
 }
 
 // ------------------------------------------------------------------- rides
+// Redesigned 2026-08-19 (Nathan: "gpx export is nice but not the main
+// feature… previous rides should be clickable to expand… route, sector
+// times, ranking"). Each ride is a row — route, lap, rank — that expands
+// into its sector splits; export/delete move into the expanded detail as
+// secondary actions instead of sitting up front.
 function ridesScreen(){
   const all = saved.concat(D.rides);
-  const when = ms => new Date(ms).toISOString().slice(0,16).replace('T',' ');
+  const when = ms => shortDate(ms);
   document.getElementById('screen').innerHTML = `
-    <h2>Recorded rides</h2>
-    <div class="card">${all.map((r,i)=>`
-      <div class="row"><div>
-        <div class="lab">${when(r.ms)} ${r.saved?'<span class="tier-green">· new</span>':''}</div>
-        <div class="hint">${r.route} · ${r.lapS?f1(r.lapS):'no lap'} · ${r.n} sectors
-          ${r.q&&r.q!=='clean'?' · '+r.q:''}</div>
+    <h2>Ride history</h2>
+    <div class="card">${all.map((r,i)=>{
+      const rk = rankInTower(r);
+      const open = rideOpen===r.id;
+      const secs = sectorsForRide(r);
+      const arr = towerFor(r.route);
+      return `<div class="rowhead" data-expand="${r.id}">
+        <div>
+          <div class="lab">${ROUTE_LABEL[r.route]||r.route}${r.saved?'<span class="badge">new</span>':''}</div>
+          <div class="hint">${when(r.ms)} · ${r.lapS?f1(r.lapS):'no lap'}${r.q&&r.q!=='clean'?' · '+r.q:''}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="rank">${r.lapS!=null?`P<b>${rk.pos}</b>/${rk.of}`:'–'}</div>
+          <div class="chev ${open?'open':''}">›</div>
+        </div>
       </div>
-      <div><span class="pill" data-export="${i}">export gpx</span>
-           <span class="pill" data-del="${i}">delete</span></div>
-      </div>`).join('')}
-    </div>
+      ${open?`<div class="detail">
+        ${secs?`<table>${secs.map((v,si)=>{
+          const t = arr.length ? tierOfFor(arr,si,v) : 'neutral';
+          return `<tr><td class="pos ${tierClass(t)} ${t==='yellow'?'tier-yellow':''}">S${si+1}</td>
+            <td class="t ${tierClass(t)} ${t==='yellow'?'tier-yellow':''}">${f1(v)}</td>
+            <td class="t muted">avg ${arr.length?f(avgSectorFor(arr,si)):'–'}</td></tr>`;
+        }).join('')}</table>` : `<div class="muted" style="padding:6px 0">sector times not on file for this ride</div>`}
+        <div class="hint" style="margin-top:8px">
+          <span class="pill" data-export="${i}">export GPX</span>
+          <span class="pill" data-del="${i}">delete</span>
+        </div>
+      </div>`:''}`;
+    }).join('')}</div>
     <div id="toast" class="note" style="display:none"></div>
-    <div class="note">Same shape as the dev build's Rides tab: what is on the phone, and a GPX out of
-      each one. Export here just tells you the filename it would write — nothing leaves the page.</div>`;
+    <div class="note">Tap a ride to see its sector splits and where it placed against your other rides on
+      that route. Export writes a GPX; nothing leaves the page in this mockup.</div>`;
 }
 
 // ------------------------------------------------------------------ routes
@@ -479,8 +708,8 @@ function settingsScreen(){
       <div class="row"><div><div class="lab">Timing tower</div>
         <div class="hint">rank today against the ghost set</div></div>${sw('tower')}</div>
     </div>
-    <div class="note">Everything here is a real switch in this mockup — change it, then ride the
-      Ride tab and look at the Result tab. Nothing is saved; reload restores the defaults.</div>`;
+    <div class="note">Everything here is a real switch in this mockup — change it, then record a ride
+      (Record tab) and look at the Result tab. Nothing is saved; reload restores the defaults.</div>`;
 }
 
 // --------------------------------------------------------------------- demo
@@ -489,23 +718,30 @@ function demoScreen(){
     <h2>Demo ride</h2>
     <div class="card">
       <div class="muted">One thing only: a real archived Morning lap replayed at 25x, through the
-      same pane and map the Ride tab uses. Buzz at every gate, tier colours as they are earned,
+      same pane and map the Record tab uses. Buzz at every gate, tier colours as they are earned,
       the dot following the road actually ridden. Nothing is recorded.</div>
       <div class="note">In the app this is where the tier tones will play first, once audio
       assets exist. Today gates buzz and stay silent.</div>
     </div>
-    <button class="btn" onclick="tab='ride';render()">GO TO THE RIDE TAB TO TRY IT</button>`;
+    <button class="btn" onclick="tab='record';render()">GO TO RECORD TO TRY IT</button>`;
 }
 
 // -------------------------------------------------------------------- shell
 function render(){
-  document.getElementById('tabbar').innerHTML =
-    TABS.map(([k,l])=>`<div class="${k===tab?'on':''}" data-tab="${k}">${l}</div>`).join('');
-  if(tab==='ride') rideScreen();
+  // The armed/running RACE screen is "full screen" (Nathan 2026-08-19): the
+  // tabbar disappears so there's no browsing away mid-ride, and reappears
+  // the moment you're back on setup or another tab.
+  const fullscreen = tab==='record' && (R.phase==='armed' || R.phase==='running');
+  const tb = document.getElementById('tabbar');
+  tb.style.display = fullscreen ? 'none' : '';
+  tb.innerHTML = TABS.map(([k,l])=>`<div class="${k===tab?'on':''}" data-tab="${k}">${l}</div>`).join('');
+  if(tab==='record') recordScreen();
   else if(tab==='rides') ridesScreen();
   else if(tab==='routes') routesScreen();
   else if(tab==='result') resultScreen();
-  else settingsScreen();
+  else if(tab==='settings') settingsScreen();
+  else demoScreen();   // bug fix: the old chain's final `else` always hit
+                        // settingsScreen(), so the Demo tab was unreachable
 }
 function toast(msg){
   const t=document.getElementById('toast');
@@ -513,7 +749,10 @@ function toast(msg){
 }
 document.addEventListener('click', e=>{
   const t = e.target.closest('[data-tab]');
-  if(t){ if(tab==='ride'&&R.running){ clearInterval(timer); R.running=false; } tab=t.dataset.tab; render(); return; }
+  if(t){ // the tabbar is hidden during armed/running so this is a safety net,
+         // not the normal path — abandoning mid-ride resets to setup.
+         if(tab==='record' && R.phase!=='setup'){ clearInterval(timer); reset(); }
+         tab=t.dataset.tab; render(); return; }
   const b = e.target.closest('[data-k]');
   if(b){ S[b.dataset.k]=b.dataset.v;
     document.body.className = S.theme==='day'?'day':''; render(); return; }
@@ -529,6 +768,10 @@ document.addEventListener('click', e=>{
   if(rt){ sel.way=null; sel.routePick=rt.dataset.route; render(); return; }
   const w = e.target.closest('[data-way]');
   if(w){ sel.way = sel.way===w.dataset.way ? null : w.dataset.way; render(); return; }
+  const rx = e.target.closest('[data-expand]');
+  if(rx){ rideOpen = rideOpen===rx.dataset.expand ? null : rx.dataset.expand; render(); return; }
+  const ro = e.target.closest('[data-resopen]');
+  if(ro){ resultOpen = resultOpen===ro.dataset.resopen ? null : ro.dataset.resopen; render(); return; }
   const ex = e.target.closest('[data-export]');
   if(ex){ const all=saved.concat(D.rides), r=all[+ex.dataset.export];
     toast('would write qualifire-'+new Date(r.ms).toISOString().slice(0,10).replace(/-/g,'')+'.gpx to Downloads'); return; }

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Qualifire — the commute, reframed as a qualifying lap.</title>
-<meta name="description" content="Qualifire turns a repeated bike commute into an F1 qualifying session against yourself. One rider, three tracks. The only opponent is your past self.">
+<meta name="description" content="Qualifire turns your everyday bike routes into a friendly race against your own last ten rides. Press start, ride, save — a bit better every day.">
 <style>
   :root{
     /* Paddock — default page mood */
@@ -29,6 +29,21 @@
     --purple-ink: #120521;
   }
 
+  /* Day theme — same structure, lighter surfaces. Toggled via [data-theme="light"] on <html>. */
+  :root[data-theme="light"]{
+    --pad-bg: #F6F4EE;
+    --pad-card: #FFFFFF;
+    --pad-border: #E1DDD1;
+    --pad-recessed: #ECE8DC;
+    --race-bg: #FDFCF9;
+    --race-card: #FFFFFF;
+    --race-border: #E1DDD1;
+    --ink: #17171b;
+    --ink-dim: #605e56;
+    --text2: #4c4a43;
+    --grey: #8b897f;
+  }
+
   *{ box-sizing:border-box; }
   html{ scroll-behavior:smooth; }
   body{
@@ -38,8 +53,95 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     -webkit-font-smoothing:antialiased;
     line-height:1.5;
+    transition: background-color .25s ease, color .25s ease;
   }
   img, svg{ max-width:100%; display:block; }
+
+  /* ---------- STICKY HEADER ---------- */
+  .site-header{
+    position:fixed;
+    top:0; left:0; right:0;
+    z-index:1000;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:16px;
+    padding:12px 24px;
+    background:var(--pad-card);
+    border-bottom:1px solid var(--pad-border);
+    transform:translateY(-100%);
+    opacity:0;
+    transition: transform .25s ease, opacity .25s ease, background-color .25s ease, border-color .25s ease;
+  }
+  .site-header.visible{ transform:translateY(0); opacity:1; }
+  .site-header .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    text-decoration:none;
+    color:var(--ink);
+  }
+  .site-header .brand svg{ width:24px; height:24px; }
+  .site-header .brand span{ font-weight:800; letter-spacing:.14em; font-size:.82rem; }
+  .site-header .actions{ display:flex; align-items:center; gap:10px; }
+  .theme-toggle{
+    background:var(--pad-recessed);
+    border:1px solid var(--pad-border);
+    color:var(--ink-dim);
+    font-size:.78rem;
+    font-weight:700;
+    letter-spacing:.04em;
+    padding:8px 12px;
+    border-radius:6px;
+    cursor:pointer;
+  }
+  .btn-start.small{
+    padding:9px 18px;
+    font-size:.74rem;
+  }
+  @media (max-width: 560px){
+    .site-header .brand span{ display:none; }
+  }
+
+  /* ---------- DEMO ---------- */
+  #demo{ background:var(--pad-bg); border-top:1px solid var(--pad-border); }
+  .demo-frame{
+    margin-top:40px;
+    background:var(--race-card);
+    border:1px solid var(--race-border);
+    border-radius:14px;
+    min-height:600px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:16px;
+    position:relative;
+    overflow:hidden;
+    padding:28px 20px;
+  }
+  .demo-mockup-frame{
+    width:390px;
+    max-width:100%;
+    height:min(840px, 78vh);
+    min-height:560px;
+    border:none;
+    border-radius:26px;
+    background:#0d0d0f;
+    box-shadow: 0 20px 60px -20px rgba(0,0,0,.6);
+  }
+  .demo-caption{
+    margin:0;
+    font-size:.78rem;
+    text-transform:uppercase;
+    letter-spacing:.12em;
+    color:var(--grey);
+    text-align:center;
+  }
+  @media (max-width:760px){
+    .demo-frame{ min-height:520px; padding:22px 12px; }
+    .demo-mockup-frame{ height:min(720px, 82vh); }
+  }
 
   .num{
     font-variant-numeric: tabular-nums;
@@ -54,7 +156,7 @@
     font-weight:700;
   }
 
-  section{ padding: 96px 24px; }
+  section{ padding: 96px 24px; scroll-margin-top: 64px; }
   .wrap{ max-width:1040px; margin:0 auto; }
   .wrap-narrow{ max-width:760px; margin:0 auto; }
 
@@ -327,7 +429,6 @@
     border-radius:0 10px 10px 0;
   }
   .noise-floor p{ margin:0; color:var(--text2); font-size:.95rem; }
-  .noise-floor .rare{ color:var(--purple); font-weight:800; }
 
   /* ---------- TOWER ---------- */
   #tower{ background:var(--pad-bg); border-top:1px solid var(--pad-border); }
@@ -464,6 +565,22 @@
 </head>
 <body>
 
+<!-- ================= STICKY HEADER ================= -->
+<!-- Hidden by default; JS adds .visible once the hero has scrolled past. -->
+<header class="site-header" id="site-header">
+  <a class="brand" href="#hero" aria-label="Qualifire — back to top">
+    <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <circle cx="256" cy="218" r="118" fill="none" stroke="currentColor" stroke-width="30" stroke-linecap="round"/>
+      <line x1="291.355" y1="253.355" x2="387.5206" y2="349.5206" fill="none" stroke="#F5C542" stroke-width="30" stroke-linecap="round"/>
+    </svg>
+    <span>QUALIFIRE</span>
+  </a>
+  <div class="actions">
+    <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false">☀️ Day</button>
+    <a class="btn-start small" href="#demo">Try it out</a>
+  </div>
+</header>
+
 <!-- ================= HERO ================= -->
 <section id="hero" class="hero">
   <div class="hero-mark" aria-hidden="true">
@@ -474,11 +591,11 @@
       </g>
     </svg>
   </div>
-  <div class="kicker">One rider · three tracks · zero rivals</div>
+  <div class="kicker">A bit better every day</div>
   <h1>The commute, reframed as a qualifying lap.</h1>
-  <p class="pitch">Turn a repeated bike commute into an F1 qualifying session against yourself. No other riders. No leaderboards. No calories. Just sectors, colour, and the last ten versions of you.</p>
+  <p class="pitch">Press start. Ride. Save. Next time, you've got something to race — the last ten versions of you. Load the routes you already ride and turn the daily commute into something worth showing up for.</p>
   <a class="btn-start" href="#mechanic">Start</a>
-  <p class="hero-sig">Quali <span aria-hidden="true">+</span> fire — <b>the qualifying lap, and the rare moment a sector lights up.</b></p>
+  <p class="hero-sig">Quali <span aria-hidden="true">+</span> fire — <b>the qualifying lap, and the moment a sector lights up.</b></p>
   <div class="scroll-hint">Scroll ↓</div>
 </section>
 
@@ -487,13 +604,13 @@
   <div class="wrap">
     <div class="kicker">How it works</div>
     <h2>Same road. New meaning.</h2>
-    <p class="wrap-narrow" style="font-size:1rem;">Press START at the door. The lap doesn't begin there — it begins about 162&nbsp;metres later, at a line only the app can see. You're already at speed when it happens. That's the flying start.</p>
+    <p class="wrap-narrow" style="font-size:1rem;">Press START at the door. From there, the app quietly splits your ride into sectors and times each one against your own recent history — no setup, nothing to configure mid-ride.</p>
 
     <div class="steps">
       <div class="step">
         <div class="n">1</div>
         <h4>Ride your normal route</h4>
-        <p>Morning, Evening A, Evening B — three known tracks. Nothing about the ride changes. The GPS trace is the same one your phone always drew.</p>
+        <p>Morning, evening, weekend errand — whichever route you already ride. Nothing about the ride changes. The GPS trace is the same one your phone always drew.</p>
       </div>
       <div class="step">
         <div class="n">2</div>
@@ -518,7 +635,7 @@
         <text class="gate-label" x="140" y="22" text-anchor="middle">GATE 1</text>
         <text class="gate-label" x="255" y="22" text-anchor="middle">GATE 2</text>
         <text class="gate-label" x="370" y="22" text-anchor="middle">GATE 3</text>
-        <text class="gate-label" x="20" y="105">START (flying)</text>
+        <text class="gate-label" x="20" y="105">START</text>
         <text class="gate-label" x="480" y="105" text-anchor="end">FINISH</text>
         <g id="rideranim" class="rider-dot">
           <circle cx="0" cy="60" r="7"/>
@@ -528,12 +645,44 @@
   </div>
 </section>
 
+<!-- ================= DEMO ================= -->
+<section id="demo">
+  <div class="wrap">
+    <div class="kicker">Try it live</div>
+    <h2>See a lap before you ride one</h2>
+    <p class="wrap-narrow" style="font-size:1rem;">Get a feel for the app right here — no install, no account, just a taste of what pressing start actually looks like.</p>
+
+    <!--
+      LIVE DEMO — embeds the real interactive mockup (demos/mockup.html) via
+      iframe rather than inlining its markup/CSS/JS here. The mockup ships
+      its own :root variables, a bare `body{background:#000}` rule, and
+      reused class/id names (.card, .btn, .clock, .slot, #screen, #map,
+      global start()/stop()/render() functions, a document-level click
+      delegate) that would collide with this page's own styles and scripts
+      if pasted in place. The iframe keeps the mockup fully self-contained
+      and untouched — same functionality, zero collision risk. Lazy-loaded
+      so it doesn't slow down first paint. Path assumes marketing/index.html
+      and demos/mockup.html keep their sibling-folder layout on deploy.
+    -->
+    <div class="demo-frame">
+      <iframe
+        class="demo-mockup-frame"
+        src="../demos/mockup.html"
+        title="Qualifire interactive app mockup — press START to try a simulated lap"
+        loading="lazy"
+        referrerpolicy="no-referrer"
+      ></iframe>
+      <p class="demo-caption">Interactive — press START, then poke around Rides / Routes / Settings</p>
+    </div>
+  </div>
+</section>
+
 <!-- ================= LIVE / RACE MODE ================= -->
 <section id="live">
   <div class="wrap">
     <div class="kicker">While you ride — race mode</div>
-    <h2>The screen drops to black. The colours do the talking.</h2>
-    <p class="wrap-narrow" style="font-size:1rem;">The moment you press START, the app leaves paddock charcoal behind for near-black. Chrome recedes. Only tier colour and tabular numerals remain — built for a glance under a second, not a stare.</p>
+    <h2>Minimal interface, maximum clarity.</h2>
+    <p class="wrap-narrow" style="font-size:1rem;">Only the colour and numbers that matter — built for a glance under a second, not a stare. Chrome recedes, touch targets disappear, and the sector clock is the only thing asking for your attention. Day or night, the same rule holds: less to read, more to feel.</p>
 
     <div class="race-surface">
       <div class="clock-block">
@@ -560,14 +709,14 @@
 <section id="colour">
   <div class="wrap">
     <div class="kicker">Earned colour</div>
-    <h2>Colour is the scarcest resource in the app.</h2>
+    <h2>How today's ride gets its colour.</h2>
     <p class="wrap-narrow" style="font-size:1rem;">Every sector is measured against a comparison window: your last <strong style="color:var(--ink);">10</strong> rides on that exact track.</p>
 
     <div class="swatches">
       <div class="swatch purple">
         <div class="chip"></div>
         <h4>Purple</h4>
-        <p>Beats the best of the window. The fastest this sector has ever gone in your last ten attempts. Rare on purpose — that's what makes it worth chasing.</p>
+        <p>Beats the best of the window — the fastest this sector has gone across your last ten attempts.</p>
       </div>
       <div class="swatch green">
         <div class="chip"></div>
@@ -582,7 +731,7 @@
     </div>
 
     <div class="noise-floor">
-      <p>Colour only fires beyond a measured noise floor — a colour can never be luck-of-the-GPS. <span class="rare">Purple is rare by design.</span> Fewer than five comparable rides on a track and the sector simply stays as plain ink — no colour at all — waiting for history to accumulate.</p>
+      <p>Colour only shows once there's enough history to trust it — a result should never come down to luck-of-the-GPS. Fewer than five comparable rides on a track and the sector simply stays plain ink, no colour yet, until there's enough to compare against.</p>
     </div>
   </div>
 </section>
@@ -661,7 +810,7 @@
 <!-- ================= PHILOSOPHY ================= -->
 <section id="philosophy">
   <div class="wrap-narrow phil-lines">
-    <p>No red. No streaks. No calories.</p>
+    <p>A bit <span>better</span> every day.</p>
     <p>A slow lap is <span>time posted.</span></p>
     <p>Your only rival is the last ten versions of you.</p>
   </div>
@@ -677,7 +826,7 @@
       </svg>
       <span>QUALIFIRE</span>
     </div>
-    <p>Qualifire is a personal project. One rider, three tracks, zero servers. It runs off a single archive of one person's own commute data and exists to make an ordinary ride worth riding again — nothing more.</p>
+    <p>Qualifire is a personal project. Your own routes, your own history, zero servers. It runs off a single archive of one person's own commute data and exists to make an ordinary ride worth riding again — nothing more.</p>
     <p class="fine">Not available on any app store. Not a company. Not for sale. This page is a mock, built to show what the app looks and feels like, not to sell it to anyone but its one user.</p>
   </div>
 </footer>
@@ -687,9 +836,47 @@
   "use strict";
   var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // Smooth scroll for the START button (progressive enhancement over CSS scroll-behavior)
-  var start = document.querySelector('.btn-start');
-  if (start) {
+  // Sticky header: hidden at the top, fades/slides in once the hero has been scrolled past.
+  var header = document.getElementById('site-header');
+  var hero = document.getElementById('hero');
+  if (header && hero) {
+    var toggleHeader = function(){
+      var threshold = hero.offsetHeight * 0.6;
+      header.classList.toggle('visible', window.scrollY > threshold);
+    };
+    var ticking = false;
+    window.addEventListener('scroll', function(){
+      if (!ticking) {
+        window.requestAnimationFrame(function(){ toggleHeader(); ticking = false; });
+        ticking = true;
+      }
+    }, { passive: true });
+    toggleHeader();
+  }
+
+  // Day/night theme toggle, persisted in localStorage. Defaults to the app's native dark mood.
+  var themeToggle = document.getElementById('theme-toggle');
+  var root = document.documentElement;
+  function applyTheme(theme){
+    root.setAttribute('data-theme', theme);
+    if (themeToggle) {
+      themeToggle.setAttribute('aria-pressed', theme === 'light' ? 'true' : 'false');
+      themeToggle.textContent = theme === 'light' ? '🌙 Night' : '☀️ Day';
+    }
+    try { localStorage.setItem('qualifire-theme', theme); } catch (e) {}
+  }
+  var savedTheme = null;
+  try { savedTheme = localStorage.getItem('qualifire-theme'); } catch (e) {}
+  applyTheme(savedTheme === 'light' ? 'light' : 'dark');
+  if (themeToggle) {
+    themeToggle.addEventListener('click', function(){
+      applyTheme(root.getAttribute('data-theme') === 'light' ? 'dark' : 'light');
+    });
+  }
+
+  // Smooth scroll for any in-page CTA button (progressive enhancement over CSS scroll-behavior)
+  var starts = document.querySelectorAll('.btn-start[href^="#"]');
+  starts.forEach(function(start){
     start.addEventListener('click', function(e){
       var target = document.querySelector(this.getAttribute('href'));
       if (target) {
@@ -697,7 +884,7 @@
         target.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
       }
     });
-  }
+  });
 
   // Re-trigger the sector-strip fill loop only while it's on screen (saves cycles, respects reduced motion)
   var strip = document.querySelector('.sector-strip');
