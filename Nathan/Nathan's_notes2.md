@@ -21,3 +21,12 @@ I have some design ideas that I would like to work see implemented
     * The RESULT tab is weird now, just a fixed result. Should it be clickable to see the results for all the routes, or from the last weeks (makes it similar to the RIDES tab then so maybe not). But the current tab design is not appealing nor useful
 * In general I also dont know what "fixes"are and why they are logged and shown in the app. Is it something the user should be interested in or is it jist for troubleshooting and making sure the location updates are firing properly ?
 
+20250820
+
+* today I had some free rides which were off known routes and I think I now how I want to handle it.
+
+  * Under the start (pick one) and going to options of the RECORD tab there should be new landmarks which are called "new". So I have the option to go from work>>new for example. or from new>>home.
+
+    * When this option is picked then the map should switch to a gates only version. So all the gates just on the map and gates will get auto picked up if I cross them. In this way I can still enjoy logging sectors when my ride overlaps with known routes.
+    * Whats important is in this mode the sectors can be logged during the ride and the sector times can be saved in a separate category called free rides. This way the sector times from fixed routes are not polluted by the free rides.
+
