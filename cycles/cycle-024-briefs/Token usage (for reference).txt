@@ -1,0 +1,12 @@
+Phase readout:
+
+Tier	Model	Tokens	Outcome
+Triage	Haiku	49k	Order + conflict watchlist; 2 package splits
+Analyst (app UI, WP-A)	Fable	261k	3 briefs; store design + RECORD/RIDES/RESULT port
+Analyst (engine/routes, WP-D/B)	Fable	335k	5 briefs; both promotions verified; corridor-shadowing catch
+Analyst (render + GPX+, WP-E/G)	Fable	191k	2 briefs; ride-3 lock failure root-caused in code
+Analyst (workbench + replay, WP-C/H)	Fable	182k	2 briefs; save-back convention settled
+Analyst (docs + SVG, WP-I/J)	Fable	220k	2 briefs; product-folder disposition table
+Coordinator	Fable (chat)	—	Scope, your 7 rulings captured, briefs committed to repo
+
+Total subagent spend ≈ 1.24M tokens, no executor has run yet.
