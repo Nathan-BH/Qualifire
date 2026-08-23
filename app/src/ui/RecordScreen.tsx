@@ -15,7 +15,7 @@
  * bottom.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, BackHandler, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   ActiveSession,
   PermissionOutcome,
@@ -24,6 +24,8 @@ import {
   ensurePermissions,
   getRecoveryState,
   getStatus,
+  noteButtonPress,
+  refreshPositionOnce,
   startTracking,
   stopTracking,
   subscribe,
@@ -31,6 +33,9 @@ import {
 import { liveEngine, type LiveEngineState } from '../live/engine';
 import { getLiveTowerPosition } from '../live/towerSource';
 import { LiveSectorPane, realTimebase, viewModelFromEngine } from './liveView';
+import { LaunchAnimation } from './launchAnimation';
+import { isFullscreen, statusItemsFor, type RecordPhase } from './recordFlow';
+import { useTabNav } from './tabNav';
 import RouteMapView from './routeMapView';
 import { metresBetween } from './routeMapGeo';
 import { useSettings } from './settings';
@@ -39,6 +44,7 @@ import { ghostsFor, lapValues, sectorValues, tierFor } from './colourModel';
 import { rememberRide } from './lastRide';
 import catalogJson from '../store/catalog.seed.json';
 import { landmarkAt } from '../store/catalog';
+import { routeLabel } from '../store/defaultRoute';
 import type { Catalog, Route } from '../store/types';
 import { PaddockTheme, colors, radius } from './theme';
 import { useTheme } from './themeContext';
@@ -69,12 +75,6 @@ function fmtElapsed(ms: number): string {
   return h > 0 ? `${h}:${p(m)}:${p(sec)}` : `${m}:${p(sec)}`;
 }
 
-/** Presentational label for a route id — the Route type has no label field
- * (schema untouched): "EveningA" -> "Evening A", "Morning" -> "Morning". */
-function routeLabel(id: string): string {
-  return id.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
-}
-
 /** §8a default: the most-ridden recent route on the way — most ghost rides in
  * the recent window (ghostsFor = last WINDOW_N ranked rides, ascending by
  * startedAtMs), tie -> the one ridden most recently, tie -> catalog order. */
@@ -93,11 +93,34 @@ function defaultRouteFor(routes: Route[]): Route | null {
   return best;
 }
 
-export default function RecordScreen() {
+export default function RecordScreen({
+  onFullscreenChange,
+}: {
+  onFullscreenChange?: (fs: boolean) => void;
+}) {
   const { t, mode, toggleMode } = useTheme();
   const { s: settings } = useSettings();
+  const tabNav = useTabNav();
   const styles = useMemo(() => makeStyles(t), [t]);
+  // Cycle 024 (WP-A2): the three-phase RECORD flow (Nathan 2026-08-19) —
+  // setup (pick from/to/route, press RECORD) -> armed (route+location shown,
+  // nothing started) -> running (START pressed; today's recording column).
+  // `ending` is transient: END pressed, ride saved, reversed launch mark
+  // playing. `phase` is authoritative for rendering; the sync effect below
+  // only ever pushes it TOWARD 'running' when a real session appears out
+  // from under it (relaunch recovery) — every other transition is an
+  // explicit user action (see recordFlow.ts's canTransition table).
+  const [phase, setPhase] = useState<RecordPhase>('setup');
+  // 'fwd' while the RECORD-press launch mark plays (setup, pre-'armed');
+  // 'rev' while the END-press reversed mark plays ('ending'). Folded into
+  // the fullscreen report below so the OVERLAY itself is never seen with the
+  // tab bar still showing, even for the brief moment before phase flips.
+  const [showAnim, setShowAnim] = useState<'fwd' | 'rev' | null>(null);
   const [session, setSession] = useState<ActiveSession | null>(null);
+  // Mirror for onEnd's [] useCallback closure (it must read the CURRENT
+  // session, same reason pickedRouteRef mirrors pickedRoute below).
+  const sessionRef = useRef<ActiveSession | null>(null);
+  sessionRef.current = session;
   const [status, setStatus] = useState<TrackerStatus>(getStatus());
   const [now, setNow] = useState(Date.now());
   const [problem, setProblem] = useState<PermissionOutcome | null>(null);
@@ -198,6 +221,73 @@ export default function RecordScreen() {
     })();
   }, []);
 
+  // Cycle 024 (WP-A2): phase sync — only ever pushes TOWARD 'running' when a
+  // real session appears without an explicit phase change of our own (the
+  // relaunch-recovery branch above calls setSession directly). The reverse
+  // (session becoming null) is NEVER auto-handled here: onEnd sets 'ending'
+  // itself before clearing the session, and a stop-failure resets to 'setup'
+  // itself in its own catch block — see recordFlow.ts's canTransition table.
+  useEffect(() => {
+    if (session != null && phase !== 'running' && phase !== 'ending') {
+      setPhase('running');
+    }
+  }, [session, phase]);
+
+  // Report fullscreen (armed/running/ending, OR either launch mark playing —
+  // the overlay itself must never be seen with the tab bar still showing,
+  // including the instant before RECORD's mark resolves to 'armed').
+  useEffect(() => {
+    onFullscreenChange?.(isFullscreen(phase) || showAnim != null);
+    // Cleanup: on unmount (e.g. Shell hides the tab bar for 'record', which
+    // unmounts RecordScreen itself when tab flips before this effect's next
+    // run) explicitly report false so the footer doesn't stay hidden after
+    // the ride ends and focus moves elsewhere (WP-A2 fix B1).
+    return () => onFullscreenChange?.(false);
+  }, [phase, showAnim, onFullscreenChange]);
+
+  // Hardware back (Cycle 024, WP-A2): registered here so it runs BEFORE
+  // Shell's own handler (RN calls the most-recently-mounted listener first —
+  // RecordScreen, a child of Shell, always mounts after it). armed -> setup;
+  // running/ending swallow the press entirely (no accidental background/exit
+  // mid-flow — the OS home button still works, recording survives via the
+  // foreground service); setup falls through to Shell's default (other tab
+  // -> record, or app backgrounds from record).
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (phase === 'armed') {
+        setPhase('setup');
+        return true;
+      }
+      if (phase === 'running' || phase === 'ending') {
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [phase]);
+
+  const onRecord = useCallback(async () => {
+    setBusy(true);
+    try {
+      // Permissions move up to RECORD (armed press) so the OS dialogs happen
+      // at the kerb, not on the bike — START (below) re-checks, idempotently.
+      const outcome = await ensurePermissions();
+      if (outcome === 'denied' || outcome === 'services-off') {
+        setProblem(outcome);
+        return; // stay in setup
+      }
+      setProblem(outcome === 'foreground-only' ? 'foreground-only' : null);
+      // Display-only, best-effort: improves the armed screen's map/location
+      // before any ride is open (no fix is recorded — no ride exists yet).
+      void refreshPositionOnce();
+      setShowAnim('fwd');
+    } catch (e) {
+      Alert.alert('Could not check permissions', e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
   const onStart = useCallback(async () => {
     setBusy(true);
     setLastSummary(null);
@@ -214,7 +304,7 @@ export default function RecordScreen() {
       }
       setProblem(outcome === 'foreground-only' ? 'foreground-only' : null);
       setRideRouteHint(pickedRouteRef.current?.refLineId ?? null);
-      const s = await startTracking();
+      const s = await startTracking({ routePick: pickedRouteRef.current?.id ?? null });
       setRecovered(false);
       setSession(s);
     } catch (e) {
@@ -227,14 +317,39 @@ export default function RecordScreen() {
   const onEnd = useCallback(async () => {
     setBusy(true);
     try {
-      rememberRide(liveEngine.getState()); // hand the finished ride to Result
+      // Cycle 024 (WP-D2): settle a route BEFORE handing the ride to Result —
+      // a still-soft or never-locked ride otherwise misses the finalize()
+      // recovery that stopTracking() below runs too late for rememberRide's
+      // purposes (it reads the CURRENT state, not what stopTracking returns).
+      liveEngine.finalize();
+      // Cycle 024 (WP-A1): a real session hands its rideId/startedAtMs through
+      // so the finished ride gets a persistent store entry, not just an
+      // in-session session:-id one (B-28's other half).
+      const s = sessionRef.current;
+      rememberRide(
+        liveEngine.getState(),
+        s ? { rideId: s.rideId, startedAtMs: s.startedAtMs } : undefined,
+      ); // hand the finished ride to Result
       const sum = await stopTracking();
+      setLastSummary(sum);
+      // Cycle 024 (WP-A2, Nathan 2026-08-19): "at the end when you press
+      // stop it would be nice to show the animation again — but reversed."
+      // session clears and phase flips to 'ending' TOGETHER, after the ride
+      // is safely saved — the reversed mark then plays over the (now
+      // session-less) screen; its onDone below is what actually lands on
+      // Result.
       setSession(null);
       setRecovered(false);
-      setLastSummary(sum);
       setPauseMenu(false);
+      setPhase('ending');
+      setShowAnim('rev');
     } catch (e) {
       Alert.alert('Could not stop cleanly', e instanceof Error ? e.message : String(e));
+      // No navigation, no animation — stay exactly where the ride actually
+      // is: still 'running' if the session survived the failed stop, else
+      // fall back to 'setup' (mirrors sessionRef, not the stale `session`
+      // closure — same reason onStart/onEnd read it throughout this file).
+      setPhase(sessionRef.current ? 'running' : 'setup');
     } finally {
       setBusy(false);
     }
@@ -247,9 +362,10 @@ export default function RecordScreen() {
   const lastFixAgeS =
     status.lastFixMs != null ? Math.round((now - status.lastFixMs) / 1000) : null;
 
-  // Rotating status slot (IDEAS §24): route / fix count / GPS state share one
-  // line, advancing every 6 s. GPS trouble jumps the queue via ordering only —
-  // content stays honest, nothing is hidden, just time-multiplexed.
+  // Rotating status slot (IDEAS §24): route / GPS state share one line,
+  // advancing every 6 s (Cycle 024, WP-A2: the raw fixes count is gone — see
+  // statusItemsFor). GPS trouble jumps the queue via ordering only — content
+  // stays honest, nothing is hidden, just time-multiplexed.
   const [statusIdx, setStatusIdx] = useState(0);
   useEffect(() => {
     if (!recording) return;
@@ -264,12 +380,18 @@ export default function RecordScreen() {
         ? `last fix ${lastFixAgeS}s ago — GPS struggling?`
         : 'GPS live';
   const routeLocked = live.phase === 'locked' || live.phase === 'finished';
+  // Cycle 024 (WP-D2): a soft lock is displayed and scored, but it is not yet
+  // corridor-confirmed — say so. Verified/finalized keep today's wording.
   const routeLine = routeLocked
-    ? `${live.track ?? ''} · route locked${live.onRoute ? '' : ' · off route'}`
+    ? live.lockKind === 'soft'
+      ? `${live.track ?? ''} · route locked (your pick) · verifying${live.onRoute ? '' : ' · off route'}`
+      : `${live.track ?? ''} · route locked${live.onRoute ? '' : ' · off route'}`
     : rideRouteHint ? `detecting route… · you picked ${routeLabel(rideRouteHint)}` : 'detecting route…';
-  const statusItems = gpsTrouble
-    ? [gpsLine, routeLine, `${status.fixesThisLaunch} fixes`] // trouble leads
-    : [routeLine, `${status.fixesThisLaunch} fixes`, gpsLine];
+  // Cycle 024 (WP-A2, Nathan 2026-08-19): "I don't know what 'fixes' are" —
+  // the raw count is gone from every user-facing status line; it still lives
+  // in the GPX+ sidecar for diagnostics. recordFlow.ts owns the pure rule so
+  // it is tested without RN.
+  const statusItems = statusItemsFor({ gpsTrouble, gpsLine, routeLine });
 
   // A line that CHANGES claims the slot for PIN_MS instead of waiting its turn.
   // Without this the carousel can rotate the route lock away ~2 s after it
@@ -344,6 +466,11 @@ export default function RecordScreen() {
   const pickedRouteRef = useRef<Route | null>(null);
   pickedRouteRef.current = pickedRoute;
 
+  // Cycle 024 (WP-A2): the armed screen's readytag line names from/to by
+  // their catalog label (mirrors the mockup's `lm()` helper), not their id.
+  const landmarkLabel = (id: string): string =>
+    CATALOG.landmarks.find((l) => l.id === id)?.label ?? id;
+
   // Shared between both branches below — unchanged position/behaviour, just
   // no longer duplicated between an idle ScrollView and a recording column.
   const problemStates = (
@@ -378,18 +505,89 @@ export default function RecordScreen() {
     </>
   );
 
+  // Cycle 024 (WP-A2): 'armed' — the RACE screen, ready but not started
+  // (Nathan 2026-08-19: "the selected route should be shown with your
+  // location and everything set but not started"). Records nothing, starts
+  // nothing (D-042 untouched — the clock anchor is still startTracking()'s
+  // startedAtMs, set only when START below is pressed).
+  if (phase === 'armed') {
+    return (
+      <View style={styles.raceColumn}>
+        <Text style={styles.trackLine}>
+          {landmarkLabel(fromId)} → {landmarkLabel(to)}
+          {pickedRoute ? ` · ${routeLabel(pickedRoute.refLineId)}` : ''} · ready — not started
+        </Text>
+        {problemStates}
+        {settings.liveMap ? (
+          <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch' }}>
+            <RouteMapView
+              routeId={pickedRoute?.refLineId ?? null}
+              lat={status.lastLat}
+              lon={status.lastLon}
+              zoom={1}
+              variant="live"
+              liveState="prestart"
+              fill
+            />
+          </View>
+        ) : (
+          <View style={{ flex: 1 }} />
+        )}
+        <Pressable
+          style={[styles.bigBtn, styles.startYellow, busy && styles.busy]}
+          disabled={busy}
+          onPress={onStart}
+        >
+          <Text style={[styles.bigBtnText, styles.startText]}>START</Text>
+          <Text style={[styles.bigBtnSub, styles.startSub]}>the clock runs from here</Text>
+        </Pressable>
+        <Pressable style={styles.cancelBar} onPress={() => setPhase('setup')}>
+          <Text style={styles.cancelBarText}>‹ cancel — back to setup</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  // Cycle 024 (WP-A2): 'ending' — the ride is already saved (onEnd ran
+  // rememberRide()/stopTracking() before setting this phase); the reversed
+  // launch mark plays on top (below) before folding back to 'setup' and
+  // handing off to Result. No PAUSE/END here — the ride is already over.
+  if (phase === 'ending') {
+    return (
+      <View style={styles.raceColumn}>
+        <Text style={styles.trackLine}>
+          {lastSummary ? `Ride saved — ${fmtElapsed(lastSummary.endMs - lastSummary.startMs)}.` : 'Ride saved.'}
+        </Text>
+        <View style={{ flex: 1 }} />
+        {showAnim === 'rev' && (
+          <LaunchAnimation
+            reverse
+            onDone={() => {
+              setShowAnim(null);
+              setPhase('setup');
+              tabNav.go('result');
+            }}
+          />
+        )}
+      </View>
+    );
+  }
+
   // Cycle 020 (Nathan 2026-08-19): while recording, do not use the centred
   // idle ScrollView — a full-height column instead, so the map/clock/status/
   // PAUSE fill the tab edge to edge (no centring, no blank bands). The idle
   // screen (below) is unchanged.
-  if (session) {
+  if (phase === 'running') {
+    // Defensive only: the sync effect above never sets 'running' without a
+    // real session, so this is unreachable in practice — but session.
+    // startedAtMs below needs the null-narrow either way.
+    if (!session) return null;
     return (
       <View style={styles.raceColumn}>
         {problemStates}
         {recovered && (
           <Text style={styles.recovered}>
-            Recovered after relaunch — still recording. Counter shows fixes since relaunch;
-            nothing was lost on disk.
+            Recovered after relaunch — still recording. Nothing was lost on disk.
           </Text>
         )}
         {/* The live map, big, at the top (Cycle 020) — was a slim ribbon below
@@ -426,9 +624,10 @@ export default function RecordScreen() {
           )}
           showLap={showLap}
         />
-        {/* One rotating status slot (IDEAS §24, 2026-08-16): route / fixes /
-            GPS cycle every 6 s instead of stacking three lines. Warnings
-            (storage errors) stay permanent below — never rotated away. */}
+        {/* One rotating status slot (IDEAS §24, 2026-08-16): route / GPS cycle
+            every 6 s instead of stacking two lines (Cycle 024, WP-A2: the raw
+            fixes count is gone — see statusItemsFor). Warnings (storage
+            errors) stay permanent below — never rotated away. */}
         <Text style={styles.trackLine}>{statusLine}</Text>
         {settings.redLight === 'button' && (
           <Pressable
@@ -455,7 +654,7 @@ export default function RecordScreen() {
           <Pressable
             style={[styles.stopSlim, busy && styles.busy]}
             disabled={busy}
-            onPress={() => setPauseMenu(true)}
+            onPress={() => { noteButtonPress('pause'); setPauseMenu(true); }}
           >
             <Text style={styles.stopSlimText}>PAUSE</Text>
             <Text style={styles.stopSlimSub}>recording continues · resume or end</Text>
@@ -465,7 +664,7 @@ export default function RecordScreen() {
             <Pressable
               style={[styles.stopSlim, { flex: 1 }, busy && styles.busy]}
               disabled={busy}
-              onPress={() => setPauseMenu(false)}
+              onPress={() => { noteButtonPress('resume'); setPauseMenu(false); }}
             >
               <Text style={styles.stopSlimText}>RESUME</Text>
               <Text style={styles.stopSlimSub}>back to the ride</Text>
@@ -484,7 +683,12 @@ export default function RecordScreen() {
     );
   }
 
+  // 'setup' (default phase). Wrapped in a plain flex:1 View (not returned
+  // bare) so the forward launch-mark overlay (Cycle 024, WP-A2) can sit
+  // alongside the ScrollView as an absolute-fill sibling — it styles itself
+  // absolute inset 0 with zIndex 1000, so it covers the tab area too.
   return (
+    <View style={{ flex: 1 }}>
     <ScrollView
       style={styles.scroll}
       contentContainerStyle={styles.content}
@@ -510,8 +714,9 @@ export default function RecordScreen() {
         <Text style={styles.appTitle}>Qualifire</Text>
         {/* B-51: at the rack, before START — real pannable streets, the
             candidate route (whichever way/route is picked so far; falls
-            back to 'Morning' inside RouteMapView when nothing is picked
-            yet, which is acceptable as the candidate). */}
+            back to the first route in the asset manifest inside
+            RouteMapView when nothing is picked yet, which is acceptable
+            as the candidate). */}
         {settings.liveMap ? (
           <View style={{ alignSelf: 'stretch' }}>
             <RouteMapView
@@ -579,27 +784,42 @@ export default function RecordScreen() {
         </View>
         {lastSummary ? (
           <Text style={styles.sub}>
-            Ride saved: {lastSummary.nFixes} fixes,{' '}
-            {fmtElapsed(lastSummary.endMs - lastSummary.startMs)}. Find it in Rides.
+            Ride saved — {fmtElapsed(lastSummary.endMs - lastSummary.startMs)}. Find it in Rides.
           </Text>
         ) : (
           <Text style={styles.sub}>Ready to record.</Text>
         )}
       </View>
 
-      {/* START stays the big slab (IDEAS §24). Amber, no red (D-013). */}
+      {/* RECORD — arms the ride (Cycle 024, WP-A2, Nathan 2026-08-19): plays
+          the launch mark, then the RACE screen is ready but not moving until
+          START is pressed there. Amber, no red (D-013) — see WP-A2's
+          NEEDS-NATHAN #1 for the red option. */}
       <Pressable
         style={[styles.bigBtn, styles.startYellow, busy && styles.busy]}
         disabled={busy}
-        onPress={onStart}
+        onPress={onRecord}
       >
-        <Text style={[styles.bigBtnText, styles.startText]}>START</Text>
+        {/* Record-dot glyph (mockup: red slab + white dot; D-013 "NO RED
+            ANYWHERE" forbids the red, so this ships as a charcoal dot on the
+            existing accent-yellow slab — t.onAccent inherited from the
+            parent Text, same colour the RECORD label itself uses. */}
+        <Text style={[styles.bigBtnText, styles.startText]}>{'●'} RECORD</Text>
         <Text style={[styles.bigBtnSub, styles.startSub]}>
-          records the ride · screen can go off
+          arms the ride · nothing starts yet
         </Text>
       </Pressable>
 
     </ScrollView>
+    {showAnim === 'fwd' && (
+      <LaunchAnimation
+        onDone={() => {
+          setShowAnim(null);
+          setPhase('armed');
+        }}
+      />
+    )}
+    </View>
   );
 }
 
@@ -628,6 +848,20 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
     flex: 1, alignSelf: 'stretch', backgroundColor: t.race.bg,
     paddingHorizontal: 12, paddingTop: 8, paddingBottom: 10, gap: 8,
   },
+  // Cycle 024 (WP-A2): armed screen's "back to setup" affordance — a slim
+  // amber-bordered bar, deliberately quieter than START (mockup's own armed
+  // screen has no back button at all; this is an app-only addition so the
+  // rider is never stuck armed with only START to press).
+  cancelBar: {
+    alignSelf: 'stretch',
+    borderRadius: radius.btn,
+    borderWidth: 1,
+    borderColor: colors.amber,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  cancelBarText: { color: colors.amber, fontSize: 13, fontWeight: '700', letterSpacing: 1 },
   readout: { alignItems: 'center', gap: 6 },
   appTitle: {
     color: t.text,

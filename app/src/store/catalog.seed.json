@@ -113,7 +113,8 @@
    "startLandmarkId": "station",
    "endLandmarkId": "home",
    "routeIds": [
-    "StationHomePreferred"
+    "StationHomePreferred",
+    "StationHomeWet"
    ]
   },
   {
@@ -200,7 +201,7 @@
    "id": "MorningB",
    "wayId": "home>work",
    "refLineId": "MorningB",
-   "gateSetVersion": 1,
+   "gateSetVersion": 2,
    "seeded": false
   },
   {
@@ -249,6 +250,13 @@
    "id": "StationHomePreferred",
    "wayId": "station>home",
    "refLineId": "StationHomePreferred",
+   "gateSetVersion": 1,
+   "seeded": false
+  },
+  {
+   "id": "StationHomeWet",
+   "wayId": "station>home",
+   "refLineId": "StationHomeWet",
    "gateSetVersion": 1,
    "seeded": false
   },
@@ -363,6 +371,19 @@
    "note": "cycle 020 (2026-08-19): route 5 (20260520-2317) reversed; gates = EveningB's reversed + START ~162 m; cold-start, unratified \u2014 replace once \u226510 rides exist"
   },
   {
+   "routeId": "MorningB",
+   "version": 2,
+   "chainageM": [
+    204,
+    1835,
+    3081,
+    4403,
+    5733
+   ],
+   "createdAtMs": 1787184000000,
+   "note": "2026-08-20: reference promoted to Nathan's 2026-08-19 morning ride (h>>w-w, the rain/asphalt route); the same physical gate positions re-projected onto the new 5927.1 m line; still cold-start, unratified (D-036)"
+  },
+  {
    "routeId": "WorkStationA",
    "version": 1,
    "chainageM": [
@@ -452,6 +473,19 @@
    ],
    "createdAtMs": 0,
    "note": "cold-start equal-chainage placeholder (COLD-START.md \u00a73/B-33 substitute, not measured, not ratified as a real gate set) from a demos/ways trace 2026-07-21 20:48 (Leuven station \u2192 home), total ~8547.5 m \u2014 replace once \u226510 rides exist"
+  },
+  {
+   "routeId": "StationHomeWet",
+   "version": 1,
+   "chainageM": [
+    260.6,
+    2301.9,
+    4343.2,
+    6384.5,
+    8425.8
+   ],
+   "createdAtMs": 0,
+   "note": "cold-start equal-chainage placeholder (not measured, not ratified) from Nathan's 2026-08-19 ride 3 (s>>h-w, station\u2192home wet route) \u2014 replace once \u226510 rides exist"
   },
   {
    "routeId": "WorkChurchA",

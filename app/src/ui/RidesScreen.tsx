@@ -5,6 +5,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { deleteRide, exportGpxPlus, listRides } from '../storage';
+import { dropRecorded } from './lastRide';
+import { removeStoredResult } from '../store/resultsStore';
 import { gpxBaseName, saveGpx } from './saveGpx';
 import { PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
@@ -69,6 +71,11 @@ export default function RidesScreen() {
             onPress: async () => {
               try {
                 await deleteRide(ride.rideId);
+                // Cycle 024 (WP-A1): the derived sidecar (and this session's
+                // in-memory comparison entry, if any) go with the raw ride —
+                // never left orphaned pointing at a deleted trace.
+                await removeStoredResult(ride.rideId);
+                dropRecorded(ride.rideId);
                 await refresh();
               } catch (e) {
                 Alert.alert('Could not delete', e instanceof Error ? e.message : String(e));

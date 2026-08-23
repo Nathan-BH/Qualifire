@@ -9,7 +9,7 @@
 import { registerHooks } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import * as nodeFs from 'node:fs';
-import { assert, test } from './lib.ts';
+import { assert, test, loadFixture } from './lib.ts';
 import type { LiveEngineState } from '../src/live/engine.ts';
 
 // App code imports the seed as a bare `.json` — Metro bundles that directly,
@@ -31,6 +31,8 @@ const { fmt, ghostsFor, lapValues, positionAmong, sectorValues, tierFor, MIN_HIS
 const { getLiveTowerPosition } = await import('../src/live/towerSource.ts');
 const { getLastRide, rememberRide, resetRecordedForTests } =
   await import('../src/ui/lastRide.ts');
+const { LiveEngine } = await import('../src/live/engine.ts');
+const { catalogTrackSpecs } = await import('../src/live/tracks.ts');
 
 function stateWith(over: Partial<LiveEngineState>): LiveEngineState {
   return {
@@ -193,4 +195,43 @@ test('B-44: window-inclusion guard -- a recorded ride still ghosts the NEXT ride
   );
 
   resetRecordedForTests();
+});
+
+// ============================================================ cycle 024 (WP-D2)
+
+test('cycle024: pick wrong — a finished ride ranks against the RIDDEN route\'s ghosts, never the pick\'s', () => {
+  resetRecordedForTests();
+  const f = loadFixture('clean_eveningb');
+  const engine = new LiveEngine(catalogTrackSpecs());
+  engine.start({ pickId: 'EveningA' });
+  for (let i = 0; i < f.fixes.t.length; i++) engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
+  engine.finalize();
+  rememberRide(engine.getState());
+
+  const recorded = getLastRide();
+  assert(recorded !== null && recorded.routeId === 'EveningB',
+    `getLastRide().routeId = ${recorded?.routeId}, want EveningB (the ridden route, not the EveningA pick)`);
+
+  const rideId = `session:${recorded!.atMs}`;
+  assert(
+    !ghostsFor('EveningA').some((g) => g.rideId === rideId),
+    'the wrongly-picked route ghosted a ride that was never actually ridden on it',
+  );
+  assert(
+    ghostsFor('EveningB').some((g) => g.rideId === rideId),
+    'the ridden route did not ghost its own just-recorded ride',
+  );
+
+  resetRecordedForTests();
+});
+
+test('cycle024: soft lock never colours before scoring — tiers for a soft-locked state match a verified one with identical sectors', () => {
+  const soft = stateWith({ lockKind: 'soft', pick: 'Morning', pickHonoured: true } as Partial<LiveEngineState>);
+  const verified = stateWith({ lockKind: 'verified', pick: 'Morning', pickHonoured: true } as Partial<LiveEngineState>);
+  assert(soft.track === verified.track && soft.lap?.movingS === verified.lap?.movingS, 'test setup: states differ');
+  const hist = lapValues(soft.track!);
+  const tSoft = tierFor(soft.lap!.movingS, hist);
+  const tVerified = tierFor(verified.lap!.movingS, hist);
+  assert(tSoft === tVerified,
+    `soft-lock tier "${tSoft}" != verified tier "${tVerified}" — colour must be keyed only to the displayed route/sectors, never to lockKind`);
 });

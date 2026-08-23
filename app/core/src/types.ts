@@ -34,7 +34,12 @@ export interface Gate {
   lon: number;
 }
 
-export type TrackId = 'Morning' | 'EveningA' | 'EveningB' | 'MorningB';
+/** Cycle 024 (WP-D2): widened from the four legacy commute tracks to any
+ * catalog route id — every one of the 20 ratified routes now runs as a live
+ * candidate (app/src/live/tracks.ts's catalogTrackSpecs()), not just the
+ * four. Kept as a distinct name (rather than using `string` directly at
+ * every call site) purely for readability at usage sites. */
+export type TrackId = string;
 
 export type SectorFlag = 'clean' | 'interrupted' | 'excluded_nocross' | 'excluded_offroute';
 

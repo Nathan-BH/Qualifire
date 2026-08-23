@@ -9,6 +9,8 @@ import {
   RING_MS, SLASH_DELAY_MS, SLASH_MS, FADE_MS, TOTAL_BEFORE_FADE_MS, TOTAL_MS,
   REDUCED_MOTION_HOLD_MS, RING_BEZIER, RING_THICKNESS_RATIO, SLASH_LEN_RATIO,
   SLASH_ANGLE_DEG, ringSweepDeg, hemisphereAngles, slashProgress, markGeometry,
+  REV_SLASH_MS, REV_RING_DELAY_MS, REV_RING_MS, REV_TOTAL_BEFORE_FADE_MS, REV_TOTAL_MS,
+  reverseSlashProgress, reverseRingProgress,
 } from '../src/ui/launchChoreo.ts';
 
 test('launchChoreo: timing constants match the ratified storyboard', () => {
@@ -100,4 +102,57 @@ test('launchChoreo: reduced-motion path is a fixed, short constant hold', () => 
   assert(REDUCED_MOTION_HOLD_MS === 300, `REDUCED_MOTION_HOLD_MS expected 300, got ${REDUCED_MOTION_HOLD_MS}`);
   assert(REDUCED_MOTION_HOLD_MS < TOTAL_BEFORE_FADE_MS,
     'reduced-motion hold must be shorter than the full ring+slash choreography it replaces');
+});
+
+// ---------------------------------------------------------------- reverse
+// Cycle 024 (WP-A2, Nathan 2026-08-19): "the yellow line gets undrawn and
+// then the circle gets undrawn as well" — the END-press reversed mark.
+// Mirrors demos/mockup.html's qf-anim-rev storyboard: 500/500/1400 -> 1900,
+// +250ms fade -> 2150.
+
+test('launchChoreo: reverse timing constants match the mockup storyboard (500/500/1400 -> 1900/2150)', () => {
+  assert(REV_SLASH_MS === 500, `REV_SLASH_MS expected 500, got ${REV_SLASH_MS}`);
+  assert(REV_RING_DELAY_MS === 500, `REV_RING_DELAY_MS expected 500, got ${REV_RING_DELAY_MS}`);
+  assert(REV_RING_MS === 1400, `REV_RING_MS expected 1400, got ${REV_RING_MS}`);
+  assert(REV_TOTAL_BEFORE_FADE_MS === 1900,
+    `REV_TOTAL_BEFORE_FADE_MS expected 1900, got ${REV_TOTAL_BEFORE_FADE_MS}`);
+  assert(REV_TOTAL_MS === 2150, `REV_TOTAL_MS expected 2150, got ${REV_TOTAL_MS}`);
+});
+
+test('launchChoreo: reverseSlashProgress is monotone non-increasing, 1 at t<=0, exactly 0 at REV_SLASH_MS', () => {
+  assert(reverseSlashProgress(-10) === 1, 'reverseSlashProgress must be 1 for any t<=0');
+  assert(reverseSlashProgress(0) === 1, 'reverseSlashProgress(0) expected exactly 1');
+  let prev = 1;
+  for (let t = 0; t <= REV_SLASH_MS; t += 25) {
+    const v = reverseSlashProgress(t);
+    assert(v <= prev + 1e-9, `reverseSlashProgress not monotone non-increasing at t=${t}: ${v} > ${prev}`);
+    assert(v >= 0 && v <= 1, `reverseSlashProgress out of [0,1] at t=${t}: ${v}`);
+    prev = v;
+  }
+  assert(reverseSlashProgress(REV_SLASH_MS) === 0,
+    `reverseSlashProgress(REV_SLASH_MS) expected exactly 0, got ${reverseSlashProgress(REV_SLASH_MS)}`);
+  assert(reverseSlashProgress(REV_SLASH_MS + 500) === 0, 'reverseSlashProgress must stay clamped at 0 after REV_SLASH_MS');
+});
+
+test('launchChoreo: reverseRingProgress holds 1 through the delay and reaches exactly 0 at REV_TOTAL_BEFORE_FADE_MS', () => {
+  assert(reverseRingProgress(0) === 1, 'reverseRingProgress(0) expected 1');
+  assert(reverseRingProgress(REV_RING_DELAY_MS) === 1,
+    `reverseRingProgress must still be 1 exactly at REV_RING_DELAY_MS, got ${reverseRingProgress(REV_RING_DELAY_MS)}`);
+  let prev = 1;
+  for (let t = REV_RING_DELAY_MS; t <= REV_TOTAL_BEFORE_FADE_MS; t += 25) {
+    const v = reverseRingProgress(t);
+    assert(v <= prev + 1e-9, `reverseRingProgress not monotone non-increasing at t=${t}: ${v} > ${prev}`);
+    assert(v >= 0 && v <= 1, `reverseRingProgress out of [0,1] at t=${t}: ${v}`);
+    prev = v;
+  }
+  assert(reverseRingProgress(REV_TOTAL_BEFORE_FADE_MS) === 0,
+    `reverseRingProgress(REV_TOTAL_BEFORE_FADE_MS) expected exactly 0, got ${reverseRingProgress(REV_TOTAL_BEFORE_FADE_MS)}`);
+  assert(reverseRingProgress(REV_TOTAL_BEFORE_FADE_MS + 500) === 0,
+    'reverseRingProgress must stay clamped at 0 after REV_TOTAL_BEFORE_FADE_MS');
+});
+
+test('launchChoreo: reverse total exceeds forward total — the mockup\'s deliberate asymmetry (1900 > 1650)', () => {
+  assert(REV_TOTAL_BEFORE_FADE_MS > TOTAL_BEFORE_FADE_MS,
+    `reverse (${REV_TOTAL_BEFORE_FADE_MS}) must exceed forward (${TOTAL_BEFORE_FADE_MS}) before the fade`);
+  assert(REV_TOTAL_MS > TOTAL_MS, `reverse total (${REV_TOTAL_MS}) must exceed forward total (${TOTAL_MS})`);
 });

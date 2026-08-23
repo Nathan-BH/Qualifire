@@ -68,6 +68,9 @@ try {
 }
 
 const ASSETS = (manifest as unknown as { routes: Record<string, RouteAsset> }).routes;
+/** Fallback when no route is known yet (candidate not picked/locked): the
+ * first route in the asset manifest, not a literal track name (B-39). */
+const DEFAULT_ROUTE_ID: string | null = Object.keys(ASSETS)[0] ?? null;
 const IMAGES: Record<string, number> = {
   Morning: require('../../assets/routes/Morning.png'),
   EveningA: require('../../assets/routes/EveningA.png'),
@@ -188,8 +191,8 @@ function MapLibreRouteMap(props: RouteMapProps & {
   const { maplibre: M, onMapFailed } = props;
   const { t, mode: themeMode } = useTheme();
   const styleUrl = themeMode === 'night' ? MAP_STYLE_NIGHT : MAP_STYLE_DAY;
-  const id = props.routeId ?? 'Morning';
-  const asset = ASSETS[id];
+  const id = props.routeId ?? DEFAULT_ROUTE_ID;
+  const asset = id !== null ? ASSETS[id] : undefined;
   const h = props.height ?? 190;
 
   const variant = props.variant ?? 'live';
@@ -316,7 +319,18 @@ function MapLibreRouteMap(props: RouteMapProps & {
       {/* mapStyle is `unknown` on purpose — routeMapStyle.ts stays decoupled
           from MapLibre's own types (headless-testable). `as never` is the
           narrowest legal escape hatch through that boundary. */}
+      {/* Cycle 023 fix 1 (day-mode style-swap race): `mapStyle` changing on a
+          day<->night theme flip is a PROP update, and the native MapLibre view
+          does not reliably tear down and reapply a whole style on a bare prop
+          change — it can end up holding a half-applied style (day mode
+          rendering broken until some unrelated remount). Keying the element
+          on styleUrl forces React to unmount/remount the native view itself
+          whenever the underlying style URL changes, guaranteeing a full
+          reload rather than a partial one. Rendering-layer only: `mode` /
+          `camZoom` / `bearing` etc. all live in this component, above this
+          element, and are untouched by remounting the child. */}
       <M.Map
+        key={styleUrl}
         mapStyle={mapStyle as never}
         style={{ flex: 1 }}
         onDidFailLoadingMap={onMapFailed}
@@ -420,9 +434,9 @@ function PngRouteMap(props: RouteMapProps) {
   // say so and draw the route from `path` instead of showing black.
   const [imgFailed, setImgFailed] = useState(false);
   useEffect(() => { setZoom(props.zoom ?? 4); }, [props.zoom]);
-  const id = props.routeId ?? 'Morning';
-  const asset = ASSETS[id];
-  const img = IMAGES[id];
+  const id = props.routeId ?? DEFAULT_ROUTE_ID;
+  const asset = id !== null ? ASSETS[id] : undefined;
+  const img = id !== null ? IMAGES[id] : undefined;
   const h = props.height ?? 190;
 
   const variant = props.variant ?? 'live';

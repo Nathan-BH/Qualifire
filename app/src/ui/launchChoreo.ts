@@ -34,6 +34,62 @@ export const RING_BEZIER: [number, number, number, number] = [0.2, 0.7, 0.2, 1];
 /** Reduced-motion path (§5): show the completed static mark, hold, then fade. */
 export const REDUCED_MOTION_HOLD_MS = 300;
 
+// ------------------------------------------------------- reverse (undraw)
+//
+// Cycle 024 (WP-A2, Nathan 2026-08-19): "at the end when you press stop it
+// would be nice to show the animation again — but maybe it should be
+// reversed: so the yellow line gets undrawn and then the circle gets
+// undrawn as well." Mirrors the mockup's qf-anim-rev keyframes exactly
+// (demos/mockup.html L117-122, L175): tail undraws first (no delay), then
+// the ring undraws starting REV_RING_DELAY_MS later — the reverse of the
+// forward order (ring first, then tail), so the mark always reads
+// ring-then-tail while DRAWING and tail-then-ring while UNDRAWING.
+//
+// Timeline (ms, all measured from mount):
+//   0 --------- 500
+//   |--tail undraws--|
+//   0 ---------------------- 500 -------------------- 1900
+//                             |--------ring undraws--------|
+//                                                           |--fade out--|
+
+export const REV_SLASH_MS = 500; // tail undraw duration
+export const REV_RING_DELAY_MS = 500; // ring undraw starts this long after mount
+export const REV_RING_MS = 1400; // ring undraw duration
+/** Ring+tail choreography, before the overlay starts fading (mockup: 1.9s). */
+export const REV_TOTAL_BEFORE_FADE_MS = REV_RING_DELAY_MS + REV_RING_MS; // 1900
+/** Full reverse-overlay lifetime including the fade. */
+export const REV_TOTAL_MS = REV_TOTAL_BEFORE_FADE_MS + FADE_MS; // 2150
+
+/** 1 at t<=0, eased 1->0 over [0, REV_SLASH_MS] (ease-IN cubic — the mirror
+ * of `easeOutCubic` above; the mockup's qf-undraw-tail keyframe uses
+ * `ease-in`, unlike the forward draw's `ease-out`), clamped to 0 after.
+ * `tMs` is elapsed time since the reverse animation started. */
+export function reverseSlashProgress(tMs: number): number {
+  if (tMs <= 0) return 1;
+  if (tMs >= REV_SLASH_MS) return 0;
+  return 1 - easeInCubic(tMs / REV_SLASH_MS);
+}
+
+/** Ease-in cubic — the time-reverse of `easeOutCubic` above, duplicated here
+ * for the same dependency-free reason. */
+function easeInCubic(x: number): number {
+  const c = Math.max(0, Math.min(1, x));
+  return c * c * c;
+}
+
+/** Holds 1 through REV_RING_DELAY_MS, then the LINEAR time-envelope 1->0
+ * across REV_RING_MS (reaching exactly 0 at REV_TOTAL_BEFORE_FADE_MS). This
+ * documents the envelope's endpoints/clamping only, exactly like
+ * `slashProgress` documents the forward slash's envelope — the component
+ * applies the real RING_BEZIER easing to the Animated.Value that actually
+ * drives the hemispheres; this function is not consulted by the component,
+ * it exists so the choreography's endpoints are covered by a pure test. */
+export function reverseRingProgress(tMs: number): number {
+  if (tMs <= REV_RING_DELAY_MS) return 1;
+  if (tMs >= REV_TOTAL_BEFORE_FADE_MS) return 0;
+  return 1 - (tMs - REV_RING_DELAY_MS) / REV_RING_MS;
+}
+
 // ------------------------------------------------------- ring sweep (0-360)
 
 /** Overall sweep of the ring in degrees, clockwise from 12 o'clock. `p` is the

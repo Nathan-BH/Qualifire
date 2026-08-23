@@ -11,9 +11,13 @@
  */
 import * as path from 'node:path';
 import {
-  analyzeOffline, assert, loadFixture, loadJson, numEq, refFor, test, TESTS_DIR,
+  analyzeOffline, assert, FIXTURES_DIR, loadFixture, loadJson, numEq, refFor, test, TESTS_DIR,
 } from './lib.ts';
+import {
+  CORRIDOR_M, PROPOSED_GATES, gateChainages, nearestOnSegments, toXY,
+} from '../core/src/index.ts';
 import { deriveRideResult } from '../src/store/derive.ts';
+import { fallbackRouteId } from '../src/store/defaultRoute.ts';
 import {
   addGateSet,
   decodeCatalog,
@@ -43,6 +47,7 @@ import {
   windowLastN,
 } from '../src/store/results.ts';
 import type { Catalog, RideResult } from '../src/store/types.ts';
+import { projectToPixel, type RouteAsset } from '../src/ui/routeMapMath.ts';
 import { RESULT_SCHEMA_VERSION } from '../src/store/types.ts';
 
 const DAY = 86400_000;
@@ -408,4 +413,176 @@ test('store: sector history drops dirty sectors before any benchmark sees them',
     'only the clean sector-1 time survives');
   assert(JSON.stringify(sectorHistory(rs, 2)) === JSON.stringify([235, 245, 228]),
     'interrupted sectors keep their moving time and do count');
+});
+
+// --------------------------------------------------- WP-D1 (cycle 024, 2026-08-20)
+
+test('store: every seed route\'s refLineId resolves in refs.json and fits its gate set', () => {
+  const seed = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
+  assert(validateCatalog(seed).length === 0, 'seed catalog must validate clean');
+  assert(seed.routes.length === 20, `expected 20 catalog routes, got ${seed.routes.length}`);
+  const refsFile = loadJson<{ tracks: Record<string, { length: number }> }>(
+    path.join(FIXTURES_DIR, 'refs.json'));
+  for (const route of seed.routes) {
+    const track = refsFile.tracks[route.refLineId];
+    assert(track !== undefined, `refs.json is missing track ${route.refLineId} (route ${route.id})`);
+    const gs = gateSetFor(seed, route.id, route.gateSetVersion);
+    assert(gs !== null, `route ${route.id}: no gate set at version ${route.gateSetVersion}`);
+    const chain = gs!.chainageM;
+    assert(chain[0] > 0, `route ${route.id}: first gate chainage must be > 0`);
+    assert(chain[chain.length - 1] < track.length,
+      `route ${route.id}: last gate ${chain[chain.length - 1]} m must be < ref length ${track.length} m`);
+  }
+});
+
+test('catalog: station>home offers two routes (s>>h-w promotion, 2026-08-20)', () => {
+  const seed = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
+  const way = seed.ways.find((w) => w.id === 'station>home')!;
+  assert(way.routeIds.includes('StationHomeWet'), 'station>home must offer StationHomeWet');
+  assert(needsRoutePick(seed, 'station>home'), 'two routes on station>home ⇒ a route pick is needed');
+});
+
+test('refs: StationHomeWet line sanity (s>>h-w promotion, 2026-08-20)', () => {
+  const refsFile = loadJson<{ tracks: Record<string, { length: number; medoid: string }> }>(
+    path.join(FIXTURES_DIR, 'refs.json'));
+  const track = refsFile.tracks.StationHomeWet;
+  assert(track !== undefined, 'refs.json must hold a StationHomeWet track');
+  assert(track.length > 8650 && track.length < 8800,
+    `StationHomeWet length ${track.length} m out of the expected [8650, 8800] range`);
+  assert(track.medoid.includes('qualifire-20260819-2025'),
+    `StationHomeWet must be built from Nathan's ride 3, got medoid=${track.medoid}`);
+
+  const seed = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
+  const gs = gateSetFor(seed, 'StationHomeWet', 1)!;
+  const chain = gs.chainageM;
+  assert(chain.length === 5, 'StationHomeWet v1 must hold five placeholder gates');
+  for (let i = 1; i < chain.length; i++) {
+    assert(chain[i] > chain[i - 1], `StationHomeWet gate chainage must strictly increase at index ${i}`);
+  }
+  const firstFrac = chain[0] / track.length;
+  const lastFrac = chain[chain.length - 1] / track.length;
+  assert(Math.abs(firstFrac - 0.03) < 0.005, `first gate fraction ${firstFrac} not within 3% ±0.5%`);
+  assert(Math.abs(lastFrac - 0.97) < 0.005, `last gate fraction ${lastFrac} not within 97% ±0.5%`);
+});
+
+test('refs: MorningB is the promoted 2026-08-19 ride (h>>w-w promotion, 2026-08-20)', () => {
+  const refsFile = loadJson<{ tracks: Record<string, { length: number; medoid: string }> }>(
+    path.join(FIXTURES_DIR, 'refs.json'));
+  const track = refsFile.tracks.MorningB;
+  assert(track !== undefined, 'refs.json must hold a MorningB track');
+  assert(track.medoid.includes('qualifire-20260819-1155'),
+    `MorningB must be built from Nathan's ride 1, got medoid=${track.medoid}`);
+  assert(track.length > 5900 && track.length < 6000,
+    `MorningB length ${track.length} m out of the expected [5900, 6000] range`);
+
+  const seed = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
+  const route = seed.routes.find((r) => r.id === 'MorningB')!;
+  assert(route.gateSetVersion === 2, `MorningB route must point at gate set v2, got v${route.gateSetVersion}`);
+  assert(gateSetFor(seed, 'MorningB', 1) !== null, 'MorningB gate set v1 must be retained (history is never deleted)');
+  const v2 = gateSetFor(seed, 'MorningB', 2);
+  assert(v2 !== null, 'MorningB gate set v2 must exist');
+  const chain = v2!.chainageM;
+  assert(chain.length === 5, 'MorningB v2 must hold five gates');
+  for (let i = 1; i < chain.length; i++) {
+    assert(chain[i] > chain[i - 1], `MorningB v2 chainage must strictly increase at index ${i}`);
+  }
+  assert(chain[0] > 0 && chain[chain.length - 1] < track.length,
+    `MorningB v2 gates [${chain.join(', ')}] must lie inside the ${track.length} m line`);
+
+  // The duplication hazard the WP-D1 brief calls out: the same numbers live in
+  // core/src/gates.ts (QA fixture harness) and in the catalog (engine source
+  // after WP-D2). They must never drift apart.
+  assert(JSON.stringify(gateChainages('MorningB')) === JSON.stringify(chain),
+    `core/gates.ts MorningB [${gateChainages('MorningB').join(', ')}] != catalog v2 [${chain.join(', ')}]`);
+
+  // Physical gate positions are PRESERVED across the promotion — only their
+  // chainage moved. Re-projecting each stored lat/lon onto the promoted line
+  // must land back on its v2 chainage (and inside the 40 m corridor).
+  const ref = refFor('MorningB');
+  for (let i = 0; i < PROPOSED_GATES.MorningB.length; i++) {
+    const g = PROPOSED_GATES.MorningB[i];
+    const { x, y } = toXY([g.lat], [g.lon], ref.lat0, ref.lon0);
+    const hit = nearestOnSegments(x[0], y[0], ref, 0, ref.ch.length - 1);
+    assert(hit.dist < CORRIDOR_M,
+      `MorningB gate ${g.name} sits ${hit.dist.toFixed(1)} m off the promoted line`);
+    assert(Math.abs(hit.s - chain[i]) < 1,
+      `MorningB gate ${g.name} re-projects to ${hit.s.toFixed(1)} m, v2 says ${chain[i]} m`);
+  }
+});
+
+for (const routeId of ['MorningB', 'StationHomeWet'] as const) {
+  test(`routes.json: ${routeId} entry projects consistently (2026-08-20 promotions)`, () => {
+    const routesJson = loadJson<{ routes: Record<string, RouteAsset> }>(
+      path.join(TESTS_DIR, '..', 'assets', 'routes', 'routes.json'));
+    const entry = routesJson.routes[routeId];
+    assert(entry !== undefined, `routes.json must hold a ${routeId} entry`);
+    for (const g of entry.gates) {
+      const p = projectToPixel(entry, g.lat, g.lon);
+      assert(Math.abs(p.px - g.px) < 0.5 && Math.abs(p.py - g.py) < 0.5,
+        `gate ${g.name} reprojects to (${p.px.toFixed(2)},${p.py.toFixed(2)}) vs stored ` +
+          `(${g.px.toFixed(2)},${g.py.toFixed(2)})`);
+    }
+    const seed = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
+    const route = seed.routes.find((r) => r.id === routeId)!;
+    const way = seed.ways.find((w) => w.id === route.wayId)!;
+    const startLm = seed.landmarks.find((l) => l.id === way.startLandmarkId)!;
+    const endLm = seed.landmarks.find((l) => l.id === way.endLandmarkId)!;
+    const path0 = entry.path![0];
+    const pathN = entry.path![entry.path!.length - 1];
+    const dStart = metresBetween({ lat: path0[0], lon: path0[1] }, startLm);
+    const dEnd = metresBetween({ lat: pathN[0], lon: pathN[1] }, endLm);
+    assert(dStart < 150, `${routeId} path start is ${dStart.toFixed(0)} m from the ${startLm.id} landmark centre`);
+    assert(dEnd < 150, `${routeId} path end is ${dEnd.toFixed(0)} m from the ${endLm.id} landmark centre`);
+  });
+}
+
+// ------------------------------------------------------------- defaultRoute (WP-D3, B-39)
+
+test('fallbackRouteId: most recent ranking result wins', () => {
+  const c = emptyCatalog();
+  c.routes = [
+    { id: 'RouteB', wayId: 'w', refLineId: 'RouteB', gateSetVersion: 1, seeded: false },
+    { id: 'RouteA', wayId: 'w', refLineId: 'RouteA', gateSetVersion: 1, seeded: false },
+  ];
+  const older = mkResult({ rideId: 'r1', startedAtMs: 1000, routeId: 'RouteA' });
+  const newer = mkResult({ rideId: 'r2', startedAtMs: 2000, routeId: 'RouteB' });
+  // Catalog order puts RouteB first, but the newer result is on RouteB anyway
+  // here — flip the ages so the winner is decided by recency, not order.
+  const olderOnB = mkResult({ rideId: 'r3', startedAtMs: 1000, routeId: 'RouteB' });
+  const newerOnA = mkResult({ rideId: 'r4', startedAtMs: 2000, routeId: 'RouteA' });
+  assert(fallbackRouteId(c, [older, newer]) === 'RouteB', 'the most recent result (RouteB, t=2000) must win');
+  assert(fallbackRouteId(c, [newerOnA, olderOnB]) === 'RouteA',
+    'recency decides even against catalog order (RouteB listed first)');
+});
+
+test('fallbackRouteId: empty results → first catalog route; empty catalog → null', () => {
+  const c = emptyCatalog();
+  c.routes = [
+    { id: 'RouteFirst', wayId: 'w', refLineId: 'RouteFirst', gateSetVersion: 1, seeded: false },
+    { id: 'RouteSecond', wayId: 'w', refLineId: 'RouteSecond', gateSetVersion: 1, seeded: false },
+  ];
+  assert(fallbackRouteId(c, []) === 'RouteFirst', 'no history: catalog order picks the first route');
+  assert(fallbackRouteId(emptyCatalog(), []) === null, 'no routes at all (fresh install): null, nothing invented');
+  assert(fallbackRouteId(emptyCatalog(), [mkResult({ rideId: 'r1', startedAtMs: 1, routeId: 'RouteFirst' })]) === null,
+    'a result naming a route absent from the catalog cannot stand in for it either');
+});
+
+test('fallbackRouteId on the real seed = the newest seeded archive ride\'s route', () => {
+  const catalog = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
+  const results = loadJson<RideResult[]>(path.join(TESTS_DIR, '..', 'src', 'store', 'results.seed.json'));
+  const routeIds = new Set(catalog.routes.map((r) => r.id));
+
+  // Independently derived expectation (no literal route id in this test):
+  // the routeId of the newest result that names a route, RANKS (D-024/D-028
+  // — same gate the timing tower itself uses, so an estimated lap or a
+  // tripwire-demoted seed is excluded here too), and names a catalogued route.
+  let expected: RideResult | null = null;
+  for (const r of results) {
+    if (r.routeId === null || !routeIds.has(r.routeId)) continue;
+    if (!ranks(r)) continue;
+    if (expected === null || r.startedAtMs > expected.startedAtMs) expected = r;
+  }
+  assert(expected !== null, 'the real seed must contain at least one rankable, catalogued result');
+  assert(fallbackRouteId(catalog, results) === expected!.routeId,
+    `fallbackRouteId returned ${fallbackRouteId(catalog, results)}, expected the newest seed's route ${expected!.routeId}`);
 });

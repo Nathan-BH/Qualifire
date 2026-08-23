@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844" width="390" height="844">
+  <defs>
+    <clipPath id="tabbar_viewport_clip">
+      <rect x="0" y="790" width="390" height="54" />
+    </clipPath>
+  </defs>
+  <g id="bg" inkscape:label="bg" inkscape:groupmode="layer">
+    <rect id="bg_ground" inkscape:label="bg_ground" x="0" y="0" width="390" height="844" fill="#FAF7EE" />
+  </g>
+  <g id="content" inkscape:label="content" inkscape:groupmode="layer">
+    <text id="content_heading" inkscape:label="content_heading" x="16" y="20" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="700" fill="#8A8577" text-anchor="start" letter-spacing="2" style="text-transform:uppercase">DEMO RIDE</text>
+    <text id="content_sub_l1" inkscape:label="content_sub_l1" x="16" y="38" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#8A8577" text-anchor="start">A real archived Morning lap replayed at 25x. Buzz at</text>
+    <text id="content_sub_l2" inkscape:label="content_sub_l2" x="16" y="52.95" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#8A8577" text-anchor="start">every gate, tier colours as they are earned, the live</text>
+    <text id="content_sub_l3" inkscape:label="content_sub_l3" x="16" y="67.9" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#8A8577" text-anchor="start">map moving. Nothing is recorded.</text>
+    <g id="content_map" inkscape:label="content_map">
+      <rect id="content_map_ground" inkscape:label="content_map_ground" x="16" y="102.85" width="358" height="220" fill="#FFFFFF" stroke="#E0D9C4" stroke-width="1" rx="16" />
+      <line id="content_map_street_1" inkscape:label="content_map_street_1" x1="80.44" y1="108.85" x2="116.24" y2="316.85" stroke="#E0D9C4" stroke-width="2" stroke-linecap="round" />
+      <line id="content_map_street_2" inkscape:label="content_map_street_2" x1="195" y1="108.85" x2="230.8" y2="316.85" stroke="#E0D9C4" stroke-width="2" stroke-linecap="round" />
+      <line id="content_map_street_3" inkscape:label="content_map_street_3" x1="309.56" y1="108.85" x2="345.36" y2="316.85" stroke="#E0D9C4" stroke-width="2" stroke-linecap="round" />
+      <path id="content_map_route_line_done" inkscape:label="content_map_route_line_done" d="M82.29 310.39 L83.11 310.32 L83.71 310.9 L85.35 311.69 L87.68 312.85 L88.96 312.49 L90.74 311.77 L92.52 310.46 L94.2 308.87 L95.94 307.35 L97.67 305.76 L99.45 304.25 L101.19 302.65 L103.06 302.29 L103.38 300.77 L103.61 298.68 L104.02 297.67 L105.25 296.07 L106.76 294.27 L108.13 292.6 L109.59 290.8 L110.46 288.84 L111.19 286.75 L112.37 284.72 L114.06 282.92 L115.61 281.25 L117.12 279.44 L118.67 277.78 L120.32 276.12 L121.96 274.53 L123.6 272.79 L125.25 271.06 L126.89 269.39 L129.08 268.89 L131.46 268.74 L133.83 268.31 L136.2 268.02 L137.48 266.14 L138.67 263.97 L140.04 262.02 L141.54 260.14 L143.05 258.33 L144.65 256.45 L146.15 254.57 L147.3 252.47 L148.8 250.59 L150.45 248.71 L151.95 246.83 L153.37 244.95 L154.78 242.93 L156.06 240.83 L157.29 238.81 L158.48 236.71 L159.35 234.47 L160.49 232.3 L161.45 230.2 L162.45 227.96 L163.5 225.79 L164.55 223.55 L165.51 221.53 L166.97 219.72 L168.89 218.35 L170.81 216.83 L172.72 215.31 L174.59 213.79 L176.47 212.2 L178.38 210.61 L180.3 209.02 L182.22 207.43" fill="none" stroke="#F5C542" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <path id="content_map_route_line_ahead" inkscape:label="content_map_route_line_ahead" d="M182.22 207.43 L184.09 205.84 L185.96 204.25 L187.88 202.73 L189.75 201.21 L192.08 200.85 L194.27 201.93 L196.46 202.87 L198.83 203.81 L201.03 204.68 L203.22 205.55 L205.45 206.41 L207.46 206.34 L208.24 204.53 L208.51 203.45 L209.7 199.55 L207.65 198.61 L205.45 197.67 L203.22 196.87 L201.07 195.93 L198.88 195.35 L197.01 195.93 L195.46 195.5 L193.4 194.63 L191.35 194.05 L189.52 192.97 L187.83 191.37 L187.7 189.06 L188.24 186.75 L189.84 184.94 L191.62 183.28 L193.27 181.76 L195.41 180.02 L197.33 178.58 L199.25 177.06 L201.3 175.47 L203.22 173.8 L204.91 172.36 L206.46 170.7 L208.1 168.89 L209.79 167.15 L211.39 165.42 L213.03 163.61 L214.68 161.87 L216.23 160.14 L217.87 158.4 L219.42 156.81 L221.07 155 L222.57 153.41 L224.22 151.68 L225.63 150.23 L227.87 149 L230.33 149.15 L232.89 149.44 L234.76 150.45 L236.86 149.58 L239.1 148.5 L241.38 147.48 L243.62 146.47 L245.95 145.39 L248.27 144.38 L250.74 143.65 L253.16 143.15 L255.62 142.64 L257.81 141.7 L259.73 140.33 L261.69 138.88 L263.57 137.43 L265.53 135.99 L267.4 134.54 L269.32 133.17 L271.28 131.72 L273.15 130.28 L275.12 128.9 L276.94 127.53 L277.76 127.09 L278.54 127.96 L279.04 128.03 L280.14 127.24 L281.83 125.79 L283.65 124.13 L285.43 122.61 L287.26 120.95 L289.18 119.36 L291.05 118.13 L293.01 117.04 L295.2 115.89 L297.48 115.16 L299.36 114.59 L301 114.08 L302.78 112.85 L304.65 113.79 L305.88 115.53 L306.57 117.41 L307.71 117.26" fill="none" stroke="#F5C542" stroke-width="3" stroke-dasharray="2,4" stroke-linecap="round" stroke-linejoin="round" />
+      <line id="content_map_gate_tick_1" inkscape:label="content_map_gate_tick_1" x1="84.48" y1="304.27" x2="80.1" y2="316.51" stroke="#8A8577" stroke-width="2" stroke-linecap="round" />
+      <line id="content_map_gate_tick_2" inkscape:label="content_map_gate_tick_2" x1="88.67" y1="305.23" x2="96.37" y2="315.7" stroke="#A667F0" stroke-width="3" stroke-linecap="round" />
+      <line id="content_map_gate_tick_3" inkscape:label="content_map_gate_tick_3" x1="136.46" y1="256.09" x2="146.63" y2="264.18" stroke="#3ED598" stroke-width="3" stroke-linecap="round" />
+      <line id="content_map_gate_tick_4" inkscape:label="content_map_gate_tick_4" x1="201.27" y1="197.79" x2="196.4" y2="209.84" stroke="#8A8577" stroke-width="2" stroke-linecap="round" />
+      <line id="content_map_gate_tick_5" inkscape:label="content_map_gate_tick_5" x1="230.49" y1="142.65" x2="230.18" y2="155.65" stroke="#8A8577" stroke-width="2" stroke-linecap="round" />
+      <circle id="content_map_rider_dot" inkscape:label="content_map_rider_dot" cx="182.22" cy="207.43" r="5.5" fill="#201F24" stroke="#FFFFFF" stroke-width="2" />
+      <rect id="content_map_placeholder_note" inkscape:label="content_map_placeholder_note" x="16" y="102.85" width="0" height="0" />
+    </g>
+    <text id="content_pane_context" inkscape:label="content_pane_context" x="195" y="338.85" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#8A8577" text-anchor="middle" letter-spacing="2">S3</text>
+    <text id="content_pane_clock" inkscape:label="content_pane_clock" x="195" y="398.85" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="60" font-weight="800" fill="#201F24" text-anchor="middle" style="font-variant-numeric:tabular-nums">6:42.1</text>
+    <g id="content_pane_strip" inkscape:label="content_pane_strip">
+      <rect id="content_pane_strip_slot_1_bg" inkscape:label="content_pane_strip_slot_1_bg" x="57.5" y="422.85" width="62" height="50" fill="#A667F0" stroke="#A667F0" stroke-width="2" rx="10" />
+      <text id="content_pane_strip_slot_1_label" inkscape:label="content_pane_strip_slot_1_label" x="88.5" y="442.85" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="700" fill="#17171b" text-anchor="middle">S1</text>
+      <text id="content_pane_strip_slot_1_time" inkscape:label="content_pane_strip_slot_1_time" x="88.5" y="458.85" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="700" fill="#17171b" text-anchor="middle" style="font-variant-numeric:tabular-nums">3:02</text>
+      <rect id="content_pane_strip_slot_2_bg" inkscape:label="content_pane_strip_slot_2_bg" x="128.5" y="422.85" width="62" height="50" fill="none" stroke="#3ED598" stroke-width="2" rx="10" />
+      <text id="content_pane_strip_slot_2_label" inkscape:label="content_pane_strip_slot_2_label" x="159.5" y="442.85" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="700" fill="#8A8577" text-anchor="middle">S2</text>
+      <text id="content_pane_strip_slot_2_time" inkscape:label="content_pane_strip_slot_2_time" x="159.5" y="458.85" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="700" fill="#8A8577" text-anchor="middle" style="font-variant-numeric:tabular-nums">3:27</text>
+      <rect id="content_pane_strip_slot_3_bg" inkscape:label="content_pane_strip_slot_3_bg" x="199.5" y="422.85" width="62" height="50" fill="none" stroke="#F5C542" stroke-width="2" rx="10" />
+      <text id="content_pane_strip_slot_3_label" inkscape:label="content_pane_strip_slot_3_label" x="230.5" y="442.85" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="700" fill="#201F24" text-anchor="middle">S3</text>
+      <rect id="content_pane_strip_slot_4_bg" inkscape:label="content_pane_strip_slot_4_bg" x="270.5" y="422.85" width="62" height="50" fill="none" stroke="#E4DECB" stroke-width="2" rx="10" />
+      <text id="content_pane_strip_slot_4_label" inkscape:label="content_pane_strip_slot_4_label" x="301.5" y="442.85" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="700" fill="#8A8577" text-anchor="middle">S4</text>
+    </g>
+    <g id="content_run_button" inkscape:label="content_run_button">
+      <rect id="content_run_button_bg" inkscape:label="content_run_button_bg" x="16" y="500.85" width="358" height="50" fill="#F5C542" rx="10" />
+      <text id="content_run_button_label" inkscape:label="content_run_button_label" x="195" y="532.85" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="15" font-weight="800" fill="#17171b" text-anchor="middle" letter-spacing="2.5">RUN DEMO RIDE</text>
+    </g>
+    <text id="content_note" inkscape:label="content_note" x="16" y="566.85" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#8A8577" text-anchor="start">Sounds are not wired yet — gates buzz only.</text>
+  </g>
+  <g id="tabbar" inkscape:label="tabbar" inkscape:groupmode="layer" clip-path="url(#tabbar_viewport_clip)">
+    <rect id="tabbar_bg" inkscape:label="tabbar_bg" x="0" y="790" width="390" height="54" fill="#FAF7EE" />
+    <line id="tabbar_top_border" inkscape:label="tabbar_top_border" x1="0" y1="790" x2="390" y2="790" stroke="#E0D9C4" stroke-width="1" stroke-linecap="round" />
+    <text id="tabbar_record_label" inkscape:label="tabbar_record_label" x="-116" y="824" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#8A8577" text-anchor="middle" letter-spacing="2" style="text-transform:uppercase">RECORD</text>
+    <text id="tabbar_rides_label" inkscape:label="tabbar_rides_label" x="-24" y="824" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#8A8577" text-anchor="middle" letter-spacing="2" style="text-transform:uppercase">RIDES</text>
+    <text id="tabbar_routes_label" inkscape:label="tabbar_routes_label" x="68" y="824" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#8A8577" text-anchor="middle" letter-spacing="2" style="text-transform:uppercase">ROUTES</text>
+    <text id="tabbar_result_label" inkscape:label="tabbar_result_label" x="160" y="824" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#8A8577" text-anchor="middle" letter-spacing="2" style="text-transform:uppercase">RESULT</text>
+    <text id="tabbar_settings_label" inkscape:label="tabbar_settings_label" x="252" y="824" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#8A8577" text-anchor="middle" letter-spacing="2" style="text-transform:uppercase">SETTINGS</text>
+    <line id="tabbar_demo_active_bar" inkscape:label="tabbar_demo_active_bar" x1="302" y1="792" x2="386" y2="792" stroke="#F5C542" stroke-width="3" stroke-linecap="round" />
+    <text id="tabbar_demo_label" inkscape:label="tabbar_demo_label" x="344" y="824" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#201F24" text-anchor="middle" letter-spacing="2" style="text-transform:uppercase">DEMO</text>
+  </g>
+</svg>

@@ -11,6 +11,7 @@ import {
   LiveProjector, GateDetector,
   type RefLine, type TrackId, type LiveOptions,
 } from '../core/src/index.ts';
+import type { TrackSpec } from '../src/live/engine.ts';
 
 export const TESTS_DIR = import.meta.dirname;
 export const FIXTURES_DIR = path.join(TESTS_DIR, 'fixtures');
@@ -132,6 +133,17 @@ export function refFor(track: TrackId): RefLine {
     rx: Float64Array.from(r.rx), ry: Float64Array.from(r.ry), ch,
     lat0: r.lat0, lon0: r.lon0, length: ch[ch.length - 1],
   };
+}
+
+/** Cycle 024 (WP-D2): the legacy four-track spec set — what LiveEngine's
+ * candidates were before every catalog route joined the race. The existing
+ * suites inject this explicitly (`new LiveEngine(fixtureSpecs())`) so their
+ * auto-lock-mechanics assertions (written against exactly these four tracks)
+ * keep meaning what they said; LiveEngine's own default is the full 20-route
+ * catalog (tracks.ts's catalogTrackSpecs()). */
+export function fixtureSpecs(): TrackSpec[] {
+  const LEGACY: readonly TrackId[] = ['Morning', 'EveningA', 'EveningB', 'MorningB'];
+  return LEGACY.map((id) => ({ id, ref: refFor(id), gates: gateChainages(id) }));
 }
 
 // ---------------------------------------------------------------- replay

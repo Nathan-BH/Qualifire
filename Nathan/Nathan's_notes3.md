@@ -27,3 +27,10 @@ Some new ideas to try out
     * The idea is to after each set of exercises tap the phone screen to mark it as done; and then similarly to the Qualifire get colours based on if you are faster or slower than average
   * Overall this is just an idea to log somewhere and probably needs deep thought and a full separate team to work on this second app idea
 
+Some questions I have
+
+* I saw in cycle023 brief claude was talking about elevation outliers. I dont remember ever reporting an issue or something regarding elevation so I am wondering where it got the idea that this was something that needed fixing.
+* I saw in "C:\\Users\\natha\\Claude personal projects\\Qualifire\\data\\activities\\TEST in app rides\\qualifire-20260820\\qualifire-20260820-rides123-review.md" that on ride3 it commented about "Route lock failure is likely due to poor initial GPS accuracy"
+
+  * I did start recording while I was still in an underground parking, which is my fault. This coule explain poor initial gps, it is not necessarily an app fault this time
+

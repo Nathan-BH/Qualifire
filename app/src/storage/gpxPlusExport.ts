@@ -20,10 +20,12 @@ import type {
   ButtonEvent,
   DecodedEvents,
   DecodedRide,
+  ElevationOutlierEvent,
   FixRecord,
   GateFireEvent,
   LockEvent,
   MetaEvent,
+  RouteMatchDiagnosticEvent,
   StorageErrorEvent,
 } from './types.ts';
 import { escapeXml, isoTime, num } from './gpxExport.ts';
@@ -34,6 +36,20 @@ export const OUTAGE_GAP_S = 5;
 
 function gateName(track: string, gateIndex: number): string {
   return PROPOSED_GATES[track as TrackId]?.[gateIndex]?.name ?? `gate${gateIndex}`;
+}
+
+/** Cycle 023 fix 4: total distance (m) along the matched route, START gate
+ * to FINISH gate (FINISH chainage minus START chainage — START itself sits
+ * at a non-zero chainage, ~162 m on every current track, so the raw FINISH
+ * chainage alone overstates the ridden distance by that offset), for a
+ * track id actually present in PROPOSED_GATES. Guarded lookup — an
+ * unrecognized/unknown persisted track string (an old ride whose track was
+ * since renamed or dropped) returns null so the caller omits the field
+ * instead of throwing and killing the whole export. */
+function routeDistanceM(track: string): number | null {
+  const gates = PROPOSED_GATES[track as TrackId];
+  if (!gates || gates.length === 0) return null;
+  return gates[gates.length - 1].chainage - gates[0].chainage;
 }
 
 interface Outage {
@@ -108,6 +124,10 @@ function buildSessionBlock(fixes: FixRecord[], events: DecodedEvents | null): st
       lines.push(
         `   <qf:routeLock track="${escapeXml(lockEv.track)}" atChainageM="${num(lockEv.atChainageM)}" atT="${isoTime(lockEv.atT * 1000)}"/>`,
       );
+      // Cycle 023 fix 4: only emitted when the locked track is recognized —
+      // an old/renamed track id degrades to no field, never an export failure.
+      const dist = routeDistanceM(lockEv.track);
+      if (dist !== null) lines.push(`   <qf:routeDistanceM>${num(dist)}</qf:routeDistanceM>`);
     } else {
       lines.push(`   <qf:routeLock>none</qf:routeLock>`);
     }
@@ -122,6 +142,36 @@ function buildSessionBlock(fixes: FixRecord[], events: DecodedEvents | null): st
       );
     }
     lines.push(`   </qf:gates>`);
+  }
+
+  // Cycle 023 fix 5b: route-match diagnostics — every candidate's anchor/
+  // retry/lock attempts, so a ride that never locked still leaves a trail.
+  const routeMatchEvs = evs.filter((e): e is RouteMatchDiagnosticEvent => e.kind === 'routeMatchDiagnostic');
+  if (routeMatchEvs.length > 0) {
+    lines.push(`   <qf:routeMatchDiagnostics>`);
+    for (const d of routeMatchEvs) {
+      const acc = d.accuracyM === null ? '' : ` accuracyM="${num(d.accuracyM)}"`;
+      lines.push(
+        `    <qf:attempt track="${escapeXml(d.track)}" phase="${d.phase}"${acc}` +
+          ` thresholdM="${num(d.thresholdM)}" poorAccuracy="${d.poorAccuracy ? 'true' : 'false'}"` +
+          ` t="${isoTime(d.tUnixMs)}"/>`,
+      );
+    }
+    lines.push(`   </qf:routeMatchDiagnostics>`);
+  }
+
+  // Cycle 023 fix 3/5b: flagged elevation outliers — the raw <ele> values
+  // above are never touched (D-023); this is purely a diagnostic side-channel.
+  const elevationEvs = evs.filter((e): e is ElevationOutlierEvent => e.kind === 'elevationOutlier');
+  if (elevationEvs.length > 0) {
+    lines.push(`   <qf:elevationOutliers>`);
+    for (const o of elevationEvs) {
+      lines.push(
+        `    <qf:elevationOutlier t="${isoTime(o.tUnixMs)}" deltaM="${num(o.deltaM)}"` +
+          ` dtS="${num(o.dtS)}" thresholdMps="${num(o.thresholdMps)}"/>`,
+      );
+    }
+    lines.push(`   </qf:elevationOutliers>`);
   }
 
   const outages = findOutages(fixes);

@@ -56,6 +56,11 @@ test('gpx+: events JSONL encode->decode identity — one of each kind, garbage/u
     { kind: 'gate', tUnixMs: 4000, track: 'Morning', gateIndex: 0, t: 4, estimated: false },
     { kind: 'storageError', tUnixMs: 5000, message: 'boom' },
     { kind: 'relaunch', tUnixMs: 6000 },
+    {
+      kind: 'routeMatchDiagnostic', tUnixMs: 7000, track: 'Morning', phase: 'anchor',
+      accuracyM: 97.7, thresholdM: 50, poorAccuracy: true,
+    },
+    { kind: 'elevationOutlier', tUnixMs: 8000, deltaM: 10.7, dtS: 1, thresholdMps: 4 },
   ];
   const text = events.map(encodeEvent).join('') + 'not json\n' + '{"kind":"bogus","tUnixMs":1}\n';
   const dec = decodeEventsFile(text);
@@ -271,4 +276,89 @@ test('gpx+: events sidecar torn-tail healing — new event parses, nDropped is e
   assert(dec.events[0].kind === 'button' && (dec.events[0] as { button: string }).button === 'start',
     'pre-crash first event corrupted');
   assert(dec.events[1].kind === 'relaunch', 'new post-restart event not the last one / wrong kind');
+});
+
+// ---------------------------------------------------------------- (j) cycle 023 fix 4: route distance
+
+test('gpx+: cycle 023 fix 4 — a locked ride carries qf:routeDistanceM (START-to-FINISH distance)', async () => {
+  const { storage, clock } = makeEnv();
+  const rideId = await storage.startRide();
+  clock.t += 1000;
+  await storage.appendFix(rideId, { tUnixMs: clock.t, lat: 50.8, lon: 4.6 });
+  await storage.appendEvent(rideId, {
+    kind: 'lock', tUnixMs: clock.t, track: 'Morning', atChainageM: 10, atT: clock.t / 1000,
+  });
+  await storage.endRide(rideId);
+  const gpx = await storage.exportGpxPlus(rideId);
+  // Morning: START chainage 162 m, FINISH chainage 5487 m (core/src/reference.ts
+  // PROPOSED_GATES) -> route distance is the difference, 5325 m, not FINISH's
+  // raw absolute chainage (which overstates by the 162 m START offset).
+  assert(gpx.includes('<qf:routeDistanceM>5325</qf:routeDistanceM>'), 'routeDistanceM missing/wrong for Morning');
+});
+
+test('gpx+: cycle 023 fix 4 guard — an unrecognized persisted track degrades gracefully, no export failure', async () => {
+  const { storage, clock } = makeEnv();
+  const rideId = await storage.startRide();
+  clock.t += 1000;
+  await storage.appendFix(rideId, { tUnixMs: clock.t, lat: 50.8, lon: 4.6 });
+  // simulates an old ride whose track id was since renamed/dropped from PROPOSED_GATES
+  await storage.appendEvent(rideId, {
+    kind: 'lock', tUnixMs: clock.t, track: 'RetiredTrackXYZ', atChainageM: 10, atT: clock.t / 1000,
+  });
+  await storage.endRide(rideId);
+  let gpx = '';
+  let threw = false;
+  try {
+    gpx = await storage.exportGpxPlus(rideId);
+  } catch {
+    threw = true;
+  }
+  assert(!threw, 'exportGpxPlus threw on an unrecognized track id — must degrade gracefully instead');
+  assert(gpx.includes('<qf:routeLock track="RetiredTrackXYZ"'), 'routeLock itself must still be emitted');
+  assert(!gpx.includes('<qf:routeDistanceM>'), 'routeDistanceM must be OMITTED for an unrecognized track, not fabricated');
+});
+
+// ---------------------------------------------------------------- (k) cycle 023 fix 5b: new diagnostics kinds exported
+
+test('gpx+: cycle 023 fix 5b — routeMatchDiagnostic and elevationOutlier events reach the GPX+ export', async () => {
+  const { storage, clock } = makeEnv();
+  const rideId = await storage.startRide();
+  clock.t += 1000;
+  await storage.appendFix(rideId, { tUnixMs: clock.t, lat: 50.8, lon: 4.6, ele: 30 });
+  await storage.appendEvent(rideId, {
+    kind: 'routeMatchDiagnostic', tUnixMs: clock.t, track: 'Morning', phase: 'anchor',
+    accuracyM: 97.7, thresholdM: 50, poorAccuracy: true,
+  });
+  await storage.appendEvent(rideId, {
+    kind: 'routeMatchDiagnostic', tUnixMs: clock.t + 1000, track: 'Morning', phase: 'retry',
+    accuracyM: 15, thresholdM: 50, poorAccuracy: false,
+  });
+  await storage.appendEvent(rideId, {
+    kind: 'elevationOutlier', tUnixMs: clock.t + 2000, deltaM: 10.7, dtS: 1, thresholdMps: 4,
+  });
+  await storage.endRide(rideId);
+  const gpx = await storage.exportGpxPlus(rideId);
+  assert(gpx.includes('<qf:routeMatchDiagnostics>'), 'routeMatchDiagnostics block missing');
+  assert(/<qf:attempt track="Morning" phase="anchor" accuracyM="97.7"/.test(gpx), 'anchor attempt line wrong/missing');
+  assert(/<qf:attempt track="Morning" phase="retry" accuracyM="15"/.test(gpx), 'retry attempt line wrong/missing');
+  assert(gpx.includes('poorAccuracy="true"'), 'poorAccuracy=true not rendered for the initial anchor');
+  assert(gpx.includes('<qf:elevationOutliers>'), 'elevationOutliers block missing');
+  assert(/<qf:elevationOutlier t="[^"]+" deltaM="10.7" dtS="1" thresholdMps="4"/.test(gpx),
+    'elevationOutlier line wrong/missing');
+
+  // and the standard (non-plus) export must stay untouched by any of this (D-023 / byte-identical contract)
+  const plain = await storage.exportGpx(rideId);
+  assert(!plain.includes('qf:'), 'standard exportGpx leaked new qf: diagnostics content');
+});
+
+test('gpx+: cycle 023 fix 5b — a ride with NO routeMatchDiagnostic/elevationOutlier events omits both blocks', async () => {
+  const { storage, clock } = makeEnv();
+  const rideId = await storage.startRide();
+  clock.t += 1000;
+  await storage.appendFix(rideId, { tUnixMs: clock.t, lat: 50.8, lon: 4.6 });
+  await storage.appendEvent(rideId, { kind: 'button', tUnixMs: clock.t, button: 'start' });
+  await storage.endRide(rideId);
+  const gpx = await storage.exportGpxPlus(rideId);
+  assert(!gpx.includes('<qf:routeMatchDiagnostics>'), 'routeMatchDiagnostics present with none recorded');
+  assert(!gpx.includes('<qf:elevationOutliers>'), 'elevationOutliers present with none recorded');
 });

@@ -12,17 +12,103 @@
  * this script never touches Morning/EveningA/EveningB and is not run as
  * part of that pipeline.
  *
+ * Cycle 024 (2026-08-20, WP-D1): before meanOrigin/buildReference, every ride
+ * passes through collapseStationaryRuns() — data/analysis/way-curation.md's
+ * "On smoothing it out" prescription. Parked-bike / red-light knots (and,
+ * for the home>work route-B promotion specifically, a stale cached-GPS fix
+ * that otherwise reads as an 18.4-minute stationary "run") collapse to one
+ * centroid point each so they never pollute the reference polyline that
+ * D-011 projects onto. Collapse runs on the ORIGINAL (time-increasing) point
+ * order, before any --reverse, so the run-duration arithmetic (which assumes
+ * increasing t) stays correct regardless of whether the caller reverses the
+ * ride afterwards.
+ *
  * Usage:
  *   node --experimental-strip-types app/tests/build_track_ref.ts <gpx path> <trackId> [--reverse]
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { parseGpx, meanOrigin, buildReference, cumdist, type RidePoints } from '../core/src/index.ts';
+import {
+  parseGpx, meanOrigin, buildReference, cumdist, M_PER_DEG_LAT, M_PER_DEG_LON,
+  type RidePoints,
+} from '../core/src/index.ts';
 
 const FIXTURES_DIR = path.join(import.meta.dirname, 'fixtures');
 const REFS_PATH = path.join(FIXTURES_DIR, 'refs.json');
 
 const round = (v: number, d: number) => Math.round(v * 10 ** d) / 10 ** d;
+
+/** Planar distance (metres) between two lat/lon points, equirectangular about
+ * their own midpoint latitude — accurate enough for a 15 m threshold check. */
+function pointDistM(alat: number, alon: number, blat: number, blon: number): number {
+  const latMidRad = ((alat + blat) / 2) * (Math.PI / 180);
+  const dy = (alat - blat) * M_PER_DEG_LAT;
+  const dx = (alon - blon) * M_PER_DEG_LON * Math.cos(latMidRad);
+  return Math.hypot(dx, dy);
+}
+
+/** Stationary-run collapse (data/analysis/way-curation.md, "On smoothing it
+ * out"): where consecutive fixes stay within 15 m of the run's first fix for
+ * more than 20 s, replace the whole run with ONE centroid point (mean
+ * lat/lon/ele, first t). Pure; operates on the point order as given. */
+export function collapseStationaryRuns(ride: RidePoints): RidePoints {
+  const RADIUS_M = 15;
+  const MIN_DURATION_S = 20;
+  const n = ride.lat.length;
+  const outT: number[] = [];
+  const outLat: number[] = [];
+  const outLon: number[] = [];
+  const outEle: number[] = [];
+  let collapsedPoints = 0;
+  let runsCollapsed = 0;
+
+  let i = 0;
+  while (i < n) {
+    let j = i;
+    while (
+      j + 1 < n &&
+      pointDistM(ride.lat[i], ride.lon[i], ride.lat[j + 1], ride.lon[j + 1]) <= RADIUS_M
+    ) {
+      j += 1;
+    }
+    const duration = ride.t[j] - ride.t[i];
+    if (j > i && duration > MIN_DURATION_S) {
+      let sla = 0, slo = 0, sel = 0;
+      for (let k = i; k <= j; k++) {
+        sla += ride.lat[k];
+        slo += ride.lon[k];
+        sel += ride.ele[k];
+      }
+      const count = j - i + 1;
+      outT.push(ride.t[i]);
+      outLat.push(sla / count);
+      outLon.push(slo / count);
+      outEle.push(sel / count);
+      collapsedPoints += count;
+      runsCollapsed += 1;
+      i = j + 1;
+    } else {
+      outT.push(ride.t[i]);
+      outLat.push(ride.lat[i]);
+      outLon.push(ride.lon[i]);
+      outEle.push(ride.ele[i]);
+      i += 1;
+    }
+  }
+
+  console.log(
+    `collapseStationaryRuns: ${runsCollapsed} run(s), ${collapsedPoints} raw points -> ` +
+      `${runsCollapsed} centroid point(s); ${n} -> ${outT.length} points`,
+  );
+
+  return {
+    name: ride.name,
+    t: Float64Array.from(outT),
+    lat: Float64Array.from(outLat),
+    lon: Float64Array.from(outLon),
+    ele: Float64Array.from(outEle),
+  };
+}
 
 /** Same rounding build_fixtures.ts's `fixtureRef` applies: rx/ry to mm, then
  * chainage RECOMPUTED from the rounded coords and rounded to 1e-6 m — what
@@ -59,6 +145,7 @@ function main(): void {
   const xml = fs.readFileSync(gpxPath, 'utf8');
   const base = path.basename(gpxPath).replace(/\.gpx$/, '');
   let ride = parseGpx(xml, base);
+  ride = collapseStationaryRuns(ride);
   if (reversed) ride = reversePoints(ride);
 
   const { lat0, lon0 } = meanOrigin([ride]);
@@ -74,11 +161,12 @@ function main(): void {
   refsFile.builderChecks.push({
     name: `build_track_ref ${trackId}`,
     pass: true,
-    detail: `single-ride reference (${base}${reversed ? ' reversed' : ''}), not a medoid; cycle 020`,
+    detail: `single-ride reference (${base}${reversed ? ' reversed' : ''}), not a medoid; ` +
+      `stationary-run collapse applied (cycle 024)`,
   });
   fs.writeFileSync(REFS_PATH, JSON.stringify(refsFile) + '\n');
 
-  console.log(trackId, ride.lat.length, 'pts', 'length', length.toFixed(3), 'm');
+  console.log(trackId, ride.lat.length, 'pts (post-collapse)', 'length', length.toFixed(3), 'm');
 }
 
 main();

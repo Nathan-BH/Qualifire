@@ -30,6 +30,14 @@
  * completed static mark for REDUCED_MOTION_HOLD_MS then fade. Nothing starts
  * until the query resolves (sub-frame in practice); the resolved value then
  * picks the path.
+ *
+ * Cycle 024 (WP-A2, Nathan 2026-08-19): also plays REVERSED on END — "the
+ * yellow line gets undrawn and then the circle gets undrawn as well." `p`
+ * and `slash` are the SAME two Animated.Values either way (0..1); reverse
+ * just mounts them at 1 (the completed mark) and animates them back down to
+ * 0, tail first then ring — the existing rightRotate/leftRotate/slashOpacity
+ * interpolations already read symmetrically in both directions, so no new
+ * geometry is needed, only a different animation sequence and start point.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, StyleSheet, View } from 'react-native';
@@ -37,18 +45,21 @@ import { useTheme } from './themeContext';
 import { PaddockTheme } from './theme';
 import {
   RING_MS, SLASH_DELAY_MS, SLASH_MS, FADE_MS, REDUCED_MOTION_HOLD_MS, RING_BEZIER,
+  REV_SLASH_MS, REV_RING_DELAY_MS, REV_RING_MS,
   RIGHT_INPUT_RANGE, RIGHT_OUTPUT_RANGE, LEFT_INPUT_RANGE, LEFT_OUTPUT_RANGE,
   HEMISPHERE_STATIC_OFFSET_DEG, markGeometry, MarkGeometry,
 } from './launchChoreo';
 
 const MARK_SIZE = 150; // dp — matches the marketing hero's .hero-mark box
 
-export function LaunchAnimation({ onDone }: { onDone: () => void }) {
+export function LaunchAnimation({ onDone, reverse = false }: { onDone: () => void; reverse?: boolean }) {
   const { t } = useTheme();
   const geo = useMemo(() => markGeometry(MARK_SIZE), []);
 
-  const p = useRef(new Animated.Value(0)).current; // ring sweep, 0..1
-  const slash = useRef(new Animated.Value(0)).current; // slash growth, 0..1
+  // Forward starts undrawn (0) and animates up to the completed mark (1);
+  // reverse starts AT the completed mark (1) and animates back down to 0.
+  const p = useRef(new Animated.Value(reverse ? 1 : 0)).current; // ring sweep
+  const slash = useRef(new Animated.Value(reverse ? 1 : 0)).current; // slash growth/undraw
   const fade = useRef(new Animated.Value(1)).current; // overlay opacity
 
   const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
@@ -76,39 +87,69 @@ export function LaunchAnimation({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     if (reduceMotion === null) return; // still resolving — default is animating (below)
     if (reduceMotion) {
-      p.setValue(1);
-      slash.setValue(1);
+      // Forward: jump straight to the completed mark. Reverse: already
+      // mounted AT the completed mark (p/slash start at 1) — hold it as-is,
+      // no undraw animation, per Nathan's pre-resolved ruling (no reversed
+      // motion at all under reduced-motion, only the hold + fade).
+      if (!reverse) {
+        p.setValue(1);
+        slash.setValue(1);
+      }
       const id = setTimeout(finish, REDUCED_MOTION_HOLD_MS);
       return () => clearTimeout(id);
     }
-    const anim = Animated.parallel([
-      Animated.timing(p, {
-        toValue: 1,
-        duration: RING_MS,
-        easing: Easing.bezier(RING_BEZIER[0], RING_BEZIER[1], RING_BEZIER[2], RING_BEZIER[3]),
-        useNativeDriver: true,
-      }),
-      Animated.sequence([
-        Animated.delay(SLASH_DELAY_MS),
-        Animated.timing(slash, {
-          toValue: 1,
-          duration: SLASH_MS,
-          easing: Easing.out(Easing.cubic),
-          useNativeDriver: true,
-        }),
-      ]),
-    ]);
+    const ringBezier = Easing.bezier(RING_BEZIER[0], RING_BEZIER[1], RING_BEZIER[2], RING_BEZIER[3]);
+    const anim = reverse
+      ? Animated.parallel([
+          // Tail undraws first, no delay (mockup: qf-undraw-tail, ease-in).
+          Animated.timing(slash, {
+            toValue: 0,
+            duration: REV_SLASH_MS,
+            easing: Easing.in(Easing.cubic),
+            useNativeDriver: true,
+          }),
+          // Ring undraw starts REV_RING_DELAY_MS later (mockup: qf-undraw-ring).
+          Animated.sequence([
+            Animated.delay(REV_RING_DELAY_MS),
+            Animated.timing(p, {
+              toValue: 0,
+              duration: REV_RING_MS,
+              easing: ringBezier,
+              useNativeDriver: true,
+            }),
+          ]),
+        ])
+      : Animated.parallel([
+          Animated.timing(p, {
+            toValue: 1,
+            duration: RING_MS,
+            easing: ringBezier,
+            useNativeDriver: true,
+          }),
+          Animated.sequence([
+            Animated.delay(SLASH_DELAY_MS),
+            Animated.timing(slash, {
+              toValue: 1,
+              duration: SLASH_MS,
+              easing: Easing.out(Easing.cubic),
+              useNativeDriver: true,
+            }),
+          ]),
+        ]);
     anim.start(({ finished: ok }) => { if (ok) finish(); });
     return () => anim.stop();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reduceMotion]);
+  }, [reduceMotion, reverse]);
 
-  // Tap-to-skip: snap to end state and start the fade immediately.
+  // Tap-to-skip: snap to this direction's END state and start the fade
+  // immediately — forward's end is the completed mark (1); reverse's end is
+  // the fully-undrawn mark (0).
   const skip = () => {
     p.stopAnimation();
     slash.stopAnimation();
-    p.setValue(1);
-    slash.setValue(1);
+    const end = reverse ? 0 : 1;
+    p.setValue(end);
+    slash.setValue(end);
     finish();
   };
 

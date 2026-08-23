@@ -7,6 +7,7 @@
  * nothing else in the app notices. So every gate's stored pixel — written by
  * the renderer — must be reproduced by projectToPixel() to sub-pixel accuracy.
  */
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { assert, loadJson, test, TESTS_DIR } from './lib.ts';
 import {
@@ -97,4 +98,32 @@ test('routemap: the crop centres the rider and never pulls off the image edge', 
   const whole = cropFor(a, mid, VW, VH, 1);
   assert(a.w * whole.scale <= VW + 0.001 && a.h * whole.scale <= VH + 0.001,
     'zoom 1 must fit the entire route in the viewport');
+});
+
+// --------------------------------------------------------- MapLibre rung
+//
+// The MapLibre rung (routeMapView.tsx's <M.Map>) imports react-native and
+// @maplibre/maplibre-react-native — it cannot be mounted/rendered in this
+// headless Node suite (same reason launchAnimation.tsx's Animated-driven
+// choreography is proven only via its pure launchChoreo.ts sibling, not by
+// rendering the component). This is therefore a STATIC source guard, not a
+// behavioural one: it locks in that the fix for cycle 023's day-mode
+// style-swap race (keying <M.Map> on the theme-driven style URL, forcing a
+// full remount instead of a prop-only style update) stays wired, so a future
+// edit can't silently drop the key and regress the race. Flagged in the
+// executor report: a real render-level regression test would need an RN
+// testing harness this repo does not have.
+
+test('routemap: MapLibre <M.Map> remounts on a style-URL change (cycle 023 fix 1 day-mode race)', () => {
+  const src = fs.readFileSync(
+    path.join(TESTS_DIR, '..', 'src', 'ui', 'routeMapView.tsx'), 'utf8');
+  const mapStart = src.indexOf('<M.Map');
+  assert(mapStart >= 0, '<M.Map> element not found — has the MapLibre rung moved/been renamed?');
+  const nextChild = src.indexOf('<M.Camera', mapStart);
+  assert(nextChild > mapStart, '<M.Camera> (first child) not found after <M.Map>');
+  const openTag = src.slice(mapStart, nextChild);
+  assert(/\bkey=\{styleUrl\}/.test(openTag),
+    '<M.Map> must be keyed on styleUrl so a day<->night theme flip fully remounts the native view ' +
+    'instead of a prop-only style update (the cycle 023 day-mode rendering bug)');
+  assert(/\bmapStyle=\{/.test(openTag), 'mapStyle prop no longer present on <M.Map> — sanity check of the slice');
 });

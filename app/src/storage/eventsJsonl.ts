@@ -1,7 +1,10 @@
 /** JSONL encode/decode for the GPX+ events sidecar. Pure — no expo, no Node. */
 import type { DecodedEvents, RideEvent } from './types.ts';
 
-const KINDS = new Set(['meta', 'button', 'lock', 'gate', 'storageError', 'relaunch']);
+const KINDS = new Set([
+  'meta', 'button', 'lock', 'gate', 'storageError', 'relaunch',
+  'routeMatchDiagnostic', 'elevationOutlier',
+]);
 
 /** kind first, tUnixMs second, then the kind's own fields — verbatim values. */
 export function encodeEvent(ev: RideEvent): string {

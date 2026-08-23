@@ -19,6 +19,7 @@ import * as TaskManager from 'expo-task-manager';
 import Constants from 'expo-constants'; // [UNTESTED ON DEVICE]
 import { appendFix, startRide, endRide, appendRideEvent } from '../storage';
 import { liveEngine } from '../live/engine';
+import { checkElevationOutlier, ELEVATION_OUTLIER_RATE_MPS } from './elevationOutlier';
 import { ActiveSession, saveSession, loadSession, clearSession } from './session';
 
 export const LOCATION_TASK = 'qualifire-ride-tracking';
@@ -64,6 +65,12 @@ let lastLat: number | null = null;
 let lastLon: number | null = null;
 let storageErrors = 0;
 let lastError: string | null = null;
+
+// Cycle 023 fix 3: previous fix's elevation/time, for the outlier rate check.
+// Reset in startTracking (a fresh ride's first fix has nothing to compare
+// against yet — that's fine, checkElevationOutlier just isn't called for it).
+let prevEle: number | null = null;
+let prevEleTUnixMs: number | null = null;
 
 const listeners = new Set<(s: TrackerStatus) => void>();
 
@@ -123,11 +130,12 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
     }
     const locations = data?.locations ?? [];
     for (const loc of locations) {
+      const ele = loc.coords.altitude ?? undefined;
       try {
         await appendFix(s.rideId, {
           lat: loc.coords.latitude,
           lon: loc.coords.longitude,
-          ele: loc.coords.altitude ?? undefined,
+          ele, // stored VERBATIM — D-023. Never clamped/smoothed here or anywhere upstream of disk.
           tUnixMs: loc.timestamp,
           accuracyM: loc.coords.accuracy ?? undefined,
         });
@@ -141,13 +149,31 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
         lastError = e instanceof Error ? e.message : String(e);
         logEvent(s.rideId, { kind: 'storageError', tUnixMs: Date.now(), message: lastError });
       }
+      // Cycle 023 fix 3: flag-don't-mutate elevation-outlier diagnostics.
+      // Compares this fix's raw ele against the PREVIOUS raw ele already
+      // written above — this is a read-only side channel, never a rewrite of
+      // what just got appended (D-023). Swallow-everything, same doctrine as
+      // every other diagnostics call on this path.
+      if (ele !== undefined && Number.isFinite(ele)) {
+        if (prevEle !== null && prevEleTUnixMs !== null) {
+          const check = checkElevationOutlier(prevEle, prevEleTUnixMs, ele, loc.timestamp);
+          if (check?.isOutlier) {
+            logEvent(s.rideId, {
+              kind: 'elevationOutlier', tUnixMs: loc.timestamp,
+              deltaM: check.deltaM, dtS: check.dtS, thresholdMps: ELEVATION_OUTLIER_RATE_MPS,
+            });
+          }
+        }
+        prevEle = ele;
+        prevEleTUnixMs = loc.timestamp;
+      }
       // Live sectors (cycle 006): display-only derived state, fed AFTER the
       // raw append so the JSONL can never depend on it. Engine errors are
       // swallowed — the raw ride is worth strictly more than the live view.
       // On a headless relaunch mid-ride the engine auto-starts and re-locks;
       // earlier sectors surface as estimated/missed (honest, D-016(b)).
       try {
-        liveEngine.feed(loc.coords.latitude, loc.coords.longitude, loc.timestamp);
+        liveEngine.feed(loc.coords.latitude, loc.coords.longitude, loc.timestamp, loc.coords.accuracy ?? undefined);
       } catch {
         /* display-only */
       }
@@ -183,7 +209,7 @@ export async function ensurePermissions(): Promise<PermissionOutcome> {
 // Start / stop / recovery
 // ---------------------------------------------------------------------------
 
-export async function startTracking(): Promise<ActiveSession> {
+export async function startTracking(opts?: { routePick?: string | null }): Promise<ActiveSession> {
   const pressedAtMs = Date.now();
   const existing = await ensureSession();
   if (existing) return existing; // already recording; be idempotent
@@ -222,7 +248,9 @@ export async function startTracking(): Promise<ActiveSession> {
   lastLon = null;
   storageErrors = 0;
   lastError = null;
-  liveEngine.start(); // fresh live-sector state for this ride
+  prevEle = null;
+  prevEleTUnixMs = null;
+  liveEngine.start({ pickId: opts?.routePick ?? null }); // fresh live-sector state for this ride
   logEvent(rideId, {
     kind: 'meta', tUnixMs: pressedAtMs, schemaVersion: 1,
     ...(Constants.expoConfig?.version ? { appVersion: Constants.expoConfig.version } : {}),
@@ -230,6 +258,21 @@ export async function startTracking(): Promise<ActiveSession> {
   logEvent(rideId, { kind: 'button', tUnixMs: pressedAtMs, button: 'start' });
   emit();
   return s;
+}
+
+/** One-shot position refresh for the armed (pre-start) screen — display only,
+ * never recorded (no ride is open). Foreground permission must already be
+ * granted; failures are swallowed. [UNTESTED ON DEVICE] */
+export async function refreshPositionOnce(): Promise<void> {
+  try {
+    const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+    lastFixMs = loc.timestamp;
+    lastLat = loc.coords.latitude;
+    lastLon = loc.coords.longitude;
+    emit();
+  } catch {
+    /* display only */
+  }
 }
 
 export async function stopTracking(): Promise<RideSummary | null> {
@@ -241,6 +284,14 @@ export async function stopTracking(): Promise<RideSummary | null> {
   } catch {
     /* service already gone (killed by OS) — still finalise the ride */
   }
+  // Cycle 024 (WP-D2): settle a route BEFORE the ride ends, so the last
+  // emitted state (and any caller reading getState() right after stopTracking
+  // resolves) carries the finalized route rather than a still-soft or
+  // never-locked one. Defensive here even though RecordScreen's onEnd also
+  // calls finalize() itself first — this covers every OTHER stopTracking()
+  // caller (e.g. the relaunch-recovery "Save ride" path), and finalize() is
+  // idempotent, so calling it twice on the same ride is harmless.
+  liveEngine.finalize();
   let summary: RideSummary | null = null;
   if (s) {
     logEvent(s.rideId, { kind: 'button', tUnixMs: Date.now(), button: 'end' });
@@ -303,6 +354,10 @@ liveEngine.subscribeEvents((ev) => {
     logEvent(session.rideId, {
       kind: 'lock', tUnixMs: Math.round(ev.atT * 1000),
       track: ev.track, atChainageM: ev.atChainageM, atT: ev.atT,
+      // ev.kind (soft/verified/finalized) persists as `lockKind` — `kind`
+      // itself is this RECORD's own discriminant ('lock'), see LockEvent's
+      // doc comment in storage/types.ts.
+      lockKind: ev.kind, pick: ev.pick,
     });
   } else {
     logEvent(session.rideId, {
@@ -310,6 +365,22 @@ liveEngine.subscribeEvents((ev) => {
       track: ev.track, gateIndex: ev.gateIndex, t: ev.t, estimated: ev.estimated,
     });
   }
+});
+
+// Cycle 023 fix 5b: route-match diagnostics (a channel distinct from both the
+// live-state subscribe() above and the lock/gate ride-record subscribeEvents()
+// above it — see engine.ts's DiagnosticEvent doc comment) — appended to the
+// SAME sidecar file as every other GPX+ event, just a new kind. Subscribed at
+// module scope for the same headless-relaunch reason as the others: fired for
+// EVERY candidate, win or lose, so a ride that never locks still leaves a
+// diagnosable trail (unlike subscribeEvents, which only ever sees the winner).
+liveEngine.subscribeDiagnostics((d) => {
+  if (!session) return; // cannot attribute; headless relaunch resubscribes after ensureSession restores it
+  logEvent(session.rideId, {
+    kind: 'routeMatchDiagnostic', tUnixMs: Math.round(d.atT * 1000),
+    track: d.track, phase: d.phase, accuracyM: d.accuracyM,
+    thresholdM: d.thresholdM, poorAccuracy: d.poorAccuracy,
+  });
 });
 
 /**

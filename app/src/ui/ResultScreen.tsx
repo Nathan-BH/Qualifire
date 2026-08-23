@@ -9,10 +9,14 @@
  */
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import catalogJson from '../store/catalog.seed.json';
+import seedResultsJson from '../store/results.seed.json';
+import { fallbackRouteId, routeLabel } from '../store/defaultRoute.ts';
+import type { Catalog, RideResult } from '../store/types.ts';
 import { chipColors } from './chips.tsx';
 import { MIN_HISTORY, allTimeBestLapS, fmt, ghostsFor, lapValues, positionAmong, sectorValues,
   tierFor, type UiTier } from './colourModel.ts';
-import { getLastRide } from './lastRide.ts';
+import { getLastRide, recordedResults } from './lastRide.ts';
 import { TimingTower } from './tower.tsx';
 import { buildTowerModel } from './towerModel.ts';
 import RouteMapView from './routeMapView.tsx';
@@ -20,7 +24,8 @@ import { useSettings } from './settings.tsx';
 import { PaddockTheme, colors, radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
 
-const FALLBACK_ROUTE = 'Morning'; // only used when no ride has finished yet
+const CATALOG = catalogJson as unknown as Catalog;
+const SEED_RESULTS = seedResultsJson as unknown as RideResult[];
 
 /** The slot-in plays exactly once per FINISHED ride, never on revisit (§3b.3,
  * guarded here AND inside tower.tsx). Module-level so remounts (tab away and
@@ -43,12 +48,16 @@ export default function ResultScreen() {
   // Hooks must run unconditionally — declared before the early returns below.
   const [traceOpen, setTraceOpen] = useState(false);
   const ride = getLastRide();                       // the ride you just finished
-  const ROUTE = ride?.routeId ?? FALLBACK_ROUTE;
+  // No finished ride yet: fall back to the route of the most recent ranking
+  // result (seed or session), never a literal track name (B-39). null only
+  // when the catalog itself is empty (cannot happen today).
+  const ROUTE = ride?.routeId ?? fallbackRouteId(CATALOG, [...SEED_RESULTS, ...recordedResults()]);
   // B-44: today's own recorded ride must not sit inside its own comparison
-  // history — exclude it by the same session id pushRecorded() gave it.
-  const sessionId = ride ? `session:${ride.atMs}` : undefined;
-  const ghosts = ghostsFor(ROUTE, sessionId);
-  const laps = lapValues(ROUTE, sessionId);
+  // history — exclude it by its real rideId (cycle 024, WP-A1: FinishedRide
+  // now carries the real id, not a session:-prefixed stand-in).
+  const sessionId = ride?.rideId;
+  const ghosts = ROUTE !== null ? ghostsFor(ROUTE, sessionId) : [];
+  const laps = ROUTE !== null ? lapValues(ROUTE, sessionId) : [];
   // Slot-in arming: true only the first time THIS finished ride's board is
   // rendered; the effect below marks it seen after that first render.
   const justFinished = ride !== null && !ANIMATED_RIDES.has(ride.atMs);
@@ -56,7 +65,7 @@ export default function ResultScreen() {
     if (ride !== null) ANIMATED_RIDES.add(ride.atMs);
   }, [ride?.atMs]);
 
-  if (ghosts.length === 0) {
+  if (ROUTE === null || ghosts.length === 0) {
     return (
       <View style={{ flex: 1, padding: 16 }}>
         <Text style={{ color: t.textDim }}>No ride history for this route yet.</Text>
@@ -184,7 +193,7 @@ export default function ResultScreen() {
       <Text style={{ color: t.textDim, fontSize: 11.5, marginTop: 12 }}>
         Purple beats every ghost, green is above your recent average, yellow is an ordinary
         lap — F1's own palette. Rows shown are archive ghosts recomputed by our own pipeline. {ride
-          ? `"TODAY" is the ride you just finished on ${ROUTE}.`
+          ? `"TODAY" is the ride you just finished on ${routeLabel(ROUTE)}.`
           : '"TODAY" is the most recent ghost — record a ride and it is replaced by yours.'}
       </Text>
     </ScrollView>

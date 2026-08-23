@@ -16,8 +16,10 @@ import './routemapgeo_suite.ts';
 import './routemapstyle_suite.ts';
 import './live_colour_suite.ts';
 import './towermodel_suite.ts';
-import './results_cache_suite.ts';
+import './resultsstore_suite.ts';
 import './launch_anim_suite.ts';
+import './recordflow_suite.ts';
+import './elevation_suite.ts';
 import { runAll } from './lib.ts';
 
 const { fail } = await runAll();

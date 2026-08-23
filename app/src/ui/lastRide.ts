@@ -3,18 +3,36 @@
  *
  * Deliberately tiny and in-memory: STOP hands the finished live state here, the
  * Result tab reads it. It is DISPLAY state, not a record — the raw JSONL on
- * disk remains the only truth (D-023), and a proper Result screen will one day
- * read a RideResult derived from that file rather than this hand-off.
+ * disk remains the only truth (D-023).
+ *
+ * Cycle 024 (WP-A1): B-40's disposable results-cache.json is gone. Every
+ * finished ride with a real session (meta present) is now ALSO handed to
+ * store/resultsStore.ts as a full, real-rideId RideResult — a persistent
+ * sidecar under results/ that survives a restart on its own, independent of
+ * this file's in-memory `last`/`recorded`. results-cache.json itself is left
+ * on disk untouched (never read, never written again; D-023 — deleting it
+ * costs nothing but one restart's worth of comparison history, same as
+ * always). `initRideHistory` (replacing B-40's initRecordedPersistence)
+ * rehydrates `recorded` from that store instead, then backfills any ended
+ * ride still missing a result by re-deriving from its raw JSONL.
  *
  * Until a ride finishes in this session, `get()` returns null and Result falls
  * back to showing a ghost, clearly labelled as such. Never invent a lap.
  */
+import catalogJson from '../store/catalog.seed.json';
+import { gateSetFor } from '../store/catalog.ts';
+import { ranks } from '../store/results.ts';
+import * as resultsStore from '../store/resultsStore.ts';
 import type { LiveEngineState } from '../live/engine.ts';
-import type { RideResult } from '../store/types.ts';
+import type { Catalog, RideResult, SectorQuality } from '../store/types.ts';
 import { RESULT_SCHEMA_VERSION } from '../store/types.ts';
 import type { FsAdapter } from '../storage/fsAdapter.ts';
+import { decodeIndex } from '../storage/rideIndex.ts';
+
+const CATALOG = catalogJson as unknown as Catalog;
 
 export interface FinishedRide {
+  rideId: string;
   routeId: string;
   atMs: number;
   lapMovingS: number | null;
@@ -26,110 +44,57 @@ export interface FinishedRide {
 let last: FinishedRide | null = null;
 const recorded: RideResult[] = [];
 
-/** Relative path of the cache under the storage root — sibling of index.json.
- * The root already holds rides/, index.json and settings.json; no collision. */
-export const RECORDED_CACHE_FILE = 'results-cache.json';
-
-// B-40: `recorded` is memory-only display state (see file header); this cache
-// makes it survive a restart WITHOUT promoting it to a record. D-023 still
-// holds — the raw JSONL is the only truth, so this cache must never throw,
-// never block boot, and losing it must cost nothing but one restart's worth
-// of comparison history.
-let cacheFs: FsAdapter | null = null;          // null until initRecordedPersistence; null in tests by default
-let writeTail: Promise<void> = Promise.resolve(); // serializes cache writes, last write wins
-
 /** Rides finished in THIS session, shaped as store results so the colour
- * window can include them (cycle 009: the window used to be frozen). Backed
- * by a disposable JSON cache (B-40) so it also survives a restart — the raw
+ * window can include them (cycle 009: the window used to be frozen). Persisted
+ * beyond this session via store/resultsStore.ts (cycle 024, WP-A1) — the raw
  * JSONL on disk remains the record (D-023). */
 export function recordedResults(): RideResult[] {
   return recorded;
 }
 
-function encodeRecordedCache(results: RideResult[]): string {
-  return JSON.stringify({ schemaVersion: RESULT_SCHEMA_VERSION, results }, null, 1) + '\n';
+function sectorsFor(
+  f: FinishedRide,
+  gates: number[] | null,
+): RideResult['sectors'] {
+  return f.sectors.map((s) => {
+    const quality: SectorQuality =
+      s.quality === 'clean' || s.quality === 'interrupted' || s.quality === 'estimated'
+        ? s.quality
+        : 'missed';
+    return {
+      index: s.index,
+      fromChainageM: gates ? (gates[s.index - 1] ?? 0) : 0,
+      toChainageM: gates ? (gates[s.index] ?? 0) : 0,
+      rawS: s.rawS,
+      movingS: s.movingS,
+      quality,
+    };
+  });
 }
 
-function isNonNullObject(v: unknown): v is Record<string, unknown> {
-  return typeof v === 'object' && v !== null;
-}
-
-/** Structural guard for one cached entry: every field every downstream
- * consumer (ghostsFor/ranks/sectorValues) actually reads must be present and
- * of the right shape, or the entry is dropped. Mirrors decodeIndex's
- * defensive posture in storage/rideIndex.ts. */
-function isValidCachedResult(v: unknown): v is RideResult {
-  if (!isNonNullObject(v)) return false;
-  if (v.kind !== 'rideResult') return false;
-  if (typeof v.rideId !== 'string') return false;
-  if (typeof v.startedAtMs !== 'number' || !Number.isFinite(v.startedAtMs)) return false;
-  if (!(v.routeId === null || typeof v.routeId === 'string')) return false;
-  const lap = v.lap;
-  if (!isNonNullObject(lap)) return false;
-  if (typeof lap.rawS !== 'number') return false;
-  if (!(lap.movingS === null || typeof lap.movingS === 'number')) return false;
-  if (typeof lap.quality !== 'string') return false;
-  if (!Array.isArray(v.sectors)) return false;
-  for (const s of v.sectors) {
-    if (!isNonNullObject(s) || typeof s.index !== 'number') return false;
-  }
-  return true;
-}
-
-/** Returns null on corrupt/unrecognisable text so the caller degrades to an
- * empty cache (D-023: this file is a convenience, never trusted blindly). */
-export function decodeRecordedCache(text: string): RideResult[] | null {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(text);
-  } catch {
-    return null;
-  }
-  if (!isNonNullObject(parsed) || !Array.isArray(parsed.results)) return null;
-  return parsed.results.filter(isValidCachedResult);
-}
-
-/** Rehydrates `recorded` from the cache file once at boot. Never throws —
- * missing file, corrupt file, and adapter errors all silently degrade to
- * today's memory-only behavior (D-023). Dedupes by rideId so a second call
- * (e.g. a remount) is idempotent. */
-export async function initRecordedPersistence(fs: FsAdapter): Promise<void> {
-  cacheFs = fs;
-  try {
-    const text = await fs.readText(RECORDED_CACHE_FILE);
-    if (text === null) return;
-    const decoded = decodeRecordedCache(text);
-    if (decoded === null) return;
-    const have = new Set(recorded.map((r) => r.rideId));
-    recorded.unshift(...decoded.filter((r) => !have.has(r.rideId)));
-  } catch { /* the cache is a convenience (D-023) — boot never fails on it */ }
-}
-
-/** Test seam: resolves once every write scheduled so far has settled. */
-export function flushRecordedCacheWrites(): Promise<void> {
-  return writeTail;
-}
-
-function schedulePersist(): void {
-  if (cacheFs === null) return;               // persistence never armed (headless default)
-  const fs = cacheFs;
-  const text = encodeRecordedCache(recorded); // snapshot synchronously, at call time
-  writeTail = writeTail.then(() => fs.writeText(RECORDED_CACHE_FILE, text)).catch(() => {});
-}
-
-export function rememberRide(st: LiveEngineState): void {
+export function rememberRide(
+  st: LiveEngineState,
+  meta?: { rideId: string; startedAtMs: number },
+): void {
   // An aborted ride must CLEAR the previous one, never leave a stale board
   // captioned "the ride you just finished" (cycle 009).
   if (st.track === null || st.lap === null) {
     last = null;
     return;
   }
+  const atMs = Date.now();
+  const rideId = meta?.rideId ?? `session:${atMs}`;
+  const routeId = st.track;
+  const lapMovingS = st.lap.movingS;
+  const lapRawS = st.lap.rawS;
+  const estimated = st.lap.estimated;
   last = {
-    routeId: st.track,
-    atMs: Date.now(),
-    lapMovingS: st.lap.movingS,
-    lapRawS: st.lap.rawS,
-    estimated: st.lap.estimated,
+    rideId,
+    routeId,
+    atMs,
+    lapMovingS,
+    lapRawS,
+    estimated,
     sectors: st.sectors.map((s, i) => {
       if (s.kind !== 'done') {
         return { index: i + 1, movingS: null, rawS: 0, quality: 'missed' };
@@ -142,51 +107,187 @@ export function rememberRide(st: LiveEngineState): void {
       };
     }),
   };
-  pushRecorded(last);
+
+  // The ridden route's OWN current gate set (catalog.seed.json) — resolved
+  // unconditionally, same as before this brief (gateSetVersion has already
+  // been real, not hardcoded, since cycle 024/WP-D2). NOT core/gates.ts's
+  // gateChainages()/PROPOSED_GATES, which WP-D2 left covering only the four
+  // legacy commute tracks, not every catalog route the live engine can now
+  // lock. Real chainages (fromChainageM/toChainageM) are new in this brief
+  // and only used when meta is present — session:-only pushes (no meta) keep
+  // today's 0/0 back-compat shape. Falls back to 0/0 if a gate set is somehow
+  // unresolvable — defensive only; the live engine only ever locks a track
+  // catalogTrackSpecs() itself resolved a gate set for.
+  const gateSet = gateSetFor(CATALOG, routeId);
+  const gates = meta ? (gateSet ? gateSet.chainageM : null) : null;
+  const derivedBy = {
+    engineVersion: 'live',
+    // Cycle 024 (WP-D2): the ridden route's OWN current gate set version —
+    // hardcoding 1 broke the moment any route (e.g. MorningB) moved to v2.
+    gateSetVersion: gateSet?.version ?? 1,
+    resultSchemaVersion: RESULT_SCHEMA_VERSION,
+  };
+  const sectors = sectorsFor(last, gates);
+
+  pushRecorded(last, meta, sectors, derivedBy);
+
+  // Store write (cycle 024, WP-A1): only when this is a real session (meta
+  // present) — a headless rememberRide(state) call (live_colour_suite.ts)
+  // must keep behaving exactly as before, in-memory only. Writes even an
+  // estimated/interrupted/missed-sector result: RIDES (A3) needs their
+  // sectors, and D-028's "never ranks" rule is enforced at read time
+  // (ranks()), not by refusing to store honest history.
+  if (meta) {
+    const anyMissed = sectors.some((s) => s.quality === 'missed');
+    const anyEstimated = sectors.some((s) => s.quality === 'estimated');
+    const anyInterrupted = sectors.some((s) => s.quality === 'interrupted');
+    // Worst-sector lap rule — mirrors store/derive.ts's deriveRideResult
+    // verbatim, so a live-scored result and an offline-backfilled one for the
+    // same ride would carry the same honest quality.
+    const lapQuality: SectorQuality = anyMissed
+      ? 'missed'
+      : anyEstimated
+        ? 'estimated'
+        : anyInterrupted
+          ? 'interrupted'
+          : 'clean';
+    const storeResult: RideResult = {
+      kind: 'rideResult',
+      schemaVersion: RESULT_SCHEMA_VERSION,
+      rideId: meta.rideId,
+      startedAtMs: meta.startedAtMs,
+      routeId,
+      source: 'app',
+      lap: {
+        rawS: lapRawS ?? lapMovingS ?? 0,
+        movingS: lapQuality === 'clean' || lapQuality === 'interrupted' ? lapMovingS : null,
+        quality: lapQuality,
+      },
+      sectors,
+      derivedBy,
+    };
+    void resultsStore.saveResult(storeResult);
+  }
 }
 
 export function getLastRide(): FinishedRide | null {
   return last;
 }
 
+/** Beta finding #1 ("the post-ride board dies with the process"): when no
+ * ride finished THIS session, fall back to the newest persisted store result
+ * so Result still has something real to show after a restart. `last` always
+ * wins when set — this is a fallback, not a replacement. */
+export function getLastRideOrStored(): FinishedRide | null {
+  if (last !== null) return last;
+  const candidates = resultsStore
+    .storedResults()
+    .filter((r): r is RideResult & { routeId: string } => r.source === 'app' && r.routeId !== null);
+  if (candidates.length === 0) return null;
+  const newest = candidates.reduce((a, b) => (b.startedAtMs > a.startedAtMs ? b : a));
+  return {
+    rideId: newest.rideId,
+    routeId: newest.routeId,
+    atMs: newest.startedAtMs,
+    lapMovingS: newest.lap.movingS,
+    lapRawS: newest.lap.rawS,
+    estimated: newest.lap.quality === 'estimated',
+    sectors: newest.sectors.map((s) => ({
+      index: s.index,
+      movingS: s.movingS,
+      rawS: s.rawS,
+      quality: s.quality,
+    })),
+  };
+}
+
 /** Push the finished ride into the comparison window. Only a lap with a real
- * moving time joins: an estimated or gate-missing ride is not a benchmark. */
-function pushRecorded(f: FinishedRide): void {
+ * moving time joins: an estimated or gate-missing ride is not a benchmark.
+ * Unchanged guard (cycle 024, WP-A1) — real rideId/startedAtMs/chainages when
+ * `meta` is present, `session:` id and 0/0 chainages otherwise (back-compat,
+ * live_colour_suite.ts calls rememberRide with no meta and must keep working
+ * unmodified). */
+function pushRecorded(
+  f: FinishedRide,
+  meta: { rideId: string; startedAtMs: number } | undefined,
+  sectors: RideResult['sectors'],
+  derivedBy: RideResult['derivedBy'],
+): void {
   if (f.estimated || f.lapMovingS === null) return;
   recorded.push({
     kind: 'rideResult',
     schemaVersion: RESULT_SCHEMA_VERSION,
-    rideId: `session:${f.atMs}`,
-    startedAtMs: f.atMs,
+    rideId: f.rideId,
+    startedAtMs: meta?.startedAtMs ?? f.atMs,
     routeId: f.routeId,
     source: 'app',
     lap: { rawS: f.lapRawS ?? f.lapMovingS, movingS: f.lapMovingS, quality: 'clean' },
-    sectors: f.sectors.map((s) => ({
-      index: s.index,
-      fromChainageM: 0,
-      toChainageM: 0,
-      rawS: s.rawS,
-      movingS: s.movingS,
-      quality: (s.quality === 'clean' || s.quality === 'interrupted'
-        ? s.quality
-        : s.quality === 'estimated' ? 'estimated' : 'missed'),
-    })),
-    derivedBy: { engineVersion: 'live', gateSetVersion: 1, resultSchemaVersion: RESULT_SCHEMA_VERSION },
+    sectors,
+    derivedBy,
   });
-  schedulePersist();
 }
 
 export function clearLastRide(): void {
   last = null;
 }
 
+/** Rehydrates `recorded` from the persistent results store once at boot
+ * (replaces B-40's initRecordedPersistence). Never throws — missing/corrupt
+ * store state degrades to today's memory-only behaviour (D-023). After the
+ * initial hydration, fires the offline backfill (migration for rides
+ * recorded before this store existed, and recovery for anything that failed
+ * to lock live) in the background — never blocks boot — then merges any
+ * newly-stored rankable results into `recorded`. */
+export async function initRideHistory(fs: FsAdapter): Promise<void> {
+  let results: RideResult[] = [];
+  try {
+    results = await resultsStore.initResultsStore(fs);
+  } catch { /* the store is a convenience (D-023); boot never fails on it */ }
+
+  const have = new Set(recorded.map((r) => r.rideId));
+  for (const r of results) {
+    if (ranks(r) && !have.has(r.rideId)) {
+      recorded.push(r);
+      have.add(r.rideId);
+    }
+  }
+
+  // Fire-and-forget: the migration/recovery backfill can take a while on a
+  // phone with years of rides; it must never delay the tab from becoming
+  // interactive.
+  void (async () => {
+    try {
+      const text = await fs.readText('index.json');
+      if (text === null) return;
+      const rideIndex = decodeIndex(text);
+      if (rideIndex === null) return;
+      const endedIds = rideIndex.rides.filter((r) => r.status === 'ended').map((r) => r.rideId);
+      await resultsStore.backfillMissingResults(fs, endedIds);
+      const have2 = new Set(recorded.map((r) => r.rideId));
+      for (const r of resultsStore.storedResults()) {
+        if (ranks(r) && !have2.has(r.rideId)) {
+          recorded.push(r);
+          have2.add(r.rideId);
+        }
+      }
+    } catch { /* backfill is a convenience; never throws into the caller */ }
+  })();
+}
+
+/** RidesScreen (A1 change 5): drop a deleted ride's entry from the in-memory
+ * comparison window, mirroring removeStoredResult's removal from the
+ * persistent store. */
+export function dropRecorded(rideId: string): void {
+  const i = recorded.findIndex((r) => r.rideId === rideId);
+  if (i !== -1) recorded.splice(i, 1);
+}
+
 /** Test-only: empties `recorded` and clears `last` so the headless suite can
  * start each case from a clean slate without leaking state between tests.
- * Also disarms persistence (B-40) so one suite cannot leak an armed adapter
- * or a pending write into the next. */
+ * Also disarms the results store (cycle 024, WP-A1) so one suite cannot leak
+ * an armed adapter or a pending write into the next. */
 export function resetRecordedForTests(): void {
   recorded.length = 0;
   last = null;
-  cacheFs = null;
-  writeTail = Promise.resolve();
+  resultsStore.resetResultsStoreForTests();
 }

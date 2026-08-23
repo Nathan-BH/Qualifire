@@ -49,15 +49,31 @@ Implement 5 high/medium-priority fixes from GPS+ test-ride review (rides 1–3, 
 - `app/src/ui/routeMapView.tsx` — 23 lines added (Issue 1)
 - `app/src/storage/gpxPlusExport.ts` — 110 lines added (Issues 4, 5b scaffold)
 
-## Verdict
+## Verdict (superseded — see Addendum below)
 
-**Not ready to commit** pending:
-1. Issue 3 decision (rework or ratification)
-2. Test verification on Nathan's PC
-3. Issue 3 rework (if not ratified)
+~~Not ready to commit~~ pending:
+1. ~~Issue 3 decision (rework or ratification)~~
+2. ~~Test verification on Nathan's PC~~
+3. ~~Issue 3 rework (if not ratified)~~
 
 Issues 1, 2, 4, 5a are ready to merge once tests pass + Issue 3 is resolved. Issue 5b stays open (scaffolded, wiring deferred).
 
 ---
 
 *Reviewed by: Sonnet executor (225k tokens) → Fable inspector (91k tokens). Stops recorded per model-tier protocol.*
+
+## Addendum — 2026-08-22: LANDED
+
+This session found the above had never actually been written to the live repo — the 4 files were still byte-identical to cycle 021, matching the "Not ready to commit" verdict exactly. Since cycle 024 was gated on 023 landing, this addendum lands it for real, resolving every open item above:
+
+**Tier 3 (Execute, Sonnet, this session):** all 5 fixes implemented fresh across 8 files (`engine.ts` +84, `location/index.ts` +43, new `location/elevationOutlier.ts` +50, `routeMapView.tsx` +10, `storage/types.ts` +29, `storage/eventsJsonl.ts` +3, `storage/gpxPlusExport.ts` +47, plus 15 new regression tests across 4 test files). **Issue 3 resolved via flag-don't-mutate** (the inspector's recommended option, not ratification-of-mutation): raw `ele` is never touched on disk; outlier detection (`ELEVATION_OUTLIER_RATE_MPS = 4`) emits a sidecar diagnostic event only. Issue 2's calibration guard (retry keyed on *initial* accuracy only) landed as specified. Issue 5b fully wired (not just scaffolded): `RideEvent` union in `types.ts`, `subscribeDiagnostics()` channel, sidecar append, GPX+ export pass-through.
+
+**Tier 4 (Inspect, Opus standing in for Fable — no Fable available this week):** fresh-context adversarial review, independently reran tests/tsc, traced the D-023 raw-`ele` path hop-by-hop (clean — confirmed no mutation anywhere), verified the retry guard with a constructed good→degrade→improve case (correctly never retries), and mutation-tested the poor-accuracy regression test by disabling the fix and confirming it fails (not tautological). Found **one blocker**: `routeDistanceM` emitted the FINISH gate's raw absolute chainage (includes the non-zero ~162 m START offset) instead of START→FINISH distance, and its own test asserted the buggy value, ratifying the bug. Four non-blocking follow-ups also filed (remount fix is narrower than its stated failure class; camera state lost on a free-mode theme flip; a diagnostic can reference a fix that never reached the JSONL if `appendFix` throws; no test coverage of the `location/index.ts` wiring itself, headless-untestable).
+
+**Blocker fixed (coordinator chore, <10 mechanical lines, no tier needed):** `routeDistanceM` now returns `gates[last].chainage - gates[0].chainage`; test constant corrected 5487 → 5325 (Morning); doc comment clarified.
+
+**Final verification (both independently, before and after the chore fix):** `node --experimental-strip-types tests/run.ts` → **160 tests, 157 pass, 0 fail, 3 skip** (same 3 pre-existing benign skips). `node ./node_modules/typescript/bin/tsc --noEmit` → clean, exit 0.
+
+**Verdict: LANDED.** All 5 issues merged and verified. Deferred (non-blocking, candidates for BACKLOG at bookkeeping): the 4 follow-ups above, plus the pre-existing Issue-1-on-device-retest and Issue-2/POOR_ACCURACY_M-calibration notes (unchanged from the original review — still unverified on a real device, still functionally safe as diagnostics-only).
+
+*Landed by: Sonnet executor (296k tokens) → Opus inspector (107k tokens) → coordinator chore fix. Cycle 024 phase gate now clear.*

@@ -88,6 +88,16 @@ export interface LockEvent {
   atChainageM: number;
   /** epoch s of the fix that produced the lock */
   atT: number;
+  /** Cycle 024 (WP-D2): which kind of lock this is (soft/verified/finalized —
+   * engine.ts's LockKind, minus 'none'). Named `lockKind` rather than `kind`
+   * because `kind: 'lock'` above is THIS interface's own RideEvent
+   * discriminant — reusing the name would collide with it (and, worse, would
+   * silently overwrite it in the persisted JSON, since encodeEvent spreads a
+   * plain object literal). Optional so an older sidecar file without it still
+   * decodes (eventsJsonl.ts's decoder is field-tolerant). */
+  lockKind?: 'soft' | 'verified' | 'finalized';
+  /** the RECORD-tab route pick in effect when this lock fired, or null/absent */
+  pick?: string | null;
 }
 export interface GateFireEvent {
   kind: 'gate';
@@ -107,8 +117,37 @@ export interface RelaunchEvent {
   kind: 'relaunch';
   tUnixMs: number;
 }
+/** Cycle 023 fix 5a/5b: a route-lock attempt for one candidate track —
+ * emitted for EVERY candidate (win or lose), not just the one that locks, so
+ * a ride that never locks still leaves a diagnosable trail. Mirrors
+ * live/engine.ts's DiagnosticEvent verbatim (track narrowed to string, same
+ * as LockEvent/GateFireEvent above, since this is the persisted/replayable
+ * shape rather than the in-memory TrackId-typed one). */
+export interface RouteMatchDiagnosticEvent {
+  kind: 'routeMatchDiagnostic';
+  tUnixMs: number;
+  track: string;
+  /** 'anchor' = this candidate's chainage was (re-)seeded from this fix;
+   * 'retry' = the single post-settle re-anchor (cycle 023 fix 2) itself;
+   * 'lock' = this candidate just won the route lock. */
+  phase: 'anchor' | 'retry' | 'lock';
+  accuracyM: number | null;
+  thresholdM: number;
+  poorAccuracy: boolean;
+}
+/** Cycle 023 fix 3/5b: a single-fix elevation delta whose implied vertical
+ * rate exceeds the noise threshold — flagged only, never mutated (D-023);
+ * the ride's raw `ele` values are untouched on disk. */
+export interface ElevationOutlierEvent {
+  kind: 'elevationOutlier';
+  tUnixMs: number;
+  deltaM: number;
+  dtS: number;
+  thresholdMps: number;
+}
 export type RideEvent =
-  | MetaEvent | ButtonEvent | LockEvent | GateFireEvent | StorageErrorEvent | RelaunchEvent;
+  | MetaEvent | ButtonEvent | LockEvent | GateFireEvent | StorageErrorEvent | RelaunchEvent
+  | RouteMatchDiagnosticEvent | ElevationOutlierEvent;
 
 export interface DecodedEvents {
   events: RideEvent[];

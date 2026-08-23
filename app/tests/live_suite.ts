@@ -11,11 +11,14 @@ import { fileURLToPath } from 'node:url';
 import * as nodeFs from 'node:fs';
 import * as path from 'node:path';
 import {
-  test, assert, loadFixture, refFor, numEq, FIXTURES_DIR,
+  test, assert, loadFixture, refFor, numEq, FIXTURES_DIR, fixtureSpecs,
   type Fixture, type SectorRow,
 } from './lib.ts';
-import { LiveProjector, toXY, parseGpx, type TrackId } from '../core/src/index.ts';
-import type { LiveEngineState, LiveSector } from '../src/live/engine.ts';
+import {
+  LiveProjector, toXY, xyToLatLon, parseGpx, resample, cumdist,
+  type TrackId, type RefLine,
+} from '../core/src/index.ts';
+import type { LiveEngineState, LiveSector, DiagnosticEvent, TrackSpec, EngineEvent } from '../src/live/engine.ts';
 
 // --- JSON-import shim -------------------------------------------------------
 // 2026-08-16: engine.ts and refs.ts were normalized to the repo's
@@ -33,7 +36,9 @@ registerHooks({
     return nextLoad(url, context);
   },
 });
-const { LiveEngine, LOCK_MIN_ADVANCE_M, LOCK_MARGIN_M } = await import('../src/live/engine.ts');
+const { LiveEngine, LOCK_MIN_ADVANCE_M, LOCK_MARGIN_M, POOR_ACCURACY_M, REACQ_JUMP_M } =
+  await import('../src/live/engine.ts');
+const { catalogTrackSpecs } = await import('../src/live/tracks.ts');
 
 const TRACKS: readonly TrackId[] = ['Morning', 'EveningA', 'EveningB'];
 /** slack on lock-advance bounds: one 1 Hz fix at e-bike speed + ref resampling */
@@ -48,8 +53,16 @@ interface DriveResult {
   lastEmitted: LiveEngineState | null;
 }
 
-function drive(f: Fixture, fromIndex = 0): DriveResult {
-  const engine = new LiveEngine();
+/** `specs` defaults to the legacy four-track set (the existing suites' whole
+ * point is auto-lock mechanics, not the catalog); pass `catalogTrackSpecs()`
+ * explicitly for the cycle-024 full-catalog regression tests. `pickId`
+ * (cycle 024) pre-seeds the RECORD-tab pick via an explicit start() before
+ * the feed loop — undefined leaves feed()'s own no-pick auto-start untouched
+ * (byte-identical to pre-024 behaviour for every caller that omits it). */
+function drive(
+  f: Fixture, fromIndex = 0, specs?: TrackSpec[], pickId?: string | null,
+): DriveResult {
+  const engine = new LiveEngine(specs ?? fixtureSpecs());
   let lockAt: number | null = null;
   let emits = 0;
   let lastEmitted: LiveEngineState | null = null;
@@ -58,6 +71,7 @@ function drive(f: Fixture, fromIndex = 0): DriveResult {
     lastEmitted = s;
     if (lockAt === null && s.track !== null) lockAt = s.fixesFed;
   });
+  if (pickId !== undefined) engine.start({ pickId });
   for (let i = fromIndex; i < f.fixes.t.length; i++) {
     engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
   }
@@ -66,16 +80,21 @@ function drive(f: Fixture, fromIndex = 0): DriveResult {
 }
 
 /** Candidate-advance replica: same LiveProjector + same refs the engine uses,
- * measured from the first fed fix — mirrors Candidate.adv exactly. */
-function advanceAt(f: Fixture, track: TrackId, nFixes: number, fromIndex = 0): number {
+ * measured from the first fed fix — mirrors Candidate.adv exactly.
+ * `discount` mirrors cycle 024's REACQ_JUMP_M rule (a D-016(a) re-acquisition
+ * teleport is not lock evidence); pass false to measure the RAW chainage delta
+ * the pre-024 engine used, which is what the shadow-lock test below needs. */
+function advanceAt(f: Fixture, track: TrackId, nFixes: number, fromIndex = 0, discount = true): number {
   const ref = refFor(track);
   const proj = new LiveProjector(ref);
   let base: number | null = null;
   let adv = 0;
   for (let i = fromIndex; i < fromIndex + nFixes; i++) {
+    const before = proj.chainage;
     const xy = toXY([f.fixes.lat[i]], [f.fixes.lon[i]], ref.lat0, ref.lon0);
     const fix = proj.update(xy.x[0], xy.y[0], f.fixes.t[i]);
     if (base === null) base = fix.s;
+    else if (discount && proj.chainage - before > REACQ_JUMP_M) base += proj.chainage - before;
     adv = proj.chainage - base;
   }
   return adv;
@@ -201,6 +220,41 @@ test('live: detour_eveningb — offroute/estimated sectors never show a real col
     'detour lap must be estimated with no moving time');
 });
 
+test('live: a re-acquisition jump is not lock evidence — the promoted MorningB line must not steal the Morning commute (cycle 024)', () => {
+  // WP-D1 promoted MorningB's reference onto Nathan's real 2026-08-19
+  // home>work route-B ride. That line leaves home on the same streets as
+  // Morning, diverges after ~50 m, and passes back within the 40 m corridor
+  // around 460 m of ground. D-016(a) then re-acquires MorningB hundreds of
+  // metres downstream in a SINGLE fix. Before cycle 024 the lock race counted
+  // that teleport as advance and locked MorningB on a Morning commute — the
+  // daily ride, mis-scored. This test pins both halves: the pathology is real
+  // in the data, and the engine is immune to it.
+  const f = loadFixture('clean_morning');
+  const { final, lockAt } = drive(f);
+  assert(final.track === 'Morning', `locked ${final.track}, want Morning`);
+  assert(lockAt !== null, 'never locked');
+
+  const rawShadow = advanceAt(f, 'MorningB' as TrackId, lockAt!, 0, false);
+  const honestOwn = advanceAt(f, 'Morning', lockAt!);
+  assert(rawShadow - honestOwn >= LOCK_MARGIN_M && rawShadow >= LOCK_MIN_ADVANCE_M,
+    `the shadow pathology has gone away (raw MorningB delta ${rawShadow.toFixed(1)} m vs Morning ` +
+      `${honestOwn.toFixed(1)} m) — this test no longer proves anything; re-derive it`);
+
+  const honestShadow = advanceAt(f, 'MorningB' as TrackId, lockAt!);
+  assert(honestOwn - honestShadow >= LOCK_MARGIN_M,
+    `corridor-verified margin ${(honestOwn - honestShadow).toFixed(1)} m < ${LOCK_MARGIN_M}: ` +
+      `MorningB earned ${honestShadow.toFixed(1)} m of real advance on a Morning ride`);
+  // The projector's forward search window is 240 m, but a windowed lookup can still land on
+  // the reference vertex just past the window edge (this app's ~5 m resampling), so ordinary
+  // projection can advance up to ~245 m in one fix — REACQ_JUMP_M must clear that, not just
+  // the raw window, or a normal fast/sparse-fix advance gets misclassified as a re-acquisition
+  // (adversarial review 2026-08-23: reproduced up to 245.0 m of ordinary windowed advance).
+  assert(REACQ_JUMP_M > 240,
+    `REACQ_JUMP_M ${REACQ_JUMP_M} must exceed the projector's 240 m forward window by a real ` +
+      'margin (windowed projection can reach ~245 m in one fix), or ordinary projection would ' +
+      'be discounted as a re-acquisition');
+});
+
 test('live: wrongdir_eveninga fixes (a real Morning ride) — auto-detect locks Morning, times it fully', () => {
   // engine_suite proves a single EveningA detector rejects this ride; the
   // wiring-level truth is stronger: with all three candidates running, the
@@ -290,7 +344,7 @@ test('live: real export 20260815-0024 (stationary 94 s doorstep loop) — no loc
   const p = parseGpx(gpx, 'qualifire-20260815-0024');
   assert(p.t.length === 92, `parsed ${p.t.length} points, want 92`);
   const order = Array.from(p.t.keys()).sort((a, b) => p.t[a] - p.t[b]); // F-2 sorted view
-  const engine = new LiveEngine();
+  const engine = new LiveEngine(fixtureSpecs());
   for (const i of order) engine.feed(p.lat[i], p.lon[i], p.t[i] * 1000);
   const st = engine.getState();
   assert(st.phase === 'detecting' && st.track === null,
@@ -318,7 +372,7 @@ test('live: subscribe contract — one emit per feed (+start), snapshot equals g
 
 test('live: engine events (GPX+) — clean_morning emits exactly one lock + gate events matching the live snapshot', () => {
   const f = loadFixture('clean_morning');
-  const engine = new LiveEngine();
+  const engine = new LiveEngine(fixtureSpecs());
   const evts: { type: string; track: TrackId; atChainageM?: number; gateIndex?: number; t?: number; estimated?: boolean }[] = [];
   const unsub = engine.subscribeEvents((e) => evts.push(e));
   for (let i = 0; i < f.fixes.t.length; i++) {
@@ -345,10 +399,472 @@ test('live: engine events (GPX+) — stationary doorstep loop (real export) neve
   const gpx = nodeFs.readFileSync(path.join(FIXTURES_DIR, 'qualifire-20260815-0024.gpx'), 'utf8');
   const p = parseGpx(gpx, 'qualifire-20260815-0024');
   const order = Array.from(p.t.keys()).sort((a, b) => p.t[a] - p.t[b]); // F-2 sorted view
-  const engine = new LiveEngine();
+  const engine = new LiveEngine(fixtureSpecs());
   const evts: unknown[] = [];
   const unsub = engine.subscribeEvents((e) => evts.push(e));
   for (const i of order) engine.feed(p.lat[i], p.lon[i], p.t[i] * 1000);
   unsub();
   assert(evts.length === 0, `${evts.length} engine events emitted while the engine never locked`);
+});
+
+// -------------------------------------- cycle 023 fix 2/5a: poor-accuracy
+// anchor retry + route-match diagnostics channel
+//
+// LiveProjector (core/live.ts) seeds its chainage from a candidate's very
+// FIRST fix via a global nearest-vertex search; if that fix's accuracy is
+// poor, the anchor can land on the wrong part of the polyline and — because
+// projection is forward-only-monotonic — never correct itself. These
+// synthetic fixes are built directly from the Morning reference polyline
+// (lat/lon derived from a chosen reference chainage via xyToLatLon, the exact
+// inverse of the toXY the engine itself uses) so the ground truth is exact:
+// fix 0 is deliberately placed near chainage 4000 m (as if a 97.7 m-accuracy
+// GPS fix put the rider "near the end" of the route by mistake), then every
+// subsequent fix is a real, accurate step along the route from chainage 0.
+
+function morningLatLonAt(ref: RefLine, targetChM: number): [number, number] {
+  let best = 0;
+  let bestD = Infinity;
+  for (let i = 0; i < ref.ch.length; i++) {
+    const d = Math.abs(ref.ch[i] - targetChM);
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  return xyToLatLon(ref.rx[best], ref.ry[best], ref.lat0, ref.lon0);
+}
+
+test('live: cycle 023 fix 2 — a poor-accuracy first fix recovers via the single post-settle retry', () => {
+  const ref = refFor('Morning');
+  const engine = new LiveEngine(fixtureSpecs());
+  const diag: DiagnosticEvent[] = [];
+  engine.subscribeDiagnostics((e) => diag.push(e));
+
+  let tMs = 1755167000000;
+  // fix 0: bad anchor — geometrically near chainage 4000 m, poor accuracy
+  const [badLat, badLon] = morningLatLonAt(ref, 4000);
+  engine.feed(badLat, badLon, tMs, 97.7);
+  tMs += 1000;
+  // fixes 1..40: the real ride, progressing 0 -> 800 m, good accuracy
+  for (let i = 0; i <= 40; i++) {
+    const [lat, lon] = morningLatLonAt(ref, i * 20);
+    engine.feed(lat, lon, tMs, 15);
+    tMs += 1000;
+  }
+
+  const final = engine.getState();
+  assert(final.track === 'Morning' && final.phase !== 'detecting',
+    `never recovered the lock: phase=${final.phase} track=${final.track}`);
+
+  const morningDiag = diag.filter((d) => d.track === 'Morning');
+  const anchors = morningDiag.filter((d) => d.phase === 'anchor');
+  const retries = morningDiag.filter((d) => d.phase === 'retry');
+  assert(retries.length === 1, `${retries.length} retries for Morning, want exactly 1 (single retry, not a loop)`);
+  assert(anchors.length === 2, `${anchors.length} anchor events for Morning, want 2 (initial + post-retry)`);
+  assert(anchors[0].poorAccuracy && anchors[0].accuracyM === 97.7,
+    `initial anchor diagnostic wrong: ${JSON.stringify(anchors[0])}`);
+  assert(!anchors[1].poorAccuracy && anchors[1].accuracyM === 15,
+    `post-retry anchor diagnostic wrong: ${JSON.stringify(anchors[1])}`);
+  assert(retries[0].thresholdM === POOR_ACCURACY_M, 'retry diagnostic threshold does not match POOR_ACCURACY_M');
+});
+
+test('live: cycle 023 fix 2 guard — a candidate anchored with GOOD accuracy is never retried on later noise', () => {
+  const ref = refFor('Morning');
+  const engine = new LiveEngine(fixtureSpecs());
+  const diag: DiagnosticEvent[] = [];
+  engine.subscribeDiagnostics((e) => diag.push(e));
+
+  let tMs = 1755167000000;
+  for (let i = 0; i <= 40; i++) {
+    const [lat, lon] = morningLatLonAt(ref, i * 20);
+    // good accuracy throughout except one noisy blip well after the anchor —
+    // must NOT trigger a retry (the guard is on the INITIAL accuracy only).
+    const acc = i === 10 ? 200 : 15;
+    engine.feed(lat, lon, tMs, acc);
+    tMs += 1000;
+  }
+  const final = engine.getState();
+  assert(final.track === 'Morning' && final.phase !== 'detecting', `phase ${final.phase}/${final.track}`);
+  const retries = diag.filter((d) => d.phase === 'retry');
+  assert(retries.length === 0, `${retries.length} retries fired despite a good initial accuracy — guard broken`);
+});
+
+test('live: cycle 023 fix 5a — routeMatchAttempt diagnostics are a channel distinct from subscribe()/subscribeEvents()', () => {
+  const f = loadFixture('clean_morning');
+  const engine = new LiveEngine(fixtureSpecs());
+  const stateEmits: unknown[] = [];
+  const engineEvts: unknown[] = [];
+  const diagEvts: DiagnosticEvent[] = [];
+  const u1 = engine.subscribe((s) => stateEmits.push(s));
+  const u2 = engine.subscribeEvents((e) => engineEvts.push(e));
+  const u3 = engine.subscribeDiagnostics((e) => diagEvts.push(e));
+  for (let i = 0; i < f.fixes.t.length; i++) {
+    engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
+  }
+  u1(); u2(); u3();
+  assert(diagEvts.length > 0, 'no diagnostics emitted at all on a normal clean lock');
+  assert(diagEvts.some((d) => d.phase === 'lock' && d.track === 'Morning'),
+    'no lock-phase diagnostic emitted for the winning candidate');
+  // all four candidates anchor (one 'anchor' diagnostic each) even though only
+  // the winner ever reaches subscribeEvents()/the ride record — diagnostics
+  // see every attempt, not just the one that wins (that's the whole point).
+  const anchoredTracks = new Set(diagEvts.filter((d) => d.phase === 'anchor').map((d) => d.track));
+  assert(anchoredTracks.size === 4, `${anchoredTracks.size} candidates anchored, want all 4`);
+  // state emits once per feed (+1 for auto-start); diagnostics only fire on
+  // anchor/retry/lock attempts, which is far fewer than one-per-fix — proof
+  // the two channels run on genuinely different cadences, not just different
+  // Sets carrying the same volume of traffic.
+  assert(stateEmits.length === f.fixes.t.length + 1, `${stateEmits.length} state emits, want ${f.fixes.t.length + 1}`);
+  assert(diagEvts.length < stateEmits.length,
+    `${diagEvts.length} diagnostics >= ${stateEmits.length} state emits — diagnostics are not a lower-cadence channel`);
+});
+
+// ============================================================ cycle 024 (WP-D2)
+// All-catalog candidates + pick-biased lock-then-verify (B-65 ruling, Nathan
+// 2026-08-20). The existing tests above keep proving auto-lock mechanics
+// against the legacy four-track set (fixtureSpecs()); these prove the new
+// anchored-rule / pick-bias / lock-then-verify machinery itself, against
+// both the legacy set and the full 20-route catalog.
+
+test('live: catalogTrackSpecs — 20 specs, every catalog route resolves ref+gates, none skipped', () => {
+  const specs = catalogTrackSpecs();
+  assert(specs.length === 20, `${specs.length} specs, want 20 (one per catalog route)`);
+  const ids = new Set(specs.map((s) => s.id));
+  assert(ids.size === specs.length, 'duplicate spec ids — some route was built twice');
+  for (const s of specs) {
+    assert(s.ref.ch.length >= 2, `${s.id}: ref has too few vertices`);
+    assert(s.gates.length >= 2, `${s.id}: gate set has too few gates`);
+  }
+});
+
+test('live: pick honoured — clean_eveningb with pick=EveningB matches the no-pick lock exactly', () => {
+  const f = loadFixture('clean_eveningb');
+  const noPick = drive(f);
+  const picked = drive(f, 0, fixtureSpecs(), 'EveningB');
+  assert(picked.lockAt === noPick.lockAt,
+    `pick=EveningB locked at fix ${picked.lockAt}, no-pick locked at ${noPick.lockAt} — the pick must not change lock timing when it agrees with the ride`);
+  assert(picked.final.track === 'EveningB' && picked.final.lockKind === 'verified',
+    `track ${picked.final.track}, lockKind ${picked.final.lockKind}`);
+  assert(picked.final.pick === 'EveningB' && picked.final.pickHonoured,
+    `pick ${picked.final.pick}, pickHonoured ${picked.final.pickHonoured}`);
+
+  const engine = new LiveEngine(fixtureSpecs());
+  const evts: EngineEvent[] = [];
+  const unsub = engine.subscribeEvents((e) => evts.push(e));
+  engine.start({ pickId: 'EveningB' });
+  for (let i = 0; i < f.fixes.t.length; i++) engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
+  unsub();
+  const locks = evts.filter((e): e is Extract<EngineEvent, { type: 'lock' }> => e.type === 'lock');
+  assert(locks.length === 1, `${locks.length} lock events, want exactly 1`);
+  assert(locks[0].pick === 'EveningB', 'lock event does not carry the pick');
+});
+
+test('live: pick wrong — clean_eveningb with pick=EveningA still verified-locks the RIDDEN route (EveningB)', () => {
+  // D-025 measured the EveningA sibling frozen at <=12 m by lock time on this
+  // fixture, so at 400 m the margin is already clear and EveningA is NOT a
+  // blocker: this is a single, direct, verified lock on the ridden route —
+  // the soft-lock-then-switch path is covered separately (the synthetic
+  // prefix-stall test below).
+  const f = loadFixture('clean_eveningb');
+  const noPick = drive(f);
+  const engine = new LiveEngine(fixtureSpecs());
+  const evts: EngineEvent[] = [];
+  const unsubEv = engine.subscribeEvents((e) => evts.push(e));
+  let lockAt: number | null = null;
+  const unsubState = engine.subscribe((s) => { if (lockAt === null && s.track !== null) lockAt = s.fixesFed; });
+  engine.start({ pickId: 'EveningA' });
+  for (let i = 0; i < f.fixes.t.length; i++) engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
+  unsubEv(); unsubState();
+  const final = engine.getState();
+  assert(lockAt === noPick.lockAt, `pick=EveningA locked at fix ${lockAt}, no-pick locked at ${noPick.lockAt}`);
+  assert(final.track === 'EveningB' && final.lockKind === 'verified', `track ${final.track}, lockKind ${final.lockKind}`);
+  assert(final.pick === 'EveningA' && !final.pickHonoured,
+    `pick ${final.pick}, pickHonoured ${final.pickHonoured} — a wrong pick must never read as honoured`);
+  const locks = evts.filter((e): e is Extract<EngineEvent, { type: 'lock' }> => e.type === 'lock');
+  assert(locks.length === 1, `${locks.length} lock events, want exactly 1 (the ridden route, never the wrong pick)`);
+  assert(locks[0].track === 'EveningB', `the single lock event is for ${locks[0].track}, want the ridden route`);
+  for (let i = 0; i < 4; i++) assertDoneReal(`S${i + 1}`, final.sectors[i], f.expected.offline[i]);
+});
+
+test('live: no pick — behaviour unchanged (auto-start still locks; pick/lockKind read null/verified honestly)', () => {
+  const f = loadFixture('clean_morning');
+  const engine = new LiveEngine(fixtureSpecs()); // no start() call: relies on feed()'s own auto-start, exactly as before cycle 024
+  for (let i = 0; i < f.fixes.t.length; i++) engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
+  const final = engine.getState();
+  const driven = drive(f).final;
+  assert(final.track === driven.track && final.phase === driven.phase,
+    'implicit auto-start differs from an explicit no-pick drive()');
+  assert(numEq(final.lap?.rawS ?? null, driven.lap?.rawS ?? null, 1e-9), 'lap differs between auto-start and explicit drive()');
+  assert(final.pick === null, `pick ${final.pick}, want null`);
+  assert(final.lockKind === 'verified', `lockKind ${final.lockKind}, want verified`);
+});
+
+test('live: full-catalog shadow regression — clean_morning + pick=Morning soft-locks, finalize() settles it', () => {
+  // HomeStationPreferred is an anchored blocker the whole way (measured:
+  // shares 98% of Morning's corridor); HomeChurch shares the first ~340 m.
+  // The leader at any instant may be a different anchored candidate by
+  // resampling noise (the two lines are the same road) — the soft lock keys
+  // on the PICK being in the TIED set with adv >= 400, not on the pick being
+  // leader. This is the guard that the daily commute still scores.
+  const f = loadFixture('clean_morning');
+  const engine = new LiveEngine(catalogTrackSpecs());
+  engine.start({ pickId: 'Morning' });
+  let softAt: number | null = null;
+  const unsub = engine.subscribe((s) => {
+    if (softAt === null && s.lockKind === 'soft') softAt = s.fixesFed;
+  });
+  for (let i = 0; i < f.fixes.t.length; i++) engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
+  unsub();
+  assert(softAt !== null, 'clean_morning + pick=Morning never soft-locked against the full catalog');
+  const advAtSoft = advanceAt(f, 'Morning', softAt!);
+  assert(advAtSoft >= LOCK_MIN_ADVANCE_M && advAtSoft <= 520,
+    `soft-lock advance ${advAtSoft.toFixed(1)} m outside [${LOCK_MIN_ADVANCE_M}, 520]`);
+  engine.finalize();
+  const final = engine.getState();
+  assert(final.lockKind === 'finalized' && final.track === 'Morning',
+    `lockKind ${final.lockKind}, track ${final.track}`);
+  assert(final.phase === 'finished', `phase ${final.phase}, want finished`);
+  for (let i = 0; i < 4; i++) assertDoneReal(`S${i + 1}`, final.sectors[i], f.expected.offline[i]);
+  assert(final.lap !== null && !final.lap.estimated && final.lap.movingS !== null, 'lap not scored real after finalize');
+});
+
+test('live: full-catalog shadow regression — clean_eveningb, no pick: an anchored partial blocker still verified-locks EveningB', () => {
+  // StationHomeWet is an UNANCHORED shadow (its corridor joins mid-line at
+  // its own ~2900 m — must not block, per the anchored rule); WorkChurchB is
+  // an ANCHORED partial blocker (shares EveningB's exit from work up to
+  // EveningB chainage ~310 m).
+  const f = loadFixture('clean_eveningb');
+  const { final, lockAt } = drive(f, 0, catalogTrackSpecs());
+  assert(final.track === 'EveningB' && final.lockKind === 'verified',
+    `track ${final.track}, lockKind ${final.lockKind}`);
+  assert(lockAt !== null, 'never locked');
+  const adv = advanceAt(f, 'EveningB', lockAt!);
+  assert(adv >= LOCK_MIN_ADVANCE_M && adv <= 700,
+    `lock advance ${adv.toFixed(1)} m outside [${LOCK_MIN_ADVANCE_M}, 700]`);
+  // eslint-disable-next-line no-console
+  console.log(`  (measured: clean_eveningb full-catalog verified-lock advance = ${adv.toFixed(1)} m)`);
+  for (let i = 0; i < 4; i++) assertDoneReal(`S${i + 1}`, final.sectors[i], f.expected.offline[i]);
+  assert(final.lap !== null && !final.lap.estimated && final.lap.movingS !== null, 'lap not scored real');
+});
+
+test('live: unanchored shadow never blocks — clean_eveninga, no pick, full catalog', () => {
+  // StationHomePreferred shadows EveningA mid-line (unanchored) — must not
+  // widen the margin needed to lock.
+  const f = loadFixture('clean_eveninga');
+  const { final, lockAt } = drive(f, 0, catalogTrackSpecs());
+  assert(final.track === 'EveningA' && final.lockKind === 'verified',
+    `track ${final.track}, lockKind ${final.lockKind}`);
+  assert(lockAt !== null, 'never locked');
+  const adv = advanceAt(f, 'EveningA', lockAt!);
+  assert(adv >= LOCK_MIN_ADVANCE_M && adv <= LOCK_MIN_ADVANCE_M + LOCK_SLACK_M,
+    `lock advance ${adv.toFixed(1)} m outside [${LOCK_MIN_ADVANCE_M}, ${LOCK_MIN_ADVANCE_M + LOCK_SLACK_M}] — an unanchored shadow must not have widened the margin needed`);
+  for (let i = 0; i < 4; i++) assertDoneReal(`S${i + 1}`, final.sectors[i], f.expected.offline[i]);
+});
+
+// ---------------------------------------- synthetic corridor-subset routes
+// Two synthetic specs sharing the first 1200 m (straight west->east, 5 m
+// vertex step), diverging at 90 deg: S turns north for 200 m more (total
+// 1400 m), L continues east for 1800 m more (total 3000 m). Both share the
+// SAME planar origin (lat0=lon0=0) so a fix's true (x, y) position converts
+// to lat/lon once via xyToLatLon and feeds identically into both candidates'
+// own toXY.
+
+function buildSyntheticRef(waypoints: [number, number][]): RefLine {
+  const wx = waypoints.map((w) => w[0]);
+  const wy = waypoints.map((w) => w[1]);
+  const { x, y } = resample(wx, wy, 5);
+  const ch = cumdist(x, y);
+  return { rx: x, ry: y, ch, lat0: 0, lon0: 0, length: ch[ch.length - 1] };
+}
+
+// Waypoints run 5 m past the nominal 1400 m / 3000 m route lengths:
+// resample() uses np.arange(0, total, step) semantics (excludes the exact
+// endpoint), so a waypoint ending EXACTLY at the nominal total leaves the
+// stored reference's last vertex 5 m short — enough, at the margin
+// boundaries these tests probe, to matter. The extra 5 m keeps a real vertex
+// sitting at the nominal chainage.
+const SYN_S: TrackSpec = {
+  id: 'SyntheticS', ref: buildSyntheticRef([[0, 0], [1200, 0], [1200, 205]]), gates: [100, 400, 700, 1000, 1300],
+};
+const SYN_L: TrackSpec = {
+  id: 'SyntheticL', ref: buildSyntheticRef([[0, 0], [3005, 0]]), gates: [100, 800, 1500, 2200, 2900],
+};
+
+function synPos(onS: boolean, s: number): [number, number] {
+  if (!onS) return [s, 0]; // L is a straight line the whole way
+  return s <= 1200 ? [s, 0] : [1200, s - 1200];
+}
+
+test('live: prefix stall + finalize — synthetic corridor-subset routes', () => {
+  // (a) ride the shared road then S's own branch to 1400 m, then stand still
+  // 30 s. No pick: both tied (anchored) on the shared corridor, so no lock
+  // fires there; L freezes at the 1200 m split (off S's branch), so the
+  // 200 m margin over L can only open near S's own 1400 m end — verified
+  // lock necessarily lands there, not earlier.
+  {
+    const engine = new LiveEngine([SYN_S, SYN_L]);
+    let lockAtFixesFed: number | null = null;
+    const unsub = engine.subscribe((s) => {
+      if (lockAtFixesFed === null && s.track !== null) lockAtFixesFed = s.fixesFed;
+    });
+    let t = 1755167000;
+    for (let s = 0; s <= 1400; s += 5) {
+      const [x, y] = synPos(true, s);
+      const [lat, lon] = xyToLatLon(x, y, 0, 0);
+      engine.feed(lat, lon, t * 1000);
+      t += 1;
+    }
+    assert(lockAtFixesFed !== null, 'never locked riding S all the way to its own 1400 m end');
+    const chainageAtLock = (lockAtFixesFed! - 1) * 5;
+    assert(chainageAtLock >= 1200 && chainageAtLock <= 1400,
+      `S locked at ride-chainage ~${chainageAtLock} m, want within [1200, 1400] (the margin cannot open before the 1200 m split)`);
+    unsub();
+    const [xEnd, yEnd] = synPos(true, 1400);
+    const [latEnd, lonEnd] = xyToLatLon(xEnd, yEnd, 0, 0);
+    for (let i = 0; i < 30; i++) { engine.feed(latEnd, lonEnd, t * 1000); t += 1; }
+    const final = engine.getState();
+    assert(final.track === 'SyntheticS' && final.lockKind === 'verified',
+      `after standing still: track ${final.track}, lockKind ${final.lockKind} (a verified lock must never unlock)`);
+  }
+
+  // (a, second sub-case) stop exactly AT the 1200 m split: still tied, never
+  // locks; neither candidate's own FINISH has fired either, so finalize()
+  // correctly leaves the ride genuinely unmatched.
+  {
+    const engine2 = new LiveEngine([SYN_S, SYN_L]);
+    let t = 1755167000;
+    for (let s = 0; s <= 1200; s += 5) {
+      const [lat, lon] = xyToLatLon(s, 0, 0, 0);
+      engine2.feed(lat, lon, t * 1000);
+      t += 1;
+    }
+    assert(engine2.getState().track === null, 'locked while S and L are still tied on the shared corridor');
+    engine2.finalize();
+    const final2 = engine2.getState();
+    assert(final2.phase !== 'finished', `phase ${final2.phase}, want not finished (genuinely unmatched)`);
+    assert(final2.lap === null, 'lap scored on a ride finalize() should have left unmatched');
+  }
+
+  // (b) same (a) ride, but pick=SyntheticL: soft lock on L while still tied
+  // on the shared corridor; once the ride diverges onto S's branch and S
+  // pulls >=200 m ahead of the now-frozen L, the engine SWITCHES to S — the
+  // ridden road wins over the pick, never the reverse.
+  {
+    const engine3 = new LiveEngine([SYN_S, SYN_L]);
+    const evts: EngineEvent[] = [];
+    const unsubEv = engine3.subscribeEvents((e) => evts.push(e));
+    engine3.start({ pickId: 'SyntheticL' });
+    let t = 1755167000;
+    for (let s = 0; s <= 1400; s += 5) {
+      const [x, y] = synPos(true, s);
+      const [lat, lon] = xyToLatLon(x, y, 0, 0);
+      engine3.feed(lat, lon, t * 1000);
+      t += 1;
+    }
+    unsubEv();
+    const locks = evts.filter((e): e is Extract<EngineEvent, { type: 'lock' }> => e.type === 'lock');
+    assert(locks.length === 2, `${locks.length} lock events, want exactly 2 (soft L, then verified S) — got ${JSON.stringify(locks)}`);
+    assert(locks[0].track === 'SyntheticL' && locks[0].kind === 'soft' && locks[0].pick === 'SyntheticL',
+      `first lock event wrong: ${JSON.stringify(locks[0])}`);
+    assert(locks[1].track === 'SyntheticS' && locks[1].kind === 'verified',
+      `second lock event wrong: ${JSON.stringify(locks[1])}`);
+    const final3 = engine3.getState();
+    assert(final3.track === 'SyntheticS' && final3.lockKind === 'verified',
+      `final track ${final3.track}, lockKind ${final3.lockKind} — the ridden road must win over the pick`);
+  }
+});
+
+test('live: prefix ride-through + finalize by completed line — synthetic corridor-subset routes', () => {
+  // (i) ride the shared road then L's own branch all the way to 3000 m, no
+  // pick: S freezes at the 1200 m split; its FINISH gate (1300, on the
+  // unridden branch) never fires, so it must never leak a gate event into
+  // the ride record. L verified-locks once the margin opens past the split.
+  {
+    const engine = new LiveEngine([SYN_S, SYN_L]);
+    const evts: EngineEvent[] = [];
+    const unsub = engine.subscribeEvents((e) => evts.push(e));
+    let t = 1755167000;
+    for (let s = 0; s <= 3000; s += 5) {
+      const [lat, lon] = xyToLatLon(s, 0, 0, 0);
+      engine.feed(lat, lon, t * 1000);
+      t += 1;
+    }
+    unsub();
+    const final = engine.getState();
+    assert(final.track === 'SyntheticL' && final.lockKind === 'verified',
+      `track ${final.track}, lockKind ${final.lockKind}`);
+    const sGateLeak = evts.some((e) => e.type === 'gate' && e.track === 'SyntheticS');
+    assert(!sGateLeak, 'S (never the displayed candidate on this ride) leaked a gate event into the ride record');
+  }
+
+  // (ii) ride ONLY S's own branch to 1350 m — past its own FINISH (1300),
+  // but the margin over the now-frozen L is only 150 m, never enough to lock
+  // live. finalize() must recover S from its completed FINISH gate.
+  {
+    const engine2 = new LiveEngine([SYN_S, SYN_L]);
+    let t = 1755167000;
+    for (let s = 0; s <= 1350; s += 5) {
+      const [x, y] = synPos(true, s);
+      const [lat, lon] = xyToLatLon(x, y, 0, 0);
+      engine2.feed(lat, lon, t * 1000);
+      t += 1;
+    }
+    assert(engine2.getState().track === null, 'locked live despite only a 150 m margin');
+    engine2.finalize();
+    const final2 = engine2.getState();
+    assert(final2.lockKind === 'finalized' && final2.track === 'SyntheticS',
+      `lockKind ${final2.lockKind}, track ${final2.track} — finalize() must recover the only candidate whose FINISH fired`);
+    assert(final2.sectors.length === 4 && final2.sectors.every((s) => s.kind === 'done' && !s.estimated),
+      `sectors not all real: ${final2.sectors.map((s) => s.kind)}`);
+    assert(final2.lap !== null && !final2.lap.estimated && final2.lap.movingS !== null,
+      'lap not scored real after finalize recovers a completed-but-never-locked route');
+  }
+});
+
+// SyntheticP is a literal spatial PREFIX of SyntheticL's corridor (same
+// straight line, not a diverging branch like SyntheticS above) — its own
+// FINISH gate (900 m) therefore fires WHILE the rider is still on the road
+// SyntheticL also occupies, unlike every prefix/subset test above, where the
+// shorter route's FINISH sits on its own unridden branch. This is the exact
+// path the 2026-08-23 Opus inspection (B1) found untested.
+const SYN_P: TrackSpec = {
+  id: 'SyntheticP', ref: buildSyntheticRef([[0, 0], [905, 0]]), gates: [100, 300, 500, 700, 900],
+};
+
+test('live: B1 regression — a prefix soft lock\'s own FINISH must not leak its scored lap onto the route the rider actually finished on', () => {
+  // pick=SyntheticP soft-locks it early (tied with SyntheticL on the shared
+  // straight corridor). Ride straight through P's own FINISH (900 m, firing
+  // and scoring P's lap, freezing phase='finished' — this is the moment B1's
+  // stale `this.lap` gets set) and keep going all the way to L's own FINISH
+  // (2900 m). Live re-evaluation is frozen once P's own FINISH fires (a
+  // separate, non-blocking observation flagged to the coordinator), so only
+  // finalize() ever sees that L — not P — is what the rider actually
+  // finished riding.
+  const engine = new LiveEngine([SYN_P, SYN_L]);
+  engine.start({ pickId: 'SyntheticP' });
+  let t = 1755167000;
+  for (let s = 0; s <= 2905; s += 5) {
+    const [lat, lon] = xyToLatLon(s, 0, 0, 0);
+    engine.feed(lat, lon, t * 1000);
+    t += 1;
+  }
+
+  const midState = engine.getState();
+  assert(
+    midState.track === 'SyntheticP' && midState.lockKind === 'soft' && midState.phase === 'finished',
+    `pre-finalize state wrong: track ${midState.track}, lockKind ${midState.lockKind}, phase ${midState.phase} — expected P still soft-locked and frozen at its own FINISH`,
+  );
+  assert(midState.lap !== null, 'B1 setup: P\'s own lap was never scored before finalize() — test no longer exercises the bug');
+  const staleRawS = midState.lap!.rawS;
+
+  engine.finalize();
+  const final = engine.getState();
+  assert(final.track === 'SyntheticL' && final.lockKind === 'finalized',
+    `finalize() did not recover the ridden route: track ${final.track}, lockKind ${final.lockKind}`);
+  assert(final.lap !== null && !final.lap.estimated,
+    `final lap not real after finalize: ${JSON.stringify(final.lap)}`);
+  assert(final.lap!.rawS !== staleRawS,
+    `B1 regression: final lap still carries P's stale ${staleRawS}s under SyntheticL's name — got ${JSON.stringify(final.lap)}`);
+  // SyntheticL's own gates run 100 -> 2900 (2800 m) at 5 m/s => ~560 s.
+  assert(numEq(final.lap!.rawS!, 560, 2),
+    `final lap ${final.lap!.rawS}s does not match SyntheticL's own real timing (~560s) — got ${JSON.stringify(final.lap)}`);
+  assert(final.sectors.length === 4 && final.sectors.every((s) => s.kind === 'done' && !s.estimated),
+    `sectors not all real after finalize: ${final.sectors.map((s) => s.kind)}`);
 });

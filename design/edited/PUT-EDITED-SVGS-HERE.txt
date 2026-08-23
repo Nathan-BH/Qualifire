@@ -1,0 +1,1 @@
+Save your edited copies here, same filename. Claude diffs them against canonical/ each cycle.

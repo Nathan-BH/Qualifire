@@ -21,6 +21,7 @@ import { useSettings } from './settings';
 import { PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
 
+// Intentional literal (B-39): a scripted replay of an archived Morning lap by design, not a hardcode bug.
 const ROUTE = 'Morning';
 const RATE = 25;              // a ~14-minute commute plays in ~34 s
 const TICK_MS = 33;           // ~30 fps redraw; sim time is wall-clock anchored so RATE is exact
