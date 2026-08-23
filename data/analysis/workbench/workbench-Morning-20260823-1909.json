@@ -1,0 +1,53 @@
+{
+ "schemaVersion": 1,
+ "savedAt": "2026-08-23T17:09:20.122Z",
+ "routeId": "Morning",
+ "lineSource": "engine reference (app/tests/fixtures/refs.json)",
+ "lengthM": 5651.3,
+ "gates": [
+  {
+   "name": "START",
+   "pct": 1,
+   "chainageM": 54.1,
+   "lat": 50.836241385733764,
+   "lon": 4.638995149931812,
+   "moved": true
+  },
+  {
+   "name": "G1",
+   "pct": 20.7,
+   "chainageM": 1168.8,
+   "lat": 50.84235,
+   "lon": 4.65012,
+   "moved": true
+  },
+  {
+   "name": "G2",
+   "pct": 48.7,
+   "chainageM": 2753.2,
+   "lat": 50.8508118687788,
+   "lon": 4.665203459274209,
+   "moved": true
+  },
+  {
+   "name": "G3",
+   "pct": 74.5,
+   "chainageM": 4212,
+   "lat": 50.85875,
+   "lon": 4.6705,
+   "moved": false
+  },
+  {
+   "name": "FINISH",
+   "pct": 99.9,
+   "chainageM": 5646.9,
+   "lat": 50.86322489701388,
+   "lon": 4.687756121267352,
+   "moved": true
+  }
+ ],
+ "gatesShort": "START-1.0%;G1-20.7%;G2-48.7%;G3-74.5%;FINISH-99.9%",
+ "namedPoints": [],
+ "promotion": null,
+ "note": "shortname = h>>w-d ( i see it is not properly logged into the json despite filling it in)"
+}

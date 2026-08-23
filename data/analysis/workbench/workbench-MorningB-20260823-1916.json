@@ -1,0 +1,53 @@
+{
+ "schemaVersion": 1,
+ "savedAt": "2026-08-23T17:16:48.991Z",
+ "routeId": "MorningB",
+ "lineSource": "engine reference (app/tests/fixtures/refs.json)",
+ "lengthM": 5860.8,
+ "gates": [
+  {
+   "name": "START",
+   "pct": 0.5,
+   "chainageM": 27.4,
+   "lat": 50.83669258796794,
+   "lon": 4.63832,
+   "moved": true
+  },
+  {
+   "name": "G1",
+   "pct": 25.7,
+   "chainageM": 1505.9,
+   "lat": 50.8355278932347,
+   "lon": 4.653567893234694,
+   "moved": true
+  },
+  {
+   "name": "G2",
+   "pct": 51,
+   "chainageM": 2987.2,
+   "lat": 50.84205,
+   "lon": 4.66957,
+   "moved": true
+  },
+  {
+   "name": "G3",
+   "pct": 75.2,
+   "chainageM": 4407.5,
+   "lat": 50.85358195070765,
+   "lon": 4.677312600943532,
+   "moved": true
+  },
+  {
+   "name": "FINISH",
+   "pct": 98.5,
+   "chainageM": 5772.5,
+   "lat": 50.86289710746639,
+   "lon": 4.687331421493278,
+   "moved": true
+  }
+ ],
+ "gatesShort": "START-0.5%;G1-25.7%;G2-51.0%;G3-75.2%;FINISH-98.5%",
+ "namedPoints": [],
+ "promotion": null,
+ "note": "shortname = h>>w-w ( i see it is not properly logged into the json despite filling it in)\nThe end of the ride is wrong, the line steers off in the wrong direction. In practive the endpoint is where the \"work\" label appear when i hover over the blue work circle which is closer to position \"50.862110, 4.686960\". \n\nWhile the current end is slightly off at \"50.862897, 4.687331\""
+}
