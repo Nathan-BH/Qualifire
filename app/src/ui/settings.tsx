@@ -166,7 +166,11 @@ export default function SettingsScreen() {
 
       <Text style={[st.h2, { color: t.textDim }]}>SCORING</Text>
       <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-        <Row label="Timing tower" hint="rank today against the ghost set" t={t}>
+        {/* Cycle 024 (WP-A3): renamed from "Timing tower" — the tower left the
+            Result tab with the RIDES/RESULT redesign; this switch now gates
+            the ranking table inside Result's Personal Bests accordion. Still
+            a real switch, never decorative (file doctrine, unchanged). */}
+        <Row label="Rankings" hint="show where each ride placed against your others on that route" t={t}>
           <Switch on={s.tower} onToggle={() => set('tower', !s.tower)} t={t} />
         </Row>
       </View>

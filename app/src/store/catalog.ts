@@ -146,6 +146,41 @@ export function routesForWay(c: Catalog, wayId: string): Route[] {
   return c.routes.filter((r) => r.wayId === wayId);
 }
 
+/**
+ * WP-B coordinator addendum (Nathan, 2026-08-24): a free ride with exactly
+ * one known endpoint should only watch/show gates from routes that actually
+ * run in THAT direction — `ways` are strictly directional (`home>work` and
+ * `work>home` are separate entries with independently measured gate sets;
+ * so are every other landmark pair), so an unfiltered free ride from a known
+ * origin would otherwise watch — and could spuriously fire — gates from
+ * routes running the opposite way past the same pair of places.
+ *
+ * `from`/`to` are null for the unknown ('~new') end (a UI concept this pure
+ * catalog module deliberately does not know the id of — the caller resolves
+ * '~new' to null before calling). Exactly one non-null end returns the
+ * matching ways' routeIds (outbound from a known origin when `from` is
+ * given, inbound to a known destination when `to` is given). Both null
+ * (both ends unknown) returns null — NO filtering, deliberately: Nathan
+ * explicitly deferred that case for a future design pass, so it keeps the
+ * brief's original full-catalog behaviour. Both non-null is not a free ride
+ * at all (the caller only calls this with at least one end unknown); returns
+ * null defensively rather than guessing a filter for a case that cannot
+ * legitimately arise.
+ */
+export function freeRideRouteIds(c: Catalog, from: string | null, to: string | null): string[] | null {
+  if (from !== null && to === null) {
+    const ids: string[] = [];
+    for (const w of c.ways) if (w.startLandmarkId === from) ids.push(...w.routeIds);
+    return ids;
+  }
+  if (from === null && to !== null) {
+    const ids: string[] = [];
+    for (const w of c.ways) if (w.endLandmarkId === to) ids.push(...w.routeIds);
+    return ids;
+  }
+  return null;
+}
+
 /** True when the way needs a route pick at START (Nathan, §8a). */
 export function needsRoutePick(c: Catalog, wayId: string): boolean {
   return routesForWay(c, wayId).length > 1;

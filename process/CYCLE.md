@@ -45,6 +45,7 @@ Collects the reports. Its job is to:
 - decide what is now **settled** → append to `product/DECISIONS.md`
 - decide what is still open → set status fields in `product/BACKLOG.md` (status only; the Product Owner owns the items themselves)
 - rewrite `STATE.md` to reflect the new truth
+- regenerate NATHAN-STATUS.md — the plain-language twin of STATE.md (CONVENTIONS.md → "Nathan-facing docs")
 - flag anything that genuinely needs Nathan
 
 ### 4. Record (Librarian)

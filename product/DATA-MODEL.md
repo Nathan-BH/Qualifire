@@ -8,7 +8,7 @@ Inputs consumed: `data/analysis/landmarks_proposal.md` (83 clusters, 521/624 rid
 
 ## 1. The finding that changes the sequencing
 
-My own triage pass this morning (`product/TRIAGE-ideas-18-27.md` §1) claimed the §19 colour ruling **blocks** the benchmark store, because the two colour models need different retention rules. **That claim is wrong, and D-023 is why.**
+My own triage pass this morning (`product/proposals/TRIAGE-ideas-18-27.md` §1) claimed the §19 colour ruling **blocks** the benchmark store, because the two colour models need different retention rules. **That claim is wrong, and D-023 is why.**
 
 D-023 already settled that storage keeps raw fixes forever and caches no benchmark seconds — "everything is recomputed from raw, so timing-model changes reinterpret history for free." Applied here: the store is not a benchmark store at all. It is a **derived results cache** holding one ordered lap/sector-time history per route, from which *every* colour model is a read-time function:
 

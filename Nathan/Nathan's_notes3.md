@@ -34,3 +34,24 @@ Some questions I have
 
   * I did start recording while I was still in an underground parking, which is my fault. This coule explain poor initial gps, it is not necessarily an app fault this time
 
+
+
+20260823
+
+* I added myself the "C:\\Users\\natha\\Claude personal projects\\Qualifire\\cycles\\cycle-024-briefs\\Token usage (for reference).txt" file (copy-pasted from the claude chat) as I think it is useful to have a reference of how much tokens the tasks consume. So I think every cycle summary in "C:\\Users\\natha\\Claude personal projects\\Qualifire\\cycles" from now on should include a token usage section which details all token usage for each individual subagent involved in the process.
+
+20260824
+
+* I have normally already pasted this into the cycle024 chat but want to add it here so it is recorded as my own original idea
+
+1\) i have thought a bit on how to do WP-B free ride mode. For now i think i have solved for 1 unknown so if either the start or end place is new, here is an idea on how it should go
+
+* first my concern is if you just map all the known gates you might have an issue, if you look at the segment between work and home dry route, the gates would be duplicated because the gates in  both directions are not in the exact same place.
+
+  * My idea is to have  a smart model:
+
+    * If you from new >> home for example. It should only show the gates from the routes that have their endpoint "home". This way you dont trigger all the gates which are from the home>>work route which would be problematic
+    * Same if you go from work>>new; you only show the "outwards" facing gates so the ones leaving work so you dont overlap with all incoming work gates
+  * Does that make sense ?
+* 2\) if you have genuinely two new positions, we need to think what we want to do then, just add it as a next task so we come back later on it
+

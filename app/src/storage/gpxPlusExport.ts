@@ -29,7 +29,23 @@ import type {
   StorageErrorEvent,
 } from './types.ts';
 import { escapeXml, isoTime, num } from './gpxExport.ts';
-import { computeKinematics, PROPOSED_GATES, toXY, type TrackId } from '../../core/src/index.ts';
+import {
+  CORRIDOR_M, computeKinematics, projectRideOffline, PROPOSED_GATES, toXY,
+  type RefLine, type TrackId,
+} from '../../core/src/index.ts';
+
+/** WP-G Part 4: looks up a track's reference polyline, or throws for an
+ * unrecognized id. INJECTED rather than statically imported from
+ * '../live/refs.ts' — that module's `import ... from '.../refs.json'` is a
+ * bare JSON import Metro bundles fine but Node's ESM loader cannot load
+ * without a loader hook, and this file (via storage/core.ts) is loaded
+ * eagerly/statically by nearly every headless test suite, long before any
+ * such hook could be registered. storage/index.ts (the real device wiring,
+ * never imported headlessly) supplies the real refs.ts lookup; tests inject
+ * their own Node-safe one (tests/lib.ts's refFor) only where they exercise
+ * this feature. No injection => the routeFidelity block is simply omitted,
+ * same honest-omission doctrine as an unrecognized track below. */
+export type RefLookup = (track: string) => RefLine;
 
 /** Consecutive fixes further apart than this (seconds) count as a GPS outage. */
 export const OUTAGE_GAP_S = 5;
@@ -50,6 +66,37 @@ function routeDistanceM(track: string): number | null {
   const gates = PROPOSED_GATES[track as TrackId];
   if (!gates || gates.length === 0) return null;
   return gates[gates.length - 1].chainage - gates[0].chainage;
+}
+
+interface OffRouteSeg {
+  fromMs: number;
+  toMs: number;
+  maxDistM: number;
+}
+
+/** WP-G Part 4: maximal runs of fixes whose cross-track deviation exceeds the
+ * corridor, lasting >=5 s (a single noisy fix is not "off route"). `fixes`
+ * and `xtd` must be index-aligned and `fixes` sorted by tUnixMs. */
+function findOffRouteSegments(fixes: FixRecord[], xtd: Float64Array, corridorM: number): OffRouteSeg[] {
+  const out: OffRouteSeg[] = [];
+  let i = 0;
+  while (i < fixes.length) {
+    if (xtd[i] > corridorM) {
+      let j = i;
+      let maxDist = xtd[i];
+      while (j + 1 < fixes.length && xtd[j + 1] > corridorM) {
+        j += 1;
+        if (xtd[j] > maxDist) maxDist = xtd[j];
+      }
+      const fromMs = fixes[i].tUnixMs;
+      const toMs = fixes[j].tUnixMs;
+      if ((toMs - fromMs) / 1000 >= 5) out.push({ fromMs, toMs, maxDistM: maxDist });
+      i = j + 1;
+    } else {
+      i += 1;
+    }
+  }
+  return out;
 }
 
 interface Outage {
@@ -100,7 +147,9 @@ function findStops(fixes: FixRecord[]): Stop[] {
 
 /** Builds the ` <extensions>\n  <qf:session>...\n </extensions>\n` block.
  * Always emitted for a GPX+ document, even when every child is omitted. */
-function buildSessionBlock(fixes: FixRecord[], events: DecodedEvents | null): string {
+function buildSessionBlock(
+  fixes: FixRecord[], events: DecodedEvents | null, refFor: RefLookup | undefined,
+): string {
   const evs = events?.events ?? [];
   const lines: string[] = [];
 
@@ -128,6 +177,60 @@ function buildSessionBlock(fixes: FixRecord[], events: DecodedEvents | null): st
       // an old/renamed track id degrades to no field, never an export failure.
       const dist = routeDistanceM(lockEv.track);
       if (dist !== null) lines.push(`   <qf:routeDistanceM>${num(dist)}</qf:routeDistanceM>`);
+      // WP-G Part 4: session-level route fidelity — only emitted when the
+      // ride actually SETTLED on a route, not merely soft-locked (a soft
+      // lock is "a display choice, not a narrowing of the evidence" per
+      // engine.ts — publishing a fidelity % against it would be an unearned
+      // claim, D-025/D-028). Take the LAST lock event whose lockKind isn't
+      // 'soft' (undefined lockKind = pre-WP-D2 sidecar, treated as settled;
+      // there was only one kind of lock then). `lockEv` above (first lock,
+      // used for routeLock/routeDistanceM) is left as-is — that's a
+      // pre-existing, separately-scoped question, not this block's.
+      // AND a refFor lookup was actually injected (see RefLookup's doc
+      // comment). Session-level + off-route segments, not per-point
+      // (cheapest honest option: derivable at export time, no per-trkpt
+      // bloat). refFor() throws for an unrecognized/renamed track id —
+      // caught, block omitted, never an export failure (same doctrine as
+      // routeDistanceM above).
+      const settledLockEv = evs
+        .filter((e): e is LockEvent => e.kind === 'lock')
+        .reverse()
+        .find((e) => e.lockKind !== 'soft');
+      try {
+        if (!refFor) throw new Error('no refFor injected');
+        if (!settledLockEv) throw new Error('no settled (non-soft) lock');
+        const ref = refFor(settledLockEv.track);
+        const lats = fixes.map((f) => f.lat);
+        const lons = fixes.map((f) => f.lon);
+        const { x, y } = toXY(lats, lons, ref.lat0, ref.lon0);
+        const { xtd } = projectRideOffline(x, y, ref);
+        const nFixes = fixes.length;
+        if (nFixes > 0) {
+          let onCount = 0;
+          let maxXtd = 0;
+          for (let i = 0; i < nFixes; i++) {
+            if (xtd[i] <= CORRIDOR_M) onCount += 1;
+            if (xtd[i] > maxXtd) maxXtd = xtd[i];
+          }
+          const onRoutePct = ((100 * onCount) / nFixes).toFixed(1);
+          const maxXtdCapped = Math.min(maxXtd, 999).toFixed(1);
+          const segs = findOffRouteSegments(fixes, xtd, CORRIDOR_M).slice(0, 20);
+          lines.push(
+            `   <qf:routeFidelity track="${escapeXml(settledLockEv.track)}" corridorM="${num(CORRIDOR_M)}"` +
+              ` onRoutePct="${onRoutePct}" maxXtdM="${maxXtdCapped}">`,
+          );
+          for (const s of segs) {
+            lines.push(
+              `    <qf:offRouteSeg fromT="${isoTime(s.fromMs)}" toT="${isoTime(s.toMs)}"` +
+                ` maxDistM="${Math.min(s.maxDistM, 999).toFixed(1)}"/>`,
+            );
+          }
+          lines.push(`   </qf:routeFidelity>`);
+        }
+      } catch {
+        /* no refFor injected, no settled lock, or an unrecognized/renamed
+           track id: omit the block, no export failure */
+      }
     } else {
       lines.push(`   <qf:routeLock>none</qf:routeLock>`);
     }
@@ -151,9 +254,13 @@ function buildSessionBlock(fixes: FixRecord[], events: DecodedEvents | null): st
     lines.push(`   <qf:routeMatchDiagnostics>`);
     for (const d of routeMatchEvs) {
       const acc = d.accuracyM === null ? '' : ` accuracyM="${num(d.accuracyM)}"`;
+      // WP-G Part 2 gap-fill: per-candidate deviation, when known (absent for
+      // the 'retry' phase itself, and for events recorded before this field
+      // existed — nothing fabricated either way).
+      const xtd = d.xtdM === null || d.xtdM === undefined ? '' : ` xtdM="${num(d.xtdM)}"`;
       lines.push(
         `    <qf:attempt track="${escapeXml(d.track)}" phase="${d.phase}"${acc}` +
-          ` thresholdM="${num(d.thresholdM)}" poorAccuracy="${d.poorAccuracy ? 'true' : 'false'}"` +
+          ` thresholdM="${num(d.thresholdM)}" poorAccuracy="${d.poorAccuracy ? 'true' : 'false'}"${xtd}` +
           ` t="${isoTime(d.tUnixMs)}"/>`,
       );
     }
@@ -227,8 +334,13 @@ function buildSessionBlock(fixes: FixRecord[], events: DecodedEvents | null): st
 /** Builds a GPX 1.1 + qf: extensions document from a decoded ride and its
  * (possibly absent) events sidecar. `events === null` means no sidecar file
  * exists on disk (pre-GPX+ ride, or one that never got any diagnostics
- * events) — every events-sourced field is omitted rather than fabricated. */
-export function buildGpxPlus(decoded: DecodedRide, events: DecodedEvents | null, rideId: string): string {
+ * events) — every events-sourced field is omitted rather than fabricated.
+ * `refFor` (WP-G Part 4) is an optional injected reference-polyline lookup —
+ * see RefLookup's doc comment for why this is DI rather than a static import;
+ * omitted means the routeFidelity block is simply never emitted. */
+export function buildGpxPlus(
+  decoded: DecodedRide, events: DecodedEvents | null, rideId: string, refFor?: RefLookup,
+): string {
   const name = decoded.header?.rideId ?? rideId;
   const fixes = [...decoded.fixes].sort((a, b) => a.tUnixMs - b.tUnixMs);
   const startMs = fixes[0]?.tUnixMs ?? decoded.header?.startedAtMs ?? 0;
@@ -263,7 +375,7 @@ export function buildGpxPlus(decoded: DecodedRide, events: DecodedEvents | null,
     (pts.length > 0 ? '\n' : '') +
     `  </trkseg>\n` +
     ` </trk>\n` +
-    buildSessionBlock(fixes, events) +
+    buildSessionBlock(fixes, events, refFor) +
     `</gpx>\n`
   );
 }

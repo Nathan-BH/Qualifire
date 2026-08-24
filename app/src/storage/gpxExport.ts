@@ -20,7 +20,7 @@ export function isoTime(unixMs: number): string {
 }
 
 export function escapeXml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 /** Builds a GPX 1.1 document from a decoded ride.

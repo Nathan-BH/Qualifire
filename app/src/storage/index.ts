@@ -12,15 +12,21 @@
 import type { Fix, RideEvent, RideMeta } from './types.ts';
 import { createStorage, type RideStorage } from './core.ts';
 import { createExpoFsAdapter } from './expoFsAdapter.ts';
+// WP-G Part 4: the real reference-polyline lookup, injected into storage's
+// GPX+ export for routeFidelity. Only safe to statically import HERE — this
+// file is expo-only wiring, never pulled into the headless test suite (see
+// gpxPlusExport.ts's RefLookup doc comment for why core.ts itself can't).
+import { refFor } from '../live/refs.ts';
 
 let instance: RideStorage | null = null;
 function storage(): RideStorage {
-  return (instance ??= createStorage(createExpoFsAdapter()));
+  return (instance ??= createStorage(createExpoFsAdapter(), { refFor }));
 }
 
-/** Creates the ride file (header line) and returns its rideId. */
-export function startRide(): Promise<string> {
-  return storage().startRide();
+/** Creates the ride file (header line) and returns its rideId. WP-B fix B2:
+ * `mode` (default 'route' when omitted) is persisted on the index entry. */
+export function startRide(mode?: 'route' | 'free'): Promise<string> {
+  return storage().startRide(mode);
 }
 
 /** Appends one fix, flushed to disk before resolving. Stored verbatim. */

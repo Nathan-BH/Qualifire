@@ -23,6 +23,7 @@ import {
   decodeCatalog,
   emptyCatalog,
   encodeCatalog,
+  freeRideRouteIds,
   gateSetFor,
   landmarkAt,
   lapsComparable,
@@ -165,6 +166,30 @@ test('store: a way with two routes needs a route pick at START (§8a)', () => {
   assert(needsRoutePick(c, 'home>work'), 'two routes ⇒ pick');
   assert(!needsRoutePick(c, 'work>home'), 'single route ⇒ no extra step');
   assert(routesForWay(c, 'home>work').length === 2, 'two routes on the way');
+});
+
+test('store: freeRideRouteIds — WP-B coordinator addendum directional filter', () => {
+  const c = baseCatalog();
+  // outbound from a known origin (home >> new): only home>work's own routeIds
+  assert(
+    JSON.stringify(freeRideRouteIds(c, 'home', null)) === JSON.stringify(['MorningA', 'MorningB']),
+    'from=home,to=null must give home>work\'s own routeIds only',
+  );
+  // inbound to a known destination (new >> home): only work>home's own routeIds
+  assert(
+    JSON.stringify(freeRideRouteIds(c, null, 'home')) === JSON.stringify(['EveningA']),
+    'from=null,to=home must give work>home\'s own routeIds only',
+  );
+  // both ends unknown (new >> new): NO filtering, deliberately (Nathan's
+  // deferred-for-later case) — null, not an empty array.
+  assert(freeRideRouteIds(c, null, null) === null, 'both ends unknown must return null (unfiltered)');
+  // a landmark with no ways running that direction ⇒ an empty filter, never null
+  assert(
+    JSON.stringify(freeRideRouteIds(c, 'puttestraat', null)) === JSON.stringify([]),
+    'a landmark with no outbound ways must yield an empty filter, not null',
+  );
+  // both ends known is not a real free-ride case; defensively unfiltered
+  assert(freeRideRouteIds(c, 'home', 'work') === null, 'both ends known is defensively unfiltered');
 });
 
 test('store: a MIDDLE-gate move keeps laps comparable; an END move does not', () => {

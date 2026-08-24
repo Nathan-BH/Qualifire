@@ -29,10 +29,15 @@ registerHooks({
 const { fmt, ghostsFor, lapValues, positionAmong, sectorValues, tierFor, MIN_HISTORY, WINDOW_N } =
   await import('../src/ui/colourModel.ts');
 const { getLiveTowerPosition } = await import('../src/live/towerSource.ts');
-const { getLastRide, rememberRide, resetRecordedForTests } =
+const { getLastRide, recordedResults, rememberRide, resetRecordedForTests } =
   await import('../src/ui/lastRide.ts');
 const { LiveEngine } = await import('../src/live/engine.ts');
 const { catalogTrackSpecs } = await import('../src/live/tracks.ts');
+const {
+  FREE_RIDES_CACHE_FILE, decodeFreeRidesCache, flushFreeRideWrites, freeRideResults,
+  initFreeRidePersistence, lastFreeRide, rememberFreeRide, resetFreeRidesForTests,
+} = await import('../src/store/freeRides.ts');
+const { createMemoryFsAdapter } = await import('../src/storage/fsAdapter.ts');
 
 function stateWith(over: Partial<LiveEngineState>): LiveEngineState {
   return {
@@ -234,4 +239,92 @@ test('cycle024: soft lock never colours before scoring — tiers for a soft-lock
   const tVerified = tierFor(verified.lap!.movingS, hist);
   assert(tSoft === tVerified,
     `soft-lock tier "${tSoft}" != verified tier "${tVerified}" — colour must be keyed only to the displayed route/sectors, never to lockKind`);
+});
+
+// ================================================================ WP-B (free ride)
+
+test('WP-B: free rides never pollute route history (D-025 mode-consistency)', () => {
+  resetRecordedForTests();
+  resetFreeRidesForTests();
+  const priorGhostCount = ghostsFor('Morning').length;
+  const priorLaps = lapValues('Morning');
+
+  const freeState = stateWith({
+    mode: 'free', track: null, lap: null, sectors: [], currentSector: null, lastDone: null,
+    freeCrossings: [
+      { routeId: 'Morning', gateIndex: 0, t: 1000, estimated: false },
+      { routeId: 'Morning', gateIndex: 1, t: 1100, estimated: false },
+    ],
+    freeSectors: [{ routeId: 'Morning', index: 1, rawS: 100 }],
+  } as Partial<LiveEngineState>);
+  rememberFreeRide(freeState);
+
+  assert(ghostsFor('Morning').length === priorGhostCount,
+    'a free ride must never enter Morning\'s ghost window');
+  assert(JSON.stringify(lapValues('Morning')) === JSON.stringify(priorLaps),
+    'a free ride must never change Morning\'s lap history');
+  assert(recordedResults().length === 0, 'a free ride must never enter recordedResults()');
+  assert(freeRideResults().length === 1, `freeRideResults().length = ${freeRideResults().length}, want 1`);
+  const saved = freeRideResults()[0];
+  assert(saved.sectors.length === 1 && saved.sectors[0].routeId === 'Morning' && saved.sectors[0].rawS === 100,
+    'the free ride\'s own sector must be stored verbatim');
+
+  resetRecordedForTests();
+  resetFreeRidesForTests();
+});
+
+test('WP-B: free-ride cache round-trip — persist/rehydrate, corrupt-entry tolerance, idempotent init', async () => {
+  resetFreeRidesForTests();
+  const fs = createMemoryFsAdapter();
+  await initFreeRidePersistence(fs); // no file yet
+  assert(freeRideResults().length === 0, 'arming on an empty disk must not create rides');
+
+  const freeState = stateWith({
+    mode: 'free', track: null, lap: null,
+    freeCrossings: [
+      { routeId: 'Morning', gateIndex: 0, t: 10, estimated: false },
+      { routeId: 'Morning', gateIndex: 1, t: 130, estimated: false },
+    ],
+    freeSectors: [{ routeId: 'Morning', index: 1, rawS: 120 }],
+  } as Partial<LiveEngineState>);
+  rememberFreeRide(freeState);
+  const saved = lastFreeRide();
+  assert(saved !== null, 'rememberFreeRide should have recorded a free ride');
+  const rideId = saved!.rideId;
+
+  await flushFreeRideWrites();
+  assert(fs.files.has(FREE_RIDES_CACHE_FILE), 'expected the cache write to land on disk');
+
+  // Simulate the restart.
+  resetFreeRidesForTests();
+  assert(freeRideResults().length === 0, 'reset must clear the in-memory store');
+
+  await initFreeRidePersistence(fs); // same adapter instance = same "disk"
+  let results = freeRideResults();
+  assert(results.length === 1, `expected the cached free ride to rehydrate, got ${results.length}`);
+  assert(results[0].rideId === rideId, `expected rideId ${rideId}, got ${results[0].rideId}`);
+
+  // Idempotence: a second init on the same "disk" must not duplicate.
+  await initFreeRidePersistence(fs);
+  assert(freeRideResults().length === 1, 'a second init must dedupe by rideId, not duplicate');
+  resetFreeRidesForTests();
+
+  // decodeFreeRidesCache: corrupt/misshapen entries dropped, valid kept.
+  assert(decodeFreeRidesCache('{nope') === null, 'unparseable text must decode to null');
+  assert(decodeFreeRidesCache('{"rides": 42}') === null, 'a non-array "rides" must decode to null');
+  const goodEntry = {
+    kind: 'freeRide', schemaVersion: 1, rideId: 'free:1', startedAtMs: 1, crossings: [], sectors: [],
+  };
+  const mixed = JSON.stringify({ schemaVersion: 1, rides: [null, { kind: 'other' }, goodEntry] });
+  const decoded = decodeFreeRidesCache(mixed);
+  assert(decoded !== null && decoded.length === 1 && decoded[0].rideId === 'free:1',
+    `expected exactly the one valid entry to survive, got ${JSON.stringify(decoded)}`);
+
+  const fs2 = createMemoryFsAdapter();
+  fs2.files.set(FREE_RIDES_CACHE_FILE, mixed);
+  await initFreeRidePersistence(fs2);
+  results = freeRideResults();
+  assert(results.length === 1 && results[0].rideId === 'free:1',
+    'a corrupt entry alongside a valid one on disk must drop only the corrupt one');
+  resetFreeRidesForTests();
 });

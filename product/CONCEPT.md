@@ -4,6 +4,27 @@ The structured version of the app idea. Source material is `IDEAS.md` (Nathan's 
 
 Owner: Product Owner. Last revised: 2026-08-15 (cycle 007 — added the timing tower, IDEAS §15/§17).
 
+## Status corrections (2026-08-24, cycle 024)
+
+The body below is kept as the original design record and is not rewritten. What has
+changed since 2026-08-15:
+
+- The app EXISTS and runs on Nathan's phone — a dev client, since 2026-08-14 — not the
+  paper design this file's body describes.
+- The timing tower (§ below) is BUILT, not a proposal (cycle 016, B-28).
+- The catalog is now **20 routes across 13 ways** (grown from the 19/13 of cycle 019 by
+  cycle 024's WP-D1), and the live engine now locks/scores **all 20** of them (WP-D2,
+  cycle 024) — not just the 4 it used to (Morning, Evening A, Evening B, Morning B,
+  cycle 020).
+- The colour model is D-030/D-037's **last-10-rides rolling window** (purple beats the
+  best of the last 10 comparable rides on that route, green beats their average), not
+  the 7-day/28-day language elsewhere in this document.
+- D-042 (2026-08-17) made **raw wall-clock time** the ruled scoring default — luck
+  counts. Implementation is still pending (B-59); until it lands, colours and ranks
+  still compare moving time as this document describes.
+- This document's closing line, "No application code exists yet; every design above is
+  UNBUILT," has been false since cycle 005.
+
 ---
 
 ## One-line pitch

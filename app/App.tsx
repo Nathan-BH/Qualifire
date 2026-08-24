@@ -34,6 +34,7 @@ import DemoScreen from './src/ui/DemoScreen';
 import { PaddockTheme } from './src/ui/theme';
 import { ThemeProvider, useTheme } from './src/ui/themeContext';
 import { initRideHistory } from './src/ui/lastRide';
+import { initFreeRidePersistence } from './src/store/freeRides';
 import { createExpoFsAdapter } from './src/storage/expoFsAdapter';
 import { TabNavProvider, type Tab } from './src/ui/tabNav';
 
@@ -60,7 +61,6 @@ function Shell() {
   // Cycle 020 (Nathan 2026-08-19): the demo tab follows the day/night theme
   // like every other tab, rather than being forced into night mode.
   const chrome: PaddockTheme = t;
-  const styles = useMemo(() => makeStyles(chrome, bottomPad), [chrome, bottomPad]);
 
   // System back: other tabs → Record; from Record, default behaviour (app
   // backgrounds). PreviewScreen registers its own handler (runs first) to walk
@@ -88,6 +88,10 @@ function Shell() {
       () => setWindowHydrated(true),
       () => {},
     );
+    // WP-B: the free-ride cache rehydrates the same way, alongside the
+    // fixed-route store above — same fire-and-forget shape, same file (D-023:
+    // both are derived conveniences, never load-bearing for boot).
+    void initFreeRidePersistence(createExpoFsAdapter());
   }, []);
 
   // Cycle 024 (WP-A2, Nathan 2026-08-19): "when you press record but are on
@@ -95,6 +99,16 @@ function Shell() {
   // no tab browsing." The bar is hidden ENTIRELY (not just dimmed) while on
   // the record tab and RecordScreen reports itself fullscreen.
   const tabBarHidden = tab === 'record' && recFullscreen;
+  // WP-A2 hides the tab bar entirely while fullscreen, which also removes
+  // the only thing padding the screen for the device's bottom gesture-nav
+  // inset (the bar's own paddingBottom, via bottomPad above) — so content
+  // ran flush under the OS nav/back-gesture strip during armed/running/
+  // ending (Nathan, 2026-08-24). Apply the same inset directly to `content`
+  // whenever the bar isn't there to absorb it.
+  const styles = useMemo(
+    () => makeStyles(chrome, bottomPad, tabBarHidden),
+    [chrome, bottomPad, tabBarHidden],
+  );
 
   return (
     <TabNavProvider go={setTab}>
@@ -154,12 +168,14 @@ export default function App() {
   );
 }
 
-const makeStyles = (t: PaddockTheme, bottomPad: number) =>
+const makeStyles = (t: PaddockTheme, bottomPad: number, tabBarHidden: boolean) =>
   StyleSheet.create({
     // Top inset: RN's SafeAreaView is iOS-only, but Android exposes the status
     // bar height in JS — no native module needed (unlike the bottom nav bar).
     root: { flex: 1, backgroundColor: t.bg, paddingTop: RNStatusBar.currentHeight ?? 0 },
-    content: { flex: 1 },
+    // When the tab bar is hidden (WP-A2 fullscreen), nothing else absorbs the
+    // bottom gesture-nav inset, so content takes it directly here instead.
+    content: { flex: 1, paddingBottom: tabBarHidden ? bottomPad : 0 },
     tabBar: {
       flexGrow: 0,
       borderTopWidth: StyleSheet.hairlineWidth,

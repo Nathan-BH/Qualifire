@@ -225,6 +225,44 @@ test('storage: index rebuild — missing or corrupt index.json regenerated from 
     'rebuild invented an end for the still-recording ride');
 });
 
+test('storage: WP-B fix B2 — startRide(mode) persists mode on the index entry, endRide preserves it', async () => {
+  const { fs, storage, clock } = makeEnv();
+
+  // A free ride: mode must show up on the index entry the instant it starts,
+  // AND survive endRide's full reconstruction of that entry (D-025 — this is
+  // what lastRide.ts/RidesScreen.tsx read to keep a free ride out of
+  // backfillMissingResults).
+  const freeId = await storage.startRide('free');
+  const afterStart = JSON.parse(fs.files.get('index.json')!);
+  const freeEntryAtStart = afterStart.rides.find((r: { rideId: string }) => r.rideId === freeId);
+  assert(freeEntryAtStart.mode === 'free', `startRide('free') wrote mode=${freeEntryAtStart.mode}, want 'free'`);
+
+  clock.t += 1000;
+  await storage.appendFix(freeId, { tUnixMs: clock.t, lat: 50.8, lon: 4.6 });
+  clock.t += 1000;
+  await storage.endRide(freeId);
+  const afterEnd = JSON.parse(fs.files.get('index.json')!);
+  const freeEntryAtEnd = afterEnd.rides.find((r: { rideId: string }) => r.rideId === freeId);
+  assert(freeEntryAtEnd.status === 'ended', 'ride did not reach ended status');
+  assert(freeEntryAtEnd.mode === 'free',
+    `endRide dropped mode: got ${freeEntryAtEnd.mode}, want 'free' preserved from startRide`);
+
+  // A route ride started with an explicit 'route' mode, and one started with
+  // no argument at all (every pre-B2 call site) — both must round-trip too;
+  // the second exercises the back-compat default (mode omitted -> undefined,
+  // never invented as a literal 'route' string that would mask a real gap).
+  const routeId = await storage.startRide('route');
+  await storage.endRide(routeId);
+  const noArgId = await storage.startRide();
+  await storage.endRide(noArgId);
+  const finalIndex = JSON.parse(fs.files.get('index.json')!);
+  const routeEntry = finalIndex.rides.find((r: { rideId: string }) => r.rideId === routeId);
+  const noArgEntry = finalIndex.rides.find((r: { rideId: string }) => r.rideId === noArgId);
+  assert(routeEntry.mode === 'route', `explicit 'route' mode not preserved: got ${routeEntry.mode}`);
+  assert(noArgEntry.mode === undefined,
+    `no-arg startRide() invented a mode (${noArgEntry.mode}) instead of leaving it unset`);
+});
+
 /** Async-jitter wrapper over the memory adapter: every read/append resolves
  * after 0-3 deterministic macrotask ticks — the promise-race soup a device
  * produces when a burst of queued location events each call appendFix without

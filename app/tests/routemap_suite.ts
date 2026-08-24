@@ -11,7 +11,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { assert, loadJson, test, TESTS_DIR } from './lib.ts';
 import {
-  cropFor, metresPerPixel, offRouteM, projectToPixel,
+  cropFor, gateTickPx, metresPerPixel, offRouteM, projectToPixel,
   type RouteAsset,
 } from '../src/ui/routeMapMath.ts';
 
@@ -63,14 +63,117 @@ test('routemap: gates sit in ride order down the image, and the scale is sane', 
   assert(mpp > 1 && mpp < 20, `${mpp.toFixed(1)} m/px — the crop would be unusable`);
 });
 
-test('routemap: a rider ON the line reads near zero; a detour reads far', () => {
+test('routemap: a rider ON the drawn path reads near zero; a detour reads far', () => {
   const a = manifest.routes.Morning;
+  // WP-E (offRouteM now follows the real road/path, not the straight
+  // gate-to-gate chord): a chord midpoint may legitimately read >60m once
+  // the road bends, so the on-route probe is a mid-sector PATH vertex
+  // instead of the old gate1/gate2 chord midpoint. Strengthens the check —
+  // does not weaken the detour assertion below, which is unchanged.
+  assert(!!a.path && a.path.length > 4, 'fixture expected a path for this check');
+  const pathMid = a.path![Math.floor(a.path!.length / 2)];
+  assert(offRouteM(a, pathMid[0], pathMid[1]) < 30,
+    'a point on the drawn path must read as on-route');
+
   const g1 = a.gates[1];
   const g2 = a.gates[2];
   const mid = { lat: (g1.lat + g2.lat) / 2, lon: (g1.lon + g2.lon) / 2 };
-  assert(offRouteM(a, mid.lat, mid.lon) < 60,
-    'a point on the gate-to-gate line must read as on-route');
-  // ~600 m sideways (0.0055° of longitude at this latitude)
+  // ~600 m sideways (0.0085° of longitude at this latitude)
+  const off = offRouteM(a, mid.lat, mid.lon + 0.0085);
+  assert(off > 300, `a detour must read far off-route, got ${off.toFixed(0)} m`);
+});
+
+// ================================================================ WP-E (race-map render fixes)
+
+test('routemap: gateTickPx — midpoint is the gate px/py, length ~30m in px, perpendicular to the path direction', () => {
+  for (const [id, a] of Object.entries(manifest.routes)) {
+    for (let i = 0; i < a.gates.length; i++) {
+      const g = a.gates[i];
+      const tick = gateTickPx(a, i);
+      const midX = (tick.x0 + tick.x1) / 2;
+      const midY = (tick.y0 + tick.y1) / 2;
+      assert(Math.abs(midX - g.px) < 0.01 && Math.abs(midY - g.py) < 0.01,
+        `${id}/${g.name}: tick midpoint (${midX},${midY}) != gate px/py (${g.px},${g.py})`);
+
+      const lenPx = Math.hypot(tick.x1 - tick.x0, tick.y1 - tick.y0);
+      const expectedLenPx = 30 / metresPerPixel(a, g.lat);
+      const relErr = Math.abs(lenPx - expectedLenPx) / expectedLenPx;
+      assert(relErr < 0.05,
+        `${id}/${g.name}: tick length ${lenPx.toFixed(2)}px vs expected ${expectedLenPx.toFixed(2)}px (${(relErr * 100).toFixed(1)}% off)`);
+
+      // perpendicular to the path direction — dot product of the tick
+      // vector with the heading vector should be ~0
+      let dirX: number, dirY: number;
+      if (a.path && a.gateIdx && a.gateIdx.length === a.gates.length) {
+        const j = a.gateIdx[i];
+        const jPrev = Math.max(j - 1, 0);
+        const jNext = Math.min(j + 1, a.path.length - 1);
+        const p0 = projectToPixel(a, a.path[jPrev][0], a.path[jPrev][1]);
+        const p1 = projectToPixel(a, a.path[jNext][0], a.path[jNext][1]);
+        dirX = p1.px - p0.px; dirY = p1.py - p0.py;
+      } else {
+        const iPrev = Math.max(i - 1, 0);
+        const iNext = Math.min(i + 1, a.gates.length - 1);
+        dirX = a.gates[iNext].px - a.gates[iPrev].px;
+        dirY = a.gates[iNext].py - a.gates[iPrev].py;
+      }
+      const tickX = tick.x1 - tick.x0;
+      const tickY = tick.y1 - tick.y0;
+      const dirLen = Math.hypot(dirX, dirY) || 1;
+      const tickLen = Math.hypot(tickX, tickY) || 1;
+      const cosAngle = (dirX * tickX + dirY * tickY) / (dirLen * tickLen);
+      assert(Math.abs(cosAngle) < 0.05,
+        `${id}/${g.name}: tick not perpendicular to the path direction (cos=${cosAngle.toFixed(3)})`);
+    }
+  }
+});
+
+test('routemap: offRouteM measures against the drawn path, not the gate-to-gate chord', () => {
+  const a = manifest.routes.Morning;
+  assert(!!a.path && a.path.length > 2, 'fixture expected a path for this check');
+
+  // the OLD gate-chord-only distance, to find a path vertex the chord-based
+  // measure would have called far off-route (proving the fix actually
+  // switched reference lines, not just changed a number)
+  const chordDist = (lat: number, lon: number): number => {
+    const p = projectToPixel(a, lat, lon);
+    let best = Infinity;
+    for (let i = 1; i < a.gates.length; i++) {
+      const g0 = a.gates[i - 1];
+      const g1 = a.gates[i];
+      const vx = g1.px - g0.px;
+      const vy = g1.py - g0.py;
+      const len2 = vx * vx + vy * vy || 1;
+      let t = ((p.px - g0.px) * vx + (p.py - g0.py) * vy) / len2;
+      t = Math.max(0, Math.min(1, t));
+      const dx = p.px - (g0.px + t * vx);
+      const dy = p.py - (g0.py + t * vy);
+      best = Math.min(best, Math.hypot(dx, dy));
+    }
+    return best * metresPerPixel(a, lat);
+  };
+
+  let probe: [number, number] | null = null;
+  for (const [lat, lon] of a.path!) {
+    if (chordDist(lat, lon) > 60) { probe = [lat, lon]; break; }
+  }
+  if (probe) {
+    const reads = offRouteM(a, probe[0], probe[1]);
+    assert(reads < 30,
+      `a path vertex >60m from the gate chord must read <30m via the drawn-path offRouteM, got ${reads.toFixed(0)}m`);
+  } else {
+    // No bend on this route strays >60m from its own chord — fall back to
+    // asserting the path-following behaviour on an interior vertex anyway
+    // (still proves offRouteM is measuring the drawn path).
+    const [lat, lon] = a.path![Math.floor(a.path!.length / 2)];
+    const reads = offRouteM(a, lat, lon);
+    assert(reads < 30, `a path vertex must read <30m via the drawn-path offRouteM, got ${reads.toFixed(0)}m`);
+  }
+
+  // the existing ~600m detour must still read far off-route
+  const g1 = a.gates[1];
+  const g2 = a.gates[2];
+  const mid = { lat: (g1.lat + g2.lat) / 2, lon: (g1.lon + g2.lon) / 2 };
   const off = offRouteM(a, mid.lat, mid.lon + 0.0085);
   assert(off > 300, `a detour must read far off-route, got ${off.toFixed(0)} m`);
 });

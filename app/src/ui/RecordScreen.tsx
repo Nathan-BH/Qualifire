@@ -40,10 +40,11 @@ import RouteMapView from './routeMapView';
 import { metresBetween } from './routeMapGeo';
 import { useSettings } from './settings';
 import { chipColors, type Tier } from './chips';
-import { ghostsFor, lapValues, sectorValues, tierFor } from './colourModel';
+import { fmt, ghostsFor, lapValues, sectorValues, tierFor } from './colourModel';
 import { rememberRide } from './lastRide';
+import { rememberFreeRide } from '../store/freeRides';
 import catalogJson from '../store/catalog.seed.json';
-import { landmarkAt } from '../store/catalog';
+import { freeRideRouteIds, landmarkAt } from '../store/catalog';
 import { routeLabel } from '../store/defaultRoute';
 import type { Catalog, Route } from '../store/types';
 import { PaddockTheme, colors, radius } from './theme';
@@ -65,6 +66,11 @@ const STOPPED_AFTER_MS = 6000;
 const MOVE_EPS_M = 10;
 
 const CATALOG = catalogJson as unknown as Catalog;
+
+/** WP-B: a UI-only pseudo-landmark ("new" — Nathan's 2026-08-20 notes: "go
+ * from work>>new for example, or from new>>home"), never a catalog entry —
+ * the catalog validator would rightly reject a coordinate-less place. */
+const NEW_ID = '~new';
 
 function fmtElapsed(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -149,6 +155,11 @@ export default function RecordScreen({
   // because `fromId` can drift mid-ride in auto mode (detected landmark goes
   // null once you leave the disc), which would silently change `way`.
   const [rideRouteHint, setRideRouteHint] = useState<string | null>(null);
+  // WP-B: the directional route-id filter (coordinator addendum) frozen at
+  // START, same reason rideRouteHint is frozen — the gates-only map during
+  // the ride must show the SAME filtered set the engine was actually started
+  // with, not whatever from/to happen to read on the (unmounted) setup form.
+  const [rideFreeRouteIds, setRideFreeRouteIds] = useState<string[] | null>(null);
 
   // Live status from the location layer.
   useEffect(() => subscribe(setStatus), []);
@@ -303,8 +314,18 @@ export default function RecordScreen({
         return;
       }
       setProblem(outcome === 'foreground-only' ? 'foreground-only' : null);
-      setRideRouteHint(pickedRouteRef.current?.refLineId ?? null);
-      const s = await startTracking({ routePick: pickedRouteRef.current?.id ?? null });
+      let s: ActiveSession;
+      if (freeRideRef.current) {
+        // WP-B: free ride — no route pick, gates-only map, the directional
+        // filter (coordinator addendum) frozen for the whole ride.
+        setRideRouteHint(null);
+        setRideFreeRouteIds(freeRouteIdsRef.current);
+        s = await startTracking({ routePick: null, mode: 'free', routeIds: freeRouteIdsRef.current });
+      } else {
+        setRideRouteHint(pickedRouteRef.current?.refLineId ?? null);
+        setRideFreeRouteIds(null);
+        s = await startTracking({ routePick: pickedRouteRef.current?.id ?? null });
+      }
       setRecovered(false);
       setSession(s);
     } catch (e) {
@@ -321,15 +342,19 @@ export default function RecordScreen({
       // a still-soft or never-locked ride otherwise misses the finalize()
       // recovery that stopTracking() below runs too late for rememberRide's
       // purposes (it reads the CURRENT state, not what stopTracking returns).
-      liveEngine.finalize();
+      liveEngine.finalize(); // no-op in free mode (WP-B) — see engine.ts's file header
       // Cycle 024 (WP-A1): a real session hands its rideId/startedAtMs through
       // so the finished ride gets a persistent store entry, not just an
       // in-session session:-id one (B-28's other half).
       const s = sessionRef.current;
-      rememberRide(
-        liveEngine.getState(),
-        s ? { rideId: s.rideId, startedAtMs: s.startedAtMs } : undefined,
-      ); // hand the finished ride to Result
+      const finalState = liveEngine.getState();
+      // A free ride has track===null/lap===null, so rememberRide() harmlessly
+      // clears `last` — desired: Result must not show a stale route ride as
+      // "the ride you just finished" under a free ride (WP-B section 4).
+      rememberRide(finalState, s ? { rideId: s.rideId, startedAtMs: s.startedAtMs } : undefined);
+      // M1 fix: pass the ride's real startedAtMs (same value rememberRide got
+      // above) so a free-ride record's start time isn't Date.now() at STOP.
+      rememberFreeRide(finalState, s ? { startedAtMs: s.startedAtMs } : undefined); // WP-B: no-op unless this actually was a free ride with >=1 crossing
       const sum = await stopTracking();
       setLastSummary(sum);
       // Cycle 024 (WP-A2, Nathan 2026-08-19): "at the end when you press
@@ -382,11 +407,15 @@ export default function RecordScreen({
   const routeLocked = live.phase === 'locked' || live.phase === 'finished';
   // Cycle 024 (WP-D2): a soft lock is displayed and scored, but it is not yet
   // corridor-confirmed — say so. Verified/finalized keep today's wording.
-  const routeLine = routeLocked
-    ? live.lockKind === 'soft'
-      ? `${live.track ?? ''} · route locked (your pick) · verifying${live.onRoute ? '' : ' · off route'}`
-      : `${live.track ?? ''} · route locked${live.onRoute ? '' : ' · off route'}`
-    : rideRouteHint ? `detecting route… · you picked ${routeLabel(rideRouteHint)}` : 'detecting route…';
+  // WP-B: a free ride never locks (phase stays 'detecting' the whole ride) —
+  // say so plainly rather than showing "detecting route…" forever.
+  const routeLine = live.mode === 'free'
+    ? 'free ride · gates only'
+    : routeLocked
+      ? live.lockKind === 'soft'
+        ? `${live.track ?? ''} · route locked (your pick) · verifying${live.onRoute ? '' : ' · off route'}`
+        : `${live.track ?? ''} · route locked${live.onRoute ? '' : ' · off route'}`
+      : rideRouteHint ? `detecting route… · you picked ${routeLabel(rideRouteHint)}` : 'detecting route…';
   // Cycle 024 (WP-A2, Nathan 2026-08-19): "I don't know what 'fixes' are" —
   // the raw count is gone from every user-facing status line; it still lives
   // in the GPX+ sidecar for diagnostics. recordFlow.ts owns the pure rule so
@@ -450,6 +479,18 @@ export default function RecordScreen({
     : null;
   const fromId = settings.startMode === 'auto' ? (detected?.id ?? from) : from;
 
+  // WP-B: 'new' at either end means free ride — auto start-mode still lets a
+  // real DETECTED landmark win for FROM (unchanged pill mechanics); tapping
+  // 'new' only takes hold when start mode is manual, or nothing is detected.
+  const freeRide = fromId === NEW_ID || to === NEW_ID;
+  // Coordinator addendum (2026-08-24): with exactly one end known, restrict
+  // to the ways that actually run that direction; both ends unknown (or, in
+  // principle, both known — not reachable when freeRide is true) => null =
+  // unfiltered, the brief's original full-catalog behaviour.
+  const freeRouteIds: string[] | null = freeRide
+    ? freeRideRouteIds(CATALOG, fromId === NEW_ID ? null : fromId, to === NEW_ID ? null : to)
+    : null;
+
   // The way the rider picked, and the routes on it -- so the ghost count is
   // THIS way's, not always Morning's.
   const way = CATALOG.ways.find(
@@ -465,11 +506,18 @@ export default function RecordScreen({
   // Mirror for onStart's [] useCallback closure (it must read the CURRENT pick).
   const pickedRouteRef = useRef<Route | null>(null);
   pickedRouteRef.current = pickedRoute;
+  // Mirrors for onStart's [] useCallback closure, same reason as pickedRouteRef.
+  const freeRideRef = useRef(false);
+  freeRideRef.current = freeRide;
+  const freeRouteIdsRef = useRef<string[] | null>(null);
+  freeRouteIdsRef.current = freeRouteIds;
 
   // Cycle 024 (WP-A2): the armed screen's readytag line names from/to by
   // their catalog label (mirrors the mockup's `lm()` helper), not their id.
+  // WP-B: NEW_ID is a UI pseudo-landmark, not a catalog entry — labelled
+  // 'new' rather than falling through to the raw '~new' id.
   const landmarkLabel = (id: string): string =>
-    CATALOG.landmarks.find((l) => l.id === id)?.label ?? id;
+    id === NEW_ID ? 'new' : (CATALOG.landmarks.find((l) => l.id === id)?.label ?? id);
 
   // Shared between both branches below — unchanged position/behaviour, just
   // no longer duplicated between an idle ScrollView and a recording column.
@@ -597,11 +645,14 @@ export default function RecordScreen({
         {settings.liveMap ? (
           <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch' }}>
             <RouteMapView
-              routeId={live.track ?? rideRouteHint}
+              routeId={live.mode === 'free' ? null : (live.track ?? rideRouteHint)}
               lat={status.lastLat}
               lon={status.lastLon}
               zoom={4}
               gateColours={gateColours}
+              gatesOnly={live.mode === 'free'}
+              crossedGates={live.freeCrossings}
+              gateRouteIds={rideFreeRouteIds}
               variant="live"
               liveState={live.phase === 'finished' ? 'finished' : (stationary ? 'stopped' : 'moving')}
               fill
@@ -629,6 +680,21 @@ export default function RecordScreen({
             fixes count is gone — see statusItemsFor). Warnings (storage
             errors) stay permanent below — never rotated away. */}
         <Text style={styles.trackLine}>{statusLine}</Text>
+        {/* WP-B: free-ride sector list — most recent first, plain ink (no
+            tier colours: D-013, a free ride has no comparable history by
+            construction), plus a running crossing counter. */}
+        {live.mode === 'free' && (
+          <View style={styles.freeSectorBox}>
+            <ScrollView style={{ maxHeight: 120 }}>
+              {[...live.freeSectors].reverse().map((sec, i) => (
+                <Text key={i} style={styles.freeSectorRow}>
+                  {routeLabel(sec.routeId)} S{sec.index} — {fmt(sec.rawS, 1)}
+                </Text>
+              ))}
+            </ScrollView>
+            <Text style={styles.counter}>{live.freeCrossings.length} gates crossed</Text>
+          </View>
+        )}
         {settings.redLight === 'button' && (
           <Pressable
             style={[styles.redFlag, held && { opacity: 0.6 }]}
@@ -746,6 +812,13 @@ export default function RecordScreen({
                 </Text>
               </Pressable>
             ))}
+            {/* WP-B: 'new' — free ride, unknown origin (Nathan: "go from
+                work>>new"). Not a catalog landmark, so it is added here
+                rather than to `startable`. */}
+            <Pressable key={NEW_ID} onPress={() => setFrom(NEW_ID)}
+              style={[styles.pill, fromId === NEW_ID && styles.pillOn]}>
+              <Text style={[styles.pillText, fromId === NEW_ID && styles.pillTextOn]}>new</Text>
+            </Pressable>
           </View>
           <Text style={styles.flowLabel}>GOING TO</Text>
           <View style={styles.pillRow}>
@@ -755,8 +828,16 @@ export default function RecordScreen({
                 <Text style={[styles.pillText, to === l.id && styles.pillTextOn]}>{l.label}</Text>
               </Pressable>
             ))}
+            {/* WP-B: 'new' — free ride, unknown destination (e.g. new>>home). */}
+            <Pressable key={NEW_ID} onPress={() => setTo(NEW_ID)}
+              style={[styles.pill, to === NEW_ID && styles.pillOn]}>
+              <Text style={[styles.pillText, to === NEW_ID && styles.pillTextOn]}>new</Text>
+            </Pressable>
           </View>
-          {way && wayRoutes.length > 1 ? (
+          {/* WP-B: freeRide never has a `way` (NEW_ID matches no catalog
+              landmark), so this is already hidden by construction; !freeRide
+              is stated explicitly too — belt and braces, per the brief. */}
+          {!freeRide && way && wayRoutes.length > 1 ? (
             <>
               <Text style={styles.flowLabel}>WHICH ROUTE TODAY?</Text>
               <View style={styles.pillRow}>
@@ -775,11 +856,13 @@ export default function RecordScreen({
             </>
           ) : null}
           <Text style={styles.sub}>
-            {!way
-              ? 'no route known for this pair yet — the ride records, but nothing is scored'
-              : ghostCount > 0
-                ? `${ghostCount} rides found — you are racing ${ghostCount} ghosts`
-                : 'no history on this way yet — nothing to race'}
+            {freeRide
+              ? 'free ride — gates from your known routes fire as you cross them; sector times are saved under "free rides", separate from your route history'
+              : !way
+                ? 'no route known for this pair yet — the ride records, but nothing is scored'
+                : ghostCount > 0
+                  ? `${ghostCount} rides found — you are racing ${ghostCount} ghosts`
+                  : 'no history on this way yet — nothing to race'}
           </Text>
         </View>
         {lastSummary ? (
@@ -917,6 +1000,15 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
     letterSpacing: 1.5,
     textTransform: 'uppercase',
     fontVariant: ['tabular-nums'],
+  },
+  // WP-B: free-ride sector list — plain ink throughout (D-013: no tier
+  // colours, a free ride has no comparable history by construction).
+  freeSectorBox: { alignSelf: 'stretch', marginTop: 6, gap: 4 },
+  freeSectorRow: {
+    color: t.text2,
+    fontSize: 13,
+    fontVariant: ['tabular-nums'],
+    paddingVertical: 2,
   },
   sub: { color: t.text2, fontSize: 15, textAlign: 'center' },
   startFlow: { alignSelf: 'stretch', gap: 4, marginTop: 6 },

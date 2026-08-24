@@ -261,7 +261,13 @@ export async function initRideHistory(fs: FsAdapter): Promise<void> {
       if (text === null) return;
       const rideIndex = decodeIndex(text);
       if (rideIndex === null) return;
-      const endedIds = rideIndex.rides.filter((r) => r.status === 'ended').map((r) => r.rideId);
+      // WP-B fix B2: a free ride's index entry must never be handed to
+      // backfillMissingResults — a free ride that happens to trace a clean
+      // lap of a known route must not get silently derived and saved as a
+      // real route PB (D-025). Mirrors RidesScreen.tsx's identical filter.
+      const endedIds = rideIndex.rides
+        .filter((r) => r.status === 'ended' && r.mode !== 'free')
+        .map((r) => r.rideId);
       await resultsStore.backfillMissingResults(fs, endedIds);
       const have2 = new Set(recorded.map((r) => r.rideId));
       for (const r of resultsStore.storedResults()) {

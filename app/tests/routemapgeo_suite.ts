@@ -7,7 +7,9 @@
 import * as path from 'node:path';
 import { assert, loadJson, test, TESTS_DIR } from './lib.ts';
 import {
-  bearingBetween, gatesFeatureCollection, metresBetween, riderFeature, routeBounds, routeLineFeature,
+  allGatesBounds, allGatesFeatureCollection, bearingBetween, gatesFeatureCollection,
+  gateTicksFeatureCollection, metresBetween, riderFeature, routeBounds, routeLineFeature,
+  routeSplitFeatures,
 } from '../src/ui/routeMapGeo.ts';
 import type { RouteAsset } from '../src/ui/routeMapMath.ts';
 
@@ -142,9 +144,187 @@ test('routemapgeo: bearingBetween — cardinal directions and range', () => {
   }
 });
 
+// ================================================================ WP-B (free ride gates-only map)
+
+test('routemapgeo: allGatesFeatureCollection — unfiltered draws every route\'s gates, tagged with routeId', () => {
+  const routeIds = Object.keys(manifest.routes);
+  const fc = allGatesFeatureCollection(manifest.routes, undefined, '#ffea00');
+  const expectedTotal = routeIds.reduce((n, id) => n + manifest.routes[id].gates.length, 0);
+  assert(fc.features.length === expectedTotal,
+    `expected ${expectedTotal} total gate features unfiltered, got ${fc.features.length}`);
+  for (const feat of fc.features) {
+    assert(typeof feat.properties.routeId === 'string' && routeIds.includes(feat.properties.routeId),
+      `feature routeId "${feat.properties.routeId}" is not a real catalog route id`);
+    assert(!('colour' in feat.properties), 'no crossed list given -> nothing should carry a colour');
+  }
+});
+
+test('routemapgeo: allGatesFeatureCollection — routeIds restricts to only those routes\' gates', () => {
+  const fc = allGatesFeatureCollection(manifest.routes, undefined, '#ffea00', ['Morning', 'MorningB']);
+  const expected = manifest.routes.Morning.gates.length + manifest.routes.MorningB.gates.length;
+  assert(fc.features.length === expected, `filtered to 2 routes: expected ${expected}, got ${fc.features.length}`);
+  assert(fc.features.every((f) => f.properties.routeId === 'Morning' || f.properties.routeId === 'MorningB'),
+    'a filtered call must never draw a gate from an excluded route');
+});
+
+test('routemapgeo: allGatesFeatureCollection — an empty routeIds filter yields zero features (a genuinely empty direction)', () => {
+  const fc = allGatesFeatureCollection(manifest.routes, undefined, '#ffea00', []);
+  assert(fc.features.length === 0, `expected 0 features for an empty routeIds filter, got ${fc.features.length}`);
+});
+
+test('routemapgeo: allGatesFeatureCollection — only crossed gates get crossedColour', () => {
+  const fc = allGatesFeatureCollection(
+    manifest.routes, [{ routeId: 'Morning', gateIndex: 1 }], '#ffea00', ['Morning'],
+  );
+  fc.features.forEach((feat, i) => {
+    if (i === 1) {
+      assert(feat.properties.colour === '#ffea00', `crossed gate 1 expected colour #ffea00, got ${feat.properties.colour}`);
+    } else {
+      assert(!('colour' in feat.properties), `gate ${i} should have no colour — it was never crossed`);
+    }
+  });
+});
+
+test('routemapgeo: allGatesBounds — unfiltered spans at least as much as a single-route filter, and contains its gates', () => {
+  const full = allGatesBounds(manifest.routes);
+  const filtered = allGatesBounds(manifest.routes, ['Morning']);
+  assert(full !== null && filtered !== null, 'both should produce bounds');
+  const fullArea = (full!.maxLon - full!.minLon) * (full!.maxLat - full!.minLat);
+  const filteredArea = (filtered!.maxLon - filtered!.minLon) * (filtered!.maxLat - filtered!.minLat);
+  assert(filteredArea <= fullArea + 1e-9, 'a single-route filter must never exceed the full-catalog bounds');
+  for (const g of manifest.routes.Morning.gates) {
+    assert(g.lon >= filtered!.minLon && g.lon <= filtered!.maxLon, 'Morning gate outside its own filtered bounds');
+    assert(g.lat >= filtered!.minLat && g.lat <= filtered!.maxLat, 'Morning gate outside its own filtered bounds');
+  }
+  assert(allGatesBounds(manifest.routes, []) === null, 'an empty routeIds filter must yield null bounds');
+});
+
 test('routemapgeo: metresBetween — zero for an identical fix, ~111km per degree of latitude', () => {
   const lat = 50.85, lon = 4.65;
   assert(metresBetween(lat, lon, lat, lon) === 0, 'identical fix must read 0 m');
   const oneDegLat = metresBetween(lat, lon, lat + 1, lon);
   assert(oneDegLat > 110_000 && oneDegLat < 112_000, `1 degree of latitude should be ~111km, got ${oneDegLat}`);
+});
+
+// ================================================================ WP-E (race-map render fixes)
+
+test('routemapgeo: gate ticks — 5 per manifest route, each a 2-point LineString, coords in the Leuven window', () => {
+  for (const [id, a] of Object.entries(manifest.routes)) {
+    const fc = gateTicksFeatureCollection(a);
+    assert(fc.features.length === 5, `${id}: expected 5 gate tick features, got ${fc.features.length}`);
+    for (const feat of fc.features) {
+      assert(feat.geometry.type === 'LineString', `${id}: expected LineString geometry for a tick`);
+      assert(feat.geometry.coordinates.length === 2,
+        `${id}: expected a 2-point tick, got ${feat.geometry.coordinates.length}`);
+      for (const [lon, lat] of feat.geometry.coordinates) {
+        assert(lon > 4.6 && lon < 4.73, `${id}: tick lon ${lon} out of expected Leuven range — swap regression?`);
+        assert(lat > 50.8 && lat < 50.89, `${id}: tick lat ${lat} out of expected Leuven range — swap regression?`);
+      }
+    }
+  }
+});
+
+test('routemapgeo: gate ticks — 30 m ground length, perpendicular to the local path heading at gateIdx[i]', () => {
+  const a = manifest.routes.Morning;
+  assert(!!a.path && !!a.gateIdx, 'fixture expected path+gateIdx for this check');
+  const fc = gateTicksFeatureCollection(a);
+  fc.features.forEach((feat, i) => {
+    const [[lon0, lat0], [lon1, lat1]] = feat.geometry.coordinates;
+    const lenM = metresBetween(lat0, lon0, lat1, lon1);
+    assert(lenM > 29 && lenM < 31, `gate ${i}: tick length ${lenM.toFixed(1)} m expected ~30 m`);
+
+    const j = a.gateIdx![i];
+    const jPrev = Math.max(j - 1, 0);
+    const jNext = Math.min(j + 1, a.path!.length - 1);
+    const p0 = a.path![jPrev];
+    const p1 = a.path![jNext];
+    const heading = bearingBetween(p0[0], p0[1], p1[0], p1[1]);
+    const tickBearing = bearingBetween(lat0, lon0, lat1, lon1);
+    let diff = (tickBearing - heading) % 360;
+    if (diff < 0) diff += 360;
+    if (diff > 180) diff = 360 - diff; // angular distance in [0,180], line has no inherent direction
+    assert(Math.abs(diff - 90) < 5,
+      `gate ${i}: tick bearing ${tickBearing.toFixed(1)} not ~90° off local heading ${heading.toFixed(1)} (diff ${diff.toFixed(1)})`);
+  });
+});
+
+test('routemapgeo: gate ticks — colour omitted when unscored, empty string treated as null, supplied colour lands on exactly its gate', () => {
+  const a = manifest.routes.Morning;
+  const noColours = gateTicksFeatureCollection(a);
+  for (const feat of noColours.features) {
+    assert(!('colour' in feat.properties), 'no gateColours given but a tick has colour');
+  }
+  const withColours = gateTicksFeatureCollection(a, [null, '#123456', null, null, null]);
+  withColours.features.forEach((feat, i) => {
+    if (i === 1) {
+      assert(feat.properties.colour === '#123456', `gate 1 expected colour #123456, got ${feat.properties.colour}`);
+    } else {
+      assert(!('colour' in feat.properties), `gate ${i} should have no colour property`);
+    }
+  });
+  const withEmpty = gateTicksFeatureCollection(a, [null, '', '#123456', null, null]);
+  withEmpty.features.forEach((feat, i) => {
+    if (i === 2) {
+      assert(feat.properties.colour === '#123456', `gate 2 expected colour #123456, got ${feat.properties.colour}`);
+    } else {
+      assert(!('colour' in feat.properties), `gate ${i} should have no colour (index 1 was '' -> treated as null)`);
+    }
+  });
+});
+
+test('routemapgeo: gate ticks — asset with path/gateIdx stripped still yields 5 ticks (chord-heading fallback)', () => {
+  const a = manifest.routes.Morning;
+  const stripped: RouteAsset = { ...a, path: undefined, gateIdx: undefined };
+  const fc = gateTicksFeatureCollection(stripped);
+  assert(fc.features.length === 5, `expected 5 ticks via the chord fallback, got ${fc.features.length}`);
+  for (const feat of fc.features) {
+    assert(feat.geometry.coordinates.length === 2, 'fallback tick must still be a 2-point LineString');
+  }
+});
+
+test('routemapgeo: routeSplitFeatures — rider on a mid-path vertex splits into behind/ahead sharing the split coordinate', () => {
+  const a = manifest.routes.Morning;
+  assert(!!a.path && a.path.length > 4, 'fixture expected a longer path for this check');
+  const k = Math.floor(a.path!.length / 2);
+  const [lat, lon] = a.path![k];
+  const fc = routeSplitFeatures(a, { lat, lon }, { active: true, offRoute: false });
+  assert(fc !== null, 'expected a FeatureCollection, got null');
+  const behind = fc!.features.find((f) => f.properties.seg === 'behind');
+  const ahead = fc!.features.find((f) => f.properties.seg === 'ahead');
+  assert(!!behind && !!ahead, 'expected both a behind and an ahead feature');
+
+  const behindLast = behind!.geometry.coordinates[behind!.geometry.coordinates.length - 1];
+  const aheadFirst = ahead!.geometry.coordinates[0];
+  assert(Math.abs(behindLast[0] - aheadFirst[0]) < 1e-9 && Math.abs(behindLast[1] - aheadFirst[1]) < 1e-9,
+    'behind and ahead must share the split coordinate');
+
+  const behindFirst = behind!.geometry.coordinates[0];
+  assert(behindFirst[0] === a.path![0][1] && behindFirst[1] === a.path![0][0],
+    'behind must start at the swapped path[0]');
+
+  const aheadLast = ahead!.geometry.coordinates[ahead!.geometry.coordinates.length - 1];
+  const lastPath = a.path![a.path!.length - 1];
+  assert(aheadLast[0] === lastPath[1] && aheadLast[1] === lastPath[0],
+    'ahead must end at the swapped last vertex');
+});
+
+test('routemapgeo: routeSplitFeatures — active:false is single behind; no/off-route rider is single ahead; pathless asset is null', () => {
+  const a = manifest.routes.Morning;
+  const rider = { lat: a.path![2][0], lon: a.path![2][1] };
+
+  const notActive = routeSplitFeatures(a, rider, { active: false, offRoute: false });
+  assert(notActive !== null && notActive!.features.length === 1 && notActive!.features[0].properties.seg === 'behind',
+    'active:false must yield a single whole-line behind feature');
+
+  const noRider = routeSplitFeatures(a, null, { active: true, offRoute: false });
+  assert(noRider !== null && noRider!.features.length === 1 && noRider!.features[0].properties.seg === 'ahead',
+    'rider:null while active must yield a single whole-line ahead feature');
+
+  const offRouteFC = routeSplitFeatures(a, rider, { active: true, offRoute: true });
+  assert(offRouteFC !== null && offRouteFC!.features.length === 1 && offRouteFC!.features[0].properties.seg === 'ahead',
+    'offRoute:true while active must yield a single whole-line ahead feature');
+
+  const pathless: RouteAsset = { ...a, path: undefined };
+  assert(routeSplitFeatures(pathless, rider, { active: true, offRoute: false }) === null,
+    'a pathless asset must yield null, same rule as routeLineFeature');
 });

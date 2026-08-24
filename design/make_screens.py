@@ -6,25 +6,25 @@ Nathan's hand-edits live in design/edited/ and are mirrored back into THIS
 script (his edited file is the truth until mirrored). Re-run:
     python3 design/make_screens.py [--repo-root PATH]
 
-Cycle 024 / WP-J, FIRST PASS (2026-08-22): this pass emits only the screens
-that are NOT about to be redrawn by this cycle's WP-A (RECORD/RIDES/RESULT
-redesign). Emitting those now would mean re-emitting them again within the
-same cycle for no reason, so they are deliberately deferred to the WP-J
-RE-EMIT pass that runs after WP-A + WP-E land. See DEFERRED below and
-design/README.md.
+Cycle 024 / WP-J, RE-EMIT PASS (2026-08-24): the first pass (2026-08-22)
+deliberately deferred RECORD's four states plus RIDES/RESULT because this
+cycle's WP-A (RECORD/RIDES/RESULT redesign), WP-B (free-ride groundwork) and
+WP-E (live map rendering rewrite) had not landed yet — drawing them then
+would have meant redrawing them again a few days later. All three have now
+landed, and this pass draws the deferred six (record_setup, record_armed,
+record_running, record_finished, rides, result), reading RecordScreen.tsx,
+RidesScreen.tsx, ResultScreen.tsx, routeMapView.tsx, App.tsx and theme.ts
+FRESH at execution time rather than trusting the original brief's own
+(now-stale, pre-WP-A/B/E) description of what those screens show.
 
-Implemented this pass (3 screens x day/night = 6 files):
-    routes, settings, demo
+WP-B's free-ride "new" start/end option is UNRATIFIED (no agreed layout) and
+is deliberately not drawn anywhere in this file — every RECORD screen below
+depicts a normal known-route ride only. See design/README.md.
 
-Deferred to the WP-J re-emit pass (6 screens x day/night = 12 files):
-    record_setup, record_armed, record_running, record_finished, rides, result
-(record_finished was drawn in an earlier revision of this pass on the theory
- that it renders through the existing cycle-020 race column, not something
- WP-A itself redesigns. Corrected after inspection: WP-A2's brief adds a
- fullscreen recording mode covering armed -> running -> the moment just
- after the finish gate, before END is pressed — record_finished sits INSIDE
- that span, so it moves with its RECORD siblings to the re-emit pass rather
- than shipping now as a screen already known to need a redraw.)
+Implemented (9 screens x day/night = 18 files):
+    routes, settings, demo                                        (pass 1)
+    record_setup, record_armed, record_running, record_finished,
+    rides, result                                                 (pass 2)
 
 Requirements satisfied here (brief WP-J-svg-tab-recompositions.md §5):
  - stdlib only, Python 3.
@@ -79,10 +79,16 @@ COLORS = {
     "green": "#3ED598",
     "neutral": "#F5C542",
     "amber": "#E8A33D",      # warnings / STOP — never red (D-013)
+    "riderBlue": "#2F7DE1",  # theme.ts colors.riderBlue — WP-E rider dot; never a tier colour, never red
     "raceBgNight": "#0A0A0A",
     "raceCardNight": "#141414",
     "raceBorderNight": "#232323",
     "white": "#FFFFFF",
+    # routeMapView.tsx's CASING const (2026-08-24 hotfix) — the black outline
+    # under both the route line and gate ticks on the real map now. Lives in
+    # routeMapView.tsx, not theme.ts, so load_allowed_colors() below also
+    # scans that file for its cross-check to accept this literal.
+    "casing": "#14120C",
 }
 
 THEMES = {
@@ -103,9 +109,13 @@ THEMES = {
 
 TABS = ["RECORD", "RIDES", "ROUTES", "RESULT", "SETTINGS", "DEMO"]
 
-# Screens this pass draws vs. defers (see module docstring).
-IMPLEMENTED = ["routes", "settings", "demo"]
-DEFERRED = ["record_setup", "record_armed", "record_running", "record_finished", "rides", "result"]
+# All 9 screens are implemented as of the re-emit pass (see module docstring).
+IMPLEMENTED = [
+    "routes", "settings", "demo",
+    "record_setup", "record_armed", "record_running", "record_finished",
+    "rides", "result",
+]
+DEFERRED: list[str] = []
 
 
 def _normalize_hex(v: str) -> str:
@@ -129,7 +139,13 @@ def load_allowed_colors(repo_root: str) -> set[str]:
     above or something invented — either way the validator must catch it, which
     checking against our own THEMES dict never could."""
     found: set[str] = {"none", "transparent"}
-    for rel in ("app/src/ui/theme.ts", "app/src/ui/chips.tsx", "app/src/ui/settings.tsx"):
+    for rel in (
+        "app/src/ui/theme.ts", "app/src/ui/chips.tsx", "app/src/ui/settings.tsx",
+        # WP-J re-emit pass: the route/gate map rendering this pass draws now
+        # follows routeMapView.tsx's own CASING const (2026-08-24 hotfix), so
+        # that file is a legitimate additional colour source-of-truth here.
+        "app/src/ui/routeMapView.tsx",
+    ):
         p = os.path.join(repo_root, rel)
         if not os.path.exists(p):
             continue
@@ -219,13 +235,15 @@ def circle(parent, id_, cx, cy, r, fill=None, stroke=None, sw=None):
     return sub(parent, "circle", id_, a)
 
 
-def line(parent, id_, x1, y1, x2, y2, stroke, sw=1, dash=None, cap="round"):
+def line(parent, id_, x1, y1, x2, y2, stroke, sw=1, dash=None, cap="round", opacity=None):
     a = {
         "x1": fmt(x1), "y1": fmt(y1), "x2": fmt(x2), "y2": fmt(y2),
         "stroke": stroke, "stroke-width": fmt(sw), "stroke-linecap": cap,
     }
     if dash is not None:
         a["stroke-dasharray"] = dash
+    if opacity is not None:
+        a["opacity"] = fmt(opacity)
     return sub(parent, "line", id_, a)
 
 
@@ -280,16 +298,23 @@ def wrap_text(s: str, max_px: float, size: float) -> list[str]:
 
 
 def text_block(parent, id_prefix, x, y, s, size, max_px, weight="400", color="#000",
-                anchor="start", line_h=None) -> float:
+                anchor="start", line_h=None, letter_spacing=None, upper=False,
+                tabular=False) -> float:
     """Wraps `s` to fit max_px and draws each line as its own labelled leaf
     (id_prefix, or id_prefix_l1/_l2/... when more than one line). Returns the
-    total height consumed so callers can advance their y-cursor."""
+    total height consumed so callers can advance their y-cursor.
+    letter_spacing/upper/tabular default to text_el's own defaults (None/
+    False/False), so every pass-1 call site (which never passed them) is
+    unaffected by their addition here — added in the re-emit pass so a
+    status-line-style uppercase+letterspaced string can WRAP instead of
+    running off either edge of the canvas the way a bare text_el would."""
     lines = wrap_text(s, max_px, size)
     lh = line_h or size * 1.3
     multi = len(lines) > 1
     for i, ln in enumerate(lines):
         this_id = f"{id_prefix}_l{i+1}" if multi else id_prefix
-        text_el(parent, this_id, x, y + i * lh, ln, size, weight=weight, color=color, anchor=anchor)
+        text_el(parent, this_id, x, y + i * lh, ln, size, weight=weight, color=color, anchor=anchor,
+                letter_spacing=letter_spacing, upper=upper, tabular=tabular)
     return len(lines) * lh
 
 
@@ -382,7 +407,9 @@ def gate_tick_endpoints(proj, pts, gate_idx: int, length: float = 13.0):
 
 
 def draw_map(parent, id_prefix, t, asset, rect_xywh, gate_tiers, rider_at=None,
-             rider_ahead_dotted=False, label_note=True, ground_fill=None, ground_border=None):
+             rider_ahead_dotted=False, label_note=True, ground_fill=None, ground_border=None,
+             rider_fill=None, rider_stroke=None, rider_off_route=False,
+             route_casing=False, gate_casing=False, placeholder_size=0):
     """Schematic map, one <g> under `parent` (parent is already a layer or a
     group — this itself counts as ONE nesting level, so callers must add it
     directly under a layer, never under another group).
@@ -394,6 +421,29 @@ def draw_map(parent, id_prefix, t, asset, rect_xywh, gate_tiers, rider_at=None,
     (browse surfaces: Routes/Settings/Demo); record_finished passes the RACE
     raceCard/raceBorder tokens instead — routeMapView's frame always sits on
     t.race.bg, never the paddock card colour (theme.ts's two-mode rule).
+    rider_fill/rider_stroke: default to the pass-1 convention (ink fill on
+    the ground colour, "so it never reads as a scored tier"), used unchanged
+    by routes/demo. The RECORD screens (re-emit pass) pass
+    COLORS['riderBlue'] instead — routeMapView.tsx's real WP-E rider-dot
+    colour, on-route solid riderBlue/white. rider_off_route=True mirrors its
+    inverted convention (white fill, colour stroke) when rider_fill is given.
+    route_casing/gate_casing (WP-J re-emit fix pass, 2026-08-24): default
+    False so pass-1 callers (routes/settings/demo — frozen, never touched by
+    this pass) render byte-identically to before. The RECORD screens pass
+    True for both, matching routeMapView.tsx's same-day hotfix: a black
+    CASING outline under the route line and under every gate tick, so the
+    line/ticks read as one continuous solid design language instead of a
+    bare colour stroke. gate_casing also changes the unscored-tick colour
+    from t['textDim'] (the near-invisible grey the hotfix removed) to a
+    thinner/dimmer t['accent'] (yellow), and draws a scored tick at full
+    width/opacity in its earned tier colour — so a genuinely-scored ordinary/
+    yellow-tier gate still reads visibly bolder than an unscored one (the
+    same D-013/D-030 distinction the app's own hotfix makes; see
+    routeMapView.tsx's gate-ticks layer comment).
+    placeholder_size: the schematic-map disclaimer rect's side length in px.
+    Default 0 (pass-1's original zero-size leaf, unchanged). The RECORD
+    screens pass a small nonzero value so the element is actually selectable
+    in Inkscape instead of a 0×0 rect nothing can click on.
     """
     x, y, w, h = rect_xywh
     gfill = ground_fill or t["card"]
@@ -422,7 +472,12 @@ def draw_map(parent, id_prefix, t, asset, rect_xywh, gate_tiers, rider_at=None,
             d_ahead = route_path_d(proj, pts[rider_idx:], None)
             path(m, f"{id_prefix}_route_line_ahead", d_ahead, stroke=t["accent"], sw=3, dash="2,4")
     else:
-        path(m, f"{id_prefix}_route_line", route_path_d(proj, pts), stroke=t["accent"], sw=3)
+        d = route_path_d(proj, pts)
+        if route_casing:
+            path(m, f"{id_prefix}_route_line_casing", d, stroke=COLORS["casing"], sw=6)
+            path(m, f"{id_prefix}_route_line", d, stroke=t["accent"], sw=4)
+        else:
+            path(m, f"{id_prefix}_route_line", d, stroke=t["accent"], sw=3)
 
     # gate ticks: thin perpendicular line, dim theme-neutral when unscored,
     # tier-coloured once scored (WP-E's target rendering — brief §2).
@@ -431,21 +486,46 @@ def draw_map(parent, id_prefix, t, asset, rect_xywh, gate_tiers, rider_at=None,
         gi = full_idx[i]
         x1, y1, x2, y2 = gate_tick_endpoints(proj, pts, gi)
         tier_col = gate_tiers[i] if i < len(gate_tiers) else None
-        col = tier_col if tier_col else t["textDim"]
-        line(m, f"{id_prefix}_gate_tick_{i+1}", x1, y1, x2, y2, col, 3 if tier_col else 2)
+        if gate_casing:
+            line(m, f"{id_prefix}_gate_tick_{i+1}_casing", x1, y1, x2, y2, COLORS["casing"], 5)
+            core_col = tier_col if tier_col else t["accent"]
+            line(m, f"{id_prefix}_gate_tick_{i+1}", x1, y1, x2, y2, core_col,
+                 3 if tier_col else 2, opacity=1 if tier_col else 0.6)
+        else:
+            col = tier_col if tier_col else t["textDim"]
+            line(m, f"{id_prefix}_gate_tick_{i+1}", x1, y1, x2, y2, col, 3 if tier_col else 2)
 
     # rider dot: distinct colour from gates (WP-E) — drawn as ink so it never
     # reads as a scored tier the way a gate colour would.
     if rider_at is not None:
         rider_idx = _rider_index(rider_at, full_idx, len(pts))
         rx_, ry_ = proj(*pts[rider_idx])
-        circle(m, f"{id_prefix}_rider_dot", rx_, ry_, 5.5, fill=t["text"], stroke=gfill, sw=2)
+        base_fill = rider_fill if rider_fill is not None else t["text"]
+        base_stroke = rider_stroke if rider_stroke is not None else gfill
+        if rider_off_route and rider_fill is not None:
+            fill_c, stroke_c = COLORS["white"], base_fill
+        else:
+            fill_c, stroke_c = base_fill, base_stroke
+        circle(m, f"{id_prefix}_rider_dot", rx_, ry_, 5.5, fill=fill_c, stroke=stroke_c, sw=2)
 
     if label_note:
         # labelled so Nathan knows this rect is schematic, not a real basemap
-        # render — a zero-size leaf (never a group: it must not add a nesting
-        # level), comment-free, its label alone documents it.
-        sub(m, "rect", f"{id_prefix}_placeholder_note", {"x": fmt(x), "y": fmt(y), "width": 0, "height": 0})
+        # render — a leaf (never a group: it must not add a nesting level),
+        # comment-free, its label alone documents it. placeholder_size>0
+        # (RECORD screens) keeps it big enough to actually select in
+        # Inkscape; 0 (pass-1's original, unchanged) stays a 0×0 no-op.
+        # fill="none" only when placeholder_size>0 (RECORD screens): at
+        # placeholder_size==0 (pass-1, unchanged) an unset fill was invisible
+        # simply because the rect had no area to paint — adding the
+        # attribute unconditionally here once broke pass-1's byte-identical
+        # output for no visual reason (0×0 paints nothing regardless of
+        # fill). At placeholder_size>0 leaving fill unset would paint SVG's
+        # default black fill as a visible speck in the map's corner — this
+        # is where "none" actually matters.
+        note_attrs = {"x": fmt(x), "y": fmt(y), "width": fmt(placeholder_size), "height": fmt(placeholder_size)}
+        if placeholder_size:
+            note_attrs["fill"] = "none"
+        sub(m, "rect", f"{id_prefix}_placeholder_note", note_attrs)
     return m
 
 
@@ -522,6 +602,85 @@ def draw_theme_pill(parent, t, mode_name: str):
          stroke=t["cardBorder"], sw=1, rx=14)
     text_el(g, "content_theme_pill_label", VB_W - 56, 32, label, 12, color=t["textDim"], anchor="middle")
     return g
+
+
+# --------------------------------------------------------------------------
+# re-emit-pass helpers (record_setup/armed/running/finished, rides, result) —
+# added 2026-08-24 alongside the six builders below. Kept separate from the
+# pass-1 helpers above rather than folded into draw_map/draw_tabbar etc, so
+# that no pass-1 call site's behaviour (and therefore no pass-1 canonical
+# byte) changes just because these were added.
+# --------------------------------------------------------------------------
+
+def route_label(route_id: str) -> str:
+    """Mirrors store/defaultRoute.ts's routeLabel() exactly: 'EveningA' ->
+    'Evening A', 'Morning' -> 'Morning' (no match, no change)."""
+    return re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", route_id)
+
+
+def chip_palette(tier: str, t: dict) -> tuple[str, str, str]:
+    """Mirrors chips.tsx's chipColors() exactly — (bg, border, text). Note
+    the PURPLE_INK text is only legible against the matching bg=colors.purple
+    FILL (as LiveBigChip/LiveLapChip/StripSlot always pair it) — see
+    chip_text_for_bare_text() below for the one real place the app itself
+    reuses this same text colour WITHOUT that fill."""
+    if tier == "purple":
+        return (COLORS["purple"], COLORS["purple"], COLORS["purpleInk"])
+    if tier == "green":
+        return ("none", COLORS["green"], COLORS["green"])
+    if tier == "neutral":
+        return ("none", "none", t["accentText"])
+    if tier == "yellow":
+        return ("none", "none", COLORS["neutral"])
+    if tier == "est":
+        return ("none", COLORS["grey"], COLORS["grey"])
+    return ("none", "none", COLORS["grey"])
+
+
+def draw_strip_slot(parent, id_prefix, x, y, w, h, t, tier, label, time=None, current=False):
+    """Mirrors chips.tsx's <StripSlot>: border is t.accent when current,
+    else t.raceBorder when empty (tier 'none'), else the tier's own border;
+    label colour is t.textDim when empty (current counts as empty — the real
+    component keys off tier alone), else the tier's chip text colour."""
+    bg, border, text = chip_palette(tier, t)
+    empty = tier == "none"
+    border_col = t["accent"] if current else (t["raceBorder"] if empty else border)
+    label_col = t["textDim"] if empty else text
+    rect(parent, f"{id_prefix}_bg", x, y, w, h, fill=bg, stroke=border_col, sw=2, rx=10)
+    text_el(parent, f"{id_prefix}_label", x + w / 2, y + h * 0.42, label, 13, weight="700",
+            color=label_col, anchor="middle")
+    if time:
+        text_el(parent, f"{id_prefix}_time", x + w / 2, y + h * 0.76, time, 13, weight="700",
+                color=text, anchor="middle", tabular=True)
+
+
+def measure_pill_w(label: str) -> float:
+    return max(34.0, 6.3 * len(label) + 22.0)
+
+
+def draw_pill_row(parent, id_prefix, t, x, y, max_w, items):
+    """items: list of (label, active). Lays pills left to right, wrapping to
+    a new line when the next pill would cross max_w — mirrors RN's
+    pillRow (flexDirection row, flexWrap wrap, gap 6). Returns the total
+    height consumed so callers can advance their y-cursor. Each pill is a
+    group appended directly to `parent` (must itself be a layer, same
+    constraint as draw_map — see its docstring)."""
+    gap = 6
+    pill_h = 24
+    cx, cy = x, y
+    for i, (label, active) in enumerate(items):
+        w = measure_pill_w(label)
+        if cx != x and cx + w > x + max_w:
+            cx = x
+            cy += pill_h + gap
+        pid = f"{id_prefix}_pill_{i + 1}"
+        g = group(parent, pid, {})
+        rect(g, f"{pid}_bg", cx, cy, w, pill_h, fill="none",
+             stroke=t["accent"] if active else t["cardBorder"], sw=1, rx=12)
+        text_el(g, f"{pid}_label", cx + w / 2, cy + pill_h - 7, label, 11.5,
+                color=t["accentText"] if active else t["textDim"], anchor="middle")
+        cx += w + gap
+    return (cy - y) + pill_h
 
 
 # --------------------------------------------------------------------------
@@ -786,18 +945,616 @@ def build_demo(theme_name: str, repo_root: str) -> ET.Element:
     return svg
 
 
-# record_finished intentionally has no builder yet — it moved to DEFERRED
-# (see module docstring) rather than shipping now with a known-throwaway
-# caveat. An earlier revision of this pass drew it here; that code is gone,
-# not commented out, so this script doesn't quietly carry half-built work
-# for a screen that isn't shipping — the re-emit pass writes it fresh,
-# alongside its record_setup/armed/running/rides/result siblings, once
-# WP-A2's fullscreen recording mode has actually landed.
+# --------------------------------------------------------------------------
+# screen builders — re-emit pass (2026-08-24): RecordScreen.tsx's three-phase
+# flow (setup/armed/running, 'ending' is a transient animation-only phase and
+# is not drawn), plus RidesScreen.tsx and ResultScreen.tsx (both WP-A3). All
+# read fresh off the staged files at execution time — see module docstring.
+#
+# WP-B's "new" free-ride start/end pill is DELIBERATELY OMITTED everywhere
+# below (unratified layout) — every RECORD screen depicts a normal
+# known-route ride: detected/picked FROM and TO are always real catalog
+# landmarks, never NEW_ID.
+# --------------------------------------------------------------------------
+
+def build_record_setup(theme_name: str, repo_root: str) -> ET.Element:
+    """RecordScreen.tsx's default ('setup') phase — tab bar visible (only
+    armed/running/ending report fullscreen; recordFlow.ts's isFullscreen()).
+    settings defaults: startMode 'auto' (detected start), liveMap true."""
+    t = THEMES[theme_name]
+    asset = load_route_asset(repo_root, "Morning")
+    catalog = load_catalog(repo_root)
+    svg = new_svg()
+
+    bg = layer(svg, "bg")
+    rect(bg, "bg_ground", 0, 0, VB_W, VB_H, fill=t["bg"])
+
+    content = layer(svg, "content")
+    draw_theme_pill(content, t, theme_name)
+
+    cx = VB_W / 2
+    y = 58.0
+    # Logo mark (RecordScreen.tsx logoWrap/logoRing/logoSlash): ink ring,
+    # yellow gate-slash crossing it — simplified here to a stroked circle
+    # plus a short heavy diagonal, not the exact brand bbox math.
+    circle(content, "content_logo_ring", cx, y + 37, 33, fill="none", stroke=t["text"], sw=7)
+    line(content, "content_logo_slash", cx - 16, y + 21, cx + 16, y + 53, t["accent"], 8)
+    y += 84
+    text_el(content, "content_app_title", cx, y, "QUALIFIRE", 19, weight="800", color=t["text"],
+            anchor="middle", letter_spacing=5, upper=True)
+    y += 24
+
+    landmarks = catalog["landmarks"]
+    startable = [l for l in landmarks if l.get("offerAtStart")]
+    # settings.startMode defaults to 'auto': the DETECTED landmark wins FROM.
+    # 'home' is catalog-first among startable — a plausible, honestly-typical
+    # detected start, not a claim about a specific real ride.
+    detected = startable[0]
+    from_id = detected["id"]
+    to_id = "work"
+
+    map_h = 160.0
+    draw_map(content, "content_map", t, asset, (20, y, VB_W - 40, map_h),
+             gate_tiers=[None] * 5, rider_at="START", rider_ahead_dotted=False,
+             rider_fill=COLORS["riderBlue"], label_note=True,
+             route_casing=True, gate_casing=True, placeholder_size=4)
+    y += map_h + 18
+
+    text_el(content, "content_flow_from_label", 20, y, "DETECTED START", 11, weight="600",
+            color=t["textDim"], letter_spacing=2)
+    y += 16
+    from_items = [(l["label"] + (" ✓" if l["id"] == from_id else ""), l["id"] == from_id)
+                  for l in startable]
+    y += draw_pill_row(content, "content_from", t, 20, y, VB_W - 40, from_items) + 10
+
+    text_el(content, "content_flow_to_label", 20, y, "GOING TO", 11, weight="600",
+            color=t["textDim"], letter_spacing=2)
+    y += 16
+    to_candidates = [l for l in startable if l["id"] != from_id]
+    to_items = [(l["label"], l["id"] == to_id) for l in to_candidates]
+    y += draw_pill_row(content, "content_to", t, 20, y, VB_W - 40, to_items) + 10
+
+    way = next(w for w in catalog["ways"]
+               if w["startLandmarkId"] == from_id and w["endLandmarkId"] == to_id)
+    way_routes = [r for r in catalog["routes"] if r["wayId"] == way["id"]]
+    # §8a default: Morning is the only SEEDED (ghost-bearing) route on this
+    # way — the real defaultRouteFor() picks it on ghost count, same result.
+    picked_route_id = "Morning" if any(r["id"] == "Morning" for r in way_routes) else way_routes[0]["id"]
+    if len(way_routes) > 1:
+        text_el(content, "content_flow_route_label", 20, y, "WHICH ROUTE TODAY?", 11, weight="600",
+                color=t["textDim"], letter_spacing=2)
+        y += 16
+        route_items = [(route_label(r["id"]), r["id"] == picked_route_id) for r in way_routes]
+        # WP-J fix pass (2026-08-24): +8 left the hint's first-line ascender
+        # colliding with the pill row's bottom edge — widened to +16.
+        y += draw_pill_row(content, "content_route", t, 20, y, VB_W - 40, route_items) + 16
+        y += text_block(content, "content_route_hint", cx, y,
+                         "the pick is intent — ride a different road and the ride scores as the "
+                         "road you actually took (§8a)", 12.5, VB_W - 40, color=t["text2"],
+                         anchor="middle") + 8
+
+    ghost_n = 6  # placeholder shape of data (README convention) — not a real count
+    y += text_block(content, "content_ghost_line", cx, y,
+                     f"{ghost_n} rides found — you are racing {ghost_n} ghosts", 14,
+                     VB_W - 40, color=t["text2"], anchor="middle") + 8
+    text_el(content, "content_ready_line", cx, y, "Ready to record.", 14, color=t["text2"],
+            anchor="middle")
+    y += 30
+
+    btn_h = 100.0
+    btn = group(content, "content_record_button", {})
+    rect(btn, "content_record_button_bg", 20, y, VB_W - 40, btn_h, fill=t["accent"], rx=20)
+    text_el(btn, "content_record_button_label", cx, y + 46, "● RECORD", 30, weight="800",
+            color=t["onAccent"], anchor="middle", letter_spacing=3)
+    text_el(btn, "content_record_button_sub", cx, y + 68, "arms the ride · nothing starts yet", 11,
+            color=t["onAccent"], anchor="middle")
+
+    draw_tabbar(svg, t, "RECORD")
+    return svg
+
+
+def build_record_armed(theme_name: str, repo_root: str) -> ET.Element:
+    """RecordScreen.tsx's 'armed' phase (WP-A2): route picked, location
+    shown, nothing started — fullscreen (no tab bar, recordFlow.isFullscreen).
+    Route line is drawn solid, casing + yellow core, full stop — matching
+    routeMapView.tsx's 2026-08-24 hotfix (the whole route used to read
+    dotted-ahead at 'prestart' via routeSplitFeatures; that split was pulled
+    back out on-device after it rendered as broken oversized dash blobs, see
+    the routeMapView.tsx file header)."""
+    t = THEMES[theme_name]
+    asset = load_route_asset(repo_root, "Morning")
+    svg = new_svg()
+
+    bg = layer(svg, "bg")
+    rect(bg, "bg_ground", 0, 0, VB_W, VB_H, fill=t["raceBg"])
+
+    content = layer(svg, "content")
+    # WP-J fix pass (2026-08-24), second cut: wrap_text's avg-glyph-width
+    # estimate (0.56*size) undershoots badly for uppercase+letter-spaced
+    # bold text — widening the box to VB_W-40 (the first cut) forced this
+    # onto one line by the ESTIMATE, but the real rendered line overflowed
+    # past the canvas's right edge in an actual PNG render (letter-spacing
+    # and a bold uppercase face are both wider than the estimate accounts
+    # for). Rather than keep guessing at a width threshold, this is drawn as
+    # two explicit, individually-short lines — each comfortably inside the
+    # canvas at real font metrics — instead of trusting wrap_text's estimate
+    # on this heavily-styled string. Matches text_block's own _l1/_l2 naming
+    # convention for a multi-line block.
+    track_lh = 12 * 1.3
+    text_el(content, "content_track_line_l1", VB_W / 2, 30, "home → work · Morning", 12,
+            weight="600", color=t["textDim"], anchor="middle", letter_spacing=1.2, upper=True)
+    text_el(content, "content_track_line_l2", VB_W / 2, 30 + track_lh, "ready — not started", 12,
+            weight="600", color=t["textDim"], anchor="middle", letter_spacing=1.2, upper=True)
+    track_h = 2 * track_lh
+
+    # WP-J fix pass (2026-08-24): 560.0 left 78px of dead space below the
+    # cancel bar — record_running/finished (the other two fullscreen
+    # recording states) land within a few px of App.tsx's own
+    # NAV_BAR_MIN_PAD (12). 626.0 gives this screen the same ~12px floor.
+    map_y, map_h = 24.0 + track_h, 626.0 - track_h
+    draw_map(content, "content_map", t, asset, (12, map_y, VB_W - 24, map_h),
+             gate_tiers=[None] * 5, rider_at="START", rider_ahead_dotted=False,
+             rider_fill=COLORS["riderBlue"], label_note=True,
+             ground_fill=t["raceCard"], ground_border=t["raceBorder"],
+             route_casing=True, gate_casing=True, placeholder_size=4)
+    y = map_y + map_h + 14
+
+    btn_h = 118.0
+    btn = group(content, "content_start_button", {})
+    rect(btn, "content_start_button_bg", 12, y, VB_W - 24, btn_h, fill=t["accent"], rx=20)
+    text_el(btn, "content_start_button_label", VB_W / 2, y + 58, "START", 34, weight="800",
+            color=t["onAccent"], anchor="middle", letter_spacing=4)
+    text_el(btn, "content_start_button_sub", VB_W / 2, y + 82, "the clock runs from here", 11,
+            color=t["onAccent"], anchor="middle")
+    y += btn_h + 10
+
+    cancel = group(content, "content_cancel_bar", {})
+    rect(cancel, "content_cancel_bar_bg", 12, y, VB_W - 24, 40, fill="none",
+         stroke=COLORS["amber"], sw=1, rx=10)
+    text_el(cancel, "content_cancel_bar_label", VB_W / 2, y + 25, "‹ cancel — back to setup", 12,
+            weight="700", color=COLORS["amber"], anchor="middle", letter_spacing=1)
+
+    return svg
+
+
+def build_record_running(theme_name: str, repo_root: str) -> ET.Element:
+    """RecordScreen.tsx's 'running' phase, mid-ride (WP-A2's full-height race
+    column: map ≈ top half, LiveSectorPane, rotating status, PAUSE — no tab
+    bar). One sector done: S1 purple, S2 in progress (ticking clock owns the
+    big slot, per liveView.tsx — never tier-coloured while ticking), S3/S4
+    not yet reached. settings.redLight defaults to 'auto', so the manual
+    red-light button is not shown (§18)."""
+    t = THEMES[theme_name]
+    asset = load_route_asset(repo_root, "Morning")
+    svg = new_svg()
+
+    bg = layer(svg, "bg")
+    rect(bg, "bg_ground", 0, 0, VB_W, VB_H, fill=t["raceBg"])
+
+    content = layer(svg, "content")
+
+    # Bottom-up fixed-block budget so the column reaches the bottom edge the
+    # way raceColumn's flex:1 map + fixed-height siblings do in the app —
+    # see the comment on the matching build_record_finished for the same
+    # technique. GAP1 = map -> pane; STRIP_GAP/STATUS_GAP/PAUSE_GAP are the
+    # gaps after the strip, after the status line, and before the pause bar.
+    TOP_PAD, GAP1 = 8.0, 14.0
+    CONTEXT_H, CLOCK_H = 20.0, 92.0
+    STRIP_H, STRIP_GAP = 54.0, 18.0
+    # BOTTOM_PAD 12.0 (was 10.0, WP-J fix pass 2026-08-24): matches App.tsx's
+    # own NAV_BAR_MIN_PAD floor and record_finished's matching constant below.
+    STATUS_GAP, PAUSE_GAP, PAUSE_H, BOTTOM_PAD = 26.0, 10.0, 56.0, 12.0
+    fixed_total = GAP1 + CONTEXT_H + CLOCK_H + STRIP_H + STRIP_GAP + STATUS_GAP + PAUSE_GAP + PAUSE_H + BOTTOM_PAD
+    map_h = VB_H - TOP_PAD - fixed_total
+
+    # Route line solid, casing + yellow core, full stop — routeMapView.tsx's
+    # 2026-08-24 hotfix (see build_record_armed's docstring for why the
+    # earlier dotted-ahead split was pulled back out; rider_ahead_dotted is
+    # therefore False here too, not just at prestart).
+    draw_map(content, "content_map", t, asset, (12, TOP_PAD, VB_W - 24, map_h),
+             gate_tiers=[None, chip_palette("purple", t)[2], None, None, None],
+             rider_at=0.28, rider_ahead_dotted=False,
+             rider_fill=COLORS["riderBlue"], label_note=True,
+             ground_fill=t["raceCard"], ground_border=t["raceBorder"],
+             route_casing=True, gate_casing=True, placeholder_size=4)
+    y = TOP_PAD + map_h + GAP1
+
+    text_el(content, "content_pane_context", VB_W / 2, y + 13, "S2", 13, weight="700",
+            color=t["textDim"], anchor="middle", letter_spacing=2)
+    y += CONTEXT_H
+    text_el(content, "content_pane_clock", VB_W / 2, y + 58, "4:15.7", 76, weight="800",
+            color=t["text"], anchor="middle", tabular=True)
+    y += CLOCK_H
+
+    strip = group(content, "content_pane_strip", {})
+    slot_w, gap = 76.0, 8.0
+    total_w = slot_w * 4 + gap * 3
+    sx0 = (VB_W - total_w) / 2
+    slot_defs = [
+        ("S1", "purple", "3:02", False),
+        ("S2", "none", None, True),
+        ("S3", "none", None, False),
+        ("S4", "none", None, False),
+    ]
+    for i, (lbl, tier, tval, current) in enumerate(slot_defs):
+        sx = sx0 + i * (slot_w + gap)
+        draw_strip_slot(strip, f"content_pane_strip_slot_{i+1}", sx, y, slot_w, STRIP_H, t,
+                         tier, lbl, tval, current)
+    y += STRIP_H + STRIP_GAP
+
+    text_el(content, "content_status_line", VB_W / 2, y + 12, "MORNING · ROUTE LOCKED", 12,
+            weight="600", color=t["textDim"], anchor="middle", letter_spacing=1.5, upper=True)
+    y += STATUS_GAP + PAUSE_GAP
+
+    pause = group(content, "content_pause_bar", {})
+    rect(pause, "content_pause_bar_bg", 12, y, VB_W - 24, PAUSE_H, fill=t["raceCard"],
+         stroke=COLORS["amber"], sw=2, rx=10)
+    text_el(pause, "content_pause_bar_label", VB_W / 2, y + 24, "PAUSE", 17, weight="800",
+            color=COLORS["amber"], anchor="middle", letter_spacing=3)
+    text_el(pause, "content_pause_bar_sub", VB_W / 2, y + 42, "recording continues · resume or end",
+            10.5, color=t["textDim"], anchor="middle", letter_spacing=1)
+
+    return svg
+
+
+def build_record_finished(theme_name: str, repo_root: str) -> ET.Element:
+    """The moment a ride ends, BEFORE END is pressed — still RecordScreen's
+    'running' phase (recordFlow.ts), but the live engine has reached
+    st.phase==='finished': the LAP result takes the big slot terminally
+    (liveView.tsx) and the map unlocks (liveState 'finished' releases
+    routeMapView back to browse framing). Route line + gate ticks: solid
+    casing + core, matching routeMapView.tsx's 2026-08-24 hotfix (see
+    build_record_armed's docstring). All 4 sectors now scored.
+    WP-J fix pass (2026-08-24): the prior pass omitted the P-position chip,
+    reading live/towerSource.ts's stale header comment ("B-28 UNBUILT") at
+    face value. The function body right below that comment is actually
+    labelled "B-28 BUILT (cycle 008)" and computes a real position —
+    liveView.tsx's lapRow renders <LiveLapChip flex:1/> beside <PosChip/>
+    whenever vm.posChip is non-null, which it is here (a clean Morning lap
+    against real seeded ghost history). Drawn below accordingly, plus the
+    (here-blank, matching st.phase==='finished' → contextLabel='') context
+    line liveView.tsx always reserves above the big slot."""
+    t = THEMES[theme_name]
+    asset = load_route_asset(repo_root, "Morning")
+    svg = new_svg()
+
+    bg = layer(svg, "bg")
+    rect(bg, "bg_ground", 0, 0, VB_W, VB_H, fill=t["raceBg"])
+
+    content = layer(svg, "content")
+
+    TOP_PAD, GAP1 = 8.0, 16.0
+    CONTEXT_H = 20.0
+    LAP_H = 96.0
+    STRIP_H, STRIP_GAP = 54.0, 18.0
+    # BOTTOM_PAD 12.0 (was 10.0, WP-J fix pass 2026-08-24): matches App.tsx's
+    # own NAV_BAR_MIN_PAD floor and record_running's matching constant above.
+    STATUS_GAP, PAUSE_GAP, PAUSE_H, BOTTOM_PAD = 26.0, 10.0, 56.0, 12.0
+    fixed_total = (GAP1 + CONTEXT_H + LAP_H + STRIP_GAP + STRIP_H + STRIP_GAP
+                   + STATUS_GAP + PAUSE_GAP + PAUSE_H + BOTTOM_PAD)
+    map_h = VB_H - TOP_PAD - fixed_total
+
+    draw_map(content, "content_map", t, asset, (12, TOP_PAD, VB_W - 24, map_h),
+             gate_tiers=[None, chip_palette("purple", t)[2], chip_palette("green", t)[2],
+                         chip_palette("yellow", t)[2], chip_palette("green", t)[2]],
+             rider_at="FINISH", rider_ahead_dotted=False,
+             rider_fill=COLORS["riderBlue"], label_note=True,
+             ground_fill=t["raceCard"], ground_border=t["raceBorder"],
+             route_casing=True, gate_casing=True, placeholder_size=4)
+    y = TOP_PAD + map_h + GAP1
+
+    # liveView.tsx's LiveSectorPane always reserves this line above the big
+    # slot (`{vm.contextLabel || ' '}`); at st.phase==='finished' the real
+    # value is '' (the LAP result carries its own label) — kept structurally
+    # present but visually blank, same convention as record_running's
+    # non-blank "S2" version of this same element.
+    text_el(content, "content_pane_context", VB_W / 2, y + 13, " ", 13, weight="700",
+            color=t["textDim"], anchor="middle", letter_spacing=2)
+    y += CONTEXT_H
+
+    # lapRow (liveView.tsx): LAP chip flex:1 + a static PosChip beside it —
+    # ROW_GAP/POS_W chosen so the two plus the 12px canvas margins sum to
+    # VB_W exactly (12 + LAP_W + ROW_GAP + POS_W + 12 == 390).
+    ROW_GAP, POS_W = 12.0, 104.0
+    LAP_W = (VB_W - 24) - POS_W - ROW_GAP
+
+    lap_bg, lap_border, lap_text = chip_palette("green", t)
+    lap = group(content, "content_lap_chip", {})
+    rect(lap, "content_lap_chip_bg", 12, y, LAP_W, LAP_H, fill=lap_bg, stroke=lap_border,
+         sw=2, rx=16)
+    text_el(lap, "content_lap_chip_label", 30, y + 34, "LAP", 22, weight="800", color=lap_text,
+            letter_spacing=2)
+    text_el(lap, "content_lap_chip_time", 12 + LAP_W / 2, y + 68, "14:31.2", 34, weight="800",
+            color=lap_text, anchor="middle", tabular=True)
+    # D-021: no lap reference yet on this track, so the real delta is always
+    # '' for a non-estimated lap (liveView.tsx's viewModelFromEngine) — kept
+    # as an empty leaf for structural parity with LiveLapChip's own delta
+    # Text, not filled with an invented value.
+    text_el(lap, "content_lap_chip_delta", 12 + LAP_W - 18, y + 34, "", 16, weight="700",
+            color=lap_text, anchor="end", tabular=True)
+
+    pos = group(content, "content_pos_chip", {})
+    pos_x = 12 + LAP_W + ROW_GAP
+    rect(pos, "content_pos_chip_bg", pos_x, y, POS_W, LAP_H, fill=t["raceCard"],
+         stroke=t["raceBorder"], sw=2, rx=10)
+    text_el(pos, "content_pos_chip_label", pos_x + POS_W / 2, y + LAP_H / 2 + 8, "P3 of 9", 22,
+            weight="800", color=t["text"], anchor="middle", letter_spacing=1, tabular=True)
+    y += LAP_H + STRIP_GAP
+
+    strip = group(content, "content_strip", {})
+    slot_w, gap = 76.0, 8.0
+    total_w = slot_w * 4 + gap * 3
+    sx0 = (VB_W - total_w) / 2
+    slot_defs = [
+        ("S1", "purple", "3:02"),
+        ("S2", "green", "3:38"),
+        ("S3", "yellow", "3:51"),
+        ("S4", "green", "3:20"),
+    ]
+    for i, (lbl, tier, tval) in enumerate(slot_defs):
+        sx = sx0 + i * (slot_w + gap)
+        draw_strip_slot(strip, f"content_strip_slot_{i+1}", sx, y, slot_w, STRIP_H, t,
+                         tier, lbl, tval, False)
+    y += STRIP_H + STRIP_GAP
+
+    text_el(content, "content_status_line", VB_W / 2, y + 12, "MORNING · ROUTE LOCKED", 12,
+            weight="600", color=t["textDim"], anchor="middle", letter_spacing=1.5, upper=True)
+    y += STATUS_GAP + PAUSE_GAP
+
+    pause = group(content, "content_pause_bar", {})
+    rect(pause, "content_pause_bar_bg", 12, y, VB_W - 24, PAUSE_H, fill=t["raceCard"],
+         stroke=COLORS["amber"], sw=2, rx=10)
+    text_el(pause, "content_pause_bar_label", VB_W / 2, y + 24, "PAUSE", 17, weight="800",
+            color=COLORS["amber"], anchor="middle", letter_spacing=3)
+    text_el(pause, "content_pause_bar_sub", VB_W / 2, y + 42, "recording continues · resume or end",
+            10.5, color=t["textDim"], anchor="middle", letter_spacing=1)
+
+    return svg
+
+
+def build_rides(theme_name: str, repo_root: str) -> ET.Element:
+    """RidesScreen.tsx (WP-A3): header + expandable ride rows (route name,
+    date · lap · quality, P{pos}/{of} rank, chevron). One row drawn expanded
+    with its sector splits + Export GPX+/Delete. Sector row colours mirror
+    RidesScreen.tsx's OWN rule exactly — `chipColors(sec.tier, t).text`
+    applied as bare text with no chip fill behind it. For tier 'purple' that
+    is PURPLE_INK (#120521), a colour chips.tsx designed to sit ON a filled
+    purple background (see LiveBigChip/StripSlot) — here there is no fill,
+    so a purple-tier sector's row reads legibly in daylight (dark ink on a
+    white card) but is very low-contrast in night mode (dark ink on a
+    near-black card). Reproduced faithfully rather than silently corrected;
+    flagged in the handoff summary as worth a second look."""
+    t = THEMES[theme_name]
+    svg = new_svg()
+
+    bg = layer(svg, "bg")
+    rect(bg, "bg_ground", 0, 0, VB_W, VB_H, fill=t["bg"])
+
+    content = layer(svg, "content")
+    y = 24.0
+    text_el(content, "content_title", 16, y, "RIDES", 24, weight="800", color=t["text"],
+            letter_spacing=2, upper=True)
+    refresh_w = 74.0
+    refresh = group(content, "content_refresh_button", {})
+    rect(refresh, "content_refresh_button_bg", VB_W - 16 - refresh_w, y - 20, refresh_w, 26,
+         fill="none", stroke=t["cardBorder"], sw=1, rx=10)
+    text_el(refresh, "content_refresh_button_label", VB_W - 16 - refresh_w / 2, y - 3, "Refresh",
+            12, color=t["text2"], anchor="middle")
+    y += 26
+
+    # Placeholder sample rows (README convention: plausible shape of data,
+    # never a real ride) — one route ride expanded, one collapsed, one with
+    # no matched route (RidesScreen.tsx's "no route — recorded only" branch).
+    # Dates: rideHistoryModel.ts's dateTimeLabel() format ('Tue 05 Aug ·
+    # 08:31', WP-J fix pass 2026-08-24 — was a bare ISO-ish "2026-08-22
+    # 07:41" that didn't match the real screen).
+    rows = [
+        {"route": "Morning", "date": "Sat 22 Aug · 07:41", "lap": "14:02.5", "quality": None,
+         "rank": "P3/10", "expanded": True},
+        {"route": "Evening A", "date": "Fri 21 Aug · 18:04", "lap": "15:11.9", "quality": None,
+         "rank": "P1/8", "expanded": False},
+        {"route": None, "date": "Wed 19 Aug · 12:30", "lap": None, "quality": None,
+         "rank": None, "expanded": False},
+    ]
+    sectors = [
+        (1, "purple", "3:02.1", "avg 3:15"),
+        (2, "green", "3:28.4", "avg 3:41"),
+        (3, "yellow", "3:51.0", "avg 3:44"),
+        (4, "green", "3:20.2", "avg 3:33"),
+    ]
+    for ri, row in enumerate(rows):
+        rid = f"content_row_{ri + 1}"
+        row_top = y
+        card = group(content, rid, {})
+        head_h = 60.0
+        title_txt = row["route"] or "no route — recorded only"
+        sub_bits = [row["date"]]
+        if row["route"]:
+            sub_bits.append(row["lap"])
+        else:
+            sub_bits.append("no lap")
+        if row["quality"]:
+            sub_bits.append(row["quality"])
+        sub_txt = " · ".join(sub_bits)
+        # WP-J fix pass (2026-08-24): RidesScreen.tsx's row has
+        # borderLeftWidth:3 + paddingHorizontal:14 → content starts 17px
+        # inside the card's left edge (16 + 17 = 33). Text at bare x=16 sat
+        # under/behind the accent bar and read as clipped ("ho route..."
+        # instead of "no route...") — shifted the row's text to x=33; the
+        # accent bar and card background stay at x=16 (unchanged, they're
+        # meant to reach the card edge).
+        text_el(card, f"{rid}_title", 33, row_top + 26, title_txt, 16, weight="800", color=t["text"])
+        text_el(card, f"{rid}_sub", 33, row_top + 44, sub_txt, 12, color=t["text2"])
+        text_el(card, f"{rid}_rank", VB_W - 38, row_top + 26, row["rank"] or "–", 14, weight="700",
+                color=t["textDim"], anchor="end", tabular=True)
+        text_el(card, f"{rid}_chev", VB_W - 16, row_top + 27, "▾" if row["expanded"] else "›", 14,
+                color=t["textDim"], anchor="middle")
+        body_bottom = row_top + head_h
+        if row["expanded"]:
+            sy = body_bottom + 8
+            line(card, f"{rid}_divider", 16, sy, VB_W - 16, sy, t["cardBorder"], 1)
+            sy += 14
+            for si, tier, tval, avgl in sectors:
+                col = chip_palette(tier, t)[2]
+                text_el(card, f"{rid}_sec_{si}_label", 33, sy, f"S{si}", 13, weight="700", color=col)
+                text_el(card, f"{rid}_sec_{si}_time", 82, sy, tval, 13, color=col, tabular=True)
+                text_el(card, f"{rid}_sec_{si}_avg", VB_W - 16, sy, avgl, 11.5, color=t["textDim"],
+                        anchor="end", tabular=True)
+                sy += 20
+            sy += 4
+            exp_w, del_w, pill_h = 108.0, 76.0, 32.0
+            rect(card, f"{rid}_export_bg", 16, sy, exp_w, pill_h, fill=t["accent"], rx=10)
+            text_el(card, f"{rid}_export_label", 16 + exp_w / 2, sy + 21, "Export GPX+", 12,
+                    weight="700", color=t["onAccent"], anchor="middle")
+            rect(card, f"{rid}_delete_bg", 16 + exp_w + 8, sy, del_w, pill_h, fill="none",
+                 stroke=t["cardBorder"], sw=1, rx=10)
+            text_el(card, f"{rid}_delete_label", 16 + exp_w + 8 + del_w / 2, sy + 21, "Delete", 12,
+                    weight="700", color=t["textDim"], anchor="middle")
+            body_bottom = sy + pill_h + 12
+        card_h = body_bottom - row_top
+        card.insert(0, E("rect", f"{rid}_bg", {
+            "x": fmt(16), "y": fmt(row_top), "width": fmt(VB_W - 32), "height": fmt(card_h),
+            "fill": t["card"], "stroke": t["cardBorder"], "stroke-width": fmt(1), "rx": fmt(16),
+        }))
+        card.insert(1, E("rect", f"{rid}_accent", {
+            "x": fmt(16), "y": fmt(row_top), "width": fmt(3), "height": fmt(card_h),
+            "fill": t["accent"],
+        }))
+        y = row_top + card_h + 10
+
+    draw_tabbar(svg, t, "RIDES")
+    return svg
+
+
+def build_result(theme_name: str, repo_root: str) -> ET.Element:
+    """ResultScreen.tsx (WP-A3): "YOUR LAST RIDE" card (route, big lap
+    figure, rank line, VIEW TRACE link, RECORD ANOTHER) + "PERSONAL BESTS —
+    TAP A ROUTE" accordion, one route expanded with its ranking (dates, never
+    rideIds) and best-ever sectors. The big lap figure's colour is
+    ResultScreen.tsx's OWN local tierColour() (colors.purple/green/neutral,
+    NOT chips.tsx's chipColors) — unlike RIDES's sector rows, this one is
+    legible in both themes by construction; see build_rides's docstring for
+    the contrasting case."""
+    t = THEMES[theme_name]
+    svg = new_svg()
+
+    bg = layer(svg, "bg")
+    rect(bg, "bg_ground", 0, 0, VB_W, VB_H, fill=t["bg"])
+
+    content = layer(svg, "content")
+    y = 24.0
+    text_el(content, "content_last_heading", 16, y, "YOUR LAST RIDE", 12, weight="700",
+            color=t["textDim"], letter_spacing=2, upper=True)
+    y += 16
+    card1_top = y
+    cy = y + 24
+    text_el(content, "content_last_route", VB_W / 2, cy, "Morning", 13, color=t["textDim"],
+            anchor="middle")
+    cy += 30
+    text_el(content, "content_last_lap", VB_W / 2, cy, "14:02.5", 32, weight="800",
+            color=COLORS["purple"], anchor="middle", tabular=True)
+    cy += 20
+    text_el(content, "content_last_rank", VB_W / 2, cy, "P2 of 9 on this route", 12,
+            color=t["textDim"], anchor="middle")
+    cy += 26
+    text_el(content, "content_last_trace_link", VB_W / 2, cy, "VIEW TRACE ›", 11,
+            color=t["textDim"], anchor="middle", letter_spacing=1.5, upper=True)
+    cy += 24
+    btn_w, btn_h = 172.0, 40.0
+    btn = group(content, "content_last_record_another", {})
+    rect(btn, "content_last_record_another_bg", (VB_W - btn_w) / 2, cy, btn_w, btn_h,
+         fill=t["accent"], rx=10)
+    text_el(btn, "content_last_record_another_label", VB_W / 2, cy + 25, "RECORD ANOTHER", 12,
+            weight="800", color=t["onAccent"], anchor="middle", letter_spacing=1)
+    cy += btn_h + 16
+    card1_h = cy - card1_top
+    content.insert(0, E("rect", "content_last_card_bg", {
+        "x": fmt(16), "y": fmt(card1_top), "width": fmt(VB_W - 32), "height": fmt(card1_h),
+        "fill": t["card"], "stroke": t["cardBorder"], "stroke-width": fmt(1), "rx": fmt(16),
+    }))
+    y = card1_top + card1_h + 24
+
+    text_el(content, "content_pb_heading", 16, y, "PERSONAL BESTS — TAP A ROUTE", 12, weight="700",
+            color=t["textDim"], letter_spacing=2, upper=True)
+    y += 16
+    card2_top = y
+    ry = y
+
+    # Placeholder sample rows/detail (README convention) — never a real ride.
+    pb_rows = [
+        {"route": "Morning", "pb": "13:58.1", "n": 9, "open": True},
+        {"route": "Evening A", "pb": "15:03.4", "n": 6, "open": False},
+        {"route": "Home Church", "pb": "10:41.0", "n": 5, "open": False},
+    ]
+    ranking = [
+        ("P1", "Tue 12 Aug", "13:58", "", False),
+        ("P2", "today", "14:03", "+5s", True),
+        ("P3", "Fri 08 Aug", "14:11", "+13s", False),
+    ]
+    pb_sectors = [("S1", "3:00.4"), ("S2", "3:18.9"), ("S3", "3:34.2"), ("S4", "3:04.6")]
+
+    for pi, row in enumerate(pb_rows):
+        rid = f"content_pb_{pi + 1}"
+        text_el(content, f"{rid}_route", 30, ry + 20, row["route"], 15, weight="700", color=t["text"])
+        text_el(content, f"{rid}_hint", 30, ry + 36,
+                f"personal best {row['pb']} · {row['n']} rides on file", 11.5, color=t["textDim"])
+        text_el(content, f"{rid}_chev", VB_W - 30, ry + 22, "▾" if row["open"] else "›", 15,
+                color=t["textDim"], anchor="middle")
+        ry += 48
+        if row["open"]:
+            text_el(content, f"{rid}_ranking_hint", 30, ry + 10, f"last {len(ranking)} on this route",
+                    11.5, color=t["textDim"])
+            ry += 22
+            for pos, date, tval, gap_lbl, today in ranking:
+                suf = pos.lower()
+                text_el(content, f"{rid}_rank_{suf}_pos", 30, ry, pos, 13, weight="700", color=t["text"])
+                text_el(content, f"{rid}_rank_{suf}_date", 74, ry, date, 13,
+                        color=t["accentText"] if today else t["textDim"])
+                text_el(content, f"{rid}_rank_{suf}_time", VB_W - 90, ry, tval, 13, color=t["text"],
+                        anchor="end", tabular=True)
+                text_el(content, f"{rid}_rank_{suf}_gap", VB_W - 30, ry, gap_lbl, 13,
+                        color=t["textDim"], anchor="end", tabular=True)
+                ry += 20
+            ry += 8
+            text_el(content, f"{rid}_pbsectors_hint", 30, ry + 10, "personal best sectors", 11.5,
+                    color=t["textDim"])
+            ry += 22
+            for lbl, tval in pb_sectors:
+                suf = lbl.lower()
+                text_el(content, f"{rid}_pbsec_{suf}_label", 30, ry, lbl, 13, weight="700", color=t["text"])
+                text_el(content, f"{rid}_pbsec_{suf}_time", VB_W - 30, ry, tval, 13, color=t["text"],
+                        anchor="end", tabular=True)
+                ry += 20
+            ry += 6
+        if pi < len(pb_rows) - 1:
+            line(content, f"{rid}_divider", 16, ry, VB_W - 16, ry, t["cardBorder"], 1)
+        ry += 6
+    card2_h = ry - card2_top + 6
+    content.insert(0, E("rect", "content_pb_card_bg", {
+        "x": fmt(16), "y": fmt(card2_top), "width": fmt(VB_W - 32), "height": fmt(card2_h),
+        "fill": t["card"], "stroke": t["cardBorder"], "stroke-width": fmt(1), "rx": fmt(16),
+    }))
+    y = card2_top + card2_h + 20
+
+    text_block(content, "content_footer_note", 16, y,
+               "Position is a fact; colour is a judgement — a mid-pack ride is never dressed as "
+               "failure. Purple beats your best, green beats your recent average, yellow is an "
+               "ordinary lap.", 10.5, VB_W - 32, color=t["textDim"])
+
+    draw_tabbar(svg, t, "RESULT")
+    return svg
+
 
 BUILDERS = {
     "routes": build_routes,
     "settings": build_settings,
     "demo": build_demo,
+    "record_setup": build_record_setup,
+    "record_armed": build_record_armed,
+    "record_running": build_record_running,
+    "record_finished": build_record_finished,
+    "rides": build_rides,
+    "result": build_result,
 }
 
 

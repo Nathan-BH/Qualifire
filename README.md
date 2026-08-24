@@ -12,26 +12,32 @@ The project is developed by a **virtual team**: a set of agent roles, each with 
 
 ```
 Qualifire/
-├── README.md          You are here. Orientation only.
-├── IDEAS.md           Nathan's raw idea log, in his own words. Append-only. Never edited by agents.
-├── STATE.md           SINGLE SOURCE OF TRUTH. Current state, active priorities, blockers.
+├── README.md               You are here. Orientation only.
+├── IDEAS.md                Nathan's raw idea log, in his own words. Append-only. Never edited by agents.
+├── STATE.md                SINGLE SOURCE OF TRUTH. Current state, active priorities, blockers.
+├── NATHAN-STATUS.md         Plain-language twin of STATE.md — no bare IDs. Start here if you're Nathan.
+├── HOW-THE-APP-IS-BUILT.md  One page on the app's architecture, in plain language.
+├── GLOSSARY.md              The words the team uses, defined plainly.
+├── CLAUDE.md                Instructions for the coding agent working in this repo.
+├── BUILD-4-RUNBOOK.md       The active riding-build runbook.
 │
-├── product/           What we are building.
-│   ├── CONCEPT.md     The app concept, distilled and structured.
-│   ├── DECISIONS.md   Decision log. Every settled question, dated, with rationale.
-│   └── BACKLOG.md     Prioritised open work.
-│
-├── team/              Who is building it.
-│   ├── TEAM.md        Roster, activation status, escalation path.
-│   └── <role>.md      One file per member: remit, working rules, running log.
-│
-├── process/           How they work.
-│   ├── CYCLE.md       The work-cycle protocol.
-│   └── CONVENTIONS.md Logging, file and token-discipline rules.
-│
-├── cycles/            One short report per completed cycle.
-└── archive/           Compacted history. Outside the normal read path.
+├── app/                What actually runs on the phone (React Native / Expo). See app/README.md.
+├── archive/             Compacted history, outside the normal read path.
+├── cycles/              One short report per completed cycle.
+├── data/                The GPS ride archive and the analysis pipeline that builds the app's catalog.
+├── demos/               Browser prototypes and design tools — never the real app.
+├── design/              Editable SVG mirror of every app screen (Nathan's Inkscape round-trip, added cycle 024).
+├── marketing/            The public-facing site and brand assets.
+├── Nathan/               Nathan's own folder — agents read-only, never write here unless explicitly asked.
+├── process/             How the team works: the cycle protocol and conventions.
+├── product/             What we are building — split into live / proposals/ (designed, unbuilt) / superseded/.
+├── safe_to_delete/       Where agents move things instead of deleting them. Nathan empties it.
+├── scripts/              Build and replay tooling (PowerShell/cmd), run on Nathan's PC.
+└── team/                 Who is building it — one file per agent role, plus the roster.
 ```
+
+Every folder above has its own `README.md` (except `Nathan/`, described here instead
+since agents don't write there, and `design/`, which has its own per its own brief).
 
 ## The two rules that matter most
 
@@ -40,7 +46,11 @@ Qualifire/
 
 ## Where to start reading
 
+**Nathan: start here → `NATHAN-STATUS.md`.**
+
 - Want the idea? → `product/CONCEPT.md`
-- Want the current status? → `STATE.md`
+- Want the current status? → `STATE.md` (technical) or `NATHAN-STATUS.md` (plain language)
+- Want to know how the app is put together? → `HOW-THE-APP-IS-BUILT.md`
+- Want a word defined? → `GLOSSARY.md`
 - Want to know how the team runs? → `process/CYCLE.md`
 - Want Nathan's unfiltered thinking? → `IDEAS.md`

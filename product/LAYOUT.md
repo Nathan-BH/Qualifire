@@ -1,6 +1,6 @@
 # LAYOUT — Screen-by-screen design spec
 
-**Status: spec. The cycle-005/006 live pane (chip-based §2 v1) is built and shared with the Preview demo; everything added cycle 007 — live counter v2, board v2, timing tower — is UNBUILT.**
+**Status (2026-08-24, cycle 024): this is the live screen-by-screen spec, but read it against the app as it now stands. The live counter v2, board v2 and timing tower described below are BUILT (tower landed cycle 016, B-28). The app has six tabs — record / rides / routes / result / settings / demo — with a horizontally scrolling tab bar, not §1's "five screens, one navigation stack, no tab bar" (§1 is kept below as the original design record, unedited). The tier windows described in this doc predate D-030/D-037: colour today compares against the last-10-rides window (purple beats the best of your last 10 comparable rides, green beats the recent average), not a 7-day/28-day split. D-042 (2026-08-17) made RAW time the scoring default (implementation still pending, B-59), superseding this doc's moving-time wording. The RECORD flow now follows the setup → armed → running → ending phases from the cycle-022 mockup (built cycle 024, WP-A2), not the HOME → LIVE → BOARD shape §1 describes.**
 Owner: Designer. Cycle 002, 2026-08-14; feedback sections amended cycle 004 per D-019 (B-23); lap scoring and Quali Day surfaces added cycle 005 per D-022 (B-26) and D-021 (B-25); live screen v2 (ticking counter), board v2 and timing tower (§3b) added cycle 007 per Nathan's 2026-08-15 rulings (IDEAS §15–16 — decision records pending with the Product Owner / Principal).
 Binding inputs: D-006 (live constraints), D-007 (tiers), D-008 (windows/noise floor/flags), D-010 (per-direction), D-011 (sector states), D-019 (one buzz, three sounds — earcon spec in §6a), D-021 (Quali Day — §3a), D-022 (lap tier — §2a, §3, §6a), plus Nathan's 2026-08-15 live-counter and tower rulings (§2/§2a/§3/§3b — these supersede D-006's no-ticking clause at the visual layer; reconciliation written into §2).
 
@@ -9,6 +9,8 @@ Sector count is undecided (B-02). All wireframes assume 3–6 sectors `[ASSUMPTI
 ---
 
 ## 1. App structure
+
+*Historical (cycle 002). The shipped app is six tabs — see the status block above.*
 
 Five screens, one navigation stack, no tab bar. A twice-a-day personal app gets a spine, not an architecture.
 

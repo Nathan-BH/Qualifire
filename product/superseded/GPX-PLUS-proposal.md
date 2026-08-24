@@ -1,3 +1,5 @@
+**IMPLEMENTED 2026-08-19 (B-68, cycle 021) — the code and `cycles/cycle-021.md` are the truth now.** Moved here 2026-08-24 (cycle 024, WP-I bookkeeping) as a superseded design record; the export was extended further in cycle 024 (WP-G's diagnostics closure + `qf:routeFidelity`, see `cycles/cycle-024.md`).
+
 # GPX+ diagnostic export — v1 spec PROPOSAL (IDEAS §23) · 2026-08-16 · UNBUILT
 
 Status: Principal-drafted proposal for next cycle (Mobile Dev + Race Engineer review). Nathan's ask: "a 'gpx+' export which contains other information useful for developing the app and troubleshooting."

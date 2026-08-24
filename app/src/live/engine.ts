@@ -73,6 +73,34 @@
  *
  * D-023 (raw forever): everything here is DERIVED and in-memory only; nothing
  * is persisted. The ride JSONL stays untouched.
+ *
+ * FREE MODE (WP-B, Nathan's 2026-08-20 notes; cycle 024): `start({mode:
+ * 'free'})` turns off the whole lock state machine — phase stays 'detecting'
+ * for the entire ride, lockKind stays 'none', `locked` stays null, no lock
+ * events, finalize() is a no-op. Instead EVERY candidate's gate fires are
+ * appended to `freeCrossings` and emitted (not just the eventual winner's —
+ * there is no winner), each `GateDetector` runs with `armWithinM=0` (a free
+ * ride can start anywhere; "you were already past this gate" must never
+ * invent a fire), and a same-candidate consecutive, both-non-estimated
+ * crossing pair derives one `freeSectors` entry (raw only — D-013: a free
+ * ride has no comparable history by construction, so it is never coloured).
+ * `sectors`/`lap`/`currentSector` stay in their idle shapes the whole ride.
+ * Free-ride times are persisted by store/freeRides.ts, a module structurally
+ * isolated from every fixed-route comparison path (D-025 mode-consistency) —
+ * this file never imports it and never needs to: free state lives entirely in
+ * LiveEngineState for the UI to read and hand off at ride end.
+ *
+ * WP-B coordinator addendum (Nathan, 2026-08-24): `EngineStartOptions.routeIds`
+ * restricts which TrackSpecs this ride builds candidates for at all (not just
+ * a free-mode concept, but only ever populated by RecordScreen for a free
+ * ride with exactly one known endpoint — see store/catalog.ts's
+ * `freeRideRouteIds`). `undefined`/`null` = every spec (today's behaviour,
+ * and the deliberately-unfiltered both-ends-unknown free ride); an array
+ * (even empty) restricts `cands` to exactly those ids. This is the natural
+ * generalisation of the existing pick-hint mechanism (`pickId`) to "which
+ * routes are even in the race" rather than "which one is favoured" — no new
+ * per-candidate machinery, `this.specs` is just filtered before the same
+ * `cands` construction that already runs.
  */
 import {
   DEFAULT_LIVE_OPTIONS,
@@ -177,6 +205,14 @@ export interface EngineStartOptions {
    * auto-detect only — never a shortcut on the 400 m evidence rule, only a
    * tie-breaking hint once that evidence exists (see the file header). */
   pickId?: string | null;
+  /** 'route' (default) = today's lock/verify machinery. 'free' (WP-B) = every
+   * gate crossed by any candidate fires and counts, no lock ever settles —
+   * see the file header's FREE MODE section. */
+  mode?: 'route' | 'free';
+  /** WP-B coordinator addendum: restricts `cands` to specs whose id is in
+   * this list. `undefined`/`null` = every spec (today's behaviour). See the
+   * file header. */
+  routeIds?: string[] | null;
 }
 
 /** Raw engine events for the GPX+ sidecar: emitted only for the currently
@@ -215,6 +251,13 @@ export type DiagnosticEvent = {
   accuracyM: number | null;
   thresholdM: number;
   poorAccuracy: boolean;
+  /** WP-G Part 2 gap-fill: this candidate's own cross-track deviation (m) at
+   * the triggering fix (from LiveFix.xtd) — the "per-candidate deviation"
+   * ride-3-style diagnostics needed but cycle 023 fix 5a did not yet capture.
+   * null for the 'retry' phase itself: the fresh candidate hasn't processed
+   * a fix yet at that instant (the 'anchor' fired the same tick right after
+   * carries the real value). */
+  xtdM: number | null;
   atT: number;
 };
 
@@ -241,6 +284,16 @@ export interface LiveEngineState {
   /** true once the locked candidate's track equals `pick` (the pick turned
    * out to be the ridden route); always false while pick is null */
   pickHonoured: boolean;
+  /** WP-B: 'route' (default) = today's lock/verify ride. 'free' = every
+   * candidate's gate fires count, no lock, sectors/lap stay idle forever. */
+  mode: 'route' | 'free';
+  /** WP-B, free mode only (empty in route mode): every gate any candidate
+   * crossed, in the order fired. */
+  freeCrossings: { routeId: string; gateIndex: number; t: number; estimated: boolean }[];
+  /** WP-B, free mode only (empty in route mode): one entry per consecutive,
+   * both-non-estimated crossing pair on the SAME candidate — raw only, never
+   * coloured (D-013: no comparable history for a free ride by construction). */
+  freeSectors: { routeId: string; index: number; rawS: number }[];
 }
 
 interface Candidate {
@@ -261,6 +314,9 @@ interface Candidate {
   baseAccuracyM: number | null;
   /** cycle 023 fix 2: at most one post-settle re-anchor per candidate */
   retried: boolean;
+  /** WP-G Part 2 gap-fill: this candidate's own cross-track deviation (m) at
+   * its most recent fed fix (LiveFix.xtd verbatim) — surfaced in diagnostics. */
+  lastXtd: number;
 }
 
 const N_SECTORS_DEFAULT = 4; // the legacy four commute tracks all have 4 sectors
@@ -279,6 +335,14 @@ export class LiveEngine {
   private pickHonoured = false;
   private sectors: LiveSector[] = pendingSectors(N_SECTORS_DEFAULT);
   private lap: LiveLap | null = null;
+  private mode: 'route' | 'free' = 'route';
+  private freeCrossings: LiveEngineState['freeCrossings'] = [];
+  private freeSectors: LiveEngineState['freeSectors'] = [];
+  /** WP-B free-sector derivation: the last crossing seen per candidate (by
+   * track id) this ride, regardless of whether it ended up bounding a
+   * freeSectors entry — an estimated crossing still updates this so the NEXT
+   * pair correctly sees "previous was estimated" and refuses to bound. */
+  private lastFreeCrossing = new Map<TrackId, { gateIndex: number; t: number; estimated: boolean }>();
   private fixesFed = 0;
   private onRoute = false;
   private tBuf: number[] = [];
@@ -297,23 +361,34 @@ export class LiveEngine {
   start(opts?: EngineStartOptions): void {
     this.phase = 'detecting';
     this.pick = opts?.pickId ?? null;
+    this.mode = opts?.mode ?? 'route';
     this.locked = null;
     this.lockKind = 'none';
     this.pickHonoured = false;
     const pickSpec = this.pick !== null ? this.specs.find((s) => s.id === this.pick) : undefined;
     this.sectors = pendingSectors(pickSpec ? pickSpec.gates.length - 1 : N_SECTORS_DEFAULT);
     this.lap = null;
+    this.freeCrossings = [];
+    this.freeSectors = [];
+    this.lastFreeCrossing = new Map();
     this.fixesFed = 0;
     this.onRoute = false;
     this.tBuf = [];
     this.latBuf = [];
     this.lonBuf = [];
-    this.cands = this.specs.map((spec) => ({
+    // WP-B coordinator addendum: routeIds (undefined/null => every spec, the
+    // unfiltered default) restricts which specs even get a candidate — see
+    // the file header.
+    const specs = opts?.routeIds ? this.specs.filter((s) => opts.routeIds!.includes(s.id)) : this.specs;
+    this.cands = specs.map((spec) => ({
       track: spec.id,
       ref: spec.ref,
       gates: spec.gates,
       proj: new LiveProjector(spec.ref),
-      det: new GateDetector(spec.gates),
+      // WP-B: free mode arms nothing (D-016(b) arming disabled) — a free
+      // ride can begin anywhere, so "you were already past this gate" must
+      // never invent a fire (see the file header's FREE MODE section).
+      det: new GateDetector(spec.gates, this.mode === 'free' ? 0 : undefined),
       events: [],
       baseS: null,
       adv: 0,
@@ -321,6 +396,7 @@ export class LiveEngine {
       anchored: false,
       baseAccuracyM: null,
       retried: false,
+      lastXtd: 999,
     }));
     this.emit();
   }
@@ -332,6 +408,10 @@ export class LiveEngine {
     this.lockKind = 'none';
     this.pick = null;
     this.pickHonoured = false;
+    this.mode = 'route';
+    this.freeCrossings = [];
+    this.freeSectors = [];
+    this.lastFreeCrossing = new Map();
     this.emit();
   }
 
@@ -352,6 +432,19 @@ export class LiveEngine {
     this.fixesFed += 1;
 
     let lockedFired = false;
+
+    // WP-B free mode: no lock state machine at all — every candidate keeps
+    // running for the whole ride, every fire counts (see feedFree()). Kept as
+    // an early branch rather than threaded through the route-mode machinery
+    // below: 'verified'/'finalized' fast-path and the whole lock/switch
+    // evaluation are concepts that free mode never enters (lockKind stays
+    // 'none' the entire ride — start() never sets it otherwise), so folding
+    // free mode into that branching would only obscure both.
+    if (this.mode === 'free') {
+      this.feedFree(lat, lon, tSec);
+      this.emit();
+      return;
+    }
 
     if (this.lockKind === 'verified' || this.lockKind === 'finalized') {
       // Today's exact fast path: only the winner is fed once verified — and
@@ -389,9 +482,11 @@ export class LiveEngine {
           c.baseS = null;
           c.anchored = false; // the re-seeded chainage needs its own fresh anchor check
           c.retried = true;
+          c.lastXtd = 999; // fresh candidate: nothing fed yet this instant
           this.emitDiagnostic({
             type: 'routeMatchAttempt', track: c.track, phase: 'retry',
-            accuracyM: accuracyM ?? null, thresholdM: POOR_ACCURACY_M, poorAccuracy: false, atT: tSec,
+            accuracyM: accuracyM ?? null, thresholdM: POOR_ACCURACY_M, poorAccuracy: false,
+            xtdM: null, atT: tSec,
           });
         }
         const wasAnchored = c.baseS !== null;
@@ -411,7 +506,8 @@ export class LiveEngine {
           c.baseAccuracyM = accuracyM ?? null;
           this.emitDiagnostic({
             type: 'routeMatchAttempt', track: c.track, phase: 'anchor',
-            accuracyM: accuracyM ?? null, thresholdM: POOR_ACCURACY_M, poorAccuracy: poorNow, atT: tSec,
+            accuracyM: accuracyM ?? null, thresholdM: POOR_ACCURACY_M, poorAccuracy: poorNow,
+            xtdM: c.lastXtd, atT: tSec,
           });
         }
       }
@@ -425,12 +521,45 @@ export class LiveEngine {
     this.emit();
   }
 
+  /** WP-B free mode's whole per-fix rule: EVERY candidate keeps running for
+   * the whole ride (no lock, so nothing is ever dropped from `this.cands`),
+   * every gate any of them crosses fires and is emitted (a free ride's whole
+   * point is "gates from your known routes fire as you cross them" — not
+   * just the fires of whichever route would have won a race that never
+   * happens here), and a same-candidate consecutive non-estimated crossing
+   * pair derives one raw freeSectors entry. `onRoute` is true when ANY
+   * candidate is currently on its own corridor (there is no single "the"
+   * route to be on/off in free mode — routeMapView's gatesOnly rung has no
+   * off-route badge for the same reason). */
+  private feedFree(lat: number, lon: number, tSec: number): void {
+    for (const c of this.cands) {
+      const evs = this.feedCandidate(c, lat, lon, tSec);
+      for (const e of evs) {
+        this.freeCrossings.push({ routeId: c.track, gateIndex: e.gateIndex, t: e.time, estimated: e.estimated });
+        this.emitEvent({ type: 'gate', track: c.track, gateIndex: e.gateIndex, t: e.time, estimated: e.estimated });
+        const prev = this.lastFreeCrossing.get(c.track);
+        if (
+          e.gateIndex >= 1 && !e.estimated &&
+          prev && prev.gateIndex === e.gateIndex - 1 && !prev.estimated
+        ) {
+          this.freeSectors.push({ routeId: c.track, index: e.gateIndex, rawS: e.time - prev.t });
+        }
+        this.lastFreeCrossing.set(c.track, { gateIndex: e.gateIndex, t: e.time, estimated: e.estimated });
+      }
+    }
+    this.onRoute = this.cands.some((c) => c.onRoute);
+  }
+
   /** Called once when the ride ends (src/location/index.ts's stopTracking(),
    * and defensively again from RecordScreen's onEnd before it). Recovers a
    * route from the FINISH gate for a ride that never cleared a verified (or
    * even soft) lock, and promotes a still-soft lock that never got the
-   * chance to clear its margin. Idempotent — safe to call more than once. */
+   * chance to clear its margin. Idempotent — safe to call more than once.
+   * WP-B: a no-op in free mode — there is no lock to recover or promote (see
+   * the file header's FREE MODE section); free-ride persistence reads
+   * getState() directly, not a settled `locked` candidate. */
   finalize(): void {
+    if (this.mode === 'free') return; // nothing to do — see the file header
     if (this.lockKind === 'verified') return; // nothing to do
     const finished = this.cands.filter((c) => c.det.nextGateIndex >= c.gates.length);
     if (finished.length === 0) {
@@ -474,7 +603,8 @@ export class LiveEngine {
       });
       this.emitDiagnostic({
         type: 'routeMatchAttempt', track: winner.track, phase: 'lock',
-        accuracyM: null, thresholdM: POOR_ACCURACY_M, poorAccuracy: false, atT,
+        accuracyM: null, thresholdM: POOR_ACCURACY_M, poorAccuracy: false,
+        xtdM: winner.lastXtd, atT,
       });
       for (const e of winner.events) {
         this.emitEvent({ type: 'gate', track: winner.track, gateIndex: e.gateIndex, t: e.time, estimated: e.estimated });
@@ -499,9 +629,16 @@ export class LiveEngine {
         if (e.gateIndex >= 1) lastDone = Math.max(lastDone ?? 0, e.gateIndex);
       }
     }
-    const gateFires = this.locked
-      ? this.locked.events.length
-      : this.cands.reduce((m, c) => Math.max(m, c.events.length), 0);
+    // WP-B: in free mode gateFires is the TOTAL count of everything ever
+    // fired by ANY candidate (freeCrossings.length) — the buzz's "one physical
+    // crossing, one buzz" contract (see the file header) depends on this
+    // number counting every fire, not (as route mode's unlocked case does)
+    // the single busiest candidate's own count.
+    const gateFires = this.mode === 'free'
+      ? this.freeCrossings.length
+      : this.locked
+        ? this.locked.events.length
+        : this.cands.reduce((m, c) => Math.max(m, c.events.length), 0);
     return {
       phase: this.phase,
       track: this.locked ? this.locked.track : null,
@@ -515,6 +652,9 @@ export class LiveEngine {
       lockKind: this.lockKind,
       pick: this.pick,
       pickHonoured: this.pickHonoured,
+      mode: this.mode,
+      freeCrossings: [...this.freeCrossings],
+      freeSectors: [...this.freeSectors],
     };
   }
 
@@ -654,7 +794,8 @@ export class LiveEngine {
       });
       this.emitDiagnostic({
         type: 'routeMatchAttempt', track: cand.track, phase: 'lock',
-        accuracyM: accuracyM ?? null, thresholdM: POOR_ACCURACY_M, poorAccuracy: poorNow, atT: tSec,
+        accuracyM: accuracyM ?? null, thresholdM: POOR_ACCURACY_M, poorAccuracy: poorNow,
+        xtdM: cand.lastXtd, atT: tSec,
       });
       for (const e of cand.events) {
         this.emitEvent({ type: 'gate', track: cand.track, gateIndex: e.gateIndex, t: e.time, estimated: e.estimated });
@@ -669,6 +810,7 @@ export class LiveEngine {
     const xy = toXY([lat], [lon], c.ref.lat0, c.ref.lon0);
     const sBefore = c.proj.chainage;
     const fix = c.proj.update(xy.x[0], xy.y[0], tSec);
+    c.lastXtd = fix.xtd; // WP-G Part 2 gap-fill: per-candidate deviation for diagnostics
     if (c.baseS === null) {
       c.baseS = fix.s;
     } else {

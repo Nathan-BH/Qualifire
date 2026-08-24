@@ -195,14 +195,22 @@ const S = {
 const TABS = [['record','Record'],['rides','Rides'],['routes','Routes'],['result','Result'],['settings','Settings'],['demo','Demo']];
 let tab='record';
 let sel = {from:'home', to:'work', picking:null, way:null, routePick:null};   // start-flow choices
+// WP-B (2026-08-24): the pseudo-landmark "new" — pick it as either end and
+// the ride runs "free": gates-only map, no fixed route, sector times logged
+// live but saved to a separate bucket (freeRidesSaved below), never mixed
+// into route history/comparison (D-025 mode-consistency). Both ends "new"
+// (fully unknown trip) is a real, reachable state here too — Nathan
+// explicitly deferred *designing* that case, not blocking it.
+const NEW_ID = '~new';
 let saved = [];                                              // rides recorded in this session
+let freeRidesSaved = [];       // WP-B: structurally separate from `saved` — see NEW_ID note above
 let rideOpen = null;    // id of the expanded row on the Rides tab
 let resultOpen;         // route key expanded on the Result tab (undefined = "pick a default on first render")
 
 const f = s => Math.floor(s/60)+':'+String(Math.floor(s%60)).padStart(2,'0');
 const f1 = s => Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60).toFixed(1);
 const el = h => { const d=document.createElement('div'); d.innerHTML=h.trim(); return d.firstChild; };
-const lm = id => (D.landmarks.find(l=>l.id===id)||{}).label || id;
+const lm = id => id===NEW_ID ? 'new' : (D.landmarks.find(l=>l.id===id)||{}).label || id;
 const ROUTE_LABEL = {Morning:'Morning', EveningA:'Evening A', EveningB:'Evening B', MorningB:'Morning B'};
 function shortDate(idOrMs){
   let d;
@@ -224,7 +232,7 @@ let map=null, dot=null, trail=null, timer=null, gateMarks=[], follow=true;
 
 function reset(){
   R = { phase:'setup', running:false, t:0, gate:0, flashUntil:-1, flashIdx:-1, paused:false, done:false,
-        sectors:[], startedAt:null };
+        sectors:[], startedAt:null, freeRide:false, freeSectors:[] };
 }
 reset();
 
@@ -323,11 +331,18 @@ function recordScreen(){
   if(R.phase==='setup'){
     const pickable = D.landmarks.filter(l=>!l.dormant);
     const wayFor = (a,b) => D.ways.find(w=>(w.ai===a&&w.bi===b)||(w.ai===b&&w.bi===a));
-    const w = wayFor(sel.from, sel.to);
+    // WP-B: "new" on either end means there's no fixed way to look up at all
+    // — skip wayFor rather than have it (harmlessly) fail to match anything.
+    const freeRide = sel.from===NEW_ID || sel.to===NEW_ID;
+    const w = freeRide ? null : wayFor(sel.from, sel.to);
     const n = w ? w.n : 0;
     const routes = w && w.routes && w.routes.length>1 ? w.routes : null;
+    // "new" always sorts last in a pick row — real landmarks first, the
+    // free-ride option after, same order the brief's "work>>new" / "new>>home"
+    // examples suggest.
     const pillRow = (which) => pickable.filter(l=>which==='from'||l.id!==sel.from)
-      .map(l=>`<span class="pill${sel[which]===l.id?' on':''}" data-pick="${which}" data-id="${l.id}">${l.label}</span>`).join('');
+      .map(l=>`<span class="pill${sel[which]===l.id?' on':''}" data-pick="${which}" data-id="${l.id}">${l.label}</span>`).join('')
+      + `<span class="pill${sel[which]===NEW_ID?' on':''}" data-pick="${which}" data-id="${NEW_ID}">new</span>`;
     s.appendChild(el(`<div>
       <h2>Start</h2>
       <div class="card">
@@ -343,7 +358,10 @@ function recordScreen(){
         <div class="muted">going to</div>
         <div style="margin-top:7px">${pillRow('to')}</div>
         <div style="margin-top:9px;font-size:13px">
-          ${n ? `<b>${n} rides found</b><span class="muted"> — ${lm(sel.from)} → ${lm(sel.to)}, you are racing ${n} ghosts</span>`
+          ${freeRide ? `<b>free ride</b><span class="muted"> — ${lm(sel.from)} → ${lm(sel.to)}, no fixed route: gates from
+                every route you might cross light up as you ride, sector times log live and save
+                separately as a free ride</span>`
+              : n ? `<b>${n} rides found</b><span class="muted"> — ${lm(sel.from)} → ${lm(sel.to)}, you are racing ${n} ghosts</span>`
               : `<b>no rides yet</b><span class="muted"> — first time on this way, nothing to race</span>`}
         </div>
         ${routes ? `<div style="margin-top:10px"><div class="muted">which route today?</div>
@@ -351,7 +369,9 @@ function recordScreen(){
             `<span class="pill${(sel.routePick||routes[0])===r?' on':''}" data-route="${r}">${r}</span>`).join('')}</div></div>`:''}
       </div>
       <button class="btn record" id="go">RECORD</button>
-      <div class="note">${routes
+      <div class="note">${freeRide
+        ? 'Free ride (WP-B): pick "new" for one end when you don’t know — or don’t want to commit to — a fixed route yet. Nothing is ranked or coloured (D-013): it is just gates, crossed as you hit them, timed raw. These never enter a route’s comparison history (D-025) — they live under their own "free rides" list.'
+        : routes
         ? 'This way has more than one ratified route, so it asks (§8a). The pick is intent only — ride a different road and the ride scores as the road you actually took.'
         : 'One route on this way, so no extra step.'}
         The mockup replays the home → work commute whichever pair you choose.
@@ -407,11 +427,20 @@ function initMap(){
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
     {maxZoom:19, attribution:'\u00a9 OpenStreetMap contributors'}).addTo(map);
   const pts = D.sim.track.map(p=>[p[0],p[1]]);
-  L.polyline(pts,{color:'#14120C',weight:9,opacity:.9}).addTo(map);  // casing (D-031)
-  trail = L.polyline([],{color:'#F5C542',weight:5}).addTo(map);
-  // The measured gates (D-016) — they turn the earned colour as you cross them.
+  if(R.freeRide){
+    // WP-B: "gates only" — no reference line to draw (free mode never picks
+    // one route to trust), so skip the casing/trail polylines entirely.
+    trail = null;
+  } else {
+    L.polyline(pts,{color:'#14120C',weight:9,opacity:.9}).addTo(map);  // casing (D-031)
+    trail = L.polyline([],{color:'#F5C542',weight:5}).addTo(map);
+  }
+  // The measured gates (D-016) — they turn the earned colour as you cross
+  // them, EXCEPT in free mode, where a crossing is only ever "seen or not"
+  // (D-013: never colour an unearned time) — see paint() below.
   gateMarks = D.sim.gates.map(g =>
-    L.circleMarker([g.lat,g.lon],{radius:6,color:'#14120C',weight:2,fillColor:'#E8E4DA',fillOpacity:1})
+    L.circleMarker([g.lat,g.lon],{radius:6,color:'#14120C',weight:2,
+      fillColor: R.freeRide ? '#666' : '#E8E4DA', fillOpacity:1})
       .bindTooltip(g.name,{permanent:true,direction:'right',className:'lmtip'}).addTo(map));
   dot = L.circleMarker(pts[0],{radius:8,color:'#14120C',weight:3,fillColor:'#F5C542',fillOpacity:1}).addTo(map);
   // Tight crop that travels with the rider — a live view, not a route overview.
@@ -426,14 +455,23 @@ function initMap(){
 // and gate-crossing actually begin (Nathan 2026-08-19: RECORD only arms it).
 function start(){
   follow=true; R.phase='running'; R.running=true; R.startedAt=Date.now();
+  // WP-B: decided once, at START, from whatever's picked on setup — matches
+  // the real engine, which is handed mode:'free'|'route' at start() and never
+  // reconsiders it mid-ride.
+  R.freeRide = sel.from===NEW_ID || sel.to===NEW_ID;
   render();
   timer = setInterval(()=>{
     if(!R.paused) R.t += 0.1*RATE;
     const gt = D.sim.gateTs, off = D.sim.startOffset;
-    // gate crossings, in ride time (the START gate sits ~162 m in)
+    // gate crossings, in ride time (the START gate sits ~162 m in). The
+    // mockup only has one GPX replay to work with, so a free ride crosses
+    // the same physical gates as the scored demo — the difference WP-B is
+    // illustrating is what happens to the times, not a different track.
     while(R.gate < gt.length-1 && R.t >= off+gt[R.gate+1]){
       R.gate++;
-      R.sectors.push(D.sim.sectors[R.gate-1]);
+      const raw = D.sim.sectors[R.gate-1];
+      if(R.freeRide) R.freeSectors.push({label:'S'+R.gate, v:raw});
+      else R.sectors.push(raw);
       R.flashIdx = R.gate-1; R.flashUntil = R.t + 2.5;
       if(R.gate === gt.length-1){ finishRide(); return; }
     }
@@ -448,6 +486,16 @@ const RATE = 25;           // 25× — a 14-minute commute plays in ~34 s
 function finishRide(){
   clearInterval(timer);
   R.running=false; R.phase='done'; R.done=true;
+  if(R.freeRide){
+    // WP-B / D-025: a free ride is logged live but saved to a SEPARATE
+    // bucket — it never becomes a `saved` entry, so it can never enter route
+    // history/comparison. There's also no lap total: free mode never locks
+    // onto a route, so there's no "finish" to have reached.
+    freeRidesSaved.unshift({id:'free-'+Date.now(), ms:Date.now(),
+      from:sel.from, to:sel.to, sectors:R.freeSectors.slice()});
+    qfPlayLaunch(true, () => { tab='result'; render(); });
+    return;
+  }
   const lap = R.sectors.length ? R.sectors.reduce((a,b)=>a+b,0) : null;
   const clean = R.gate >= D.sim.gates.length-1;   // false only if END was pressed early
   saved.unshift({id:'today-'+Date.now(), ms:Date.now(), route:'Morning', lapS:lap,
@@ -460,18 +508,35 @@ function paint(){
   const cs = document.getElementById('clockslot'); if(!cs) return;
   const flashing = R.t < R.flashUntil && R.flashIdx>=0;
   if(flashing){
-    const v = D.sim.sectors[R.flashIdx], t = tierOf(R.flashIdx, v);
+    const v = D.sim.sectors[R.flashIdx];
+    // WP-B / D-013: a free-ride sector is raw-only, never coloured — there
+    // is no earned benchmark yet to judge it against.
+    const valClass = R.freeRide ? '' : ' '+tierClass(tierOf(R.flashIdx, v));
     cs.innerHTML = `<div class="flash"><div class="lbl">S${R.flashIdx+1}</div>
-      <div class="val ${tierClass(t)}">${f1(v)}</div></div>`;
+      <div class="val${valClass}">${f1(v)}</div></div>`;
   } else {
     cs.innerHTML = `<div class="clock">${f1(Math.max(0,R.t))}</div>`;
   }
-  document.getElementById('strip').innerHTML = D.sim.sectors.map((v,i)=>{
-    const done = i < R.gate;
-    const t = done ? tierOf(i,v) : '';
-    return `<div class="slot ${i===R.gate?'cur':''} ${done?tierClass(t):''}">S${i+1}
-      ${done?`<span class="t">${f(v)}</span>`:'<span class="t">–</span>'}</div>`;
-  }).join('');
+  if(R.freeRide){
+    // WP-B: a "gates only" free ride has no fixed 4-slot route strip to fill
+    // in — show a live, most-recent-first list of raw sector times instead
+    // (mirrors RecordScreen.tsx's free-sector box). The mockup's one replay
+    // only has one gate set to cross, but the real engine watches every
+    // route's gates at once here.
+    document.getElementById('strip').innerHTML = R.freeSectors.length
+      ? `<div class="hint" style="flex:1 1 100%;margin-bottom:2px">free sectors — raw, uncoloured, saved separately</div>`
+        + R.freeSectors.slice().reverse().map(sec=>
+            `<div class="slot" style="flex:1 1 100%;text-align:left;display:flex;justify-content:space-between">
+               <span>${sec.label}</span><span class="t">${f1(sec.v)}</span></div>`).join('')
+      : `<div class="muted" style="flex:1 1 100%;padding:6px 0">no gates crossed yet</div>`;
+  } else {
+    document.getElementById('strip').innerHTML = D.sim.sectors.map((v,i)=>{
+      const done = i < R.gate;
+      const t = done ? tierOf(i,v) : '';
+      return `<div class="slot ${i===R.gate?'cur':''} ${done?tierClass(t):''}">S${i+1}
+        ${done?`<span class="t">${f(v)}</span>`:'<span class="t">–</span>'}</div>`;
+    }).join('');
+  }
   // Rotate on REAL seconds, not ride-clock seconds — at 25× the ride clock the
   // line was changing every ~0.25 s. One item per 10 s, and a line that just
   // changed (the route lock) holds the slot rather than waiting its turn.
@@ -481,20 +546,29 @@ function paint(){
   // what fixes are" — GPS fixes are an internal/diagnostic term, not
   // something to surface on the live status line; they still get written
   // to the GPX+ sidecar for troubleshooting, just not shown here).
-  const items = locked ? [(sel.routePick||'route')+' · route locked', 'gps live']
+  // WP-B: free mode never locks onto a route — there is no "detecting" phase
+  // to graduate out of, so the line just holds at 'free ride · gates only'.
+  const items = R.freeRide ? ['free ride · gates only', 'gps live']
+              : locked ? [(sel.routePick||'route')+' · route locked', 'gps live']
                        : ['detecting route…','gps live'];
   if(locked && !R.lockPinAt) R.lockPinAt = Date.now();
   const realS = (Date.now() - R.startedAt)/1000;
-  const pinned = R.lockPinAt && Date.now()-R.lockPinAt < 8000;
+  const pinned = !R.freeRide && R.lockPinAt && Date.now()-R.lockPinAt < 8000;
   st.textContent = R.paused ? 'clock held — red light'
                  : pinned ? items[0]
                  : items[Math.floor(realS/10)%items.length];
   if(map){
     const tr = D.sim.track;
     let i = 0; while(i<tr.length-1 && tr[i][2] < R.t) i++;
-    dot.setLatLng([tr[i][0],tr[i][1]]);
-    trail.setLatLngs(tr.slice(0,i+1).map(p=>[p[0],p[1]]));
+    dot.setLatLng([tr[i][0],tr[i][1]]);   // true position, always (D-025) — never chainage
+    if(trail) trail.setLatLngs(tr.slice(0,i+1).map(p=>[p[0],p[1]]));
     gateMarks.forEach((gm,k)=>{
+      if(R.freeRide){
+        // Crossed vs not-yet only — never a tier colour (D-013).
+        const done = k===0 ? R.t>D.sim.startOffset : k<=R.gate;
+        gm.setStyle({fillColor: done ? '#F5C542' : '#666'});
+        return;
+      }
       if(k===0) return gm.setStyle({fillColor: R.t>D.sim.startOffset ? '#ffd400':'#444'});
       const done = k<=R.gate;
       const tc = done ? tierOf(k-1, D.sim.sectors[k-1]) : null;
@@ -516,9 +590,27 @@ function paint(){
 function resultScreen(){
   const routesAvail = ['Morning','EveningA','EveningB','MorningB'].filter(r=>towerFor(r).length);
   const latest = saved[0] || null;
+  const latestFree = freeRidesSaved[0] || null;
+  // WP-B / D-025: which board leads is decided purely by recency, and a free
+  // ride NEVER folds into the fixed-route "your last ride" block above — it
+  // is its own board, structurally kept apart the same way freeRidesSaved is
+  // kept apart from saved.
+  const showFreeBoard = !!latestFree && (!latest || latestFree.ms > latest.ms);
   if(resultOpen===undefined) resultOpen = (latest && latest.route) || routesAvail[0];
 
-  const latestBlock = latest ? (()=>{
+  const latestBlock = showFreeBoard ? (()=>{
+    const secs = latestFree.sectors;
+    return `<h2>Free ride</h2>
+      <div class="card" style="text-align:center">
+        <div class="muted">${lm(latestFree.from)} → ${lm(latestFree.to)} · gates only, no fixed route</div>
+        <div class="hint" style="margin:8px 0">${secs.length} sector${secs.length===1?'':'s'} timed live, raw only
+          (D-013) — kept under its own "free rides" list, never a fixed route's comparison history (D-025)</div>
+        ${secs.length ? `<table style="margin:0 auto">${secs.map(s=>
+          `<tr><td class="pos">${s.label}</td><td class="t">${f1(s.v)}</td></tr>`).join('')}</table>`
+          : '<div class="muted" style="padding:6px 0">no gates crossed</div>'}
+        <button class="btn slim" style="margin-top:12px" onclick="tab='record';render()">RECORD ANOTHER</button>
+      </div>`;
+  })() : latest ? (()=>{
     const tier = lapTierFor(latest.route, latest.lapS);
     // A ride ended early (END pressed before FINISH) has no lap total to
     // rank — "P0 of 9" would read as a real rank, so say so instead.
@@ -760,7 +852,10 @@ document.addEventListener('click', e=>{
   if(s){ S[s.dataset.t]=!S[s.dataset.t]; render(); return; }
   const p = e.target.closest('[data-pick]');
   if(p){ sel[p.dataset.pick]=p.dataset.id; sel.picking=null;
-    if(sel.to===sel.from) sel.to = (D.landmarks.find(l=>!l.dormant&&l.id!==sel.from)||{}).id;
+    // WP-B: leave both ends on "new" alone if that's genuinely what was
+    // picked — it's a real (if deferred-design) state, unlike two identical
+    // real landmarks, which is nonsensical and gets bounced back.
+    if(sel.to===sel.from && sel.from!==NEW_ID) sel.to = (D.landmarks.find(l=>!l.dormant&&l.id!==sel.from)||{}).id;
     sel.way=null; render(); return; }
   const o = e.target.closest('[data-open]');
   if(o){ sel.picking=o.dataset.open; render(); return; }

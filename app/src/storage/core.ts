@@ -14,13 +14,17 @@ import { decodeRideFile, deriveMeta, encodeEnd, encodeFix, encodeHeader, healTor
 import { decodeIndex, emptyIndex, encodeIndex, removeEntry, upsertEntry } from './rideIndex.ts';
 import { buildGpx } from './gpxExport.ts';
 import { encodeEvent, decodeEventsFile } from './eventsJsonl.ts';
-import { buildGpxPlus } from './gpxPlusExport.ts';
+import { buildGpxPlus, type RefLookup } from './gpxPlusExport.ts';
 
 const RIDES_DIR = 'rides';
 const INDEX_FILE = 'index.json';
 
 export interface RideStorage {
-  startRide(): Promise<string>;
+  /** WP-B fix B2: `mode` (default 'route' when omitted) is recorded on the
+   * index entry so a completed free ride never gets silently backfilled as a
+   * route result on a later boot (D-025) — see lastRide.ts's initRideHistory
+   * and RidesScreen.tsx's mirrored filter. */
+  startRide(mode?: 'route' | 'free'): Promise<string>;
   appendFix(rideId: string, fix: Fix): Promise<void>;
   endRide(rideId: string): Promise<RideMeta>;
   listRides(): Promise<RideMeta[]>;
@@ -39,6 +43,13 @@ export interface StorageOptions {
   now?: () => number;
   /** 4-char id suffix; injectable for tests */
   randomSuffix?: () => string;
+  /** WP-G Part 4: reference-polyline lookup for GPX+ routeFidelity. Injected
+   * (never statically imported here) because the real one (live/refs.ts)
+   * pulls in a bare JSON import Node's ESM loader can't handle without a
+   * loader hook — see gpxPlusExport.ts's RefLookup doc comment. Omitted (as
+   * every test but the routeFidelity-specific ones does) => that block is
+   * simply never emitted; storage/index.ts supplies the real one on-device. */
+  refFor?: RefLookup;
 }
 
 function pad(n: number, w: number): string {
@@ -68,6 +79,7 @@ export function createStorage(fs: FsAdapter, opts: StorageOptions = {}): RideSto
   const randomSuffix =
     opts.randomSuffix ??
     (() => Math.floor(Math.random() * 0x10000).toString(16).padStart(4, '0'));
+  const refFor = opts.refFor;
 
   /** fast-path memory of rides seen live this process; disk stays authoritative */
   const live = new Set<string>();
@@ -125,7 +137,7 @@ export function createStorage(fs: FsAdapter, opts: StorageOptions = {}): RideSto
   }
 
   return {
-    async startRide() {
+    async startRide(mode) {
       await fs.ensureDir(RIDES_DIR);
       const startedAtMs = now();
       const rideId = makeRideId(startedAtMs, randomSuffix());
@@ -137,6 +149,7 @@ export function createStorage(fs: FsAdapter, opts: StorageOptions = {}): RideSto
         endMs: null,
         nFixes: 0,
         status: 'recording',
+        mode,
       });
       live.add(rideId);
       return rideId;
@@ -192,6 +205,11 @@ export function createStorage(fs: FsAdapter, opts: StorageOptions = {}): RideSto
         // healTornTail: isolate any torn tail (F-1) so the end record parses.
         await fs.appendText(rideFile(rideId), healTornTail(text) + encodeEnd(now(), meta.nFixes));
       } // else: idempotent — already ended (e.g. app restarted), report honestly
+      // WP-B fix B2: this re-save fully reconstructs the entry, so the mode
+      // set at startRide time must be carried forward explicitly here or it
+      // silently drops on every ended ride (mode is not derivable from the
+      // raw JSONL alone — D-023 — so it must come from the existing entry).
+      const existingMode = (await loadIndex()).rides.find((r) => r.rideId === rideId)?.mode;
       await saveEntry({
         rideId,
         file: `${rideId}.jsonl`,
@@ -199,6 +217,7 @@ export function createStorage(fs: FsAdapter, opts: StorageOptions = {}): RideSto
         endMs: meta.endMs,
         nFixes: meta.nFixes,
         status: 'ended',
+        mode: existingMode,
       });
       live.delete(rideId);
       endedThisProcess.add(rideId);
@@ -270,6 +289,7 @@ export function createStorage(fs: FsAdapter, opts: StorageOptions = {}): RideSto
         decodeRideFile(text),
         evText === null ? null : decodeEventsFile(evText),
         rideId,
+        refFor,
       );
     },
 

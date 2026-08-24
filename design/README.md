@@ -34,43 +34,33 @@ design/
 Both a day and a night version of each screen are separate files (not one
 file with a colour-swap layer) — easier to open and edit independently.
 
-## Which screens are here, and which aren't yet
+## Which screens are here
 
-This is a **first pass**. Cycle 024 is about to redesign the RECORD, RIDES
-and RESULT screens (that's this cycle's "WP-A" work), so drawing them *now*
-would mean redrawing them again in a few days once WP-A lands — instead
-they're deferred to a second pass ("WP-J re-emit") that runs after that
-redesign is actually in the app. Nothing is missing by accident; it's a
-sequencing choice to avoid double work.
+All 9 screens (18 files, day + night) are drawn, from what's actually
+running in the app today:
 
-**Drawn this pass** (from what's actually running in the app today):
 | File | What it shows |
 |---|---|
 | `routes` | YOUR PLACES (your landmarks) + WAYS (the routes between them, one open showing its map with gate markers) |
 | `settings` | Appearance, On The Bike, Starting A Ride, Scoring |
 | `demo` | the accelerated demo ride (Demo tab) |
+| `record_setup` | the idle/pre-ride screen — tab bar visible |
+| `record_armed` | route picked, READY, about to press START — full screen, no tab bar |
+| `record_running` | the live race column mid-ride — full screen, no tab bar |
+| `record_finished` | the moment a ride ends, before you press END — still the same full-screen span as armed/running, map unlocked, the LAP result in the big slot |
+| `rides` | ride history list, one row expanded to its sector splits |
+| `result` | last ride + Personal Bests, one route expanded |
 
-**Deferred to the re-emit pass** (will change shape once this cycle's RECORD
-redesign lands):
-- `record_setup` — the idle/pre-ride screen
-- `record_armed` — route picked, about to press START (this state doesn't
-  exist in the running app yet; it's a design-mockup concept the redesign is
-  building)
-- `record_running` — the live race column while actually riding
-- `record_finished` — the moment a ride ends. Drawn once in an earlier
-  revision of this pass, then pulled back out: this cycle's RECORD redesign
-  adds a genuine full-screen recording mode that hides the tab bar for the
-  whole armed → running → *just-finished* stretch, right up until you
-  actually press END — so `record_finished` sits inside the same span as
-  `record_armed`/`record_running` and would need redrawing the moment that
-  lands regardless. It's grouped with its three siblings above rather than
-  shipped now as a screen already known to need a re-draw.
-- `rides` — ride history list
-- `result` — last ride + personal bests
+`routes`/`settings`/`demo` were drawn in the first pass; the six RECORD/
+RIDES/RESULT screens above were drawn in a second pass ("WP-J re-emit"),
+once this cycle's RECORD/RIDES/RESULT redesign, the free-ride groundwork,
+and the live-map rendering rewrite had actually landed — drawing them any
+earlier would have meant redrawing them again a few days later.
 
-Also **not drawn anywhere yet**: an unratified "free ride" option mentioned
-in this cycle's backlog — it has no agreed layout, so there is nothing
-correct to draw.
+Also **not drawn anywhere**: WP-B's "new" free-ride start/end option
+(picking an unknown place instead of a known landmark) is unratified — it
+has no agreed layout, so none of the RECORD screens above depict it; every
+one shows a normal known-route ride instead.
 
 ## A few drawing conventions, so the SVGs read correctly
 
@@ -83,18 +73,23 @@ correct to draw.
   named them (lowercase where you left them lowercase). "Dormant" is only
   shown where the app itself would show it.
 - **Gate markers on the map** are drawn as short tick marks across the
-  route line: a dim neutral tick where nothing has been scored yet, and a
+  route line, each with a black outline (matching the route line's own
+  outline) so it reads clearly against any background: a thinner, dimmer
+  yellow tick where nothing has been scored yet, and a bolder, full-strength
   tier colour (purple / green / amber-yellow) once that sector has been
-  ridden and judged. This is the *target* look the app's map is moving
-  towards (a separate piece of cycle-024 work, "WP-E"), not necessarily
-  what's on your phone screen today — it's what a route or ride should look
-  like once that work lands, and it's what the SVGs consistently show.
-- **The rider dot** is always a different colour from any gate marker, so
-  it never reads as a scored result.
+  ridden and judged — this changed on 2026-08-24, after you reported the
+  unscored grey ticks were almost invisible on your phone; this is literally
+  what your phone draws today.
+- **The rider dot** is a distinct blue (`riderBlue` in the app's theme file)
+  from any gate marker or the route line, so it never reads as a scored
+  result; off-route it inverts (hollow white/blue ring) rather than greying
+  out.
 - **The route line** on the map is your *actual* ridden path (read straight
   from `app/assets/routes/routes.json`), scaled to fit the drawn rectangle
-  — not a generic squiggle. Solid where already ridden, dotted ahead of the
-  rider when a ride is in progress or just finished.
+  — not a generic squiggle. Solid, full stop, with the same black outline as
+  the gate ticks — this also changed on 2026-08-24: it briefly went
+  solid-behind/dotted-ahead-of-the-rider, but the dotted segment rendered as
+  broken oversized dash blobs on-device, so that split was reverted.
 - **Sample numbers** (times like `6:42.1`, dates, "P3") are placeholders to
   show the right shape of data — never a real ride result.
 - Every shape and every group in these files has both an `id` and an
@@ -120,3 +115,9 @@ way: at the real type size, scrolled just far enough that the active tab is
 fully in view, with a tab or two clipped at either edge exactly as your
 phone would clip them. It isn't a rendering bug if a label looks cut off at
 the left or right edge — that's the real scrolled state.
+
+`record_armed`, `record_running` and `record_finished` have **no tab bar at
+all** — that's not an omission either. Pressing RECORD arms a genuine
+full-screen recording mode that hides the bar for the whole stretch from
+armed through running to the moment just after you finish, right up until
+you press END; only `record_setup` (before you press RECORD) keeps the bar.

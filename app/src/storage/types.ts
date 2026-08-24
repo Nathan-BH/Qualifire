@@ -59,6 +59,11 @@ export interface IndexEntry {
   endMs: number | null;
   nFixes: number;
   status: 'recording' | 'ended';
+  /** WP-B fix B2: which mode this ride was recorded in. Optional — absent
+   * (an entry written before this fix, or one recovered by rebuildIndex,
+   * which cannot read mode back out of the raw JSONL — D-023) is treated as
+   * 'route' by omission, same back-compat precedent as `status` above. */
+  mode?: 'route' | 'free';
 }
 
 /** index.json — a derived convenience; always rebuildable from the ride files. */
@@ -134,6 +139,12 @@ export interface RouteMatchDiagnosticEvent {
   accuracyM: number | null;
   thresholdM: number;
   poorAccuracy: boolean;
+  /** Cycle 024 (WP-G Part 2 gap-fill): this candidate's own cross-track
+   * deviation (m) at the triggering fix — null when not yet meaningful (the
+   * 'retry' phase itself, fired before the fresh candidate has processed any
+   * fix). Optional so an older sidecar recorded before this field existed
+   * still decodes (eventsJsonl.ts's decoder is field-tolerant on this one). */
+  xtdM?: number | null;
 }
 /** Cycle 023 fix 3/5b: a single-fix elevation delta whose implied vertical
  * rate exceeds the noise threshold — flagged only, never mutated (D-023);

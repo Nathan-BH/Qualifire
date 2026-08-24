@@ -68,27 +68,95 @@ export function metresPerPixel(a: RouteAsset, lat: number): number {
 }
 
 /**
- * How far the rider is from the drawn line, in metres, using the route's own
- * gate-to-gate polyline as the reference. Cheap and approximate — enough to
- * decide whether to say "off route", not a substitute for the engine's
- * corridor test.
+ * How far the rider is from the drawn line, in metres. Measures against the
+ * decimated `path` (the actual ridden/drawn road) when the asset has one —
+ * WP-E fix: measuring against the straight gate-to-gate chord instead made a
+ * legitimate road bend read as false off-route whenever the road strayed
+ * >120 m from the chord (2026-08-20 ride review). Falls back to the old
+ * gate-chord polyline only when `path` is absent (pre-path assets, or a test
+ * fixture built without one). Cheap and approximate — enough to decide
+ * whether to say "off route", not a substitute for the engine's corridor
+ * test.
  */
 export function offRouteM(a: RouteAsset, lat: number, lon: number): number {
   const p = projectToPixel(a, lat, lon);
   let best = Infinity;
-  for (let i = 1; i < a.gates.length; i++) {
-    const g0 = a.gates[i - 1];
-    const g1 = a.gates[i];
-    const vx = g1.px - g0.px;
-    const vy = g1.py - g0.py;
-    const len2 = vx * vx + vy * vy || 1;
-    let t = ((p.px - g0.px) * vx + (p.py - g0.py) * vy) / len2;
-    t = Math.max(0, Math.min(1, t));
-    const dx = p.px - (g0.px + t * vx);
-    const dy = p.py - (g0.py + t * vy);
-    best = Math.min(best, Math.hypot(dx, dy));
+  if (a.path && a.path.length >= 2) {
+    // precompute once per call — path is decimated, O(hundreds) at 1 Hz
+    const px: Px[] = a.path.map(([plat, plon]) => projectToPixel(a, plat, plon));
+    for (let i = 1; i < px.length; i++) {
+      const g0 = px[i - 1];
+      const g1 = px[i];
+      const vx = g1.px - g0.px;
+      const vy = g1.py - g0.py;
+      const len2 = vx * vx + vy * vy || 1;
+      let t = ((p.px - g0.px) * vx + (p.py - g0.py) * vy) / len2;
+      t = Math.max(0, Math.min(1, t));
+      const dx = p.px - (g0.px + t * vx);
+      const dy = p.py - (g0.py + t * vy);
+      best = Math.min(best, Math.hypot(dx, dy));
+    }
+  } else {
+    for (let i = 1; i < a.gates.length; i++) {
+      const g0 = a.gates[i - 1];
+      const g1 = a.gates[i];
+      const vx = g1.px - g0.px;
+      const vy = g1.py - g0.py;
+      const len2 = vx * vx + vy * vy || 1;
+      let t = ((p.px - g0.px) * vx + (p.py - g0.py) * vy) / len2;
+      t = Math.max(0, Math.min(1, t));
+      const dx = p.px - (g0.px + t * vx);
+      const dy = p.py - (g0.py + t * vy);
+      best = Math.min(best, Math.hypot(dx, dy));
+    }
   }
   return best * metresPerPixel(a, lat);
+}
+
+/**
+ * Px-space twin of routeMapGeo.ts's `gateTicksFeatureCollection` — the tick
+ * endpoints for the PNG rung, in the asset's own pixel space rather than
+ * lat/lon. Heading at the gate: from `path`/`gateIdx` when both are present
+ * and `gateIdx.length` matches the gate count (walks the real road either
+ * side of the gate), else the chord between the adjacent gates — same
+ * selection rule as the GeoJSON builder, so both rungs draw the same tick.
+ */
+export function gateTickPx(
+  a: RouteAsset, i: number, halfLenM = 15,
+): { x0: number; y0: number; x1: number; y1: number } {
+  const g = a.gates[i];
+  const n = a.gates.length;
+  let p0: Px;
+  let p1: Px;
+  if (a.path && a.gateIdx && a.gateIdx.length === a.gates.length) {
+    const j = a.gateIdx[i];
+    const jPrev = Math.max(j - 1, 0);
+    const jNext = Math.min(j + 1, a.path.length - 1);
+    p0 = projectToPixel(a, a.path[jPrev][0], a.path[jPrev][1]);
+    p1 = projectToPixel(a, a.path[jNext][0], a.path[jNext][1]);
+  } else {
+    const iPrev = Math.max(i - 1, 0);
+    const iNext = Math.min(i + 1, n - 1);
+    const gPrev = a.gates[iPrev];
+    const gNext = a.gates[iNext];
+    p0 = { px: gPrev.px, py: gPrev.py };
+    p1 = { px: gNext.px, py: gNext.py };
+  }
+  const dx = p1.px - p0.px;
+  const dy = p1.py - p0.py;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+  // unit perpendicular to the heading direction
+  const perpX = -uy;
+  const perpY = ux;
+  const halfLenPx = halfLenM / metresPerPixel(a, g.lat);
+  return {
+    x0: g.px - perpX * halfLenPx,
+    y0: g.py - perpY * halfLenPx,
+    x1: g.px + perpX * halfLenPx,
+    y1: g.py + perpY * halfLenPx,
+  };
 }
 
 /**

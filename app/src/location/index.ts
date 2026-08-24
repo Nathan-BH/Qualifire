@@ -59,6 +59,21 @@ export interface TrackerStatus {
 
 let session: ActiveSession | null = null;
 let sessionLoaded = false; // whether we've consulted the disk marker yet
+// WP-B fix B1 (second pass): whether THIS JS launch has already re-armed
+// liveEngine for a restored session. Must NOT be tied to the background
+// task's own call order — RecordScreen's mount effect calls
+// getRecoveryState() -> ensureSession() independently and can win the race
+// against the task's first callback (typical case: the rider reopens the
+// app while a ride is still recording, rather than the OS waking it
+// headlessly). If re-arming only happened inside the task handler's
+// `!hadLiveSession` branch, that branch would already see a populated
+// `session` by the time it ran and skip re-arming entirely — leaving
+// liveEngine to auto-start itself via feed()'s idle check with NO options
+// (mode:'route', arming on), silently resuming a free ride as a route ride.
+// Living inside ensureSession() itself means every caller — the task
+// handler, getRecoveryState(), a future caller — shares one launch-scoped
+// re-arm, no matter which one restores the session first.
+let engineArmedThisLaunch = false;
 let fixesThisLaunch = 0;
 let lastFixMs: number | null = null;
 let lastLat: number | null = null;
@@ -95,6 +110,19 @@ async function ensureSession(): Promise<ActiveSession | null> {
   if (!sessionLoaded) {
     session = await loadSession();
     sessionLoaded = true;
+    // WP-B fix B1 (second pass): a fresh JS launch's liveEngine singleton is
+    // phase==='idle'. Re-arm it in the mode this ride was actually started
+    // in (persisted on the session marker — session.ts) BEFORE anything can
+    // call liveEngine.feed()/liveEngine.getState() this launch, so feed()'s
+    // own idle-triggered auto-start (this.start() with NO options, defaulting
+    // to mode:'route') never fires. This runs exactly once per launch,
+    // regardless of which caller first restores a non-null session — see the
+    // engineArmedThisLaunch doc comment above.
+    if (session && !engineArmedThisLaunch) {
+      engineArmedThisLaunch = true;
+      logEvent(session.rideId, { kind: 'relaunch', tUnixMs: Date.now() });
+      liveEngine.start({ pickId: null, mode: session.mode ?? 'route', routeIds: session.routeIds ?? null });
+    }
   }
   return session;
 }
@@ -111,9 +139,12 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
       emit();
       return;
     }
-    // Freshly restored (not already live in memory) means this JS launch
-    // never saw the session before now — the mark of a mid-ride relaunch.
-    const hadLiveSession = session !== null;
+    // WP-B fix B1 (second pass): the relaunch-detection + engine re-arm used
+    // to live here, gated on `session !== null` at entry — but RecordScreen's
+    // mount effect can call getRecoveryState() -> ensureSession() first and
+    // win the race, leaving this handler's own check permanently blind. Both
+    // now happen inside ensureSession() itself, exactly once per launch,
+    // regardless of caller order — see its doc comment.
     const s = await ensureSession();
     if (!s) {
       // Orphan: fixes arriving with no active ride (marker lost/cleared).
@@ -124,9 +155,6 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
         /* already stopped */
       }
       return;
-    }
-    if (!hadLiveSession) {
-      logEvent(s.rideId, { kind: 'relaunch', tUnixMs: Date.now() });
     }
     const locations = data?.locations ?? [];
     for (const loc of locations) {
@@ -170,8 +198,10 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
       // Live sectors (cycle 006): display-only derived state, fed AFTER the
       // raw append so the JSONL can never depend on it. Engine errors are
       // swallowed — the raw ride is worth strictly more than the live view.
-      // On a headless relaunch mid-ride the engine auto-starts and re-locks;
-      // earlier sectors surface as estimated/missed (honest, D-016(b)).
+      // On a headless relaunch mid-ride the engine is explicitly re-armed in
+      // this ride's own mode above (WP-B fix B1) before this first feed() —
+      // a route ride re-locks with earlier sectors surfacing as
+      // estimated/missed (honest, D-016(b)); a free ride stays in free mode.
       try {
         liveEngine.feed(loc.coords.latitude, loc.coords.longitude, loc.timestamp, loc.coords.accuracy ?? undefined);
       } catch {
@@ -209,13 +239,30 @@ export async function ensurePermissions(): Promise<PermissionOutcome> {
 // Start / stop / recovery
 // ---------------------------------------------------------------------------
 
-export async function startTracking(opts?: { routePick?: string | null }): Promise<ActiveSession> {
+export async function startTracking(opts?: {
+  routePick?: string | null;
+  /** WP-B: 'route' (default) or 'free' — threaded straight to
+   * liveEngine.start(); see live/engine.ts's file header. */
+  mode?: 'route' | 'free';
+  /** WP-B coordinator addendum: restricts which catalog routes the engine
+   * builds candidates for this ride — see live/engine.ts's file header and
+   * store/catalog.ts's freeRideRouteIds(). */
+  routeIds?: string[] | null;
+}): Promise<ActiveSession> {
   const pressedAtMs = Date.now();
   const existing = await ensureSession();
   if (existing) return existing; // already recording; be idempotent
 
-  const rideId = await startRide();
-  const s: ActiveSession = { rideId, startedAtMs: Date.now() };
+  const rideId = await startRide(opts?.mode);
+  const s: ActiveSession = {
+    rideId,
+    startedAtMs: Date.now(),
+    // WP-B fix B1/B2: persisted so a headless relaunch can re-arm the engine
+    // in the same mode (session.ts) and so a completed ride's index entry
+    // carries its mode (storage/core.ts's startRide) — see both files' headers.
+    mode: opts?.mode ?? 'route',
+    routeIds: opts?.routeIds ?? null,
+  };
   try {
     await saveSession(s);
     await Location.startLocationUpdatesAsync(LOCATION_TASK, {
@@ -250,7 +297,11 @@ export async function startTracking(opts?: { routePick?: string | null }): Promi
   lastError = null;
   prevEle = null;
   prevEleTUnixMs = null;
-  liveEngine.start({ pickId: opts?.routePick ?? null }); // fresh live-sector state for this ride
+  liveEngine.start({
+    pickId: opts?.routePick ?? null,
+    mode: opts?.mode ?? 'route',
+    routeIds: opts?.routeIds ?? null,
+  }); // fresh live-sector state for this ride
   logEvent(rideId, {
     kind: 'meta', tUnixMs: pressedAtMs, schemaVersion: 1,
     ...(Constants.expoConfig?.version ? { appVersion: Constants.expoConfig.version } : {}),
@@ -379,7 +430,7 @@ liveEngine.subscribeDiagnostics((d) => {
   logEvent(session.rideId, {
     kind: 'routeMatchDiagnostic', tUnixMs: Math.round(d.atT * 1000),
     track: d.track, phase: d.phase, accuracyM: d.accuracyM,
-    thresholdM: d.thresholdM, poorAccuracy: d.poorAccuracy,
+    thresholdM: d.thresholdM, poorAccuracy: d.poorAccuracy, xtdM: d.xtdM,
   });
 });
 

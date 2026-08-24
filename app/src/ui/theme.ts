@@ -18,6 +18,7 @@ export const colors = {
   green: '#3ED598', // outlined tier — 7d best
   neutral: '#F5C542', // flat tier / accent — warm, never grey
   amber: '#E8A33D', // warnings (D-013: this, not red)
+  riderBlue: '#2F7DE1', // rider dot — the universal "you are here" hue; never a tier colour (D-030), never red (D-013)
   card: '#141414',
   cardBorder: '#232323',
   panel: '#1e1e23',

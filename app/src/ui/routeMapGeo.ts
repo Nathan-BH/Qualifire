@@ -85,6 +85,73 @@ export function gatesFeatureCollection(
   };
 }
 
+export interface AllGateProperties {
+  name: string;
+  routeId: string;
+  colour?: string;
+}
+
+/**
+ * WP-B (Nathan's free-ride "gates only" map): one Point feature per gate of
+ * every route in `routeIds` (or every asset in `assets` when `routeIds` is
+ * omitted/null — the full 20-route catalog, the deliberately-unfiltered
+ * both-ends-unknown free ride). `colour` is set ONLY for a gate that appears
+ * in `crossed` (the same `['has','colour']` paint convention as
+ * gatesFeatureCollection above), to `crossedColour` — kept a caller-supplied
+ * string so this module stays colour-agnostic (it has no theme import).
+ * Dedupes nothing: two overlapping routes legitimately draw two gates a few
+ * metres apart (accepted, per the brief's pre-resolved ambiguities).
+ */
+export function allGatesFeatureCollection(
+  assets: Record<string, RouteAsset>,
+  crossed: { routeId: string; gateIndex: number }[] | undefined,
+  crossedColour: string,
+  routeIds?: string[] | null,
+): GeoFeatureCollection<PointGeometry, AllGateProperties> {
+  const crossedSet = new Set((crossed ?? []).map((c) => `${c.routeId}:${c.gateIndex}`));
+  const ids = routeIds ?? Object.keys(assets);
+  const features: GeoFeature<PointGeometry, AllGateProperties>[] = [];
+  for (const routeId of ids) {
+    const asset = assets[routeId];
+    if (!asset) continue; // defensive: an id with no asset (should not happen post-WP-D1/build) is just skipped
+    asset.gates.forEach((g, i) => {
+      const properties: AllGateProperties = crossedSet.has(`${routeId}:${i}`)
+        ? { name: g.name, routeId, colour: crossedColour }
+        : { name: g.name, routeId };
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: [g.lon, g.lat] },
+        properties,
+      });
+    });
+  }
+  return { type: 'FeatureCollection', features };
+}
+
+/** Bounding box over every gate of every route in `routeIds` (or every asset
+ * when omitted/null) — the gates-only map's FIT target, since there is no
+ * single route's `routeBounds()` to fit to. Null only when nothing matched
+ * (an empty/all-unresolved `routeIds`). */
+export function allGatesBounds(
+  assets: Record<string, RouteAsset>, routeIds?: string[] | null,
+): LonLatBoundsBox | null {
+  const ids = routeIds ?? Object.keys(assets);
+  let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity;
+  let any = false;
+  for (const routeId of ids) {
+    const asset = assets[routeId];
+    if (!asset) continue;
+    for (const g of asset.gates) {
+      any = true;
+      if (g.lon < minLon) minLon = g.lon;
+      if (g.lon > maxLon) maxLon = g.lon;
+      if (g.lat < minLat) minLat = g.lat;
+      if (g.lat > maxLat) maxLat = g.lat;
+    }
+  }
+  return any ? { minLon, minLat, maxLon, maxLat } : null;
+}
+
 export function riderFeature(lat: number, lon: number): GeoFeature<PointGeometry> {
   return {
     type: 'Feature',
@@ -138,4 +205,161 @@ export function bearingBetween(lat0: number, lon0: number, lat1: number, lon1: n
   const x = Math.cos(phi0) * Math.sin(phi1) - Math.sin(phi0) * Math.cos(phi1) * Math.cos(dLambda);
   const theta = Math.atan2(y, x) / rad;
   return (theta + 360) % 360;
+}
+
+// ============================================================= WP-E (race-map render fixes)
+
+/**
+ * Nearest point on `path` to (lat,lon): which segment, how far along it
+ * (t in [0,1]), and the distance in metres. Planar equirectangular
+ * projection per segment (same constants as metresBetween — R=6378137,
+ * cos of the segment's average latitude scales longitude), clamped to the
+ * segment. Null only when there is no drawable path (<2 points) — mirrors
+ * routeLineFeature's own null rule.
+ */
+export function nearestOnPath(
+  path: [number, number][], lat: number, lon: number,
+): { seg: number; t: number; distM: number } | null {
+  if (path.length < 2) return null;
+  const R = 6378137;
+  const rad = Math.PI / 180;
+  let best: { seg: number; t: number; distM: number } | null = null;
+  for (let i = 0; i < path.length - 1; i++) {
+    const [lat0, lon0] = path[i];
+    const [lat1, lon1] = path[i + 1];
+    const cosRef = Math.cos(((lat0 + lat1) / 2) * rad);
+    const toXY = (la: number, lo: number): [number, number] => [
+      (lo - lon0) * rad * cosRef * R,
+      (la - lat0) * rad * R,
+    ];
+    const [x0, y0] = [0, 0];
+    const [x1, y1] = toXY(lat1, lon1);
+    const [px, py] = toXY(lat, lon);
+    const vx = x1 - x0;
+    const vy = y1 - y0;
+    const len2 = vx * vx + vy * vy || 1;
+    let t = ((px - x0) * vx + (py - y0) * vy) / len2;
+    t = Math.max(0, Math.min(1, t));
+    const cx = x0 + t * vx;
+    const cy = y0 + t * vy;
+    const distM = Math.hypot(px - cx, py - cy);
+    if (best === null || distM < best.distM) best = { seg: i, t, distM };
+  }
+  return best;
+}
+
+/** Mirrors the routeMapView OFF_ROUTE_M threshold (120 m) — kept as a local
+ * constant because this module stays pure/decoupled from the view layer
+ * (file header). Used only as a self-contained safety net inside
+ * routeSplitFeatures below; the caller-supplied `opts.offRoute` is still the
+ * primary signal (it may reflect a stricter/richer off-route test than the
+ * plain nearest-path distance computed here). */
+const SPLIT_OFF_ROUTE_M = 120;
+
+/**
+ * WP-E ("dotted ahead / solid behind"): splits the ridden line into a
+ * 'behind' part (drawn solid) and an 'ahead' part (drawn dotted) at the
+ * rider's nearest point on the path. Dotted-ahead is only earned when the
+ * rider's on-route position is itself earned — browse/finished, no rider, or
+ * off-route all fall back to a single whole-line feature (never invent a
+ * "behind" claim the honesty rule (D-025) hasn't earned).
+ */
+export function routeSplitFeatures(
+  a: RouteAsset, rider: { lat: number; lon: number } | null,
+  opts: { active: boolean; offRoute: boolean },
+): GeoFeatureCollection<LineStringGeometry, { seg: 'behind' | 'ahead' }> | null {
+  if (!a.path || a.path.length < 2) return null;
+  const path = a.path;
+  const toCoord = ([lat, lon]: [number, number]): GeoPosition => [lon, lat] as GeoPosition;
+  const whole = (seg: 'behind' | 'ahead'): GeoFeatureCollection<LineStringGeometry, { seg: 'behind' | 'ahead' }> => ({
+    type: 'FeatureCollection',
+    features: [{
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: path.map(toCoord) },
+      properties: { seg },
+    }],
+  });
+
+  if (!opts.active) return whole('behind');
+
+  const nearest = rider ? nearestOnPath(path, rider.lat, rider.lon) : null;
+  if (rider === null || opts.offRoute || nearest === null || nearest.distM > SPLIT_OFF_ROUTE_M) {
+    return whole('ahead');
+  }
+
+  const { seg, t } = nearest;
+  const p0 = path[seg];
+  const p1 = path[seg + 1];
+  const P: [number, number] = [p0[0] + (p1[0] - p0[0]) * t, p0[1] + (p1[1] - p0[1]) * t];
+
+  const behindCoords: GeoPosition[] = [...path.slice(0, seg + 1).map(toCoord), toCoord(P)];
+  const aheadCoords: GeoPosition[] = [toCoord(P), ...path.slice(seg + 1).map(toCoord)];
+
+  const features: GeoFeature<LineStringGeometry, { seg: 'behind' | 'ahead' }>[] = [];
+  if (behindCoords.length >= 2) {
+    features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: behindCoords }, properties: { seg: 'behind' } });
+  }
+  if (aheadCoords.length >= 2) {
+    features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: aheadCoords }, properties: { seg: 'ahead' } });
+  }
+  return { type: 'FeatureCollection', features };
+}
+
+/**
+ * One 2-point LineString per gate, centred on the gate, perpendicular to the
+ * local route heading, total ground length `2*halfLenM` (30 m default) —
+ * replaces the gate-ring circles (invisible on the night basemap: transparent
+ * fill + near-black ring on near-black tiles) with a short tick that stays
+ * visible in a dim theme-aware colour until the sector is scored (D-013/D-030
+ * honesty: unscored ticks carry no verdict hue, the caller supplies the dim
+ * colour via paint). Heading at gate i: from `path`/`gateIdx` when both are
+ * present and `gateIdx.length` matches the gate count (the real road either
+ * side of the gate); else the chord between the adjacent gates.
+ */
+export function gateTicksFeatureCollection(
+  a: RouteAsset, gateColours?: (string | null)[], halfLenM = 15,
+): GeoFeatureCollection<LineStringGeometry, GateProperties> {
+  const n = a.gates.length;
+  return {
+    type: 'FeatureCollection',
+    features: a.gates.map((g, i) => {
+      let heading: number;
+      if (a.path && a.gateIdx && a.gateIdx.length === a.gates.length) {
+        const j = a.gateIdx[i];
+        const jPrev = Math.max(j - 1, 0);
+        const jNext = Math.min(j + 1, a.path.length - 1);
+        const p0 = a.path[jPrev];
+        const p1 = a.path[jNext];
+        heading = bearingBetween(p0[0], p0[1], p1[0], p1[1]);
+      } else {
+        const iPrev = Math.max(i - 1, 0);
+        const iNext = Math.min(i + 1, n - 1);
+        const gPrev = a.gates[iPrev];
+        const gNext = a.gates[iNext];
+        heading = bearingBetween(gPrev.lat, gPrev.lon, gNext.lat, gNext.lon);
+      }
+      const perp = (heading + 90) * (Math.PI / 180);
+      const dLat = (halfLenM * Math.cos(perp)) / 111320;
+      const dLon = (halfLenM * Math.sin(perp)) / (111320 * Math.cos((g.lat * Math.PI) / 180));
+
+      // Same B-50 hardening as gatesFeatureCollection: '' is treated as null.
+      const raw = gateColours?.[i] ?? null;
+      const colour = raw === '' ? null : raw;
+      const properties: GateProperties = colour !== null
+        ? { name: g.name, colour }
+        : { name: g.name };
+
+      return {
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [g.lon - dLon, g.lat - dLat] as GeoPosition,
+            [g.lon + dLon, g.lat + dLat] as GeoPosition,
+          ],
+        },
+        properties,
+      };
+    }),
+  };
 }

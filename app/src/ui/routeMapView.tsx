@@ -10,8 +10,10 @@
  * position — projectToPixel() for the PNG rung, the raw lat/lon for the
  * MapLibre rung — never from chainage along the reference. Chainage would
  * pin it to the drawn line and make a detour look like a perfect lap. When
- * the rider is off the drawn route the dot goes grey (PNG) / theme-dim
- * (MapLibre) and says so.
+ * the rider is off the drawn route the dot INVERTS (WP-E: white fill/blue
+ * stroke on MapLibre, the PNG rung's analogous swap) and says so — updated
+ * from this file's original grey-out, which read as "lost" rather than
+ * "off-route but still tracked".
  *
  * B-51 (per-surface contract, 2026-08-17): the same map now serves TWO
  * personalities, picked by `variant`/`liveState`/`showRider` —
@@ -33,12 +35,13 @@
  * `mode` to 'free' so a new GPS fix never yanks the camera back, and a `fill`
  * prop lets the map fill its parent instead of taking a fixed height.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image, LayoutChangeEvent, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import manifest from '../../assets/routes/routes.json';
-import { cropFor, offRouteM, projectToPixel, type RouteAsset } from './routeMapMath.ts';
+import { cropFor, gateTickPx, offRouteM, projectToPixel, type RouteAsset } from './routeMapMath.ts';
 import {
-  bearingBetween, gatesFeatureCollection, metresBetween, riderFeature, routeBounds, routeLineFeature,
+  allGatesBounds, allGatesFeatureCollection, bearingBetween,
+  gateTicksFeatureCollection, metresBetween, nearestOnPath, riderFeature, routeBounds, routeLineFeature,
 } from './routeMapGeo.ts';
 import { patchMapStyle } from './routeMapStyle.ts';
 import { colors, radius } from './theme.ts';
@@ -80,9 +83,11 @@ const IMAGES: Record<string, number> = {
 /** Beyond this the rider is drawn as off-route rather than on the line. */
 const OFF_ROUTE_M = 120;
 
-/** D-031 light-basemap palette — must match 08_build_route_assets.py. */
+/** D-031 light-basemap palette — must match 08_build_route_assets.py.
+ * GROUND_FILL (the old gate-circle unscored fill, '#E8E4DA') is gone with
+ * WP-E — the PNG rung's unscored ticks use CASING instead (see gate tick
+ * rendering below). */
 const CASING = '#14120C';
-const GROUND_FILL = '#E8E4DA';
 
 /** MapLibre styles used for the tile rung, one per theme mode (Nathan
  * 2026-08-18): dark basemap at night (yellow line on black is the brand),
@@ -122,6 +127,21 @@ type RouteMapProps = {
   /** Default true. false skips the rider dot/source and the waiting-for-GPS
    * badge — browse surfaces have no rider by contract. */
   showRider?: boolean;
+  /** WP-B free-ride map: draws every gate of every route in `gateRouteIds`
+   * (or the full catalog when omitted/null) instead of one route's line +
+   * gates — no route line, no per-route OFF ROUTE badge (there is no single
+   * route to be off), camera FIT fits all the gates instead of one route's
+   * bounds. `routeId` is ignored on this rung. */
+  gatesOnly?: boolean;
+  /** gatesOnly only: which gate a fix has crossed, `{routeId, gateIndex}` —
+   * mirrors LiveEngineState.freeCrossings. Gets `colors.neutral`, the same
+   * "crossed" convention gateColours uses elsewhere. */
+  crossedGates?: { routeId: string; gateIndex: number }[];
+  /** gatesOnly only: restricts which routes' gates are drawn/fit — the WP-B
+   * coordinator addendum's directional filter (store/catalog.ts's
+   * freeRideRouteIds()). undefined/null = every catalog route (the
+   * deliberately-unfiltered both-ends-unknown free ride). */
+  gateRouteIds?: string[] | null;
 };
 
 export default function RouteMapView(props: RouteMapProps) {
@@ -191,8 +211,9 @@ function MapLibreRouteMap(props: RouteMapProps & {
   const { maplibre: M, onMapFailed } = props;
   const { t, mode: themeMode } = useTheme();
   const styleUrl = themeMode === 'night' ? MAP_STYLE_NIGHT : MAP_STYLE_DAY;
+  const gatesOnly = props.gatesOnly ?? false;
   const id = props.routeId ?? DEFAULT_ROUTE_ID;
-  const asset = id !== null ? ASSETS[id] : undefined;
+  const asset = !gatesOnly && id !== null ? ASSETS[id] : undefined;
   const h = props.height ?? 190;
 
   const variant = props.variant ?? 'live';
@@ -278,15 +299,52 @@ function MapLibreRouteMap(props: RouteMapProps & {
     ? (hideLabels ? patchedStyles.labelsOff : patchedStyles.labelsOn)
     : styleUrl;
 
-  if (!asset) return null;
+  // Reverted 2026-08-24 (Nathan, live device feedback on WP-E): the
+  // dotted-ahead/solid-behind split below used to call routeSplitFeatures()
+  // and paint the 'ahead' segment with a MapLibre line-dasharray. On-device
+  // that rendered as oversized yellow/black blobs whose size changed with
+  // zoom level (a real MapLibre dasharray quirk, not a one-off) rather than
+  // a clean dotted line — and since routeSplitFeatures treats "no rider yet"
+  // and "off-route" as a whole-route 'ahead' feature, the broken dashing was
+  // showing on the entire route before a GPS fix arrived (prestart), not
+  // just as a rare edge case. Back to a single solid line, full stop — the
+  // plain routeLineFeature() this app drew before WP-E's split existed.
+  // routeSplitFeatures() itself is untouched in routeMapGeo.ts (still
+  // exported, still tested) in case a future attempt at this wants it; this
+  // file just no longer calls it. Self-contained (does not read the
+  // `here`/`off` consts below, which are declared after the early-return
+  // guard) so this hook keeps a stable call order regardless of
+  // gatesOnly/asset on any render — Rules of Hooks: it must run
+  // unconditionally, before the guard below.
+  const routeFC = useMemo(() => {
+    if (gatesOnly || !asset) return null;
+    const feature = routeLineFeature(asset);
+    return feature ? { type: 'FeatureCollection' as const, features: [feature] } : null;
+  }, [asset, gatesOnly]);
+
+  // gatesOnly has no single route asset to bail out on — the !asset guard is
+  // only for the ordinary one-route rung.
+  if (!gatesOnly && !asset) return null;
 
   const here = props.lat !== null && props.lon !== null;
   // D-025: off-route reads from the TRUE fix, same call the PNG rung makes.
-  const off = here ? offRouteM(asset, props.lat as number, props.lon as number) > OFF_ROUTE_M : false;
+  // gatesOnly: no single route to be off (the OFF ROUTE badge below is
+  // suppressed the same way — there is nothing honest to measure against).
+  const off = !gatesOnly && here
+    ? offRouteM(asset!, props.lat as number, props.lon as number) > OFF_ROUTE_M
+    : false;
 
-  const routeLine = routeLineFeature(asset);
-  const gatesFC = gatesFeatureCollection(asset, props.gateColours);
-  const bounds = routeBounds(asset);
+  // gatesOnly (WP-B, postdates this WP's brief): still one gate-rings circle
+  // layer, drawing every route's gates at once via allGatesFeatureCollection
+  // — a per-route tick heading doesn't generalize cleanly across a mixed
+  // multi-route field, so this rung is deliberately left as circles rather
+  // than guessing at a multi-route tick design (flagged in the handoff
+  // notes). The single-route rung below gets the WP-E tick treatment.
+  const gatesFC = gatesOnly
+    ? allGatesFeatureCollection(ASSETS, props.crossedGates, colors.neutral, props.gateRouteIds)
+    : null;
+  const gateTicksFC = gatesOnly ? null : gateTicksFeatureCollection(asset!, props.gateColours);
+  const bounds = gatesOnly ? allGatesBounds(ASSETS, props.gateRouteIds) : routeBounds(asset!);
   const boundsTuple: [number, number, number, number] | null = bounds
     ? [bounds.minLon, bounds.minLat, bounds.maxLon, bounds.maxLat]
     : null;
@@ -295,7 +353,9 @@ function MapLibreRouteMap(props: RouteMapProps & {
     ? [props.lon as number, props.lat as number]
     : bounds
       ? [(bounds.minLon + bounds.maxLon) / 2, (bounds.minLat + bounds.maxLat) / 2]
-      : [asset.gates[0].lon, asset.gates[0].lat];
+      // Leuven-area fallback: gatesOnly with a genuinely empty filtered
+      // route set (a landmark pair with no ways in that direction yet).
+      : gatesOnly ? [4.68, 50.85] : [asset!.gates[0].lon, asset!.gates[0].lat];
 
   // 'free' (Cycle 020, after a user drag/pinch): no center/zoom/bounds/bearing
   // at all, so a new GPS fix never yanks the camera back under the rider.
@@ -353,8 +413,11 @@ function MapLibreRouteMap(props: RouteMapProps & {
         touchPitch={false}
       >
         <M.Camera {...cameraProps} />
-        {routeLine ? (
-          <M.GeoJSONSource id="route" data={routeLine}>
+        {/* Reverted 2026-08-24: one solid line, casing beneath a yellow
+            core, the whole route — see the routeFC comment above for why
+            the dotted-ahead split was pulled back out. */}
+        {routeFC ? (
+          <M.GeoJSONSource id="route" data={routeFC}>
             <M.Layer id="route-casing" type="line"
               paint={{ 'line-color': CASING, 'line-width': 7 }}
               layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
@@ -363,20 +426,57 @@ function MapLibreRouteMap(props: RouteMapProps & {
               layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
           </M.GeoJSONSource>
         ) : null}
-        <M.GeoJSONSource id="gates" data={gatesFC}>
-          <M.Layer id="gate-rings" type="circle" paint={{
-            'circle-radius': 6,
-            'circle-color': ['case', ['has', 'colour'], ['get', 'colour'], 'rgba(0,0,0,0)'],
-            'circle-stroke-color': CASING,
-            'circle-stroke-width': 2,
-          }} />
-        </M.GeoJSONSource>
+        {gatesOnly ? (
+          <M.GeoJSONSource id="gates" data={gatesFC!}>
+            <M.Layer id="gate-rings" type="circle" paint={{
+              'circle-radius': 6,
+              'circle-color': ['case', ['has', 'colour'], ['get', 'colour'], 'rgba(0,0,0,0)'],
+              'circle-stroke-color': CASING,
+              'circle-stroke-width': 2,
+            }} />
+          </M.GeoJSONSource>
+        ) : (
+          // WP-E: circles replaced with a short tick perpendicular to the
+          // route. Reverted 2026-08-24 (Nathan, live device feedback): the
+          // unscored fallback used to be t.textDim (a dim theme-aware grey)
+          // which read as almost invisible on device — now every tick gets
+          // the same casing+core treatment as the route line itself
+          // (gate-ticks-casing: a black outline, drawn first/underneath;
+          // gate-ticks: a yellow core, colors.neutral, same as the route
+          // line's own colour) until the sector is scored.
+          // Opus verification catch (2026-08-24, same pass): colors.neutral
+          // IS the yellow tier's colour (chips.tsx's YELLOW_TIER), so a gate
+          // genuinely scored to the ordinary/yellow tier would otherwise be
+          // pixel-identical to an unscored gate — a real D-013/D-030 honesty
+          // regression, not just a style nit (a route with no scored history
+          // must never look like a scored ordinary lap; chips.tsx makes the
+          // same call for 'neutral'). Unscored ticks stay yellow (Nathan
+          // asked for that, and the casing alone already fixes the
+          // visibility complaint) but thinner and slightly translucent, so a
+          // genuinely-earned tier colour (full width, full opacity — any
+          // tier, yellow included) still reads as visibly different/bolder.
+          <M.GeoJSONSource id="gate-ticks" data={gateTicksFC!}>
+            <M.Layer id="gate-ticks-casing" type="line"
+              paint={{ 'line-color': CASING, 'line-width': 5 }}
+              layout={{ 'line-cap': 'butt' }} />
+            <M.Layer id="gate-ticks" type="line" paint={{
+              'line-color': ['case', ['has', 'colour'], ['get', 'colour'], colors.neutral],
+              'line-width': ['case', ['has', 'colour'], 3, 2],
+              'line-opacity': ['case', ['has', 'colour'], 1, 0.6],
+            }} layout={{ 'line-cap': 'butt' }} />
+          </M.GeoJSONSource>
+        )}
         {showRider && here ? (
           <M.GeoJSONSource id="rider" data={riderFeature(props.lat as number, props.lon as number)}>
+            {/* WP-E: the rider dot no longer shares colors.neutral with the
+                route line (a yellow dot on a yellow line is poor contrast) —
+                on-route is solid riderBlue/white, off-route is inverted
+                (hollow white/riderBlue ring), same convention on both
+                rungs. */}
             <M.Layer id="rider-dot" type="circle" paint={{
               'circle-radius': 7,
-              'circle-color': off ? t.textDim : colors.neutral,
-              'circle-stroke-color': CASING,
+              'circle-color': off ? '#FFFFFF' : colors.riderBlue,
+              'circle-stroke-color': off ? colors.riderBlue : '#FFFFFF',
               'circle-stroke-width': 2,
             }} />
           </M.GeoJSONSource>
@@ -406,7 +506,9 @@ function MapLibreRouteMap(props: RouteMapProps & {
       </View>
       <Credit rung="maplibre" interactive={interactiveCredit} />
       {off ? (
-        <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card }]}>OFF ROUTE</Text>
+        <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card }]}>
+          {'OFF ROUTE · >120 m from the route line'}
+        </Text>
       ) : null}
       {showRider && !here ? (
         <Text style={[st.badge, { color: t.textDim, backgroundColor: t.race.card }]}>waiting for GPS</Text>
@@ -449,6 +551,29 @@ function PngRouteMap(props: RouteMapProps) {
   const dimmed = variant === 'live' && liveState === 'stopped';
   const interactiveCredit = !locked;
 
+  // WP-B: this rung is a single pre-rendered PNG per route (see the file
+  // header) — it cannot honestly draw a 20-route (or filtered-but-still-
+  // multi-route) gate field. Say so plainly rather than drawing one route's
+  // PNG and pretending it is the whole gates-only picture. The phone runs
+  // MapLibre since build 4, so this degraded frame is the fallback rung's
+  // fallback — reachable only when the native module truly is not there.
+  const gatesOnly = props.gatesOnly ?? false;
+  if (gatesOnly) {
+    return (
+      <View style={[
+        st.frame,
+        props.fill ? { flex: 1, alignSelf: 'stretch' } : { height: h },
+        { backgroundColor: t.race.bg, borderColor: t.cardBorder },
+        dimmed && st.dimmedFrame,
+      ]}>
+        <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card }]}>
+          gates map needs the tile map
+        </Text>
+        <Credit rung="png" interactive={interactiveCredit} />
+      </View>
+    );
+  }
+
   if (!asset) return null;
 
   const onLayout = (e: LayoutChangeEvent) => {
@@ -462,6 +587,19 @@ function PngRouteMap(props: RouteMapProps) {
   const off = here && props.lat !== null && props.lon !== null
     ? offRouteM(asset, props.lat, props.lon) > OFF_ROUTE_M
     : false;
+
+  // WP-E dotted-ahead, PNG rung: the route line is BAKED into the PNG, so
+  // there is no way to split it — accepted rung degradation. In the
+  // imgFailed segment fallback ONLY, dim the segments from the rider's
+  // nearest-on-path point onward (opacity 0.4) as the poor man's dotted-
+  // ahead, mirroring the MapLibre rung's earned-position rule: only when
+  // live/active and genuinely on-route (never invent a "behind" claim off-
+  // route or when browsing/finished — same honesty rule as routeSplitFeatures).
+  const routeActive = variant === 'live' && liveState !== 'finished';
+  const splitSeg = imgFailed && routeActive && !off && asset.path
+    && props.lat !== null && props.lon !== null
+    ? nearestOnPath(asset.path, props.lat, props.lon)?.seg ?? null
+    : null;
 
   const crop = box.w > 0
     ? cropFor(asset, here ?? { px: asset.w / 2, py: asset.h / 2 }, box.w, box.h, zoom)
@@ -501,35 +639,52 @@ function PngRouteMap(props: RouteMapProps) {
               const y1 = a1.py * crop.scale + crop.translateY;
               const len = Math.hypot(x1 - x0, y1 - y0);
               const ang = (Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI;
+              // WP-E poor-man's dotted-ahead: segments from the rider's
+              // nearest-on-path point onward read as "suggestion" too, same
+              // as the MapLibre rung's dashed ahead-line.
+              const dimmed = splitSeg !== null && i >= splitSeg;
               return (
                 <View key={i} style={{
                   position: 'absolute', left: x0, top: y0 - 1.5,
                   width: len, height: 3, backgroundColor: colors.neutral,
+                  opacity: dimmed ? 0.4 : 1,
                   transform: [{ translateX: 0 }, { rotate: `${ang}deg` }],
                   transformOrigin: 'left center',
                 }} />
               );
             })
           )}
+          {/* WP-E: circles replaced with a rotated tick bar perpendicular to
+              the route (gateTickPx), same reasoning as the MapLibre rung —
+              though this PNG is a light basemap in both themes (D-031) so
+              the dim-neutral colour here is CASING (near-black), not
+              t.textDim. len is clamped to >=10px so a tick stays visible
+              even at zoom 1 (whole-route FIT). */}
           {asset.gates.map((g, i) => {
             const col = props.gateColours?.[i] ?? null;
+            const tick = gateTickPx(asset, i);
+            const x0 = tick.x0 * crop.scale + crop.translateX;
+            const y0 = tick.y0 * crop.scale + crop.translateY;
+            const x1 = tick.x1 * crop.scale + crop.translateX;
+            const y1 = tick.y1 * crop.scale + crop.translateY;
+            const len = Math.max(Math.hypot(x1 - x0, y1 - y0), 10);
+            const ang = (Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI;
             return (
-              <View key={g.name} style={[st.gate, {
-                left: g.px * crop.scale + crop.translateX - 6,
-                top: g.py * crop.scale + crop.translateY - 6,
-                // D-031: the asset is a light real map in BOTH themes, so the
-                // ring is dark. A white ring vanished into beige.
-                backgroundColor: col ?? GROUND_FILL,
-                borderColor: CASING,
-              }]} />
+              <View key={g.name} style={{
+                position: 'absolute', left: x0, top: y0 - 1.5,
+                width: len, height: 3,
+                backgroundColor: col ?? CASING,
+                transform: [{ translateX: 0 }, { rotate: `${ang}deg` }],
+                transformOrigin: 'left center',
+              }} />
             );
           })}
           {here ? (
             <View style={[st.dot, {
               left: here.px * crop.scale + crop.translateX - 7,
               top: here.py * crop.scale + crop.translateY - 7,
-              backgroundColor: off ? t.textDim : colors.neutral,
-              borderColor: CASING,
+              backgroundColor: off ? '#FFFFFF' : colors.riderBlue,
+              borderColor: off ? colors.riderBlue : '#FFFFFF',
             }]} />
           ) : null}
         </>
@@ -557,7 +712,9 @@ function PngRouteMap(props: RouteMapProps) {
       ) : null}
       {!imgFailed && img ? <Credit rung="png" interactive={interactiveCredit} /> : null}
       {off ? (
-        <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card }]}>OFF ROUTE</Text>
+        <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card }]}>
+          {'OFF ROUTE · >120 m from the route line'}
+        </Text>
       ) : null}
       {showRider && here === null ? (
         <Text style={[st.badge, { color: t.textDim, backgroundColor: t.race.card }]}>waiting for GPS</Text>
@@ -571,8 +728,10 @@ const st = StyleSheet.create({
   // "stopped" (a red light): tight and dim, not loosened — a light is not a
   // finish (design contract A).
   dimmedFrame: { opacity: 0.4 },
-  gate: { position: 'absolute', width: 12, height: 12, borderRadius: 12, borderWidth: 2 },
-  dot: { position: 'absolute', width: 14, height: 14, borderRadius: 14, borderWidth: 2, borderColor: '#fff' },
+  // WP-E: gate ticks are drawn as inline-styled bars (rotation/length vary
+  // per gate) rather than a shared style — st.gate (the old fixed 12x12
+  // circle) is gone.
+  dot: { position: 'absolute', width: 14, height: 14, borderRadius: 14, borderWidth: 2 },
   zoomBar: { position: 'absolute', right: 6, top: 6, gap: 5 },
   zoomBtn: {
     width: 30, height: 30, borderRadius: 8, borderWidth: 1,

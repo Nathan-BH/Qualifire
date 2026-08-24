@@ -1,13 +1,13 @@
 # Qualifire app — developer setup (for Nathan's PC)
 
-**Status (cycle 005): pipeline VERIFIED on the phone (dev build 944bcc6f +
-dev-server loop, 2026-08-14). Phase-1 tracking code now written but UNTESTED
-ON DEVICE.** Proven code in `app/`: `core/` (see `core/PARITY.md`) and the
-PC→phone pipeline itself. New this cycle: `src/location/` (foreground-service
-GPS → storage), `src/ui/` (Record + Rides screens), rewritten `App.tsx`.
-Storage (`src/storage/`) is the Backend Dev's module — until it lands,
-`npm run tsc` / bundling fails with "Cannot find module '../storage'"
-(expected, two importers: `src/location/index.ts`, `src/ui/RidesScreen.tsx`).
+**Status (2026-08-24, cycle 024): pipeline proven — the app runs on Nathan's
+phone as a dev client (build 4, MapLibre + OpenFreeMap live on every screen,
+D-041), plus a rebuildable standalone "Qualifire Preview" APK beside it
+(D-043).** `core/` (see `core/PARITY.md`), `src/storage/`, `src/store/`, and
+`src/live/` — the full-catalog pick-bias lock engine — are all landed. The
+headless suite currently stands at 239 tests: 236 pass, 0 fail, 3 skip (run
+2026-08-24) — run it yourself with `node --experimental-strip-types
+tests/run.ts`; `npx tsc --noEmit` is clean.
 
 ## REBUILD REQUIRED? Yes — once (build 2, 2026-08-15).
 

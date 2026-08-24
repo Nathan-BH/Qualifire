@@ -230,6 +230,60 @@ test('resultsstore: backfill derives a result matching a direct deriveRideResult
   );
 });
 
+test('lastRide: WP-B fix B2 — initRideHistory excludes mode:"free" index entries from backfill, even when status is "ended" (D-025)', async () => {
+  lastRide.resetRecordedForTests();
+  resultsStore.resetResultsStoreForTests();
+  const fs = createMemoryFsAdapter();
+  const fx = loadFixture('clean_morning');
+
+  // Two ended rides with IDENTICAL fix data — a clean lap of Morning that
+  // backfillMissingResults would happily derive a route PB from. The only
+  // difference is the index entry's `mode`. If B2's filter is missing or
+  // broken, BOTH rides get backfilled and freeRideId ends up with a
+  // 'Morning' result — exactly the leak the inspector flagged as HIGH.
+  const freeRideId = 'freeride-b2';
+  const routeRideId = 'routeride-b2';
+  await writeRideFile(fs, freeRideId, fx.fixes.t, fx.fixes.lat, fx.fixes.lon);
+  await writeRideFile(fs, routeRideId, fx.fixes.t, fx.fixes.lat, fx.fixes.lon);
+  await fs.writeText('index.json', JSON.stringify({
+    schemaVersion: 1,
+    rides: [
+      { rideId: freeRideId, file: `${freeRideId}.jsonl`, startMs: fx.fixes.t[0] * 1000,
+        endMs: fx.fixes.t[fx.fixes.t.length - 1] * 1000, nFixes: fx.fixes.t.length,
+        status: 'ended', mode: 'free' },
+      // No `mode` field at all — the back-compat case (every ride recorded
+      // before B2, and B2's own rebuildIndex() recovery path) must still
+      // backfill exactly as before.
+      { rideId: routeRideId, file: `${routeRideId}.jsonl`, startMs: fx.fixes.t[0] * 1000,
+        endMs: fx.fixes.t[fx.fixes.t.length - 1] * 1000, nFixes: fx.fixes.t.length,
+        status: 'ended' },
+    ],
+  }));
+
+  await resultsStore.initResultsStore(fs);
+  await lastRide.initRideHistory(fs);
+  // initRideHistory's own migration/recovery backfill runs fire-and-forget
+  // (a `void (async () => {...})()` — see its doc comment: "never blocks
+  // boot"). Every step in that chain (fs reads/writes, backfillMissingResults
+  // itself) resolves on the microtask queue with the in-memory adapter (no
+  // real I/O delay) — one macrotask tick drains it, same trick as flushing a
+  // promise chain in any Node test. flushResultWrites() then catches any
+  // still-pending result-file write.
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  await resultsStore.flushResultWrites();
+
+  assert(resultsStore.getStoredResult(freeRideId) === null,
+    'a free-mode ended ride must never be backfilled into a stored (route) result');
+  const routeStored = resultsStore.getStoredResult(routeRideId);
+  assert(routeStored !== null, 'a mode-less (back-compat) ended ride must still backfill normally');
+  assert(routeStored!.routeId === 'Morning', `routeId ${routeStored!.routeId}`);
+  assert(!lastRide.recordedResults().some((x) => x.rideId === freeRideId),
+    'a free ride must never enter the RECORD-tab comparison window (D-025)');
+
+  lastRide.resetRecordedForTests();
+  resultsStore.resetResultsStoreForTests();
+});
+
 /**
  * The real shape of the WP-A1 acceptance-rule defect (adversarial review
  * 2026-08-23). detour_eveningb is a REAL archived EveningB commute that
