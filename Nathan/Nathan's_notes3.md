@@ -55,3 +55,9 @@ Some questions I have
   * Does that make sense ?
 * 2\) if you have genuinely two new positions, we need to think what we want to do then, just add it as a next task so we come back later on it
 
+20260825
+
+* If you look at this sequence"`Morning`, `MorningB`, `EveningA`, `EveningB`, `HomeChurch`, `ChurchHome`, `HomeFosh`, `FoshHome`" it is inconsistent
+
+  * Lets replace the first morning and evening names with more consistent "HomeWorkA" type names.
+
