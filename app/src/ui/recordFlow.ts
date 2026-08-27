@@ -29,7 +29,7 @@ export type RecordPhase = 'setup' | 'armed' | 'running' | 'ending';
 const LEGAL_TRANSITIONS: Record<RecordPhase, ReadonlySet<RecordPhase>> = {
   setup: new Set<RecordPhase>(['armed', 'running']), // running: relaunch recovery restores a session directly
   armed: new Set<RecordPhase>(['setup', 'running']),
-  running: new Set<RecordPhase>(['ending', 'setup']), // setup: recovery declined / stop failure fallback
+  running: new Set<RecordPhase>(['ending', 'setup']), // setup: recovery declined / stop failure fallback / discard
   ending: new Set<RecordPhase>(['setup']),
 };
 
@@ -41,7 +41,7 @@ const LEGAL_TRANSITIONS: Record<RecordPhase, ReadonlySet<RecordPhase>> = {
  *   running -> ending END pressed, save done, reverse anim now playing
  *   ending -> setup   reverse anim finished
  *   setup -> running  relaunch recovery: a live session was found on mount
- *   running -> setup  recovery declined, or stopTracking() threw on END
+ *   running -> setup  recovery declined, stopTracking() threw on END, or DISCARD (ride deleted, nothing saved)
  * Everything else (including same-phase "transitions") is illegal. */
 export function canTransition(from: RecordPhase, to: RecordPhase): boolean {
   return LEGAL_TRANSITIONS[from].has(to);

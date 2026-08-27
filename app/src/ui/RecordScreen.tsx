@@ -41,8 +41,10 @@ import { metresBetween } from './routeMapGeo';
 import { useSettings } from './settings';
 import { chipColors, type Tier } from './chips';
 import { fmt, ghostsFor, lapValues, sectorValues, tierFor } from './colourModel';
-import { rememberRide } from './lastRide';
+import { dropRecorded, rememberRide } from './lastRide';
 import { rememberFreeRide } from '../store/freeRides';
+import { deleteRide } from '../storage';
+import { removeStoredResult } from '../store/resultsStore';
 import catalogJson from '../store/catalog.seed.json';
 import { freeRideRouteIds, landmarkAt } from '../store/catalog';
 import { routeLabel } from '../store/defaultRoute';
@@ -386,6 +388,66 @@ export default function RecordScreen({
     }
   }, []);
 
+  // Discard (Cycle 025, Nathan 2026-08-26): end WITHOUT saving. Reuses the
+  // RIDES-tab deletion path verbatim (deleteRide + removeStoredResult +
+  // dropRecorded — RidesScreen.onDelete) so there is exactly ONE deletion
+  // mechanism. A discarded ride is REALLY deleted, not hidden ("I only delete
+  // rides that I genuinely did not do or should not count"). stopTracking()
+  // must run first: deleteRide refuses while the ride is in storage's live
+  // set, and endRide (inside stopTracking) is what clears it.
+  const onDiscard = useCallback(() => {
+    const s = sessionRef.current;
+    if (!s) return;
+    Alert.alert(
+      'Discard ride?',
+      'This stops recording and permanently removes the raw trace. Nothing is saved.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: async () => {
+            setBusy(true);
+            try {
+              await stopTracking();
+            } catch (e) {
+              // Mirror onEnd's failure stance: stay where the ride really is.
+              Alert.alert('Could not stop cleanly', e instanceof Error ? e.message : String(e));
+              setPhase(sessionRef.current ? 'running' : 'setup');
+              setBusy(false);
+              return;
+            }
+            // Tracking is stopped. No rememberRide/rememberFreeRide, no
+            // 'ending' phase, no reversed mark, no Result handoff — nothing
+            // was kept, so fold straight back to setup (running -> setup is
+            // legal: recordFlow.ts). Result's "last ride" intentionally still
+            // shows the previous finished ride, never the discarded one.
+            setSession(null);
+            setRecovered(false);
+            setPauseMenu(false);
+            setLastSummary(null);
+            setPhase('setup');
+            try {
+              await deleteRide(s.rideId);
+              // Defensive mirrors of RidesScreen.onDelete: no result sidecar
+              // or in-session entry is written on this path (rememberRide was
+              // skipped), but never risk leaving one orphaned.
+              await removeStoredResult(s.rideId);
+              dropRecorded(s.rideId);
+            } catch (e) {
+              Alert.alert(
+                'Could not discard',
+                `${e instanceof Error ? e.message : String(e)}\nThe ride was ended and kept instead — you can delete it from RIDES.`,
+              );
+            } finally {
+              setBusy(false);
+            }
+          },
+        },
+      ],
+    );
+  }, []);
+
   const recording = session != null;
   const hasFix = status.lastLat !== null && status.lastLon !== null;
   const stationary = recording && hasFix && lastMovedRef.current !== null
@@ -723,7 +785,10 @@ export default function RecordScreen({
         )}
         {/* PAUSE → RESUME | END (Cycle 020): a safety catch, not a real pause
             — the recording service and lap clock keep running underneath
-            (D-042). Amber, no red (D-013). */}
+            (D-042). Amber, no red (D-013). Cycle 025 (Nathan 2026-08-26): the
+            expanded menu also carries a quiet third action, Discard ride,
+            which reuses the RIDES-tab deletion path verbatim (see onDiscard
+            below) — a discarded ride is really deleted, never hidden. */}
         {!pauseMenu ? (
           <Pressable
             style={[styles.stopSlim, busy && styles.busy]}
@@ -734,24 +799,31 @@ export default function RecordScreen({
             <Text style={styles.stopSlimSub}>recording continues · resume or end</Text>
           </Pressable>
         ) : (
-          <View style={{ flexDirection: 'row', gap: 10, alignSelf: 'stretch' }}>
+          <>
+            <View style={{ flexDirection: 'row', gap: 10, alignSelf: 'stretch' }}>
+              <Pressable
+                style={[styles.stopSlim, { flex: 1 }, busy && styles.busy]}
+                disabled={busy}
+                onPress={() => { noteButtonPress('resume'); setPauseMenu(false); }}
+              >
+                <Text style={styles.stopSlimText} numberOfLines={1}>RESUME</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.stopSlim, { flex: 1 }, busy && styles.busy]}
+                disabled={busy}
+                onPress={onEnd}
+              >
+                <Text style={styles.stopSlimText} numberOfLines={1}>END</Text>
+              </Pressable>
+            </View>
             <Pressable
-              style={[styles.stopSlim, { flex: 1 }, busy && styles.busy]}
+              style={[styles.discardBar, busy && styles.busy]}
               disabled={busy}
-              onPress={() => { noteButtonPress('resume'); setPauseMenu(false); }}
+              onPress={onDiscard}
             >
-              <Text style={styles.stopSlimText}>RESUME</Text>
-              <Text style={styles.stopSlimSub}>back to the ride</Text>
+              <Text style={styles.discardBarText}>Discard ride</Text>
             </Pressable>
-            <Pressable
-              style={[styles.stopSlim, { flex: 1 }, busy && styles.busy]}
-              disabled={busy}
-              onPress={onEnd}
-            >
-              <Text style={styles.stopSlimText}>END</Text>
-              <Text style={styles.stopSlimSub}>ends & saves</Text>
-            </Pressable>
-          </View>
+          </>
         )}
       </View>
     );
@@ -1076,8 +1148,23 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
     gap: 2,
   },
   redFlagText: { color: colors.amber, fontSize: 15, fontWeight: '800', letterSpacing: 2 },
-  stopSlimText: { color: colors.amber, fontSize: 18, fontWeight: '800', letterSpacing: 4 },
+  // flexShrink + numberOfLines at the call sites: a stopSlim button's content
+  // can now never push past its flex:1 width, whatever future copy does
+  // (2026-08-25 screenshot: "ESUME back to the rid" off both screen edges).
+  stopSlimText: { color: colors.amber, fontSize: 18, fontWeight: '800', letterSpacing: 4, flexShrink: 1 },
   stopSlimSub: { color: t.textDim, fontSize: 11, letterSpacing: 1 },
+  // Discard = the quiet third action under RESUME | END: dim border + dim text
+  // (RidesScreen's own Delete affordance tone), never amber, never red (D-013).
+  discardBar: {
+    alignSelf: 'stretch',
+    borderRadius: radius.btn,
+    borderWidth: 1,
+    borderColor: t.cardBorder,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    paddingVertical: 9,
+  },
+  discardBarText: { color: t.textDim, fontSize: 13, fontWeight: '700', letterSpacing: 1 },
   busy: { opacity: 0.5 },
   bigBtnText: { color: t.text, fontSize: 40, fontWeight: '800', letterSpacing: 5 },
   startText: { color: t.onAccent },
