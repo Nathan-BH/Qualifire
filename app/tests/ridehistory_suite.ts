@@ -101,6 +101,19 @@ test('ridehistory: buildRideRows rank is null below MIN_HISTORY (4 comparable ot
     `rank must be null with only ${others.length} others (< MIN_HISTORY) — got ${JSON.stringify(rows[0].rank)}`);
 });
 
+test('B-117: a tripwire-demoted lap never takes a position in RIDES rows', () => {
+  const metas: RideMeta[] = [{ rideId: 'demoted', startMs: 9000, endMs: 9500, nFixes: 10 }];
+  const demoted: RideResult = {
+    ...makeResult('demoted', 'Morning', 9000, { movingS: 100, rawS: 100, quality: 'clean' }),
+    tripwireDemoted: true,
+  };
+  const others = [190, 195, 205, 210, 215]; // >= MIN_HISTORY, so only the gate can stop a rank
+  const rows = buildRideRows(metas, () => demoted, () => others);
+  assert(rows[0].rank === null,
+    `a tripwireDemoted lap must not rank even with a real movingS — got ${JSON.stringify(rows[0].rank)}`);
+  assert(rows[0].lapLabel === fmt(100, 1), 'the time itself still displays honestly');
+});
+
 test('ridehistory: buildRideRows — an estimated lap is ~-prefixed raw, never gets lapS or a rank', () => {
   const metas: RideMeta[] = [{ rideId: 'r1', startMs: 1000, endMs: 2000, nFixes: 10 }];
   const result = makeResult('r1', 'Morning', 1000, { movingS: null, rawS: 900, quality: 'estimated' }, []);

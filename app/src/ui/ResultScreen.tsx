@@ -25,8 +25,8 @@ import seedResultsJson from '../store/results.seed.json';
 import { storedResults } from '../store/resultsStore.ts';
 import type { RideResult } from '../store/types.ts';
 import { TRACK_IDS } from '../live/refs.ts';
-import { MIN_HISTORY, allTimeBestLapS, fmt, ghostsFor, lapValues, positionAmong, sectorValues,
-  tierFor, type UiTier } from './colourModel.ts';
+import { MIN_HISTORY, allTimeBestLapS, fmt, lapValues, ownLapBarredFromRanking, positionAmong,
+  rankedCountFor, rankingPoolFor, sectorValues, tierFor, type UiTier } from './colourModel.ts';
 import { chipColors } from './chips.tsx';
 import { getLastRideOrStored, type FinishedRide } from './lastRide.ts';
 import { lastFreeRide } from '../store/freeRides.ts';
@@ -50,9 +50,13 @@ function tierColour(tier: UiTier, t: PaddockTheme): string {
 }
 
 /** The rank line under the big lap figure — D-028's "an estimated lap never
- * ranks" and D-008's MIN_HISTORY floor, both stated in plain words. */
-function rankLineFor(ride: FinishedRide, hist: number[]): string {
+ * ranks" and D-008's MIN_HISTORY floor, both stated in plain words. `hist` is
+ * the previous-9 window (D-045 ruling 2), so the field is always "of ≤10" —
+ * the same pool the PB list below renders. `barred` is the store-ranks() gate
+ * (B-117): a stored lap the store refuses must not be ranked here either. */
+function rankLineFor(ride: FinishedRide, hist: number[], barred: boolean): string {
   if (ride.lapMovingS !== null) {
+    if (barred) return 'no rank — this lap is excluded from the comparison';
     if (hist.length >= MIN_HISTORY) {
       const { pos, of } = positionAmong(ride.lapMovingS, hist);
       return `P${pos} of ${of} on this route`;
@@ -90,7 +94,12 @@ function routeIdsInHistory(): string[] {
 
 function PbDetail(props: { routeId: string; lastRideId: string | null; showRanking: boolean; t: PaddockTheme }) {
   const { routeId, lastRideId, showRanking, t } = props;
-  const detail = buildPbDetail(ghostsFor(routeId), lastRideId);
+  // D-045 ruling 2: the SAME pool the header's rank line describes — the
+  // judged ride + its 9 most recent previous rides — so list and header can
+  // never disagree again (cycle 025's "P10 of 11 vs P9"). For a route the
+  // last ride was not on, lastRideId matches nothing and this is the plain
+  // last-WINDOW_N display window.
+  const detail = buildPbDetail(rankingPoolFor(routeId, lastRideId), lastRideId);
   return (
     <View style={st.pbDetail}>
       {detail.ranking.length > 0 ? (
@@ -147,8 +156,15 @@ export default function ResultScreen() {
   // uses (rideHistoryModel.ts's lapCellLabel, shared verbatim) so a
   // 'missed'-quality lap (movingS null, not estimated) reads as "no lap" here
   // too, instead of falling through to a bare, unearned-looking `rawS`.
+  // HEADLINE-TIME DEFINITION (pinned 2026-08-27, cycle 025): this figure is the
+  // GATED lap — START→FINISH gate-crossing times (moving time; live/engine.ts
+  // scores rawS = FINISH event time − START event time, derive.ts identically
+  // offline) — NEVER the button-to-button recording duration, which can differ
+  // by minutes. Do not "simplify" this to the ride's start/stop timestamps.
   const lapLabel = ride ? lapCellLabel(ride.lapMovingS, ride.estimated, ride.lapRawS) : '–';
-  const rankLine = ride ? rankLineFor(ride, rideLaps) : '';
+  const rankLine = ride
+    ? rankLineFor(ride, rideLaps, ownLapBarredFromRanking(ride.routeId, ride.rideId))
+    : '';
 
   // B-57: gate colours for the "view trace" browse map — mirrors
   // RecordScreen's gateColours memo, but keyed off the finished ride's OWN
@@ -167,7 +183,10 @@ export default function ResultScreen() {
     ]
     : [];
 
-  const pbRows = buildPbRows(routeIdsInHistory(), allTimeBestLapS, (r) => ghostsFor(r).length);
+  // rankedCountFor, not the window length: "N rides on file" must count what
+  // is actually on file, never the window cap (cycle 025 — the old "10 rides
+  // on file" caption was the window size and contradicted the header).
+  const pbRows = buildPbRows(routeIdsInHistory(), allTimeBestLapS, rankedCountFor);
   const [openRoute, setOpenRoute] = useState<string | null>(() => {
     if (ride && pbRows.some((r) => r.routeId === ride.routeId)) return ride.routeId;
     return pbRows[0]?.routeId ?? null;

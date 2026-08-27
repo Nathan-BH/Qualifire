@@ -910,6 +910,10 @@ export class LiveEngine {
       );
       const estimated =
         anyDirty || evStart === null || evStart.estimated || evFin.estimated;
+      // HEADLINE-TIME DEFINITION (pinned 2026-08-27, cycle 025): the lap is
+      // GATED — START gate event time to FINISH gate event time — never the
+      // button-to-button recording duration. ResultScreen's big figure and
+      // store/derive.ts's offline lap both rest on this line.
       const rawS = evStart ? evFin.time - evStart.time : null;
       let stoppedS: number | null = null;
       let movingS: number | null = null;

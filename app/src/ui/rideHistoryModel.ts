@@ -23,6 +23,7 @@ import type { RideResult } from '../store/types.ts';
 import { routeLabel } from '../store/defaultRoute.ts';
 import { MIN_HISTORY, fmt, positionAmong, tierFor, type UiTier } from './colourModel.ts';
 import { towerDate } from './towerModel.ts';
+import { ranks } from '../store/results.ts';
 
 export { routeLabel };
 
@@ -107,7 +108,11 @@ export function buildRideRows(
       const lapLabel = lapCellLabel(lapS, lap.quality === 'estimated', lap.rawS);
       const quality = lap.quality === 'clean' ? null : lap.quality;
       let rank: { pos: number; of: number } | null = null;
-      if (lapS !== null) {
+      // B-117 closed (cycle 025): the row's own eligibility is the store's
+      // ranks(), not a movingS-only lookalike — a tripwire-demoted lap must
+      // not take a position. The history side was already ranks()-filtered
+      // via ghostsFor; this closes the judged-ride side.
+      if (lapS !== null && ranks(result)) {
         const hist = laps(routeId, m.rideId);
         // D-008/D-028: too little comparable history is NO verdict, not a
         // generous one — an estimated lap never reaches here at all (lapS is

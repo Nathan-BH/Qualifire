@@ -26,8 +26,10 @@ registerHooks({
     return nextLoad(url, context);
   },
 });
-const { fmt, ghostsFor, lapValues, positionAmong, sectorValues, tierFor, MIN_HISTORY, WINDOW_N } =
-  await import('../src/ui/colourModel.ts');
+const {
+  fmt, ghostsFor, lapValues, positionAmong, sectorValues, tierFor, MIN_HISTORY, WINDOW_N,
+  WINDOW_PREV, rankingPoolFor, rankedCountFor,
+} = await import('../src/ui/colourModel.ts');
 const { getLiveTowerPosition } = await import('../src/live/towerSource.ts');
 const { getLastRide, recordedResults, rememberRide, resetRecordedForTests } =
   await import('../src/ui/lastRide.ts');
@@ -165,15 +167,14 @@ test('B-44: a just-recorded ride must not sit inside its own comparison history'
     `today's own ride was not excluded from its own history (B-44) -- got tier for hist=[${hist.join(', ')}]`,
   );
   assert(
-    hist.length === Math.min(priors, WINDOW_N),
-    `expected ${Math.min(priors, WINDOW_N)} prior rides with today's excluded, got ${hist.length}`,
+    hist.length === Math.min(priors, WINDOW_PREV),
+    `expected ${Math.min(priors, WINDOW_PREV)} prior rides with today's excluded (D-045.2 window), got ${hist.length}`,
   );
   assert(!hist.includes(mine), 'the excluded history must not contain the just-recorded lap value');
 
-  if (priors < WINDOW_N) {
-    const { pos, of } = positionAmong(mine, hist);
-    assert(pos === 1 && of === priors + 1, `expected P1 of ${priors + 1}, got P${pos} of ${of}`);
-  }
+  const { pos, of } = positionAmong(mine, hist);
+  const wantOf = Math.min(priors, WINDOW_PREV) + 1;
+  assert(pos === 1 && of === wantOf, `expected P1 of ${wantOf} (D-045.2), got P${pos} of ${of}`);
 
   resetRecordedForTests();
 });
@@ -199,6 +200,61 @@ test('B-44: window-inclusion guard -- a recorded ride still ghosts the NEXT ride
     'a recorded ride must still be a ghost for the next ride (cycle-009), unaffected by B-44\'s fix',
   );
 
+  resetRecordedForTests();
+});
+
+test('D-045.2: ranking pool is previous-9 + current — a 10th-older previous ride is excluded', () => {
+  // EveningA is the only seed route with a full 10 ranked rides; recording one
+  // session ride makes 11 total — the exact shape of the 2026-08-25
+  // "P10 of 11 vs P9" bug. Under D-045 ruling 2 the field must be 10.
+  resetRecordedForTests();
+  assert(rankedCountFor('EveningA') === 10,
+    `this fixture needs EveningA's 10 ranked seed rides, got ${rankedCountFor('EveningA')} — seed curation changed, revisit this test`);
+
+  const mine = 700; // faster than every seed EveningA lap (fastest is 810.0) => P1
+  rememberRide(stateWith({
+    track: 'EveningA',
+    sectors: [doneSector(175), doneSector(175), doneSector(175), doneSector(175)],
+    lap: { rawS: mine, stoppedS: 0, movingS: mine, estimated: false },
+  }));
+  const rideId = `session:${getLastRide()!.atMs}`;
+
+  // Header path: previous window is 9, never 10 — pre-fix this was 10.
+  const hist = lapValues('EveningA', rideId);
+  assert(hist.length === WINDOW_PREV,
+    `previous window must be WINDOW_PREV=${WINDOW_PREV}, got ${hist.length}`);
+  const { pos, of } = positionAmong(mine, hist);
+  assert(of === WINDOW_N, `the field is always exactly ${WINDOW_N} — pre-fix bug read 11, got ${of}`);
+  assert(pos === 1, `700 s beats every seed lap, got P${pos}`);
+
+  // The 10th-oldest previous ride (seed 20260728-1619, movingS ~1253.97 — both
+  // the oldest and the slowest EveningA seed) is OUTSIDE the pool.
+  const pool = rankingPoolFor('EveningA', rideId);
+  assert(pool.length === WINDOW_N, `pool must be exactly ${WINDOW_N}, got ${pool.length}`);
+  assert(pool.some((r) => r.rideId === rideId), "the judged ride is the pool's own 10th slot");
+  assert(rankedCountFor('EveningA') === 11, 'route now holds 11 ranked rides in total');
+  assert(!pool.some((r) => r.rideId === 'seed:20260728-1619-work2home-19501080034'),
+    'the 10th-older previous ride (the oldest EveningA seed) must not be in the pool');
+
+  // Header/list identity: the judged ride's position within the pool the PB
+  // list renders equals the header's positionAmong answer.
+  const byTime = [...pool].sort((a, b) => (a.lap.movingS as number) - (b.lap.movingS as number));
+  assert(byTime.findIndex((r) => r.rideId === rideId) + 1 === pos,
+    'header rank and PB-list rank must come from the same pool');
+
+  // B-44 still holds: the judged ride never sits in its own previous window.
+  assert(!hist.includes(mine), "B-44: today's lap must not be its own history");
+
+  resetRecordedForTests();
+});
+
+test('D-045.2: the live tower chip field is 10, not 11, on a route with 10 previous rides', () => {
+  resetRecordedForTests();
+  const chip = getLiveTowerPosition(stateWith({
+    track: 'EveningA',
+    lap: { rawS: 700, stoppedS: 0, movingS: 700, estimated: false },
+  }));
+  assert(chip === 'P1 of 10', `expected "P1 of 10" (previous-9 + the live lap), got "${chip}"`);
   resetRecordedForTests();
 });
 

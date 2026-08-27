@@ -20,10 +20,19 @@ import { ranks, sectorHistory } from '../store/results.ts';
 import type { RideResult } from '../store/types.ts';
 import { recordedResults } from './lastRide.ts';
 
-/** IDEAS §21: the comparison set is the last N rides on this route. A frozen
- * file was the bug — your own rides never entered it, so a personal best could
- * never raise the purple bar (cycle 009). */
+/** D-045 ruling 2 (Nathan, 2026-08-26): the RANKING POOL size — the judged
+ * ride plus its WINDOW_PREV most recent previous rides, so a position always
+ * reads "P_n of 10", never "of 11". (Historically IDEAS §21's last-N window;
+ * a frozen file was the original bug — your own rides never entered it, so a
+ * personal best could never raise the purple bar, cycle 009.) */
 export const WINDOW_N = 10;
+
+/** The previous-rides comparison window (D-045 ruling 2): the 9 most recent
+ * rides a lap is judged against. Judged ride + this window = a pool of
+ * exactly WINDOW_N. Sliced AFTER excluding the judged ride, so excluding can
+ * no longer backfill an extra older ride into the field — the exact 2026-08-25
+ * "P10 of 11 vs P9" bug (cycle 025). */
+export const WINDOW_PREV = WINDOW_N - 1;
 
 /** D-008's noise floor, shared by every verdict on screen: below this much
  * comparable history nothing is coloured and nothing is ranked. */
@@ -33,17 +42,59 @@ export type UiTier = 'purple' | 'green' | 'neutral' | 'yellow' | 'est';
 
 const GHOSTS = seed as unknown as RideResult[];
 
+/** All rankable history for a route, ascending startedAtMs, unwindowed.
+ * Filtered by the store's own `ranks()` — not a local lookalike — so an
+ * estimated lap or a tripwire-demoted seed can never sneak in (D-024/D-028). */
+function rankedFor(routeId: string): RideResult[] {
+  return [...GHOSTS, ...recordedResults()]
+    .filter((r) => r.routeId === routeId && ranks(r))
+    .sort((a, b) => a.startedAtMs - b.startedAtMs);
+}
+
 /**
- * The window: archive ghosts PLUS anything recorded in this session, ordered,
- * newest N kept. Filtered by the store's own `ranks()` — not a local
- * lookalike — so an estimated lap or a tripwire-demoted seed can never sneak
- * into the bar it is supposed to be excluded from (D-024/D-028).
+ * The previous-rides comparison window: the WINDOW_PREV most recent ranked
+ * rides, minus the judged ride when it is already stored (B-44's exclusion
+ * survives; the slice is now WINDOW_PREV, per D-045 ruling 2). A live lap not
+ * yet stored needs no exclusion and gets the same 9. Judged ride + this
+ * window = the pool of WINDOW_N.
  */
 export function ghostsFor(routeId: string, excludeRideId?: string): RideResult[] {
-  return [...GHOSTS, ...recordedResults()]
-    .filter((r) => r.routeId === routeId && ranks(r) && r.rideId !== excludeRideId)
-    .sort((a, b) => a.startedAtMs - b.startedAtMs)
-    .slice(-WINDOW_N);
+  return rankedFor(routeId).filter((r) => r.rideId !== excludeRideId).slice(-WINDOW_PREV);
+}
+
+/** True count of rankable rides on file for a route — NOT windowed. The only
+ * honest source for an "N rides on file" caption (cycle 025: the old caption
+ * showed the window size capped at 10 and could contradict the header). */
+export function rankedCountFor(routeId: string): number {
+  return rankedFor(routeId).length;
+}
+
+/**
+ * THE ranking pool (D-045 ruling 2): the judged ride plus its WINDOW_PREV most
+ * recent other ranked rides — never more than WINDOW_N total, the judged ride
+ * always the pool's own 10th slot, so nothing read off this pool can say
+ * "of 11". When `currentRideId` is null or has no ranked result on this
+ * route, there is no judged ride and the pool is simply the last WINDOW_N
+ * ranked rides (pure display). The RESULT header's rank line and the PB
+ * ranking list both derive from this one shape — they cannot disagree again.
+ */
+export function rankingPoolFor(routeId: string, currentRideId: string | null): RideResult[] {
+  const all = rankedFor(routeId);
+  const current = currentRideId === null ? undefined : all.find((r) => r.rideId === currentRideId);
+  if (current === undefined) return all.slice(-WINDOW_N);
+  return [...all.filter((r) => r.rideId !== currentRideId).slice(-WINDOW_PREV), current]
+    .sort((a, b) => a.startedAtMs - b.startedAtMs);
+}
+
+/** B-117 (RESULT half): true when the judged ride HAS a stored result on this
+ * route but the store's own ranks() bars it (e.g. a tripwire-demoted lap) —
+ * such a lap must not be ranked by a local movingS-only lookalike rule.
+ * False when no stored result exists at all: an in-session lap that never
+ * reached the store still ranks by its live numbers, as before. */
+export function ownLapBarredFromRanking(routeId: string, rideId: string): boolean {
+  const own = [...GHOSTS, ...recordedResults()]
+    .find((r) => r.routeId === routeId && r.rideId === rideId);
+  return own !== undefined && !ranks(own);
 }
 
 function stats(values: number[]) {

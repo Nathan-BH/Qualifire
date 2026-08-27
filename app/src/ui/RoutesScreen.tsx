@@ -12,7 +12,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import catalogJson from '../store/catalog.seed.json';
 import type { Catalog } from '../store/types.ts';
-import { ghostsFor } from './colourModel.ts';
+import { rankedCountFor } from './colourModel.ts';
 import RouteMapView from './routeMapView.tsx';
 import { radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
@@ -75,7 +75,7 @@ export default function RoutesScreen() {
             {isOpen ? (
               <View style={{ paddingBottom: 12 }}>
                 {routes.map((r) => {
-                  const n = ghostsFor(r.id).length;
+                  const n = rankedCountFor(r.id);
                   return (
                     <View key={r.id} style={{ marginTop: 10 }}>
                       <Text style={{ color: t.text, fontSize: 13.5 }}>{r.id}</Text>
