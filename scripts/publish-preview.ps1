@@ -166,6 +166,7 @@ try {
     }
 
     Step '5. Publishing (channel: preview)'
+    $env:APP_VARIANT = 'preview'   # must match the build profile env, or the fingerprint drifts
     Say 'bundles locally (npx expo export) then uploads -- ~1-2 min, spends NO build slot.'
     $ErrorActionPreference = 'Continue'
     npx eas-cli update --channel preview --message "$Message" --environment preview --platform android
