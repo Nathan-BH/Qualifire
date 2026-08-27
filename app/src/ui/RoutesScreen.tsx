@@ -13,7 +13,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import catalogJson from '../store/catalog.seed.json';
 import type { Catalog } from '../store/types.ts';
 import { rankedCountFor } from './colourModel.ts';
-import { routeLabel } from '../store/defaultRoute.ts';
+import { routeLabel, sortRoutesForDisplay } from '../store/defaultRoute.ts';
 import RouteMapView from './routeMapView.tsx';
 import { radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
@@ -56,7 +56,7 @@ export default function RoutesScreen() {
       {CATALOG.ways.map((w) => {
         const from = CATALOG.landmarks.find((l) => l.id === w.startLandmarkId);
         const to = CATALOG.landmarks.find((l) => l.id === w.endLandmarkId);
-        const routes = CATALOG.routes.filter((r) => r.wayId === w.id);
+        const routes = sortRoutesForDisplay(CATALOG.routes.filter((r) => r.wayId === w.id));
         const isOpen = open === w.id;
         return (
           <Pressable key={w.id} onPress={() => setOpen(isOpen ? null : w.id)}

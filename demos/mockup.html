@@ -212,6 +212,10 @@ const f1 = s => Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60).toFixed(1);
 const el = h => { const d=document.createElement('div'); d.innerHTML=h.trim(); return d.firstChild; };
 const lm = id => id===NEW_ID ? 'new' : (D.landmarks.find(l=>l.id===id)||{}).label || id;
 const ROUTE_LABEL = {Morning:'Home Work Dry', EveningA:'Work Home Dry', EveningB:'Work Home Wet', MorningB:'Home Work Wet'};
+// RECORD-tab variant-only third choice (Nathan 2026-08-27): pills + readytag
+// show only the variant word; keys are the display names used in D.ways[].routes.
+const ROUTE_DIR = {'Home Work Dry':'home>work','Home Work Wet':'home>work','Work Home Dry':'work>home','Work Home Wet':'work>home'};
+const ROUTE_VARIANT = {'Home Work Dry':'Dry','Home Work Wet':'Wet','Work Home Dry':'Dry','Work Home Wet':'Wet'};
 function shortDate(idOrMs){
   let d;
   if(typeof idOrMs === 'number'){ d = new Date(idOrMs); }
@@ -336,7 +340,8 @@ function recordScreen(){
     const freeRide = sel.from===NEW_ID || sel.to===NEW_ID;
     const w = freeRide ? null : wayFor(sel.from, sel.to);
     const n = w ? w.n : 0;
-    const routes = w && w.routes && w.routes.length>1 ? w.routes : null;
+    const dirRoutes = w && w.routes ? w.routes.filter(r=>!ROUTE_DIR[r] || ROUTE_DIR[r]===sel.from+'>'+sel.to) : [];
+    const routes = dirRoutes.length>1 ? dirRoutes : null;
     // "new" always sorts last in a pick row — real landmarks first, the
     // free-ride option after, same order the brief's "work>>new" / "new>>home"
     // examples suggest.
@@ -366,7 +371,7 @@ function recordScreen(){
         </div>
         ${routes ? `<div style="margin-top:10px"><div class="muted">which route today?</div>
           <div style="margin-top:6px">${routes.map((r,i)=>
-            `<span class="pill${(sel.routePick||routes[0])===r?' on':''}" data-route="${r}">${r}</span>`).join('')}</div></div>`:''}
+            `<span class="pill${(routes.includes(sel.routePick)?sel.routePick:routes[0])===r?' on':''}" data-route="${r}">${ROUTE_VARIANT[r]||r}</span>`).join('')}</div></div>`:''}
       </div>
       <button class="btn record" id="go">RECORD</button>
       <div class="note">${freeRide
@@ -385,7 +390,7 @@ function recordScreen(){
 
   if(R.phase==='armed'){
     s.appendChild(el(`<div class="armed-wrap">
-      <div class="readytag">${lm(sel.from)} → ${lm(sel.to)}${sel.routePick?' · '+sel.routePick:''} · ready, not started</div>
+      <div class="readytag">${lm(sel.from)} → ${lm(sel.to)}${sel.routePick?' · '+(ROUTE_VARIANT[sel.routePick]||sel.routePick):''} · ready, not started</div>
       ${S.mapLive?'<div class="armed-map"><div id="map" style="height:100%"></div></div>':''}
       <button class="btn" id="realstart">START</button>
     </div>`));

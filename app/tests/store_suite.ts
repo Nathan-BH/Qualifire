@@ -17,7 +17,7 @@ import {
   CORRIDOR_M, PROPOSED_GATES, gateChainages, nearestOnSegments, toXY,
 } from '../core/src/index.ts';
 import { deriveRideResult } from '../src/store/derive.ts';
-import { fallbackRouteId, routeLabel } from '../src/store/defaultRoute.ts';
+import { fallbackRouteId, routeLabel, routeVariantLabel, sortRoutesForDisplay } from '../src/store/defaultRoute.ts';
 import {
   addGateSet,
   decodeCatalog,
@@ -614,28 +614,32 @@ test('fallbackRouteId on the real seed = the newest seeded archive ride\'s route
 
 // -------------------------------------- route display-name overlay (Nathan 2026-08-26)
 
-test('routeLabel: the four legacy ids + StationHomePreferred show their ruled display names', () => {
+test('routeLabel: the ruled display-name overlays render their display names', () => {
   assert(routeLabel('Morning') === 'Home Work Dry', `Morning -> ${routeLabel('Morning')}`);
   assert(routeLabel('MorningB') === 'Home Work Wet', `MorningB -> ${routeLabel('MorningB')}`);
   assert(routeLabel('EveningA') === 'Work Home Dry', `EveningA -> ${routeLabel('EveningA')}`);
   assert(routeLabel('EveningB') === 'Work Home Wet', `EveningB -> ${routeLabel('EveningB')}`);
   assert(routeLabel('StationHomePreferred') === 'Station Home Dry',
     `StationHomePreferred -> ${routeLabel('StationHomePreferred')}`);
+  assert(routeLabel('WorkStationA') === 'Work Station Alt',
+    `WorkStationA -> ${routeLabel('WorkStationA')} (A=Alt, Nathan 2026-08-27)`);
+  assert(routeLabel('WorkStationB') === 'Work Station Std',
+    `WorkStationB -> ${routeLabel('WorkStationB')} (B=Std, Nathan 2026-08-27)`);
 });
 
 test('routeLabel: StationWork pair (ruled unchanged) and native ids keep their derived labels', () => {
   assert(routeLabel('StationWorkStd') === 'Station Work Std', 'Std keeps its name (ruled)');
   assert(routeLabel('StationWorkAlt') === 'Station Work Alt', 'Alt keeps its name (ruled)');
   assert(routeLabel('StationHomeWet') === 'Station Home Wet', 'already descriptive — no entry');
-  assert(routeLabel('WorkStationA') === 'Work Station A', 'native id spot check');
+  assert(routeLabel('WorkChurchA') === 'Work Church A', 'native id spot check');
   assert(routeLabel('HomeChurch') === 'Home Church', 'native id spot check');
   assert(routeLabel('SomeFutureRoute') === 'Some Future Route',
     'an id the table has never heard of falls back to split-on-capitals');
 });
 
 test('overlay never touches stored ids: catalog, map-asset manifest and engine refs still key the legacy ids', () => {
-  const legacy = ['Morning', 'MorningB', 'EveningA', 'EveningB', 'StationHomePreferred'];
-  const display = ['HomeWorkDry', 'HomeWorkWet', 'WorkHomeDry', 'WorkHomeWet', 'StationHomeDry'];
+  const legacy = ['Morning', 'MorningB', 'EveningA', 'EveningB', 'StationHomePreferred', 'WorkStationA', 'WorkStationB'];
+  const display = ['HomeWorkDry', 'HomeWorkWet', 'WorkHomeDry', 'WorkHomeWet', 'StationHomeDry', 'WorkStationAlt', 'WorkStationStd'];
 
   const catalog = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
   const ids = new Set(catalog.routes.map((r) => r.id));
@@ -653,4 +657,54 @@ test('overlay never touches stored ids: catalog, map-asset manifest and engine r
   const refs = loadJson<{ tracks: Record<string, unknown> }>(path.join(TESTS_DIR, 'fixtures', 'refs.json'));
   for (const id of legacy) assert(id in refs.tracks, `engine refs.json must still key track ${id}`);
   for (const d of display) assert(!(d in refs.tracks), `engine refs.json must not gain a ${d} track`);
+});
+
+
+// ------------------------- RECORD-tab variant-only third choice + ordering (Nathan 2026-08-27)
+
+test('routeVariantLabel: the third choice shows only the variant word, every multi-route way', () => {
+  const w = (a: string, b: string) => ({ startLandmarkId: a, endLandmarkId: b });
+  assert(routeVariantLabel('Morning', w('home', 'work')) === 'Dry', `Morning -> ${routeVariantLabel('Morning', w('home', 'work'))}`);
+  assert(routeVariantLabel('MorningB', w('home', 'work')) === 'Wet', 'MorningB -> Wet');
+  assert(routeVariantLabel('EveningA', w('work', 'home')) === 'Dry', 'EveningA -> Dry');
+  assert(routeVariantLabel('EveningB', w('work', 'home')) === 'Wet', 'EveningB -> Wet');
+  assert(routeVariantLabel('StationWorkStd', w('station', 'work')) === 'Std', 'StationWorkStd -> Std (Nathan example)');
+  assert(routeVariantLabel('StationWorkAlt', w('station', 'work')) === 'Alt', 'StationWorkAlt -> Alt');
+  assert(routeVariantLabel('WorkStationA', w('work', 'station')) === 'Alt', 'A -> Alt overlay then variant (Nathan 2026-08-27)');
+  assert(routeVariantLabel('WorkStationB', w('work', 'station')) === 'Std', 'B -> Std overlay then variant (Nathan 2026-08-27)');
+  assert(routeVariantLabel('StationHomePreferred', w('station', 'home')) === 'Dry', 'overlay applies before stripping');
+  assert(routeVariantLabel('StationHomeWet', w('station', 'home')) === 'Wet', 'StationHomeWet -> Wet');
+  assert(routeVariantLabel('HomeStationPreferred', w('home', 'station')) === 'Preferred', 'HomeStationPreferred -> Preferred');
+  assert(routeVariantLabel('HomeStationViaFosh', w('home', 'station')) === 'Via Fosh', 'multi-word variant splits on capitals');
+  assert(routeVariantLabel('WorkChurchB', w('work', 'church')) === 'B', 'WorkChurchB -> B');
+});
+
+test('routeVariantLabel: never blank for any catalog route; off-convention ids fall back to the full label', () => {
+  const catalog = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
+  for (const r of catalog.routes) {
+    const way = catalog.ways.find((x) => x.id === r.wayId);
+    assert(way !== undefined, `route ${r.id} must have a way`);
+    const v = routeVariantLabel(r.id, way!);
+    assert(v.length > 0, `variant label for ${r.id} must not be empty, got "${v}"`);
+  }
+  assert(routeVariantLabel('HomeChurch', { startLandmarkId: 'home', endLandmarkId: 'church' }) === 'Home Church',
+    'a route with no variant suffix falls back to its full label (single-route ways never render pills anyway)');
+  assert(routeVariantLabel('Morning', { startLandmarkId: 'church', endLandmarkId: 'fosh' }) === 'Home Work Dry',
+    'an id that does not start with the way prefix falls back to the full label');
+});
+
+test('sortRoutesForDisplay: Std lists before Alt in BOTH station-work directions; everything else keeps catalog order', () => {
+  const catalog = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
+  const wayIds = (wayId: string) =>
+    sortRoutesForDisplay(catalog.routes.filter((r) => r.wayId === wayId)).map((r) => r.id).join(',');
+  assert(wayIds('station>work') === 'StationWorkStd,StationWorkAlt',
+    `station>work must list Std first, got ${wayIds('station>work')}`);
+  assert(wayIds('work>station') === 'WorkStationB,WorkStationA',
+    `work>station must list Std (=B) first, got ${wayIds('work>station')}`);
+  assert(wayIds('home>work') === 'Morning,MorningB',
+    `home>work keeps catalog order, got ${wayIds('home>work')}`);
+  assert(wayIds('station>home') === 'StationHomePreferred,StationHomeWet',
+    `station>home keeps catalog order, got ${wayIds('station>home')}`);
+  assert(wayIds('work>church') === 'WorkChurchA,WorkChurchB',
+    `work>church keeps catalog order, got ${wayIds('work>church')}`);
 });

@@ -16,6 +16,11 @@ export const ROUTE_DISPLAY_ID: Record<string, string> = {
   EveningA: 'WorkHomeDry',
   EveningB: 'WorkHomeWet',
   StationHomePreferred: 'StationHomeDry',
+  // Nathan 2026-08-27: work>>station mirrors station>>work's Std/Alt naming.
+  // A=Alt, B=Std — verified against the route traces (A reverses
+  // StationWorkAlt, B reverses StationWorkStd); ids unchanged as ever.
+  WorkStationA: 'WorkStationAlt',
+  WorkStationB: 'WorkStationStd',
 };
 
 /** Presentational label for a route id — the Route type has no label field
@@ -24,6 +29,43 @@ export const ROUTE_DISPLAY_ID: Record<string, string> = {
  * Shared by RecordScreen and ResultScreen (previously duplicated). */
 export function routeLabel(id: string): string {
   return (ROUTE_DISPLAY_ID[id] ?? id).replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+}
+
+/** Variant-only label for a route shown inside its way's context (Nathan,
+ * 2026-08-27): where "starting from" and "going to" are already their own
+ * choices on the RECORD tab, the third choice names ONLY the variant —
+ * "Dry", "Wet", "Std", "Alt", "Via Fosh" — never the full FromToVariant
+ * concatenation. Derived: the display id (overlay applied) minus the way's
+ * capitalized landmark-id pair, split on capitals. Any id that does not
+ * follow the convention (or would strip to nothing) falls back to the full
+ * routeLabel(), so no pill ever renders blank. */
+export function routeVariantLabel(
+  id: string,
+  way: { startLandmarkId: string; endLandmarkId: string },
+): string {
+  const display = ROUTE_DISPLAY_ID[id] ?? id;
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const prefix = cap(way.startLandmarkId) + cap(way.endLandmarkId);
+  if (display.startsWith(prefix) && display.length > prefix.length) {
+    return display.slice(prefix.length).replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+  }
+  return routeLabel(id);
+}
+
+/** Display order for a way's routes (Nathan, 2026-08-27): "Std" always
+ * lists before "Alt" — ruled for BOTH directions between station and work,
+ * written as a general suffix rule so any future Std/Alt pair behaves the
+ * same. Every other route keeps catalog order (the sort is stable —
+ * ES2019+ guarantees it, Hermes included). RecordScreen feeds the sorted
+ * list to defaultRouteFor, whose first-in-array tiebreak then makes Std
+ * the empty-history §8a default too (Nathan's 2026-08-26 ruling: "Std is
+ * the default selection"; previously flagged unimplemented). */
+export function sortRoutesForDisplay<T extends { id: string }>(routes: T[]): T[] {
+  const pri = (id: string): number => {
+    const display = ROUTE_DISPLAY_ID[id] ?? id;
+    return display.endsWith('Std') ? 0 : display.endsWith('Alt') ? 2 : 1;
+  };
+  return [...routes].sort((a, b) => pri(a.id) - pri(b.id));
 }
 
 /** The route of the most recent RANKING result (seed or session) — i.e. the

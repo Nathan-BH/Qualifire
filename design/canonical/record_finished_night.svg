@@ -49,7 +49,7 @@
       <text id="content_strip_slot_4_label" inkscape:label="content_strip_slot_4_label" x="321" y="690.68" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#3ED598" text-anchor="middle">S4</text>
       <text id="content_strip_slot_4_time" inkscape:label="content_strip_slot_4_time" x="321" y="709.04" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#3ED598" text-anchor="middle" style="font-variant-numeric:tabular-nums">3:20</text>
     </g>
-    <text id="content_status_line" inkscape:label="content_status_line" x="195" y="752" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="600" fill="#9a978f" text-anchor="middle" letter-spacing="1.5" style="text-transform:uppercase">MORNING · ROUTE LOCKED</text>
+    <text id="content_status_line" inkscape:label="content_status_line" x="195" y="752" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="600" fill="#9a978f" text-anchor="middle" letter-spacing="1.5" style="text-transform:uppercase">HOME WORK DRY · ROUTE LOCKED</text>
     <g id="content_pause_bar" inkscape:label="content_pause_bar">
       <rect id="content_pause_bar_bg" inkscape:label="content_pause_bar_bg" x="12" y="776" width="366" height="56" fill="#141414" stroke="#E8A33D" stroke-width="2" rx="10" />
       <text id="content_pause_bar_label" inkscape:label="content_pause_bar_label" x="195" y="800" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="17" font-weight="800" fill="#E8A33D" text-anchor="middle" letter-spacing="3">PAUSE</text>

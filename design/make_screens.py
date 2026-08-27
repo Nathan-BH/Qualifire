@@ -618,15 +618,29 @@ ROUTE_DISPLAY_ID = {
     "EveningA": "WorkHomeDry",
     "EveningB": "WorkHomeWet",
     "StationHomePreferred": "StationHomeDry",
+    "WorkStationA": "WorkStationAlt",
+    "WorkStationB": "WorkStationStd",
 }
 
 
 def route_label(route_id: str) -> str:
     """Mirrors store/defaultRoute.ts's routeLabel() exactly: the ruled
     display-name overlay (Nathan 2026-08-26) first, then split-on-capitals:
-    'Morning' -> 'Home Work Dry', 'WorkStationA' -> 'Work Station A'
+    'Morning' -> 'Home Work Dry', 'WorkChurchA' -> 'Work Church A'
     (no overlay entry, derived unchanged)."""
     return re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", ROUTE_DISPLAY_ID.get(route_id, route_id))
+
+
+def route_variant_label(route_id: str, way: dict) -> str:
+    """Mirrors store/defaultRoute.ts's routeVariantLabel() exactly: display id
+    (overlay applied) minus the way's capitalized landmark-id pair, split on
+    capitals — 'Morning' on home>work -> 'Dry', 'StationWorkStd' -> 'Std';
+    falls back to route_label() for any off-convention id."""
+    display = ROUTE_DISPLAY_ID.get(route_id, route_id)
+    prefix = way["startLandmarkId"].capitalize() + way["endLandmarkId"].capitalize()
+    if display.startswith(prefix) and len(display) > len(prefix):
+        return re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", display[len(prefix):])
+    return route_label(route_id)
 
 
 def chip_palette(tier: str, t: dict) -> tuple[str, str, str]:
@@ -1035,7 +1049,7 @@ def build_record_setup(theme_name: str, repo_root: str) -> ET.Element:
         text_el(content, "content_flow_route_label", 20, y, "WHICH ROUTE TODAY?", 11, weight="600",
                 color=t["textDim"], letter_spacing=2)
         y += 16
-        route_items = [(route_label(r["id"]), r["id"] == picked_route_id) for r in way_routes]
+        route_items = [(route_variant_label(r["id"], way), r["id"] == picked_route_id) for r in way_routes]
         # WP-J fix pass (2026-08-24): +8 left the hint's first-line ascender
         # colliding with the pill row's bottom edge — widened to +16.
         y += draw_pill_row(content, "content_route", t, 20, y, VB_W - 40, route_items) + 16
@@ -1092,7 +1106,7 @@ def build_record_armed(theme_name: str, repo_root: str) -> ET.Element:
     # on this heavily-styled string. Matches text_block's own _l1/_l2 naming
     # convention for a multi-line block.
     track_lh = 12 * 1.3
-    text_el(content, "content_track_line_l1", VB_W / 2, 30, "home → work · Home Work Dry", 12,
+    text_el(content, "content_track_line_l1", VB_W / 2, 30, "home → work · Dry", 12,
             weight="600", color=t["textDim"], anchor="middle", letter_spacing=1.2, upper=True)
     text_el(content, "content_track_line_l2", VB_W / 2, 30 + track_lh, "ready — not started", 12,
             weight="600", color=t["textDim"], anchor="middle", letter_spacing=1.2, upper=True)
@@ -1193,7 +1207,7 @@ def build_record_running(theme_name: str, repo_root: str) -> ET.Element:
                          tier, lbl, tval, current)
     y += STRIP_H + STRIP_GAP
 
-    text_el(content, "content_status_line", VB_W / 2, y + 12, "MORNING · ROUTE LOCKED", 12,
+    text_el(content, "content_status_line", VB_W / 2, y + 12, route_label("Morning").upper() + " · ROUTE LOCKED", 12,
             weight="600", color=t["textDim"], anchor="middle", letter_spacing=1.5, upper=True)
     y += STATUS_GAP + PAUSE_GAP
 
@@ -1308,7 +1322,7 @@ def build_record_finished(theme_name: str, repo_root: str) -> ET.Element:
                          tier, lbl, tval, False)
     y += STRIP_H + STRIP_GAP
 
-    text_el(content, "content_status_line", VB_W / 2, y + 12, "MORNING · ROUTE LOCKED", 12,
+    text_el(content, "content_status_line", VB_W / 2, y + 12, route_label("Morning").upper() + " · ROUTE LOCKED", 12,
             weight="600", color=t["textDim"], anchor="middle", letter_spacing=1.5, upper=True)
     y += STATUS_GAP + PAUSE_GAP
 

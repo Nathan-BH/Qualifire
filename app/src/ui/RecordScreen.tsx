@@ -47,7 +47,7 @@ import { deleteRide } from '../storage';
 import { removeStoredResult } from '../store/resultsStore';
 import catalogJson from '../store/catalog.seed.json';
 import { freeRideRouteIds, landmarkAt } from '../store/catalog';
-import { routeLabel } from '../store/defaultRoute';
+import { routeLabel, routeVariantLabel, sortRoutesForDisplay } from '../store/defaultRoute';
 import type { Catalog, Route } from '../store/types';
 import { PaddockTheme, colors, radius } from './theme';
 import { useTheme } from './themeContext';
@@ -564,7 +564,7 @@ export default function RecordScreen({
   const way = CATALOG.ways.find(
     (w) => w.startLandmarkId === fromId && w.endLandmarkId === to,
   );
-  const wayRoutes = way ? CATALOG.routes.filter((r) => r.wayId === way.id) : [];
+  const wayRoutes = way ? sortRoutesForDisplay(CATALOG.routes.filter((r) => r.wayId === way.id)) : [];
   const ghostCount = wayRoutes.reduce((n, r) => n + ghostsFor(r.id).length, 0);
   const pickedRoute: Route | null = way
     ? (routePick && routePick.wayId === way.id
@@ -631,7 +631,7 @@ export default function RecordScreen({
       <View style={styles.raceColumn}>
         <Text style={styles.trackLine}>
           {landmarkLabel(fromId)} → {landmarkLabel(to)}
-          {pickedRoute ? ` · ${routeLabel(pickedRoute.refLineId)}` : ''} · ready — not started
+          {way && pickedRoute ? ` · ${routeVariantLabel(pickedRoute.id, way)}` : ''} · ready — not started
         </Text>
         {problemStates}
         {settings.liveMap ? (
@@ -925,7 +925,7 @@ export default function RecordScreen({
                   <Pressable key={r.id} onPress={() => setRoutePick({ wayId: way.id, routeId: r.id })}
                     style={[styles.pill, pickedRoute?.id === r.id && styles.pillOn]}>
                     <Text style={[styles.pillText, pickedRoute?.id === r.id && styles.pillTextOn]}>
-                      {routeLabel(r.id)}
+                      {routeVariantLabel(r.id, way)}
                     </Text>
                   </Pressable>
                 ))}
