@@ -28,6 +28,13 @@ export interface ActiveSession {
    * mode did not exist yet). */
   mode?: 'route' | 'free';
   routeIds?: string[] | null;
+  /** Cycle 025 (P4): last-known-alive heartbeat, refreshed by the location
+   * task every HEARTBEAT_EVERY_N_FIXES fixes (location/index.ts) and set at
+   * startTracking. On relaunch recovery, ensureSession derives
+   * downS = (now - lastAliveAtMs)/1000 for the relaunch event — measuring
+   * the outage, not just counting it. Optional: a marker written before this
+   * field existed still loads (downS is then simply omitted). */
+  lastAliveAtMs?: number;
 }
 
 function markerUri(): string {
@@ -50,7 +57,11 @@ export async function loadSession(): Promise<ActiveSession | null> {
     if (typeof parsed.rideId === 'string' && typeof parsed.startedAtMs === 'number') {
       const mode = parsed.mode === 'free' ? 'free' : parsed.mode === 'route' ? 'route' : undefined;
       const routeIds = Array.isArray(parsed.routeIds) ? parsed.routeIds : parsed.routeIds === null ? null : undefined;
-      return { rideId: parsed.rideId, startedAtMs: parsed.startedAtMs, mode, routeIds };
+      const lastAliveAtMs =
+        typeof parsed.lastAliveAtMs === 'number' && Number.isFinite(parsed.lastAliveAtMs)
+          ? parsed.lastAliveAtMs
+          : undefined;
+      return { rideId: parsed.rideId, startedAtMs: parsed.startedAtMs, mode, routeIds, lastAliveAtMs };
     }
     // Corrupt marker: discard rather than crash the task forever.
     await clearSession();

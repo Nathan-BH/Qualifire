@@ -121,6 +121,25 @@ export interface StorageErrorEvent {
 export interface RelaunchEvent {
   kind: 'relaunch';
   tUnixMs: number;
+  /** Cycle 025 (P4): seconds between the session marker's last heartbeat
+   * (ActiveSession.lastAliveAtMs, session.ts) and this relaunch recovery —
+   * how long the process was actually dead, accurate to the ~30-fix
+   * heartbeat cadence. Optional so a sidecar recorded before this field
+   * existed, or a marker without a heartbeat, still decodes — omitted,
+   * never fabricated. */
+  downS?: number;
+}
+
+/** Cycle 025 (P5, Nathan's 2026-08-26 visibility-first ruling): a UI-only
+ * restoration — RecordScreen mounted and found an in-progress, still-tracking
+ * session while the JS process stayed alive (no process death). Logged so the
+ * "recovered" banner ALWAYS has a matching sidecar record (one shared
+ * predicate, location/index.ts's getRecoveryState), but a remount is NEVER a
+ * relaunch: the GPX+ <qf:relaunches> count filters on kind === 'relaunch'
+ * only, so this kind can never inflate the true process-death count. */
+export interface RemountEvent {
+  kind: 'remount';
+  tUnixMs: number;
 }
 /** Cycle 023 fix 5a/5b: a route-lock attempt for one candidate track —
  * emitted for EVERY candidate (win or lose), not just the one that locks, so
@@ -158,6 +177,7 @@ export interface ElevationOutlierEvent {
 }
 export type RideEvent =
   | MetaEvent | ButtonEvent | LockEvent | GateFireEvent | StorageErrorEvent | RelaunchEvent
+  | RemountEvent
   | RouteMatchDiagnosticEvent | ElevationOutlierEvent;
 
 export interface DecodedEvents {

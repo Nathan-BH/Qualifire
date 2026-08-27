@@ -131,6 +131,9 @@ export default function RecordScreen({
   const [now, setNow] = useState(Date.now());
   const [problem, setProblem] = useState<PermissionOutcome | null>(null);
   const [recovered, setRecovered] = useState(false);
+  // Cycle 025 (P5): which kind of restoration the banner is reporting —
+  // set from getRecoveryState().restoration, the single shared predicate.
+  const [recoveredKind, setRecoveredKind] = useState<'relaunch' | 'remount'>('relaunch');
   const [busy, setBusy] = useState(false);
   const [lastSummary, setLastSummary] = useState<RideSummary | null>(null);
   const [live, setLive] = useState<LiveEngineState>(liveEngine.getState());
@@ -209,8 +212,11 @@ export default function RecordScreen({
       const rec = await getRecoveryState();
       if (!rec) return;
       if (rec.tracking) {
-        // Service survived; keep recording, resume the UI.
+        // Service survived; keep recording, resume the UI. Banner kind comes
+        // from the SAME predicate that logged the sidecar record (P5) —
+        // banner and counter can no longer disagree.
         setSession(rec.session);
+        setRecoveredKind(rec.restoration);
         setRecovered(true);
       } else {
         // Service died (OS kill / battery saver). Offer to finalise.
@@ -635,7 +641,9 @@ export default function RecordScreen({
         {problemStates}
         {recovered && (
           <Text style={styles.recovered}>
-            Recovered after relaunch — still recording. Nothing was lost on disk.
+            {recoveredKind === 'relaunch'
+              ? 'Recovered after relaunch — still recording. Nothing was lost on disk.'
+              : 'Recording continued in the background — nothing was lost on disk.'}
           </Text>
         )}
         {/* The live map, big, at the top (Cycle 020) — was a slim ribbon below

@@ -25,6 +25,7 @@ import type {
   GateFireEvent,
   LockEvent,
   MetaEvent,
+  RelaunchEvent,
   RouteMatchDiagnosticEvent,
   StorageErrorEvent,
 } from './types.ts';
@@ -168,14 +169,27 @@ function buildSessionBlock(
   }
 
   if (events !== null) {
-    const lockEv = evs.find((e): e is LockEvent => e.kind === 'lock');
-    if (lockEv) {
-      lines.push(
-        `   <qf:routeLock track="${escapeXml(lockEv.track)}" atChainageM="${num(lockEv.atChainageM)}" atT="${isoTime(lockEv.atT * 1000)}"/>`,
-      );
-      // Cycle 023 fix 4: only emitted when the locked track is recognized —
-      // an old/renamed track id degrades to no field, never an export failure.
-      const dist = routeDistanceM(lockEv.track);
+    const lockEvs = evs.filter((e): e is LockEvent => e.kind === 'lock');
+    if (lockEvs.length > 0) {
+      // Cycle 025 (P3): EVERY lock event is exported, in sidecar order — the
+      // old evs.find() took only the FIRST lock, silently discarding the
+      // rest (e.g. the settled lock that followed a transient soft display
+      // lock). Repeating qf:routeLock keeps the shape additive/backward-
+      // compatible: a consumer that read "the" routeLock still finds the
+      // first element first. lockKind is emitted only when the event carries
+      // it (a pre-WP-D2 sidecar doesn't — honest omission); its values are a
+      // closed literal union ('soft'|'verified'|'finalized'), no escaping
+      // needed.
+      for (const l of lockEvs) {
+        const lk = l.lockKind === undefined ? '' : ` lockKind="${l.lockKind}"`;
+        lines.push(
+          `   <qf:routeLock track="${escapeXml(l.track)}" atChainageM="${num(l.atChainageM)}" atT="${isoTime(l.atT * 1000)}"${lk}/>`,
+        );
+      }
+      // Cycle 023 fix 4 (semantics unchanged by P3): distance keyed to the
+      // FIRST lock's track; only emitted when that track is recognized — an
+      // old/renamed track id degrades to no field, never an export failure.
+      const dist = routeDistanceM(lockEvs[0].track);
       if (dist !== null) lines.push(`   <qf:routeDistanceM>${num(dist)}</qf:routeDistanceM>`);
       // WP-G Part 4: session-level route fidelity — only emitted when the
       // ride actually SETTLED on a route, not merely soft-locked (a soft
@@ -183,19 +197,14 @@ function buildSessionBlock(
       // engine.ts — publishing a fidelity % against it would be an unearned
       // claim, D-025/D-028). Take the LAST lock event whose lockKind isn't
       // 'soft' (undefined lockKind = pre-WP-D2 sidecar, treated as settled;
-      // there was only one kind of lock then). `lockEv` above (first lock,
-      // used for routeLock/routeDistanceM) is left as-is — that's a
-      // pre-existing, separately-scoped question, not this block's.
+      // there was only one kind of lock then).
       // AND a refFor lookup was actually injected (see RefLookup's doc
       // comment). Session-level + off-route segments, not per-point
       // (cheapest honest option: derivable at export time, no per-trkpt
       // bloat). refFor() throws for an unrecognized/renamed track id —
       // caught, block omitted, never an export failure (same doctrine as
       // routeDistanceM above).
-      const settledLockEv = evs
-        .filter((e): e is LockEvent => e.kind === 'lock')
-        .reverse()
-        .find((e) => e.lockKind !== 'soft');
+      const settledLockEv = [...lockEvs].reverse().find((e) => e.lockKind !== 'soft');
       try {
         if (!refFor) throw new Error('no refFor injected');
         if (!settledLockEv) throw new Error('no settled (non-soft) lock');
@@ -309,8 +318,25 @@ function buildSessionBlock(
       lines.push(`   <qf:storageErrors count="0"/>`);
     }
 
-    const relaunches = evs.filter((e) => e.kind === 'relaunch').length;
-    lines.push(`   <qf:relaunches count="${relaunches}"/>`);
+    // Cycle 025 (P2/P4): timestamped relaunch entries, not just a count —
+    // the 2026-08-22 crash review needed WHEN the process died and for how
+    // long, and a bare count couldn't say. The count filters on
+    // kind === 'relaunch' ONLY: 'remount' events (P5) are UI-visibility
+    // records, never process deaths, and are not exported at all. downS is
+    // omitted when the source event lacks it (pre-P4 sidecar, or a marker
+    // without a heartbeat) — never fabricated. count="0" keeps the exact
+    // self-closing form existing consumers and test (g) pin.
+    const relaunchEvs = evs.filter((e): e is RelaunchEvent => e.kind === 'relaunch');
+    if (relaunchEvs.length > 0) {
+      lines.push(`   <qf:relaunches count="${relaunchEvs.length}">`);
+      for (const r of relaunchEvs) {
+        const down = r.downS === undefined ? '' : ` downS="${num(r.downS)}"`;
+        lines.push(`    <qf:relaunch t="${isoTime(r.tUnixMs)}"${down}/>`);
+      }
+      lines.push(`   </qf:relaunches>`);
+    } else {
+      lines.push(`   <qf:relaunches count="0"/>`);
+    }
   }
 
   const buttonEvs = evs.filter((e): e is ButtonEvent => e.kind === 'button');

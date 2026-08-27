@@ -61,6 +61,8 @@ test('gpx+: events JSONL encode->decode identity — one of each kind, garbage/u
     { kind: 'gate', tUnixMs: 4000, track: 'Morning', gateIndex: 0, t: 4, estimated: false },
     { kind: 'storageError', tUnixMs: 5000, message: 'boom' },
     { kind: 'relaunch', tUnixMs: 6000 },
+    { kind: 'relaunch', tUnixMs: 6500, downS: 6.2 },
+    { kind: 'remount', tUnixMs: 6600 },
     {
       kind: 'routeMatchDiagnostic', tUnixMs: 7000, track: 'Morning', phase: 'anchor',
       accuracyM: 97.7, thresholdM: 50, poorAccuracy: true, xtdM: 12.3,
@@ -515,4 +517,51 @@ test('gpx+: WP-G Part 4 fix — routeFidelity uses the LAST SETTLED lock, not a 
     !gpx.includes('<qf:routeFidelity track="EveningA"'),
     'routeFidelity reported the transient SOFT lock track instead of the settled one',
   );
+});
+
+// ---------------------------------------------------------------- (p) cycle 025: relaunch/lock export enrichment
+
+test('gpx+: cycle 025 — relaunches block carries one timestamped child per relaunch; downS only when present; remounts excluded from the count', async () => {
+  const { storage, clock } = makeEnv();
+  const rideId = await storage.startRide();
+  clock.t += 1000;
+  await storage.appendFix(rideId, { tUnixMs: clock.t, lat: 50.8, lon: 4.6 });
+  await storage.appendEvent(rideId, { kind: 'relaunch', tUnixMs: clock.t + 1000 });
+  await storage.appendEvent(rideId, { kind: 'remount', tUnixMs: clock.t + 1500 });
+  await storage.appendEvent(rideId, { kind: 'relaunch', tUnixMs: clock.t + 2000, downS: 6.2 });
+  await storage.endRide(rideId);
+  const gpx = await storage.exportGpxPlus(rideId);
+  assert(gpx.includes('<qf:relaunches count="2">'), 'count must be 2 (a remount is not a relaunch)');
+  assert(gpx.includes(`<qf:relaunch t="${isoTime(clock.t + 1000)}"/>`), 'downS-less relaunch child missing, or downS fabricated');
+  assert(gpx.includes(`<qf:relaunch t="${isoTime(clock.t + 2000)}" downS="6.2"/>`), 'relaunch child missing its downS');
+  assert(gpx.includes('</qf:relaunches>'), 'relaunches block not closed');
+  assert(!gpx.includes('qf:remount'), 'remount events must not be exported');
+  const plain = await storage.exportGpx(rideId);
+  assert(!plain.includes('qf:'), 'standard exportGpx leaked qf: content');
+});
+
+test('gpx+: cycle 025 — every lock event is exported in sidecar order with its lockKind; routeDistanceM still keyed to the first lock', async () => {
+  const { storage, clock } = makeEnv();
+  const rideId = await storage.startRide();
+  clock.t += 1000;
+  await storage.appendFix(rideId, { tUnixMs: clock.t, lat: 50.8, lon: 4.6 });
+  await storage.appendEvent(rideId, {
+    kind: 'lock', tUnixMs: clock.t, track: 'Morning', atChainageM: 10, atT: clock.t / 1000, lockKind: 'soft',
+  });
+  await storage.appendEvent(rideId, {
+    kind: 'lock', tUnixMs: clock.t + 5000, track: 'Morning', atChainageM: 120, atT: (clock.t + 5000) / 1000, lockKind: 'verified',
+  });
+  // pre-WP-D2-style lock with no lockKind at all — the attribute must be omitted
+  await storage.appendEvent(rideId, {
+    kind: 'lock', tUnixMs: clock.t + 9000, track: 'Morning', atChainageM: 300, atT: (clock.t + 9000) / 1000,
+  });
+  await storage.endRide(rideId);
+  const gpx = await storage.exportGpxPlus(rideId);
+  const locks = gpx.match(/<qf:routeLock /g) ?? [];
+  assert(locks.length === 3, `${locks.length} qf:routeLock elements, want 3`);
+  assert(/<qf:routeLock track="Morning" atChainageM="10"[^>]*lockKind="soft"/.test(gpx), 'soft lock missing/wrong');
+  assert(/<qf:routeLock track="Morning" atChainageM="120"[^>]*lockKind="verified"/.test(gpx), 'verified lock missing/wrong');
+  assert(/<qf:routeLock track="Morning" atChainageM="300" atT="[^"]+"\/>/.test(gpx), 'kindless lock must omit the lockKind attribute');
+  assert(gpx.indexOf('atChainageM="10"') < gpx.indexOf('atChainageM="120"'), 'locks out of sidecar order');
+  assert(gpx.includes('<qf:routeDistanceM>5325</qf:routeDistanceM>'), 'routeDistanceM missing (first lock, Morning)');
 });

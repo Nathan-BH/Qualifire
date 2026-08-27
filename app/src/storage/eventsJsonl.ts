@@ -2,7 +2,7 @@
 import type { DecodedEvents, RideEvent } from './types.ts';
 
 const KINDS = new Set([
-  'meta', 'button', 'lock', 'gate', 'storageError', 'relaunch',
+  'meta', 'button', 'lock', 'gate', 'storageError', 'relaunch', 'remount',
   'routeMatchDiagnostic', 'elevationOutlier',
 ]);
 
@@ -46,7 +46,14 @@ function isValidEvent(rec: unknown): rec is RideEvent {
         typeof r.track === 'string' &&
         Number.isFinite(r.atChainageM) &&
         typeof r.atT === 'number' &&
-        isFiniteMsTime(r.atT * 1000)
+        isFiniteMsTime(r.atT * 1000) &&
+        // Cycle 025 inspector finding: lockKind is a closed literal union and
+        // gpxPlusExport.ts interpolates it unescaped into an XML attribute on
+        // the assumption the type guarantees its value — that only holds if
+        // this decoder actually enforces it. A hand-edited/corrupt sidecar
+        // line could otherwise carry an arbitrary string through to the
+        // export. Optional field: absence is fine, any other value is not.
+        (r.lockKind === undefined || r.lockKind === 'soft' || r.lockKind === 'verified' || r.lockKind === 'finalized')
       );
     case 'gate':
       return (
@@ -59,6 +66,11 @@ function isValidEvent(rec: unknown): rec is RideEvent {
     case 'storageError':
       return typeof r.message === 'string';
     case 'relaunch':
+      // downS is optional (cycle 025 P4) — an older sidecar without it must
+      // still decode; a present-but-non-finite value is rejected like any
+      // other malformed field.
+      return r.downS === undefined || Number.isFinite(r.downS);
+    case 'remount':
       return true; // no fields beyond kind/tUnixMs
     case 'routeMatchDiagnostic':
       return (

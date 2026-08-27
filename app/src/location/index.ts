@@ -74,6 +74,20 @@ let sessionLoaded = false; // whether we've consulted the disk marker yet
 // handler, getRecoveryState(), a future caller — shares one launch-scoped
 // re-arm, no matter which one restores the session first.
 let engineArmedThisLaunch = false;
+// Cycle 025 (P4): heartbeat — refresh the session marker's lastAliveAtMs
+// every N fixes so a relaunch can measure HOW LONG the process was dead
+// (downS on the relaunch event), not just that it died. Cheap: one small
+// JSON overwrite per ~30 s at the 1 Hz fix cadence.
+const HEARTBEAT_EVERY_N_FIXES = 30;
+let fixesSinceHeartbeat = 0;
+// Cycle 025 (P5): one shared restoration predicate (Nathan 2026-08-26,
+// visibility-first). ensureSession() marks a fresh-launch disk restore; the
+// FIRST getRecoveryState() call afterwards claims that restore as the
+// 'relaunch' the banner reports; every LATER mount that finds a live session
+// is a 'remount' (process alive, UI-only) — banner shown AND event logged,
+// but never counted as a relaunch (GPX+ counts kind === 'relaunch' only).
+let freshLaunchRestore = false;
+let freshRestoreConsumedByUi = false;
 let fixesThisLaunch = 0;
 let lastFixMs: number | null = null;
 let lastLat: number | null = null;
@@ -120,7 +134,19 @@ async function ensureSession(): Promise<ActiveSession | null> {
     // engineArmedThisLaunch doc comment above.
     if (session && !engineArmedThisLaunch) {
       engineArmedThisLaunch = true;
-      logEvent(session.rideId, { kind: 'relaunch', tUnixMs: Date.now() });
+      freshLaunchRestore = true;
+      // Cycle 025 (P4): how long was the process dead? Derived from the
+      // marker's last heartbeat when present; omitted (never fabricated)
+      // for a marker written before the field existed.
+      const nowMs = Date.now();
+      const downS =
+        session.lastAliveAtMs !== undefined
+          ? Math.max(0, Math.round(((nowMs - session.lastAliveAtMs) / 1000) * 10) / 10)
+          : undefined;
+      logEvent(session.rideId, {
+        kind: 'relaunch', tUnixMs: nowMs,
+        ...(downS !== undefined ? { downS } : {}),
+      });
       liveEngine.start({ pickId: null, mode: session.mode ?? 'route', routeIds: session.routeIds ?? null });
     }
   }
@@ -168,6 +194,7 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
           accuracyM: loc.coords.accuracy ?? undefined,
         });
         fixesThisLaunch += 1;
+        fixesSinceHeartbeat += 1;
         lastFixMs = loc.timestamp;
         lastLat = loc.coords.latitude;
         lastLon = loc.coords.longitude;
@@ -207,6 +234,15 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
       } catch {
         /* display-only */
       }
+    }
+    // Cycle 025 (P4) heartbeat — swallow-everything, same doctrine as every
+    // diagnostics write on this path: the marker refresh must never disturb
+    // recording. `s` is the module `session` object, so subsequent saves
+    // carry the field too.
+    if (fixesSinceHeartbeat >= HEARTBEAT_EVERY_N_FIXES) {
+      fixesSinceHeartbeat = 0;
+      s.lastAliveAtMs = Date.now();
+      saveSession(s).catch(() => { /* best-effort; the next heartbeat retries */ });
     }
     emit();
   },
@@ -254,9 +290,13 @@ export async function startTracking(opts?: {
   if (existing) return existing; // already recording; be idempotent
 
   const rideId = await startRide(opts?.mode);
+  const startedAtMs = Date.now();
   const s: ActiveSession = {
     rideId,
-    startedAtMs: Date.now(),
+    startedAtMs,
+    // Cycle 025 (P4): first heartbeat = start; refreshed every
+    // HEARTBEAT_EVERY_N_FIXES fixes by the task handler above.
+    lastAliveAtMs: startedAtMs,
     // WP-B fix B1/B2: persisted so a headless relaunch can re-arm the engine
     // in the same mode (session.ts) and so a completed ride's index entry
     // carries its mode (storage/core.ts's startRide) — see both files' headers.
@@ -290,6 +330,7 @@ export async function startTracking(opts?: {
   session = s;
   sessionLoaded = true;
   fixesThisLaunch = 0;
+  fixesSinceHeartbeat = 0;
   lastFixMs = null;
   lastLat = null;
   lastLon = null;
@@ -435,16 +476,28 @@ liveEngine.subscribeDiagnostics((d) => {
 });
 
 /**
- * Call once on app mount. Detects "app relaunched while a ride was (or should
- * have been) recording":
+ * Call once on RecordScreen mount. Detects "app relaunched while a ride was
+ * (or should have been) recording":
  *  - tracking === true  → the foreground service is still running; the task
  *    keeps appending. UI should resume the recording screen.
  *  - tracking === false → the service died (OS/battery saver). UI should
  *    offer to finalise the ride so its fixes aren't stranded.
+ * Cycle 025 (P5, Nathan 2026-08-26): this is ALSO the single shared
+ * restoration predicate — the same call that decides the banner logs the
+ * sidecar record, so the two can never disagree again. `restoration` says
+ * which kind of restoration this mount is seeing:
+ *  - 'relaunch': this JS launch restored the session from disk (a real
+ *    process death; the relaunch event was already logged by ensureSession,
+ *    headless-safe) — claimed by the first UI mount only.
+ *  - 'remount': the process stayed alive and only the UI remounted; a
+ *    'remount' event is logged HERE (only when still tracking — the
+ *    dead-service path shows the finalise Alert, not the banner), flagged so
+ *    the exported relaunch count never includes it.
  */
 export async function getRecoveryState(): Promise<{
   session: ActiveSession;
   tracking: boolean;
+  restoration: 'relaunch' | 'remount';
 } | null> {
   const s = await ensureSession();
   if (!s) return null;
@@ -454,5 +507,13 @@ export async function getRecoveryState(): Promise<{
   } catch {
     tracking = false;
   }
-  return { session: s, tracking };
+  let restoration: 'relaunch' | 'remount';
+  if (freshLaunchRestore && !freshRestoreConsumedByUi) {
+    freshRestoreConsumedByUi = true;
+    restoration = 'relaunch';
+  } else {
+    restoration = 'remount';
+    if (tracking) logEvent(s.rideId, { kind: 'remount', tUnixMs: Date.now() });
+  }
+  return { session: s, tracking, restoration };
 }
