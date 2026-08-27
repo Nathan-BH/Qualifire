@@ -168,7 +168,7 @@ try {
     Step '5. Publishing (channel: preview)'
     Say 'bundles locally (npx expo export) then uploads -- ~1-2 min, spends NO build slot.'
     $ErrorActionPreference = 'Continue'
-    npx eas-cli update --channel preview --message "$Message" --environment preview
+    npx eas-cli update --channel preview --message "$Message" --environment preview --platform android
     $code = $LASTEXITCODE
     $ErrorActionPreference = 'Stop'
     if ($code -ne 0) { throw 'eas update reported an error -- check the output above' }
