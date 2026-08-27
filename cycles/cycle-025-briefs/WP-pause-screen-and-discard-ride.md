@@ -54,8 +54,10 @@ one-off: the 2026-08-25 staged 17-second session (anomaly 2), and the 2026-08-19
 stub the review cites as already having argued for it (line 12: "worth noting for the backlog
 that a 'discard ride' path still doesn't exist, which the 19th's chain-incident stub already
 argued for"). Design questions for the executor (stop-on-ambiguity — propose, don't guess
-silently): where discard lives (third action on the pause menu vs. delete-from-RIDES-list vs.
-both), whether a discarded ride's raw JSONL is deleted or retained-but-hidden — **RULED by Nathan
+silently): where discard lives — **narrowed 2026-08-26 (round 2): delete-from-RIDES-list already
+exists (a delete button next to "Export GPX+", per Nathan), so the remaining design is the
+pause-menu discard action, reusing the existing deletion path** — whether a discarded ride's
+raw JSONL is deleted or retained-but-hidden — **RULED by Nathan
 2026-08-26: really deleted** ("I only delete rides that I genuinely did not do or should not
 count"). He floated, as an optional idea and not a requirement, a trash folder keeping
 discarded rides for a week before permanent deletion — the executor may propose it, but plain
@@ -85,14 +87,16 @@ render, a follow-up fix item.
 
 ## NEEDS-NATHAN
 
-1. The fate of the 15:37 session — **answered 2026-08-26, inconclusive, with a NEW
-   contradiction to resolve in code:** Nathan says such stubs "very well could be" there but
-   that he "usually deletes them" (he sometimes opens the app to demo it without riding). This
-   brief's P2 premise is that no delete/discard path exists — so either a delete already exists
-   somewhere (RIDES list?) and P2's gap is narrower than stated, or Nathan is mistaken about
-   deleting. P2 executor's first step: establish in code whether any delete path exists today.
-   Nathan also stated the requirement behind the habit: every new ride must start fresh so
-   measurements are never confounded by stub sessions.
+1. The fate of the 15:37 session — **contradiction RESOLVED 2026-08-26 (round 2): a delete
+   button already exists in the RIDES tab, next to the "Export GPX+" button** (Nathan, on where
+   he deletes demo/stub rides). P2's gap is therefore narrower than stated: delete-from-the-
+   RIDES-list exists; what is missing is only the discard path at the PAUSE screen (ending a
+   recording without saving it at all). P2 executor's first step stands, reframed as
+   verification: confirm the RIDES-tab delete in code (what it removes — raw JSONL, events
+   sidecar, results entry, index rows — and whether it already satisfies item 4's "really
+   deleted" ruling), then build the pause-screen discard to reuse that same deletion path
+   rather than minting a second one. Nathan also stated the requirement behind the habit:
+   every new ride must start fresh so measurements are never confounded by stub sessions.
 2. For P3: where he was at 15:37 — **asked 2026-08-26, no answer:** Nathan wasn't on any logged
    ride then and doesn't know; the yellow-polyline identification proceeds from code alone
    (P3 stands as written).

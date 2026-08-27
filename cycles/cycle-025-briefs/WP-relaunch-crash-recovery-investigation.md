@@ -202,11 +202,12 @@ write frequency vs. flash wear/battery — every N=30 fixes is plenty; unknowns:
 **P5 — UNBUILT — One source of truth for banner and counter.** (Small–medium.) Today the
 "Recovered after relaunch" banner derives from `getRecoveryState()` while the counter derives from
 the sidecar event — they can still disagree at HEAD (a UI-only remount with the process alive
-shows the banner but logs nothing; arguably correct, but then the banner overclaims). Decide the
-definition — "relaunch = fresh JS launch that restored a session from disk" is the honest one —
-and drive the banner from the same predicate that logs the event (e.g. `getRecoveryState()`
-returns a `freshLaunch` flag from `ensureSession`). Risk: low; mostly a definitional ruling for
-Nathan to ratify.
+shows the banner but logs nothing; arguably correct, but then the banner overclaims). **Definition
+RULED by Nathan 2026-08-26 (round 2): visibility-first.** Any restoration of an in-progress
+session — fresh JS launch OR UI-only remount — shows the banner and logs a sidecar event, driven
+from one shared predicate (e.g. `getRecoveryState()` returning a `freshLaunch` flag from
+`ensureSession`); the event's kind flag keeps a remount from inflating the true-relaunch count
+while the rider is still warned the recording may be corrupted. Risk: low; the ruling is in.
 
 **P6 — UNBUILT — The crash itself: cause UNRESOLVED, propose evidence capture, not a fix.**
 (Small process change; the fix itself is unknown.) Stop-on-ambiguity applies: nothing in the repo
@@ -243,10 +244,19 @@ any code WP that follows: `cd app && node --experimental-strip-types tests/run.t
 **Priority note (2026-08-26):** Nathan considers the 2026-08-22 crash possibly a one-off needing
 no immediate action unless it recurs; he may try to reproduce it by re-riding a home>>station
 route ("if the crash reproduces it means it is something intrinsic"). Item 1 below was NOT
-answered — his reply addressed priority, not the definition — so P5 stays blocked on it.
+answered — his reply addressed priority, not the definition. **The definition was then ruled in
+round 2 (2026-08-26, see item 1 below) — P5 is unblocked.**
 
-1. Ratify the relaunch definition in P5 (fresh JS launch restoring a session = relaunch; UI-only
-   remount = not). **STILL OPEN as of 2026-08-26.**
+1. ~~Ratify the relaunch definition in P5~~ — **RULED 2026-08-26 (round 2): the banner does NOT
+   stay silent on a UI-only remount.** Nathan: the banner "should not be silent and should be
+   visible so we know something happened and the recording might be corrupted." So P5's predicate
+   is visibility-first: ANY restoration of an in-progress session — fresh JS launch OR UI-only
+   remount with the process alive — shows the banner AND logs a sidecar event, from one shared
+   predicate; the event carries a kind flag (`freshLaunch` true/false, or
+   `kind: 'relaunch'|'remount'`) so the relaunch counter and analysis still distinguish a true
+   process death from a remount. The earlier "banner only on fresh JS launch" candidate is
+   rejected. (Counter semantics resolved by the planner from the ruling's intent: remounts are
+   logged-but-flagged, never counted as relaunches.) P5 is unblocked.
 2. ~~The phone-side sidecar pull (immediate check above)~~ — **CLOSED 2026-08-26, not possible:**
    Nathan has no access to any .jsonl/.json file on the phone; the only artifact he can produce
    is the GPX+ export already on file. The scenario A/B discriminator stays undetermined unless

@@ -16,10 +16,12 @@ Reversibility: cheap | moderate | expensive
 ---
 
 ## D-001 — Personal single-user app first
-Date: 2026-08-14 · Status: ACTIVE
+Date: 2026-08-14 · Status: ACTIVE — **scope reading amended by D-045 (2026-08-26)**
 Decision: Qualifire is built for Nathan alone; no multi-user, social or store-distribution work.
 Rationale: The motivating use case is his own daily commute. Multi-user concerns (accounts, privacy, leaderboards, moderation) would multiply scope before the core mechanic is proven fun.
 Reversibility: moderate — data model should avoid hard-coding "one rider", but nothing else needs to anticipate it.
+
+**AMENDED by D-045 (2026-08-26):** "someone else besides Nathan can use this app" is now an actual goal and a top priority — no longer a keep-in-mind design lens. What is committed is a virgin blank-install app another rider could use, driving the virgin-cold-start epic's priority; this entry's no-accounts/no-social/no-store clauses are not re-ruled by D-045.
 
 ## D-002 — The map layer is cosmetic
 Date: 2026-08-14 · Status: ACTIVE
@@ -67,11 +69,13 @@ Dissent: none — rare convergence.
 Reversibility: cheap on tier count, moderate once screens are built.
 
 ## D-008 — Colour benchmarks use ROLLING windows; noise floor is mandatory
-Date: 2026-08-14 · Status: ACTIVE — **confirmed by Nathan 2026-08-14**
+Date: 2026-08-14 · Status: ACTIVE — **confirmed by Nathan 2026-08-14** · **AMENDED by D-045 (2026-08-26): noise floor deleted** (tier definitions were already superseded by D-030)
 Decision: Green = beats trailing-7-day sector best; purple = beats trailing-28-day sector best. Rolling, not calendar. Colour only when improvement exceeds max(k·σ_s, absolute floor), where σ_s is that sector's ride-to-ride spread; sectors with <5 clean rides stay neutral. Colour on **moving time**; raw time surfaced; stop-containing sectors flagged "interrupted", GPS-gap sectors "estimated"/uncoloured. All benchmarks frozen at ride start (makes live colouring an O(1) comparison, per D-006).
 Rationale: Rolling windows kill the Monday-morning cliff where a calendar reset wipes every green — benchmarks age out one ride at a time. The noise floor exists because smartphone GPS gives ±1–2 s sector precision `[UNVERIFIED — k and σ_s need real traces]`; colouring improvements smaller than the rider's own variance is colouring coin flips.
 Deviation flagged: Nathan's original sketch had calendar weeks/months. Rolling preserves the intent (fresh weekly target, rarer monthly one) while removing the reset cliff — **needs Nathan's confirmation**.
 Reversibility: cheap — a window function.
+
+**AMENDED by D-045 (2026-08-26):** the noise-floor clause ("sectors with <5 clean rides stay neutral") — the one part of this entry D-030 had explicitly kept alive — is deleted; MIN_HISTORY no longer exists and colours run from ride 1 (first-ever ride: all purple). What still survives from this entry is rolling windows, not calendar ones.
 
 ## D-009 — Reference lap: automatic, monthly, per direction
 Date: 2026-08-14 · Status: **SUPERSEDED by D-017** — Nathan ruled the other way
@@ -98,6 +102,8 @@ Decision: React Native + Expo **dev-build** workflow (not Expo Go — it cannot 
 Rationale: Mobile Dev verified against 2026 sources: Expo foreground-service background GPS confirmed supported; EAS free tier confirmed; whole pipeline $0. Phase 0 first because the timing model must be validated on recorded data before any phone code exists.
 Note: role woken early by Nathan's explicit override (activation trigger B-02 not yet met) — scoped to B-08.
 Reversibility: moderate once code lands; cheap today.
+
+**Note (D-045, 2026-08-26):** this entry is cited (with D-001) as grounds for treating "someone else can use this" as a design lens only — e.g. COLD-START's header. That reading is superseded by D-045: other people using the app from a blank install is a top-priority goal. The stack and pipeline recorded here are unchanged.
 
 ## D-013 — Screen layout spec accepted as working design
 Date: 2026-08-14 · Status: ACTIVE — cycle 002, entirely UNBUILT
@@ -214,12 +220,14 @@ Rationale: Nathan — baking an unvalidated live surface into the standalone art
 Reversibility: cheap.
 
 ## D-030 — The colour model is settled: last-N average, F1 palette
-Date: 2026-08-16 · Status: ACTIVE — cycle 008, Nathan's ruling after comparing all three models on real data in the app
+Date: 2026-08-16 · Status: ACTIVE — cycle 008, Nathan's ruling after comparing all three models on real data in the app · **AMENDED by D-045 (2026-08-26): the noise floor is deleted**
 Decision: ONE model. **Purple** = beats the best of the window; **green** = above the recent average; **yellow** = an ordinary lap, below the average. The window is the last N=10 comparable rides on that route, and it includes the rider's own new rides, not a frozen file. The 'best' (D-007/D-008 shape) and 'hybrid' (±1σ deadband) candidates are deleted, along with the Settings row that offered them — a ratified comparison is not a preference.
 Palette: yellow is the brand's own F1 yellow, not a muted or warning tone. In F1 yellow is the DEFAULT colour of a lap time; most laps are ordinary. This is D-013's no-failure-styling rule, honoured rather than worked around.
 Supersedes: D-007/D-008's tier definitions. What survives from D-008: rolling windows (not calendar), moving time as the coloured quantity, and the noise floor — **fewer than 5 comparable rides ⇒ no verdict at all**, rendered as plain ink and never as yellow, so "nothing known" cannot be mistaken for "ordinary".
 Rationale: Nathan judged the three side by side on the Result tab with his own archive behind them. The average model is the one that says something about every ride; the ceremony (purple) survives untouched.
 Reversibility: cheap — one pure function, `tierFor()` in app/src/ui/colourModel.ts. Nothing is stored (D-023), so a different ruling costs no migration.
+
+**AMENDED by D-045 (2026-08-26):** the noise-floor clause above — "fewer than 5 comparable rides ⇒ no verdict at all" — is deleted; MIN_HISTORY no longer exists. Colours run from ride 1: one prior ride ⇒ purple/yellow against that ride; 2+ prior rides ⇒ the full purple/green/yellow model on the average of rides on record; the first ride ever on a route logs all-purple sectors. The last-N average model, N=10 window and F1 palette are unchanged.
 
 ## D-031 — A real basemap goes under the route (recorded retroactively)
 Date: 2026-08-17 · Status: ACTIVE — implemented before it was recorded; written up by the Principal in cycle 010
@@ -266,7 +274,7 @@ Reversibility: cheap in code, expensive in build slots — which is what the fou
 Evidence: `product/MAPLIBRE-SPIKE.md`.
 
 ## D-036 — A planned route may keep time; it may never compare, until five clean rides
-Date: 2026-08-17 · Status: ACTIVE — cycle 011. Conditional: binding on any implementation of IDEAS §29, whether or not §29 is adopted
+Date: 2026-08-17 · Status: ACTIVE — cycle 011. Conditional: binding on any implementation of IDEAS §29, whether or not §29 is adopted · **AMENDED by D-045 (2026-08-26): the five-clean-rides comparison gate is deleted**
 Decision: A route the rider has never ridden — produced by typing a destination — enters the catalog as `Route.provenance: 'planned'` with `GateSet.origin: 'geometric'`, and from ride 1 it **may** run the lap clock, fire gates, record raw sector times and show them as bare numbers. Until it has **≥ 5 clean rides** (D-008's existing threshold, deliberately reused rather than a second one invented) it may **not**: claim a benchmark or a PB; colour a sector any tier; enter the timing tower or produce a position; be offered as a way at START (routes are ratified, not discovered — a one-off diversion must not mint a permanent ghost route); or be seeded with archive ghosts as if the history were its own (D-018). Promotion to `ratified` is Nathan's, not the algorithm's: at 5 clean rides the app *offers* the route, with a re-measured gate proposal attached.
 Sectors cut from geometry alone are a **starting grid, not a benchmark**, and the app says so. The first rides on a `geometric` gate set are explicitly a placement experiment; once ≥5 clean rides exist the measured procedure re-runs on real `stop_frac` and mints a new `gateSetVersion`.
 **No routing engine's ETA is ever stored, shown, or compared against.** The only seconds in this app come from the offline pipeline (D-023). Relatedly, the default profile is never labelled "fastest": `RESULTS §5` measures 66.3% of moving time inside 22–26 km/h against a 25 km/h assist cutoff, so road class barely moves this bike's clock — the label is "a sensible way".
@@ -274,12 +282,16 @@ Rationale: timing without comparison is honest; comparison without history is no
 Reversibility: cheap — it is a constraint on unbuilt work.
 Evidence: `product/ROUTING-AND-SEGMENTATION.md` §3, §5.
 
+**AMENDED by D-045 (2026-08-26):** the "≥ 5 clean rides" gate and its "may never compare" consequence are deleted with MIN_HISTORY. A planned route colours from its very first rides: the first ride ever logs all-purple sectors; one prior ride ⇒ purple/yellow; 2+ ⇒ the full model on the average on record. Everything else here stands (no routing ETA ever, ratification is Nathan's not the algorithm's, geometric gates are a starting grid). Open follow-up: the "at 5 clean rides the app *offers* the route" promotion trigger reused D-008's threshold, which no longer exists — the offer trigger needs its own number or its own ruling.
+
 ## D-037 — The comparison window is the last 10 rides, not 28 days; D-028's window text is corrected
-Date: 2026-08-17 · Status: ACTIVE — cycle 011, Principal reconciling a documentation drift found by the Product Owner
+Date: 2026-08-17 · Status: ACTIVE — cycle 011, Principal reconciling a documentation drift found by the Product Owner · **AMENDED by D-045 (2026-08-26): the window is previous-9-plus-current**
 Decision: D-028 defines the tower's comparison set as "trailing-28-day"; D-030 and the shipped code define it as the last **N = 10 rides** (`app/src/ui/colourModel.ts:26` `WINDOW_N = 10`, applied in `ghostsFor()` via `.slice(-WINDOW_N)`, which `towerSource.ts` and both boards consume). **The code is right and D-028's wording is stale.** Every reference to a 28-day window in D-028 now reads "the last `WINDOW_N` ranking rides on this route". Nothing in code changes; the tower and the colour model already share one window, which is what D-030 required. A calendar window was also the wrong shape for its own reason: it is Nathan-shaped. On a way ridden weekly rather than daily, 28 days is nearly empty and §21's "a freak time expires every ~20 rides" becomes ~20 weeks.
 Settled with it, because it is the same number: the Designer's **depth strip** (`product/SETUP-UX.md` §5) has **ten slots** — one per window place — not one per rung of the Product Owner's honesty ladder. The strip's meaning is "how full is the comparison window", and drawing anything else beside a tier colour would make the receipt disagree with the claim.
 Rationale: two documents describing one number differently is exactly the drift `STATE.md`'s precedence rule exists to catch. The detailed record wins over the summary; here the *code* is the detailed record.
 Reversibility: free — text only.
+
+**AMENDED by D-045 (2026-08-26):** the window is **previous-9-plus-current** — the current ride is compared against the 9 most recent previous rides, a pool of 10 in which the current ride is always the 10th slot; never a global ranking, never 10 independent historical rides. Position chips read "P4 of 10", never "of 11". The depth strip's ten slots still match the pool size.
 
 ## D-038 — The basemap crop: Esri, less desaturation, antialiased overlay, attribution in the app
 Date: 2026-08-17 · Status: ACTIVE — cycle 012, folded into this file by the Principal on the next pass as that cycle required
@@ -343,3 +355,14 @@ Rationale: holding the MorningB promotion back solved nothing (the defect was in
 Reversibility: moderate — `REACQ_JUMP_M` is a small, isolated change to `feedCandidate`'s advance accounting with its own regression test, but every fixture's lock timing depends on it now.
 Evidence: `cycles/cycle-024-briefs/WP-D1-ADDENDUM-adjudication-2026-08-20.md` (full investigation, before/after numbers per fixture, Google Maps links for the ratified gate positions); `cycles/cycle-024.md` (near-miss #4).
 Follow-up, not yet closed: a residual — re-acquisition hops ≤240 m (now ≤245 m) still slip through this discount uncounted; the fix is cheap (expose `reacquired: boolean` on `LiveFix`, discount all re-acquisitions regardless of size) but out of WP-D1's scope. Filed as **B-90**.
+
+## D-045 — Cycle-025 Q&A rulings: MIN_HISTORY abolished, first-ever ride is all purple; the ranking window is previous-9-plus-current; "others can use this" is a top-priority goal; always four sectors
+Date: 2026-08-26 · Status: ACTIVE — Nathan's rulings, recorded from `cycles/cycle-025-briefs/QUESTIONS-FOR-NATHAN.md` (round 1) and `QUESTIONS-FOR-NATHAN2.md` (round 2), both processed 2026-08-26. Four rulings bundled per D-044's precedent; already baked into the cycle-025 WP files — this entry exists so every amended decision and backlog item points at one record.
+Decision:
+1. **MIN_HISTORY is deleted. There is no noise floor and no colour-silent period.** Nathan: "I dont remember ever agreeing on a min history rule so lets delete that rule. There is no need for 5 clean rides." Replacement scheme: with exactly **1 prior ride** on a route, sectors score **purple/yellow** against that one ride; with **2+ prior rides** the full **purple/green/yellow** model runs on the average of the rides on record — the same D-030 model, with the history requirement starting at 1 instead of 5. And the **first ride ever ridden on a route logs ALL PURPLE sectors** — never yellow, never colour-silent: "that's how it is in F1; if youre the first one, you will have all purple sectors." Amends D-030 and D-036; deletes the one clause of D-008 that D-030 had kept alive. Kills B-35 (no colour-silent period left to count down through); rescopes B-43; B-42 gains the all-purple ride-1 fact; retires B-48's segmentation-clamp numbers alongside ruling 4 below.
+2. **The ranking universe is a recency window, never a global ranking: the current ride is compared against the 9 most recent PREVIOUS rides — previous-9-plus-current, a pool of 10 in which the current ride is always the 10th slot.** Amends D-037's "last 10 rides" reading (pool size 10 survives; "10 independent historical rides" does not). Position chips read "P4 of 10", never "of 11" — propagated to WP-live-ghost-position.
+3. **"Someone else besides Nathan can use this app" is an actual goal and a top priority** — no longer the keep-in-mind design lens of D-001/D-012 and COLD-START's header. It drives the virgin-cold-start epic's priority. Nathan: "This is an actual goal that is a top priority." D-001's other content (no accounts, no social, no store distribution) is not re-ruled here.
+4. **Every route has exactly four sectors (gates at 25/50/75%), for every route regardless of length or owner.** Length-scaled sector counts are rejected: "keep only 4 sectors total and not scale … in F1 sector times are different based on tracks, but you always have 4 sectors." Kills B-38; also retires B-48's `n = clamp(L/1400, 3, 6)` segmentation numbers.
+Rationale: Nathan's own answers, verbatim in the two Q&A files.
+Reversibility: cheap — comparison-layer rules and scope text; nothing is stored (D-023), so re-ruling costs no migration.
+Evidence: `cycles/cycle-025-briefs/QUESTIONS-FOR-NATHAN.md` (Q19, Q22, and the ranking answer under WP-relaunch/WP-result-ranking); `cycles/cycle-025-briefs/QUESTIONS-FOR-NATHAN2.md` (the countdown-ladder answer).

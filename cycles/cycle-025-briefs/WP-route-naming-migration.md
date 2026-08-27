@@ -1,9 +1,11 @@
 # WP — Route naming: display names only, no raw-data rewrite (Nathan ruled 2026-08-25) (cycle 025)
 
-**Status: PROPOSAL — MECHANISM RULED. NAMING RULINGS LANDED 2026-08-26 (see NEEDS-NATHAN):
-questions 1–2 ruled (descriptive wet/dry names with the Dry suffix explicit; StationWork pair
-keeps Std/Alt), with two residuals still open — the Evening pair's wet/dry identity, and a
-collision check on question 3's "trace" answer. Every item below is labelled UNBUILT; nothing
+**Status: PROPOSAL — MECHANISM RULED, ALL NAMING RULED (round 2 landed 2026-08-26, see
+NEEDS-NATHAN): questions 1–2 ruled (descriptive wet/dry names with the Dry suffix explicit;
+StationWork pair keeps Std/Alt), the Evening pair confirmed wet/dry
+(`WorkHomeDry`/`WorkHomeWet`), and question 3 mooted — Nathan deferred the sub-route level as
+a future addition, so no third-level word is needed and VIEW TRACE keeps its name. This brief
+is no longer blocked. Every item below is labelled UNBUILT; nothing
 has been implemented and no app code was touched in producing it.** Prepared 2026-08-25 from the notes3 review, which
 verified the id-usage inventory against the app code and data
 (`Nathan/Nathan's_notes3_review.md` §8, lines 91–108, and closing italics, line 141); mechanism
@@ -56,10 +58,11 @@ name everywhere a route label is shown. Zero data migration, zero risk to export
 keys. The `design/` SVGs and `demos/mockup.html` render route names — regen obligations (WP-J
 convention, B-66) trigger once the actual display names are decided.
 
-The lookup table's *content* is now largely ruled (2026-08-26 — see NEEDS-NATHAN 1–3):
-descriptive wet/dry names with the Dry suffix explicit; StationWork keeps Std/Alt. Two
-residuals keep the last rows unbaked: the Evening pair's wet/dry identity, and the "trace"
-collision check under item 3.
+The lookup table's *content* is now fully ruled (2026-08-26, both rounds — see NEEDS-NATHAN
+1–3): descriptive wet/dry names with the Dry suffix explicit; StationWork keeps Std/Alt;
+`EveningA`→`WorkHomeDry`, `EveningB`→`WorkHomeWet` (round-2 confirmation: same wet/dry
+derivation as the Morning pair). No residuals remain — item 3's collision check is moot (the
+sub-route level is deferred).
 
 ## Options declined — kept for the record only
 
@@ -88,10 +91,9 @@ carried over unchanged from before this message:
    explicit.** Nathan: "better to use descriptive names like wet and dry … on the record tab:
    home-work-dry as the three options before pressing record." So: `Morning`→**`HomeWorkDry`**,
    `MorningB`→**`HomeWorkWet`** (MorningB is the rain/asphalt alternative). The A/B scheme is
-   dead for these routes. **One residual before the Evening rows can be filled:** by extension
-   `EveningA`→`WorkHomeDry`, `EveningB`→`WorkHomeWet` — but whether EveningB really is the
-   wet-weather variant of work→home has never been stated on record; confirm with Nathan
-   before baking those two names. Design note from the same answer: the RECORD tab should let
+   dead for these routes. **Evening residual CONFIRMED 2026-08-26 (round 2):** `EveningA`→**`WorkHomeDry`**,
+   `EveningB`→**`WorkHomeWet`** — Nathan: "The evening split should get the same rename for
+   consistency as the underlaying dry/wet derivation is the same." Design note from the same answer: the RECORD tab should let
    him compose from / to / variant (e.g. home → work → dry) as the three choices before
    pressing record.
 2. **How far the standard reaches — RULED 2026-08-26.** Station→home follows the wet/dry
@@ -111,14 +113,14 @@ carried over unchanged from before this message:
    the new fine-grained level** ("variant", "line", "trace" — Nathan's call).
    **Nathan's answer 2026-08-26: keep `Way` as is; call the new level "trace"** ("makes me
    think of trace elements, which emphasizes that it is a small change") — "for now", his
-   words. **Held one step short of baked, because applying it exposes a collision the question
-   never surfaced: "trace" is already load-bearing for a ride's recorded GPS line — the Result
-   screen's VIEW TRACE view (B-57) and "reference trace" in the variant mechanism itself
-   (`WP-comparable-variants.md`: "the app verifies the new reference trace actually crosses
-   all 5 existing gate lines"). Adopting it makes one word mean both "the recorded GPS line"
-   and "the catalog level below route". Confirm with Nathan (offering "line"/"variant" as
-   collision-free alternatives) before renaming the placeholder in
-   `WP-comparable-variants.md`.** Ruled HERE, in one
+   words. **Collision check answered 2026-08-26 (round 2) by DEFERRAL, not by picking a word.
+   Nathan: "This is actually not a priority feature to implement. So lets just keep it as a
+   future addition but not implement it just yet. I think we have already plenty customization
+   to start with by having multiple routes for a same ride." So no third catalog level is
+   minted now, no word is chosen, "trace" keeps its existing meaning (a ride's recorded GPS
+   line — VIEW TRACE is NOT renamed), and `WP-comparable-variants.md` keeps its "variant"
+   placeholder as a deferred future brief. The naming question reopens only if/when that
+   feature is picked up. This item no longer blocks this brief.** Ruled HERE, in one
    sitting with questions 1–2, so the project gets one naming convention for
    landmarks/ways/routes/variants; the mechanism itself is specced separately in
    `WP-comparable-variants.md` (cycle 025), which is blocked on this ruling and deliberately
@@ -145,6 +147,6 @@ the RECORD-tab inputs.
 
 ## What this document is not
 
-Not a backlog edit, not a decision, not an implementation — and not a request to start work: the
-mechanism is ruled but the brief stays blocked on NEEDS-NATHAN items 1–3. An explicitly UNBUILT
-proposal per `process/CYCLE.md`.
+Not a backlog edit, not a decision, not an implementation. As of 2026-08-26 (round 2) the
+mechanism AND the full naming table are ruled — the brief is unblocked and ready to execute
+when sequenced. An explicitly UNBUILT proposal per `process/CYCLE.md`.

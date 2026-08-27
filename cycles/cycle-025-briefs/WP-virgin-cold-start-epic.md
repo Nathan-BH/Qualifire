@@ -45,7 +45,8 @@ way."* Nothing else in the flow can exist before it. Proposed order:
 1. B-39 remainder — empty-seed install path.
 2. B-36 + B-42 — retroactive way creation + ride-1-as-reference (the save flow's skeleton).
 3. The save-flow UI per Nathan's spec (below) + B-37 provisional gates.
-4. B-35 — the "ride n of 5" countdown ladder (see NEEDS-NATHAN 2).
+4. ~~B-35 — the "ride n of 5" countdown ladder~~ — struck 2026-08-26 (round 2): MIN_HISTORY
+   abolished, colours run from ride 1 (first ride all purple); see NEEDS-NATHAN 2.
 5. B-43 — the empty-state pass across every screen.
 
 ## The save-flow gate spec — Nathan's scheme plus what's already designed (review lines 20–26)
@@ -65,8 +66,9 @@ way."* Nothing else in the flow can exist before it. Proposed order:
 - **Gates at the save step of ride 1** is Nathan's genuine addition over COLD-START (which
   waited for ride 2 to confirm the corridor, B-37). The review endorses it (line 26): the
   ride-1 trace is the reference line anyway, and the honesty machinery holds — gates from one
-  ride are a starting grid, not a benchmark; colours never fire before 5 clean rides
-  (MIN_HISTORY, D-008), regardless.
+  ride are a starting grid, not a benchmark. (The safety net previously cited here — colours
+  silent until 5 clean rides, MIN_HISTORY/D-008 — was abolished by Nathan 2026-08-26, round 2:
+  colours run from ride 1, and the first ride on a route logs all purple; see NEEDS-NATHAN 2.)
 
 ## BLOCKING / NEEDS-NATHAN
 
@@ -78,12 +80,21 @@ way."* Nothing else in the flow can exist before it. Proposed order:
    his standalone "qualifire preview" app (and later the virgin app) needs a full build each
    time or whether a QR-code/OTA update suffices, with a build required only for new native
    capability (e.g. an actual map component).
-2. **Does the countdown ladder (B-35) ship inside the epic? — STILL OPEN 2026-08-26:** Nathan:
-   "I have no idea what this countdown ladder idea is. Explain it further." The re-ask must
-   first explain B-35: on a freshly created route, colours/verdicts stay silent until 5 clean
-   rides exist (MIN_HISTORY, D-008), so a blank app looks broken; the ladder is UI copy like
-   "ride 2 of 5 — 3 more before colours unlock", making the app read as loading, not broken.
-   Then re-ask: ship inside this epic, or later as its own item?
+2. ~~Does the countdown ladder (B-35) ship inside the epic?~~ — **RULED 2026-08-26 (round 2),
+   by deleting the rule the ladder existed for: the MIN_HISTORY 5-clean-rides noise floor is
+   abolished.** Nathan: "I dont remember ever agreeing on a min history rule so lets delete
+   that rule. There is no need for 5 clean rides." His replacement scheme (his "routes" read
+   as rides-on-a-route — colours never compare across routes, D-010/D-015): with one prior
+   ride on the route, sectors score purple/yellow against it; with two or more, the full
+   purple/green/yellow model runs on the average of the rides on record (the D-030 last-N
+   model, starting at history = 1 instead of 5); and the FIRST ride ever on a route logs ALL
+   PURPLE sectors — "that's how it is in F1; if youre the first one, you will have all purple
+   sectors" — never yellow, never colour-silent. Consequences: B-35's countdown ladder is
+   DEAD (nothing to count down to — Product Owner: close/won't-fix); sequencing step 4 drops
+   out; and the ruling AMENDS ratified decisions — D-030's noise-floor clause ("fewer than 5
+   comparable rides ⇒ no verdict") and D-036's ≥5-clean-rides comparison gate — which the
+   Principal must record as a superseding D-number, alongside a first-ride-all-purple change
+   to B-42's ride-1 semantics and a rescope of B-43's "tower below MIN_HISTORY" empty state.
 3. ~~Confirm the "within 1%" reading~~ — **CONFIRMED 2026-08-26: "Yes exactly."** Start gate
    at exactly 1% and end gate at exactly 99% of route distance as the defaults.
 4. ~~Fixed 25/50/75 vs length-scaled sector count~~ — **RULED 2026-08-26: fixed 4 sectors,
@@ -97,7 +108,8 @@ way."* Nothing else in the flow can exist before it. Proposed order:
 - `product/proposals/COLD-START.md` — the design itself (unbuilt).
 - B-35, B-36, B-37, B-38, B-42, B-43 (all OPEN); B-39 (PART-DONE — empty-seed path remains).
 - `ROUTING-AND-SEGMENTATION.md` §3 (gate-seeding snap rule); `SETUP-UX.md` (tap-then-nudge).
-- D-008 / MIN_HISTORY; D-011 (gates vs traffic lights).
+- D-008 / MIN_HISTORY — noise floor abolished 2026-08-26 (round 2), needs a superseding
+  D-number; D-011 (gates vs traffic lights).
 - Complement, not substitute: whole-app export/import (`WP-whole-app-export-import.md`) solves
   *your phone → new phone* and *you → a friend wanting your routes*; only this epic solves the
   stranger-in-another-city case (review line 67).

@@ -1,7 +1,9 @@
 # WP — Comparable variants: a finer level below "route" with shared gates (cycle 025)
 
-**Status: PROPOSAL ONLY — UNBUILT, AND BLOCKED ON THE NAMING RULING IN
-`WP-route-naming-migration.md`.** This brief deliberately contains **no naming question of
+**Status: PROPOSAL ONLY — UNBUILT, AND DEFERRED BY NATHAN 2026-08-26 (round 2): "This is
+actually not a priority feature to implement. So lets just keep it as a future addition but
+not implement it just yet." Kept on file as a future brief; NOT part of the cycle-025
+execution queue. The naming ruling it was blocked on is moot until the feature is picked up.** This brief deliberately contains **no naming question of
 its own**: what the new level is called (Nathan's proposed "way" collides with the schema's
 existing `Way`) is ruled in that brief's NEEDS-NATHAN, in one sitting with its two existing
 naming questions. This document uses the placeholder **"variant"** throughout, to be replaced
@@ -62,10 +64,10 @@ sector times are therefore genuinely comparable.
 ## BLOCKING — NEEDS-NATHAN (all ruled in `WP-route-naming-migration.md`, not here)
 
 1. **The naming ruling** — rename the existing schema `Way` (landmark pair) or pick a new
-   word for this level ("variant", "line", "trace" — his call). **Update 2026-08-26: Nathan
-   answered "trace" (keeping `Way` as is), but the answer is held for one collision check —
-   "trace" already means a ride's recorded GPS line in this very brief ("reference trace")
-   and in the app's VIEW TRACE view. See `WP-route-naming-migration.md` NEEDS-NATHAN 3.** The word "way" is
+   word for this level ("variant", "line", "trace" — his call). **Update 2026-08-26 (round 2): resolved by deferral — Nathan ruled the whole feature "not a
+   priority … keep it as a future addition but not implement it just yet", so no word is
+   chosen, `Way` and VIEW TRACE keep their names, and this brief's "variant" placeholder
+   stands until the feature is picked up. See `WP-route-naming-migration.md` NEEDS-NATHAN 3.** The word "way" is
    load-bearing in the schema (`Way`, `wayId`), the catalog, the Routes tab, and every
    analysis doc; adopting notes4's nomenclature as written means renaming the existing
    concept everywhere. One sitting with that brief's two existing questions; doing the rename

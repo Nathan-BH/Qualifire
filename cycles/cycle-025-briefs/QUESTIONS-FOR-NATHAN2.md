@@ -1,5 +1,7 @@
 # Cycle 025 — questions that need your answer (round 2)
 
+**Processed 2026-08-26 (round 2)** — all 6 answers resolved and baked into the cycle-025 WP files. No further re-ask needed this round.
+
 **Follow-up to `QUESTIONS-FOR-NATHAN.md` (dated 2026-08-26).** Your answers there got baked into
 the cycle-025 WP files — thank you. A handful of items came back needing a sharper re-ask (you
 answered a different question than the one asked, or asked us to explain further before you
@@ -19,7 +21,7 @@ screen reloads but the app process never died, should the "Recovered after relau
 the relaunch counter both stay silent? (This is just a definition for counting — nothing to do
 with whether the crash recurs.)
 
-**Answer:**
+**Answer:** If I understand correctly, I would say the revored after launch banner should not be silent and should be visible so we know something happened and the recording might be corrupted.
 
 ---
 
@@ -30,7 +32,7 @@ premise that no delete option exists yet in the app. One of those has to be wron
 executor needs to know which before touching P2. When you say you delete demo rides — where
 exactly do you do that in the app? Is there already a delete button somewhere in the RIDES tab?
 
-**Answer:**
+**Answer:** Yes the RIDES tab has a delete button next to the "Export GPX+" button
 
 *(No action needed on the rest of your Q6 answer — your question "is this behaviour problematic?"
 is already answered: no, provided every new ride starts a fresh session, which is exactly the
@@ -51,7 +53,7 @@ for a ride's recorded GPS line (the VIEW TRACE button, and each variant's "refer
 `WP-comparable-variants.md`). Keep "trace" anyway and rename VIEW TRACE (to e.g. VIEW RIDE), or
 pick "line" or "variant" for the new catalog level instead?
 
-**Answer:**
+**Answer:** This is actually not a priority feature to implement. So lets just keep it as a future addition but not implement it just yet. I think we have already plenty customization to start with by having multiple routes for a same ride.
 
 ---
 
@@ -63,7 +65,7 @@ so a blank app looks broken for its first week. The "ladder" is just a progress 
 of 5: 3 more before colours unlock." Ship it inside the virgin cold-start epic, or as a later
 add-on?
 
-**Answer:**
+**Answer:** I dont remember ever agreeing on a min history rule so lets delete that rule. There is no need for 5 clean rides, from the moment you have one route you can compare the sectors and log them as either purple/yellow. If you have 2routes you can have it as purple/green/yellow using the average of the current2 routes. And also if for some reason you have already a route but no recorded rides, your first ride should log all purple sectors (instead of yellow ones now) because it makes more sense +that's how it is in F1; if youre the first one, you will have all purple sectors.
 
 ---
 
@@ -74,7 +76,7 @@ Evening pair (work→home) never got the same confirmation. Last two route names
 your rain/wet work→home variant (so `EveningA`→`WorkHomeDry`, `EveningB`→`WorkHomeWet`), or is
 that pair split by something other than weather?
 
-**Answer:**
+**Answer:** The evening split should get the same rename for consistency as the underlaying dry/wet derivation is the same.
 
 ---
 

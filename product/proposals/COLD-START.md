@@ -18,6 +18,8 @@ Everything else in the app is derived. These are the only facts the app cannot c
 
 That is the whole list. N=10, MIN_HISTORY=5 and the palette are settled and are **not** settings (D-030).
 
+**STALE as of D-045 (2026-08-26):** MIN_HISTORY=5 no longer exists — the min-history rule was deleted (colours from ride 1; one prior ride ⇒ purple/yellow; 2+ ⇒ full model on the average; the first ride ever on a route logs all-purple sectors). N=10 and the palette are unaffected. Later references to MIN_HISTORY elsewhere in this file (the §-tables and F-4's empty-state premise) are stale for the same reason.
+
 **Counts — what "a few reference rides" actually is.** Nathan's "a few" splits into two different numbers:
 
 | Rides | What it buys |
