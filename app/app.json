@@ -46,6 +46,12 @@
         "projectId": "a9f51461-f939-49a2-8c47-087fc39dc5f3"
       }
     },
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a9f51461-f939-49a2-8c47-087fc39dc5f3"
+    },
     "owner": "nahtanhbs-team",
     "icon": "./assets/icon.png"
   }
