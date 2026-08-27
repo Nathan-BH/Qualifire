@@ -98,8 +98,43 @@ Ties into `WP-cycle-token-usage-rule.md`'s proposal to make this a standing requ
 | 2026-08-26 | Direct (coordinator) | sonnet | ~1k | resolved the git-status false positive by timestamp comparison; reported D-036's orphaned 5-ride promotion-offer trigger as an open follow-up needing Nathan's attention |
 | 2026-08-27 | Direct (coordinator) | sonnet | ~1k | this `TOKEN-USAGE.md` update |
 
-### Phase 9 onward — cycle 025 execution (append below as it happens)
+### Phase 9 — 2026-08-27: cycle 025 execution, overnight marathon (stopped early per Nathan's request)
+
+Nathan kicked off an overnight run through the cycle-025 WPs. Per-dispatch token figures for
+most of this phase were not captured into the coordinating chat's durable record before a context
+compaction partway through the night, so most rows below are marked `unknown` rather than guessed
+-- per this file's own rule above, never invent a figure. The one figure available verbatim is the
+final Inspect dispatch, read directly from its tool result. Six work packages were fully executed
+(triage -> plan -> execute -> inspect -> commit) before Nathan asked to stop the marathon early
+(usage limits reset, tokens needed for other work this week) once the in-flight WP finished.
 
 | date | tier | model | tokens | outcome |
 |---|---|---|---|---|
-| _(none yet — the next row here is the first real WP execution)_ | | | | |
+| 2026-08-27 | Direct chore (coordinator) | sonnet | unknown | `process/CYCLE.md` token-usage standing-requirement edit landed (WP-cycle-token-usage-rule) -- commit `68f6d6d` |
+| 2026-08-27 | Haiku/Fable/Sonnet/Fable -- WP-maplibre-frozen-id-crash (triage/plan/execute/inspect) | mixed | unknown | MapLibre frozen-`id` crash fixed (`key={id}` on all 4 GeoJSONSource tags) + regression test; inspected PASS -- commit `035a667` |
+| 2026-08-27 | Haiku/Fable/Sonnet/Fable -- WP-relaunch-crash-recovery-investigation P1-P5 (triage/plan/execute/inspect, multiple dispatches) | mixed | unknown | relaunch/crash-recovery hardening: heartbeat, `downS`, `remount` event kind, unified `restoration` predicate, gpx export fixes; inspector found + coordinator fixed an unvalidated-`lockKind`-into-XML advisory; inspected PASS -- commit `85916fd` |
+| 2026-08-27 | Haiku/Fable/Sonnet/Fable -- WP-result-ranking-integrity (triage/plan/execute/inspect) | mixed | unknown | D-045 ruling 2 (RESULT/RIDES ranking pool = previous-9 + current) implemented via `WINDOW_PREV`/`rankingPoolFor`/`rankedCountFor`; closed B-117's RIDES-screen half; inspector found + coordinator fixed a cosmetic triple-apostrophe typo; inspected PASS -- commit `e288ec4` |
+| 2026-08-27 | Haiku/Fable/Sonnet/Fable -- WP-pause-screen-and-discard-ride (triage/plan/execute/inspect) | mixed | unknown | pause-screen RESUME/END layout fix + new "Discard ride" path (mirrors RidesScreen.onDelete's delete sequence), D-013-compliant (no red UI); inspected PASS -- commit `4345726` |
+| 2026-08-27 | Haiku -- WP-route-naming-migration triage | haiku | unknown | routed to plan tier |
+| 2026-08-27 | Fable -- WP-route-naming-migration plan (read code, wrote brief) | fable | unknown | `BRIEF-route-naming-migration.md` written: `ROUTE_DISPLAY_ID` overlay design, 3 UI call sites, mockup-mirror obligations, 3 new tests specified |
+| 2026-08-27 | Sonnet -- WP-route-naming-migration execute, attempt 1 | sonnet | unknown | failed on a transient classifier-availability error ("claude-sonnet-5[1m] is temporarily unavailable (timed out)"), not a content block -- no code changes made |
+| 2026-08-27 | Sonnet -- WP-route-naming-migration execute, attempt 2 (retry, identical brief) | sonnet | unknown | all edits applied per brief; 248 tests (245 pass/0 fail/3 skip), tsc clean; flagged 2 verification-grep discrepancies as likely benign (not fixed, deferred to inspect) |
+| 2026-08-27 | Fable -- WP-route-naming-migration inspect (fresh context, adversarial) | fable | 97,903 | **PASS.** Independently verified overlay table, both flagged discrepancies confirmed genuinely benign (React key + map-asset lookup prop, correctly left raw), searched for missed display surfaces (none), confirmed ids-never-change invariant holds, re-ran tests (248: 245 pass/0 fail/3 skip) and tsc (clean) independently, regenerated SVGs byte-identical to checked-in -- commit `9c3e093` |
+| 2026-08-27 | Direct (coordinator) | sonnet | ~2k | this `TOKEN-USAGE.md` update, plus final report to Nathan |
+
+**Marathon stopped early per Nathan's explicit instruction** ("Do not continue the marathon
+because i need my tokens for other work tasks this week. Just finish the current work package and
+report back."), received right as WP-route-naming-migration's execute-tier report came back.
+Deferred, untouched this session: WP-sector-coloured-trail, WP-live-ghost-position,
+WP-palette-draft-pass, WP-routing-fork-plain-language, WP-whole-app-export-import, the
+virgin-cold-start epic, the coordinator STATE.md/DECISIONS.md/BACKLOG.md/cycle-025.md bookkeeping
+pass, and WP-stale-first-fix-cleanup.md (never started). All 6 completed WPs tonight are committed
+locally on `main`, ahead of `origin/main` -- `git push` was attempted once, failed with `403 from
+proxy` (no github.com egress from this shell), and was not retried per Nathan's own instruction to
+not retry pushes hard.
+
+### Phase 10 onward — cycle 025 execution continues (append below as it happens)
+
+| date | tier | model | tokens | outcome |
+|---|---|---|---|---|
+| _(none yet — resume here for the remaining WPs in a future session)_ | | | | |
