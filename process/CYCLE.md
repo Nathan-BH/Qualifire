@@ -51,6 +51,8 @@ Collects the reports. Its job is to:
 ### 4. Record (Librarian)
 Receives the agenda and outcomes from the Principal and writes `cycles/cycle-NNN.md`: agenda, decisions made, open items, one-line-per-member summary. Target under 40 lines. Then prunes: once a cycle file is older than the last 5, it gets compacted into `archive/`.
 
+**Every cycle summary carries a token-usage section** (added 2026-08-27, per Nathan's 2026-08-23 ask): planning tier-by-tier, execution per-WP, combined total. Work with no figure — coordinator-direct chores, continuation runs relayed to an already-running executor — is listed as "no figure exists", never estimated or invented.
+
 ---
 
 ## The anti-hallucination rule
