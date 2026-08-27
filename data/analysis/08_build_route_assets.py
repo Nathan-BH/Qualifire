@@ -98,7 +98,13 @@ def pick(route, variant):
     return rows[-1]['filename']            # most recent = current road layout
 
 ROUTES = {'Morning': pick('home2work', 'main'),
-          'EveningA': pick('work2home', 'A'),
+          # EveningA is PINNED to the PARITY.md medoid, not pick()'s most-recent:
+          # the most-recent A ride (20260813-1618) strays up to 218 m from the
+          # engine's reference over its first ~700 m and misses the START gate
+          # by ~183 m — the cycle-025 wrong-map-line bug. Keep in sync with
+          # PARITY_REFS.EveningA in app/tests/build_fixtures.ts and with
+          # 11_rebuild_eveninga_asset_path.py.
+          'EveningA': '20260724-1838-work2home-19448004625.gpx',
           'EveningB': pick('work2home', 'B')}
 
 LANDMARKS = json.load(open(J('data', 'analysis', 'landmarks_v1.json')))['landmarks']

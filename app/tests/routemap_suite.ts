@@ -39,6 +39,30 @@ test('routemap: every ratified route has an asset with its five gates', () => {
   }
 });
 
+test('routemap: every gate sits on its own drawn path (cycle 025 EveningA map-line fix)', () => {
+  // The visual invariant the live map depends on: the vector line drawn from
+  // `path` must pass through the route's own gates. EveningA's path was built
+  // from a ride whose start deviates ~183 m from the START gate, so the
+  // RECORD/armed and running maps drew a line off the first gate while GPS
+  // timing (which reads tests/fixtures/refs.json, never this file) stayed
+  // correct (Nathan, 2026-08-27). Distance is to the nearest path VERTEX
+  // (~37 m spacing); worst healthy gate today reads 19.7 m, the bug 182.8 m —
+  // 60 m splits them with 3x margin each way.
+  for (const [id, a] of Object.entries(manifest.routes)) {
+    assert(!!a.path && a.path.length >= 2, `${id}: asset has no drawable path`);
+    for (const g of a.gates) {
+      let best = Infinity;
+      for (const [lat, lon] of a.path!) {
+        const dm = Math.hypot(
+          (lat - g.lat) * 111320,
+          (lon - g.lon) * 111320 * Math.cos((g.lat * Math.PI) / 180));
+        if (dm < best) best = dm;
+      }
+      assert(best < 60, `${id}/${g.name}: drawn path misses the gate by ${best.toFixed(1)} m`);
+    }
+  }
+});
+
 test('routemap: TS projection reproduces the Python renderer to sub-pixel', () => {
   for (const [id, a] of Object.entries(manifest.routes)) {
     for (const g of a.gates) {
