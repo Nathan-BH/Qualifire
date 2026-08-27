@@ -17,7 +17,7 @@
     <g id="content_row_1" inkscape:label="content_row_1">
       <rect id="content_row_1_bg" inkscape:label="content_row_1_bg" x="16" y="50" width="358" height="210" fill="#212127" stroke="#41414c" stroke-width="1" rx="16" />
       <rect id="content_row_1_accent" inkscape:label="content_row_1_accent" x="16" y="50" width="3" height="210" fill="#F5C542" />
-      <text id="content_row_1_title" inkscape:label="content_row_1_title" x="33" y="76" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="16" font-weight="800" fill="#F4F2EC" text-anchor="start">Morning</text>
+      <text id="content_row_1_title" inkscape:label="content_row_1_title" x="33" y="76" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="16" font-weight="800" fill="#F4F2EC" text-anchor="start">Home Work Dry</text>
       <text id="content_row_1_sub" inkscape:label="content_row_1_sub" x="33" y="94" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="400" fill="#b5b3ac" text-anchor="start">Sat 22 Aug · 07:41 · 14:02.5</text>
       <text id="content_row_1_rank" inkscape:label="content_row_1_rank" x="352" y="76" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="700" fill="#9a978f" text-anchor="end" style="font-variant-numeric:tabular-nums">P3/10</text>
       <text id="content_row_1_chev" inkscape:label="content_row_1_chev" x="374" y="77" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#9a978f" text-anchor="middle">▾</text>
@@ -42,7 +42,7 @@
     <g id="content_row_2" inkscape:label="content_row_2">
       <rect id="content_row_2_bg" inkscape:label="content_row_2_bg" x="16" y="270" width="358" height="60" fill="#212127" stroke="#41414c" stroke-width="1" rx="16" />
       <rect id="content_row_2_accent" inkscape:label="content_row_2_accent" x="16" y="270" width="3" height="60" fill="#F5C542" />
-      <text id="content_row_2_title" inkscape:label="content_row_2_title" x="33" y="296" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="16" font-weight="800" fill="#F4F2EC" text-anchor="start">Evening A</text>
+      <text id="content_row_2_title" inkscape:label="content_row_2_title" x="33" y="296" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="16" font-weight="800" fill="#F4F2EC" text-anchor="start">Work Home Dry</text>
       <text id="content_row_2_sub" inkscape:label="content_row_2_sub" x="33" y="314" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="400" fill="#b5b3ac" text-anchor="start">Fri 21 Aug · 18:04 · 15:11.9</text>
       <text id="content_row_2_rank" inkscape:label="content_row_2_rank" x="352" y="296" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="700" fill="#9a978f" text-anchor="end" style="font-variant-numeric:tabular-nums">P1/8</text>
       <text id="content_row_2_chev" inkscape:label="content_row_2_chev" x="374" y="297" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#9a978f" text-anchor="middle">›</text>

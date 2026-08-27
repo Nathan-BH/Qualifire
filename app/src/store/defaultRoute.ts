@@ -3,11 +3,27 @@
 import type { Catalog, RideResult } from './types.ts';
 import { ranks } from './results.ts';
 
+/** Display-name overlay (Nathan, 2026-08-26 — WP-route-naming-migration):
+ * the four legacy time-of-day ids plus StationHomePreferred render under
+ * FromToVariant-style names. The ids themselves never change (no raw-data
+ * rewrite — D-023): this maps id -> display-style id only, and routeLabel()
+ * then applies the same split-on-capitals every native FromToVariant id
+ * gets, so overlaid and native routes render identically. Any id absent
+ * here (including future routes) keeps its derived label byte-for-byte. */
+export const ROUTE_DISPLAY_ID: Record<string, string> = {
+  Morning: 'HomeWorkDry',
+  MorningB: 'HomeWorkWet',
+  EveningA: 'WorkHomeDry',
+  EveningB: 'WorkHomeWet',
+  StationHomePreferred: 'StationHomeDry',
+};
+
 /** Presentational label for a route id — the Route type has no label field
- * (schema untouched): "EveningA" -> "Evening A", "Morning" -> "Morning".
+ * (schema untouched): "Morning" -> "Home Work Dry" (overlay), "EveningA" ->
+ * "Work Home Dry" (overlay), "WorkStationA" -> "Work Station A" (derived).
  * Shared by RecordScreen and ResultScreen (previously duplicated). */
 export function routeLabel(id: string): string {
-  return id.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+  return (ROUTE_DISPLAY_ID[id] ?? id).replace(/([a-z0-9])([A-Z])/g, '$1 $2');
 }
 
 /** The route of the most recent RANKING result (seed or session) — i.e. the

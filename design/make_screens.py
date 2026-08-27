@@ -612,10 +612,21 @@ def draw_theme_pill(parent, t, mode_name: str):
 # byte) changes just because these were added.
 # --------------------------------------------------------------------------
 
+ROUTE_DISPLAY_ID = {
+    "Morning": "HomeWorkDry",
+    "MorningB": "HomeWorkWet",
+    "EveningA": "WorkHomeDry",
+    "EveningB": "WorkHomeWet",
+    "StationHomePreferred": "StationHomeDry",
+}
+
+
 def route_label(route_id: str) -> str:
-    """Mirrors store/defaultRoute.ts's routeLabel() exactly: 'EveningA' ->
-    'Evening A', 'Morning' -> 'Morning' (no match, no change)."""
-    return re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", route_id)
+    """Mirrors store/defaultRoute.ts's routeLabel() exactly: the ruled
+    display-name overlay (Nathan 2026-08-26) first, then split-on-capitals:
+    'Morning' -> 'Home Work Dry', 'WorkStationA' -> 'Work Station A'
+    (no overlay entry, derived unchanged)."""
+    return re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", ROUTE_DISPLAY_ID.get(route_id, route_id))
 
 
 def chip_palette(tier: str, t: dict) -> tuple[str, str, str]:
@@ -744,7 +755,7 @@ def build_routes(theme_name: str, repo_root: str) -> ET.Element:
     text_el(content, "content_way_chevron", VB_W - 34, y + 30, "▾", 14, color=t["textDim"], anchor="middle")
 
     ry2 = y + 66
-    text_el(content, "content_route_entry_label", 30, ry2, "Morning", 13.5, color=t["text"])
+    text_el(content, "content_route_entry_label", 30, ry2, route_label("Morning"), 13.5, color=t["text"])
     text_el(content, "content_route_entry_sub", 30, ry2 + 16,
             "6 ghost laps seeded · 4 sectors · START ~160 m in", 11.5, color=t["textDim"])
 
@@ -886,7 +897,7 @@ def build_demo(theme_name: str, repo_root: str) -> ET.Element:
             color=t["textDim"], letter_spacing=2, upper=True)
     y += 18
     used = text_block(content, "content_sub", 16, y,
-                       "A real archived Morning lap replayed at 25x. Buzz at every gate, tier "
+                       "A real archived Home Work Dry lap replayed at 25x. Buzz at every gate, tier "
                        "colours as they are earned, the live map moving. Nothing is recorded.",
                        11.5, VB_W - 32, color=t["textDim"])
     y += used + 20
@@ -1081,7 +1092,7 @@ def build_record_armed(theme_name: str, repo_root: str) -> ET.Element:
     # on this heavily-styled string. Matches text_block's own _l1/_l2 naming
     # convention for a multi-line block.
     track_lh = 12 * 1.3
-    text_el(content, "content_track_line_l1", VB_W / 2, 30, "home → work · Morning", 12,
+    text_el(content, "content_track_line_l1", VB_W / 2, 30, "home → work · Home Work Dry", 12,
             weight="600", color=t["textDim"], anchor="middle", letter_spacing=1.2, upper=True)
     text_el(content, "content_track_line_l2", VB_W / 2, 30 + track_lh, "ready — not started", 12,
             weight="600", color=t["textDim"], anchor="middle", letter_spacing=1.2, upper=True)
@@ -1349,9 +1360,9 @@ def build_rides(theme_name: str, repo_root: str) -> ET.Element:
     # 08:31', WP-J fix pass 2026-08-24 — was a bare ISO-ish "2026-08-22
     # 07:41" that didn't match the real screen).
     rows = [
-        {"route": "Morning", "date": "Sat 22 Aug · 07:41", "lap": "14:02.5", "quality": None,
+        {"route": "Home Work Dry", "date": "Sat 22 Aug · 07:41", "lap": "14:02.5", "quality": None,
          "rank": "P3/10", "expanded": True},
-        {"route": "Evening A", "date": "Fri 21 Aug · 18:04", "lap": "15:11.9", "quality": None,
+        {"route": "Work Home Dry", "date": "Fri 21 Aug · 18:04", "lap": "15:11.9", "quality": None,
          "rank": "P1/8", "expanded": False},
         {"route": None, "date": "Wed 19 Aug · 12:30", "lap": None, "quality": None,
          "rank": None, "expanded": False},
@@ -1448,7 +1459,7 @@ def build_result(theme_name: str, repo_root: str) -> ET.Element:
     y += 16
     card1_top = y
     cy = y + 24
-    text_el(content, "content_last_route", VB_W / 2, cy, "Morning", 13, color=t["textDim"],
+    text_el(content, "content_last_route", VB_W / 2, cy, route_label("Morning"), 13, color=t["textDim"],
             anchor="middle")
     cy += 30
     text_el(content, "content_last_lap", VB_W / 2, cy, "14:02.5", 32, weight="800",
@@ -1482,8 +1493,8 @@ def build_result(theme_name: str, repo_root: str) -> ET.Element:
 
     # Placeholder sample rows/detail (README convention) — never a real ride.
     pb_rows = [
-        {"route": "Morning", "pb": "13:58.1", "n": 9, "open": True},
-        {"route": "Evening A", "pb": "15:03.4", "n": 6, "open": False},
+        {"route": "Home Work Dry", "pb": "13:58.1", "n": 9, "open": True},
+        {"route": "Work Home Dry", "pb": "15:03.4", "n": 6, "open": False},
         {"route": "Home Church", "pb": "10:41.0", "n": 5, "open": False},
     ]
     ranking = [

@@ -13,6 +13,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import catalogJson from '../store/catalog.seed.json';
 import type { Catalog } from '../store/types.ts';
 import { rankedCountFor } from './colourModel.ts';
+import { routeLabel } from '../store/defaultRoute.ts';
 import RouteMapView from './routeMapView.tsx';
 import { radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
@@ -78,7 +79,7 @@ export default function RoutesScreen() {
                   const n = rankedCountFor(r.id);
                   return (
                     <View key={r.id} style={{ marginTop: 10 }}>
-                      <Text style={{ color: t.text, fontSize: 13.5 }}>{r.id}</Text>
+                      <Text style={{ color: t.text, fontSize: 13.5 }}>{routeLabel(r.id)}</Text>
                       <Text style={{ color: t.textDim, fontSize: 11.5, marginBottom: 6 }}>
                         {n} ghost lap{n === 1 ? '' : 's'} seeded · 4 sectors · START ~160 m in
                       </Text>

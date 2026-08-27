@@ -481,8 +481,8 @@ export default function RecordScreen({
     ? 'free ride · gates only'
     : routeLocked
       ? live.lockKind === 'soft'
-        ? `${live.track ?? ''} · route locked (your pick) · verifying${live.onRoute ? '' : ' · off route'}`
-        : `${live.track ?? ''} · route locked${live.onRoute ? '' : ' · off route'}`
+        ? `${live.track ? routeLabel(live.track) : ''} · route locked (your pick) · verifying${live.onRoute ? '' : ' · off route'}`
+        : `${live.track ? routeLabel(live.track) : ''} · route locked${live.onRoute ? '' : ' · off route'}`
       : rideRouteHint ? `detecting route… · you picked ${routeLabel(rideRouteHint)}` : 'detecting route…';
   // Cycle 024 (WP-A2, Nathan 2026-08-19): "I don't know what 'fixes' are" —
   // the raw count is gone from every user-facing status line; it still lives

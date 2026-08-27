@@ -68,7 +68,8 @@ test('ridehistory: buildRideRows orders newest-first; a result gets routeName/la
     `expected newest-first order r2,r3,r1 — got ${rows.map((r) => r.rideId).join(',')}`);
 
   const withResult = rows.find((r) => r.rideId === 'r2')!;
-  assert(withResult.routeName === 'Morning', `ride with a result must get a routeName, got ${withResult.routeName}`);
+  assert(withResult.routeName === 'Home Work Dry',
+    `ride with a result must get its display routeName (Morning -> Home Work Dry overlay), got ${withResult.routeName}`);
   assert(withResult.lapS === 900, `ride with a clean result must carry lapS, got ${withResult.lapS}`);
 
   const withoutResult = rows.find((r) => r.rideId === 'r1')!;

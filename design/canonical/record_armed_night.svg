@@ -4,7 +4,7 @@
     <rect id="bg_ground" inkscape:label="bg_ground" x="0" y="0" width="390" height="844" fill="#0A0A0A" />
   </g>
   <g id="content" inkscape:label="content" inkscape:groupmode="layer">
-    <text id="content_track_line_l1" inkscape:label="content_track_line_l1" x="195" y="30" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="600" fill="#9a978f" text-anchor="middle" letter-spacing="1.2" style="text-transform:uppercase">home → work · Morning</text>
+    <text id="content_track_line_l1" inkscape:label="content_track_line_l1" x="195" y="30" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="600" fill="#9a978f" text-anchor="middle" letter-spacing="1.2" style="text-transform:uppercase">home → work · Home Work Dry</text>
     <text id="content_track_line_l2" inkscape:label="content_track_line_l2" x="195" y="45.6" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="600" fill="#9a978f" text-anchor="middle" letter-spacing="1.2" style="text-transform:uppercase">ready — not started</text>
     <g id="content_map" inkscape:label="content_map">
       <rect id="content_map_ground" inkscape:label="content_map_ground" x="12" y="55.2" width="366" height="594.8" fill="#141414" stroke="#232323" stroke-width="1" rx="16" />

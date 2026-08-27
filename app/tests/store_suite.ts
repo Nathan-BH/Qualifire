@@ -17,7 +17,7 @@ import {
   CORRIDOR_M, PROPOSED_GATES, gateChainages, nearestOnSegments, toXY,
 } from '../core/src/index.ts';
 import { deriveRideResult } from '../src/store/derive.ts';
-import { fallbackRouteId } from '../src/store/defaultRoute.ts';
+import { fallbackRouteId, routeLabel } from '../src/store/defaultRoute.ts';
 import {
   addGateSet,
   decodeCatalog,
@@ -610,4 +610,47 @@ test('fallbackRouteId on the real seed = the newest seeded archive ride\'s route
   assert(expected !== null, 'the real seed must contain at least one rankable, catalogued result');
   assert(fallbackRouteId(catalog, results) === expected!.routeId,
     `fallbackRouteId returned ${fallbackRouteId(catalog, results)}, expected the newest seed's route ${expected!.routeId}`);
+});
+
+// -------------------------------------- route display-name overlay (Nathan 2026-08-26)
+
+test('routeLabel: the four legacy ids + StationHomePreferred show their ruled display names', () => {
+  assert(routeLabel('Morning') === 'Home Work Dry', `Morning -> ${routeLabel('Morning')}`);
+  assert(routeLabel('MorningB') === 'Home Work Wet', `MorningB -> ${routeLabel('MorningB')}`);
+  assert(routeLabel('EveningA') === 'Work Home Dry', `EveningA -> ${routeLabel('EveningA')}`);
+  assert(routeLabel('EveningB') === 'Work Home Wet', `EveningB -> ${routeLabel('EveningB')}`);
+  assert(routeLabel('StationHomePreferred') === 'Station Home Dry',
+    `StationHomePreferred -> ${routeLabel('StationHomePreferred')}`);
+});
+
+test('routeLabel: StationWork pair (ruled unchanged) and native ids keep their derived labels', () => {
+  assert(routeLabel('StationWorkStd') === 'Station Work Std', 'Std keeps its name (ruled)');
+  assert(routeLabel('StationWorkAlt') === 'Station Work Alt', 'Alt keeps its name (ruled)');
+  assert(routeLabel('StationHomeWet') === 'Station Home Wet', 'already descriptive — no entry');
+  assert(routeLabel('WorkStationA') === 'Work Station A', 'native id spot check');
+  assert(routeLabel('HomeChurch') === 'Home Church', 'native id spot check');
+  assert(routeLabel('SomeFutureRoute') === 'Some Future Route',
+    'an id the table has never heard of falls back to split-on-capitals');
+});
+
+test('overlay never touches stored ids: catalog, map-asset manifest and engine refs still key the legacy ids', () => {
+  const legacy = ['Morning', 'MorningB', 'EveningA', 'EveningB', 'StationHomePreferred'];
+  const display = ['HomeWorkDry', 'HomeWorkWet', 'WorkHomeDry', 'WorkHomeWet', 'StationHomeDry'];
+
+  const catalog = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
+  const ids = new Set(catalog.routes.map((r) => r.id));
+  for (const id of legacy) assert(ids.has(id), `catalog.seed.json must still contain route id ${id}`);
+  for (const d of display) assert(!ids.has(d), `display name ${d} must never appear as a catalog route id`);
+  for (const r of catalog.routes) {
+    assert(!display.includes(r.refLineId), `refLineId ${r.refLineId} must stay a real track id`);
+  }
+
+  const manifest = loadJson<{ routes: Record<string, unknown> }>(
+    path.join(TESTS_DIR, '..', 'assets', 'routes', 'routes.json'));
+  for (const id of legacy) assert(id in manifest.routes, `map-asset manifest must still key ${id}`);
+  for (const d of display) assert(!(d in manifest.routes), `map-asset manifest must not gain a ${d} key`);
+
+  const refs = loadJson<{ tracks: Record<string, unknown> }>(path.join(TESTS_DIR, 'fixtures', 'refs.json'));
+  for (const id of legacy) assert(id in refs.tracks, `engine refs.json must still key track ${id}`);
+  for (const d of display) assert(!(d in refs.tracks), `engine refs.json must not gain a ${d} track`);
 });

@@ -20,6 +20,7 @@ import { positionAtTime, type RouteAsset } from './routeMapMath';
 import { useSettings } from './settings';
 import { PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
+import { routeLabel } from '../store/defaultRoute';
 
 // Intentional literal (B-39): a scripted replay of an archived Morning lap by design, not a hardcode bug.
 const ROUTE = 'Morning';
@@ -117,7 +118,7 @@ export default function DemoScreen() {
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
       <Text style={styles.h2}>DEMO RIDE</Text>
       <Text style={styles.sub}>
-        A real archived Morning lap replayed at {RATE}x. Buzz at every gate, tier colours as they
+        A real archived {routeLabel(ROUTE)} lap replayed at {RATE}x. Buzz at every gate, tier colours as they
         are earned, the live map moving. Nothing is recorded.
       </Text>
 
