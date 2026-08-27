@@ -417,7 +417,7 @@ function MapLibreRouteMap(props: RouteMapProps & {
             core, the whole route — see the routeFC comment above for why
             the dotted-ahead split was pulled back out. */}
         {routeFC ? (
-          <M.GeoJSONSource id="route" data={routeFC}>
+          <M.GeoJSONSource key="route" id="route" data={routeFC}>
             <M.Layer id="route-casing" type="line"
               paint={{ 'line-color': CASING, 'line-width': 7 }}
               layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
@@ -426,8 +426,19 @@ function MapLibreRouteMap(props: RouteMapProps & {
               layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
           </M.GeoJSONSource>
         ) : null}
+        {/* Cycle 025: every source carries key === id. MapLibre freezes a child's
+            `id` on first render (useFrozenId) and throws "`id` cannot be changed"
+            if the same mounted element later gets a different id. The ternary
+            below swaps id="gates" <-> id="gate-ticks" at ONE React position when
+            RecordScreen's gatesOnly (live.mode === 'free') flips while the map is
+            mounted — proven at free-ride END (engine.stop() resets mode to 'route'
+            and emits before RecordScreen leaves phase 'running'), killing the whole
+            map tree on new-landmark rides. Distinct keys make React unmount/remount
+            the source (and its layers) instead of rebinding the id. Sources only:
+            <M.Map>'s own key={styleUrl} (cycle 023) is left alone — a whole-map
+            remount here would pay B-71's camera-state cost for nothing. */}
         {gatesOnly ? (
-          <M.GeoJSONSource id="gates" data={gatesFC!}>
+          <M.GeoJSONSource key="gates" id="gates" data={gatesFC!}>
             <M.Layer id="gate-rings" type="circle" paint={{
               'circle-radius': 6,
               'circle-color': ['case', ['has', 'colour'], ['get', 'colour'], 'rgba(0,0,0,0)'],
@@ -455,7 +466,7 @@ function MapLibreRouteMap(props: RouteMapProps & {
           // visibility complaint) but thinner and slightly translucent, so a
           // genuinely-earned tier colour (full width, full opacity — any
           // tier, yellow included) still reads as visibly different/bolder.
-          <M.GeoJSONSource id="gate-ticks" data={gateTicksFC!}>
+          <M.GeoJSONSource key="gate-ticks" id="gate-ticks" data={gateTicksFC!}>
             <M.Layer id="gate-ticks-casing" type="line"
               paint={{ 'line-color': CASING, 'line-width': 5 }}
               layout={{ 'line-cap': 'butt' }} />
@@ -467,7 +478,7 @@ function MapLibreRouteMap(props: RouteMapProps & {
           </M.GeoJSONSource>
         )}
         {showRider && here ? (
-          <M.GeoJSONSource id="rider" data={riderFeature(props.lat as number, props.lon as number)}>
+          <M.GeoJSONSource key="rider" id="rider" data={riderFeature(props.lat as number, props.lon as number)}>
             {/* WP-E: the rider dot no longer shares colors.neutral with the
                 route line (a yellow dot on a yellow line is poor contrast) —
                 on-route is solid riderBlue/white, off-route is inverted

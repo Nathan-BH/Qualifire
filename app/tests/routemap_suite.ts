@@ -230,3 +230,26 @@ test('routemap: MapLibre <M.Map> remounts on a style-URL change (cycle 023 fix 1
     'instead of a prop-only style update (the cycle 023 day-mode rendering bug)');
   assert(/\bmapStyle=\{/.test(openTag), 'mapStyle prop no longer present on <M.Map> — sanity check of the slice');
 });
+
+test('routemap: every MapLibre GeoJSONSource carries key === id (frozen-id crash guard, cycle 025)', () => {
+  // Same static-guard doctrine as the cycle 023 test above (the component
+  // cannot be rendered headlessly). MapLibre freezes a child's `id` prop on
+  // first render (useFrozenId) and throws "`id` cannot be changed" if a
+  // later render hands the same mounted element a different id — which is
+  // exactly what the gatesOnly ternary did when a free (new-landmark) ride
+  // ended: id="gates" reconciled in place into id="gate-ticks" and the whole
+  // map tree crashed. key === id on EVERY source makes React unmount/remount
+  // across any such swap instead of rebinding the id.
+  const src = fs.readFileSync(
+    path.join(TESTS_DIR, '..', 'src', 'ui', 'routeMapView.tsx'), 'utf8');
+  const tags = src.match(/<M\.GeoJSONSource[^>]*>/g) ?? [];
+  assert(tags.length >= 4,
+    `expected at least 4 <M.GeoJSONSource> tags (route, gates, gate-ticks, rider), got ${tags.length}`);
+  for (const tag of tags) {
+    const id = /\bid="([^"]+)"/.exec(tag)?.[1];
+    const key = /\bkey="([^"]+)"/.exec(tag)?.[1];
+    assert(id !== undefined, `GeoJSONSource without a literal id: ${tag}`);
+    assert(key === id,
+      `GeoJSONSource id="${id}" must carry key="${id}" so React never rebinds a mounted source's frozen id: ${tag}`);
+  }
+});
