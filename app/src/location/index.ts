@@ -192,6 +192,7 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
           ele, // stored VERBATIM — D-023. Never clamped/smoothed here or anywhere upstream of disk.
           tUnixMs: loc.timestamp,
           accuracyM: loc.coords.accuracy ?? undefined,
+          preStart: loc.timestamp < (s.startPressedAtMs ?? s.startedAtMs) ? true : undefined,
         });
         fixesThisLaunch += 1;
         fixesSinceHeartbeat += 1;
@@ -209,7 +210,8 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
       // written above — this is a read-only side channel, never a rewrite of
       // what just got appended (D-023). Swallow-everything, same doctrine as
       // every other diagnostics call on this path.
-      if (ele !== undefined && Number.isFinite(ele)) {
+      const isPreStart = loc.timestamp < (s.startPressedAtMs ?? s.startedAtMs);
+      if (!isPreStart && ele !== undefined && Number.isFinite(ele)) {
         if (prevEle !== null && prevEleTUnixMs !== null) {
           const check = checkElevationOutlier(prevEle, prevEleTUnixMs, ele, loc.timestamp);
           if (check?.isOutlier) {
@@ -229,10 +231,12 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
       // this ride's own mode above (WP-B fix B1) before this first feed() —
       // a route ride re-locks with earlier sectors surfacing as
       // estimated/missed (honest, D-016(b)); a free ride stays in free mode.
-      try {
-        liveEngine.feed(loc.coords.latitude, loc.coords.longitude, loc.timestamp, loc.coords.accuracy ?? undefined);
-      } catch {
-        /* display-only */
+      if (!isPreStart) {
+        try {
+          liveEngine.feed(loc.coords.latitude, loc.coords.longitude, loc.timestamp, loc.coords.accuracy ?? undefined);
+        } catch {
+          /* display-only */
+        }
       }
     }
     // Cycle 025 (P4) heartbeat — swallow-everything, same doctrine as every
@@ -294,6 +298,7 @@ export async function startTracking(opts?: {
   const s: ActiveSession = {
     rideId,
     startedAtMs,
+    startPressedAtMs: pressedAtMs,
     // Cycle 025 (P4): first heartbeat = start; refreshed every
     // HEARTBEAT_EVERY_N_FIXES fixes by the task handler above.
     lastAliveAtMs: startedAtMs,

@@ -9,6 +9,11 @@ export interface Fix {
   ele?: number;
   tUnixMs: number;
   accuracyM?: number;
+  /** Cycle 025 (startup stale-fix cleanup): true when this fix's timestamp
+   * predates the START button press for the ride. Recorded (never dropped) so
+   * raw JSONL stays append-only (D-023), but downstream derived consumers can
+   * explicitly ignore startup stale points. */
+  preStart?: boolean;
 }
 
 /** First line of every ride file. */

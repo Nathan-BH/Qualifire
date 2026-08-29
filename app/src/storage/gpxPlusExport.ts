@@ -153,6 +153,7 @@ function buildSessionBlock(
 ): string {
   const evs = events?.events ?? [];
   const lines: string[] = [];
+  const derivedFixes = fixes.filter((f) => f.preStart !== true);
 
   const metaEv = evs.find((e): e is MetaEvent => e.kind === 'meta' && e.appVersion !== undefined);
   if (metaEv) lines.push(`   <qf:appVersion>${escapeXml(metaEv.appVersion!)}</qf:appVersion>`);
@@ -160,7 +161,7 @@ function buildSessionBlock(
   const startEv = evs.find((e): e is ButtonEvent => e.kind === 'button' && e.button === 'start');
   if (startEv) lines.push(`   <qf:startPressedAt>${isoTime(startEv.tUnixMs)}</qf:startPressedAt>`);
 
-  const firstFix = fixes.length > 0 ? fixes[0] : null;
+  const firstFix = derivedFixes.length > 0 ? derivedFixes[0] : null;
   if (firstFix) lines.push(`   <qf:firstFixAt>${isoTime(firstFix.tUnixMs)}</qf:firstFixAt>`);
 
   if (startEv && firstFix) {
@@ -208,12 +209,13 @@ function buildSessionBlock(
       try {
         if (!refFor) throw new Error('no refFor injected');
         if (!settledLockEv) throw new Error('no settled (non-soft) lock');
+        if (derivedFixes.length === 0) throw new Error('no post-start fixes');
         const ref = refFor(settledLockEv.track);
-        const lats = fixes.map((f) => f.lat);
-        const lons = fixes.map((f) => f.lon);
+        const lats = derivedFixes.map((f) => f.lat);
+        const lons = derivedFixes.map((f) => f.lon);
         const { x, y } = toXY(lats, lons, ref.lat0, ref.lon0);
         const { xtd } = projectRideOffline(x, y, ref);
-        const nFixes = fixes.length;
+        const nFixes = derivedFixes.length;
         if (nFixes > 0) {
           let onCount = 0;
           let maxXtd = 0;
@@ -223,7 +225,7 @@ function buildSessionBlock(
           }
           const onRoutePct = ((100 * onCount) / nFixes).toFixed(1);
           const maxXtdCapped = Math.min(maxXtd, 999).toFixed(1);
-          const segs = findOffRouteSegments(fixes, xtd, CORRIDOR_M).slice(0, 20);
+          const segs = findOffRouteSegments(derivedFixes, xtd, CORRIDOR_M).slice(0, 20);
           lines.push(
             `   <qf:routeFidelity track="${escapeXml(settledLockEv.track)}" corridorM="${num(CORRIDOR_M)}"` +
               ` onRoutePct="${onRoutePct}" maxXtdM="${maxXtdCapped}">`,
@@ -290,7 +292,7 @@ function buildSessionBlock(
     lines.push(`   </qf:elevationOutliers>`);
   }
 
-  const outages = findOutages(fixes);
+  const outages = findOutages(derivedFixes);
   if (outages.length > 0) {
     lines.push(`   <qf:outages>`);
     for (const o of outages) {
@@ -299,7 +301,7 @@ function buildSessionBlock(
     lines.push(`   </qf:outages>`);
   }
 
-  const stops = findStops(fixes);
+  const stops = findStops(derivedFixes);
   if (stops.length > 0) {
     lines.push(`   <qf:stops>`);
     for (const s of stops) {
