@@ -245,6 +245,25 @@ test('gpx+: session-block derivations — pinned fixture matches every documente
   assert(/<qf:button kind="start"/.test(gpx), 'start button missing');
 });
 
+test('gpx+: cycle 025 startup cleanup — preStart fixes are recorded but excluded from first-fix/outage/stop derivations', async () => {
+  const t0 = 1755167000000;
+  const { storage, clock } = makeEnv(t0);
+  const rideId = await storage.startRide();
+  const fixes: Fix[] = [
+    { tUnixMs: t0 - 10000, lat: 50.8, lon: 4.6, preStart: true },
+    { tUnixMs: t0, lat: 50.8001, lon: 4.6001 },
+    { tUnixMs: t0 + 1000, lat: 50.8002, lon: 4.6002 },
+  ];
+  for (const f of fixes) { clock.t = f.tUnixMs; await storage.appendFix(rideId, f); }
+  await storage.appendEvent(rideId, { kind: 'button', tUnixMs: t0, button: 'start' });
+  await storage.endRide(rideId);
+  const gpx = await storage.exportGpxPlus(rideId);
+  assert(gpx.includes(`<qf:firstFixAt>${isoTime(t0)}</qf:firstFixAt>`), 'firstFixAt should use first non-preStart fix');
+  assert(gpx.includes('<qf:firstFixDelayS>0</qf:firstFixDelayS>'), 'firstFixDelayS should clamp via preStart exclusion');
+  assert(!gpx.includes('<qf:outages>'), 'preStart-only gap must not create an outage');
+  assert(!gpx.includes('<qf:stops>'), 'preStart-only segment must not create a stop');
+});
+
 // ---------------------------------------------------------------- (h) no-sidecar ride
 
 test('gpx+: no-sidecar ride (pre-feature) — exportGpxPlus still succeeds, only outages/stops/firstFixAt emitted', async () => {

@@ -18,6 +18,10 @@ import * as FileSystem from 'expo-file-system/legacy';
 export interface ActiveSession {
   rideId: string;
   startedAtMs: number;
+  /** Cycle 025 (startup stale-fix cleanup): the START button press timestamp,
+   * used to flag cached/stale fixes that arrive with tUnixMs predating START.
+   * Optional for back-compat with markers written before this field existed. */
+  startPressedAtMs?: number;
   /** WP-B fix B1: which mode this ride was started in, and (for 'free') which
    * catalog routes the engine was restricted to — persisted so a headless
    * relaunch mid-ride can re-arm the engine in the SAME mode it left in,
@@ -57,11 +61,22 @@ export async function loadSession(): Promise<ActiveSession | null> {
     if (typeof parsed.rideId === 'string' && typeof parsed.startedAtMs === 'number') {
       const mode = parsed.mode === 'free' ? 'free' : parsed.mode === 'route' ? 'route' : undefined;
       const routeIds = Array.isArray(parsed.routeIds) ? parsed.routeIds : parsed.routeIds === null ? null : undefined;
+      const startPressedAtMs =
+        typeof parsed.startPressedAtMs === 'number' && Number.isFinite(parsed.startPressedAtMs)
+          ? parsed.startPressedAtMs
+          : undefined;
       const lastAliveAtMs =
         typeof parsed.lastAliveAtMs === 'number' && Number.isFinite(parsed.lastAliveAtMs)
           ? parsed.lastAliveAtMs
           : undefined;
-      return { rideId: parsed.rideId, startedAtMs: parsed.startedAtMs, mode, routeIds, lastAliveAtMs };
+      return {
+        rideId: parsed.rideId,
+        startedAtMs: parsed.startedAtMs,
+        startPressedAtMs,
+        mode,
+        routeIds,
+        lastAliveAtMs,
+      };
     }
     // Corrupt marker: discard rather than crash the task forever.
     await clearSession();

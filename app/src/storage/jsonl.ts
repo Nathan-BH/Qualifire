@@ -36,6 +36,7 @@ export function encodeFix(fix: Fix): string {
     lon: fix.lon,
     ...(fix.ele !== undefined ? { ele: fix.ele } : {}),
     ...(fix.accuracyM !== undefined ? { accuracyM: fix.accuracyM } : {}),
+    ...(fix.preStart === true ? { preStart: true } : {}),
   };
   return JSON.stringify(rec) + '\n';
 }

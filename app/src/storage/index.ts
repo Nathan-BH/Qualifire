@@ -32,7 +32,7 @@ export function startRide(mode?: 'route' | 'free'): Promise<string> {
 /** Appends one fix, flushed to disk before resolving. Stored verbatim. */
 export function appendFix(
   rideId: string,
-  fix: { lat: number; lon: number; ele?: number; tUnixMs: number; accuracyM?: number },
+  fix: Fix,
 ): Promise<void> {
   return storage().appendFix(rideId, fix);
 }
