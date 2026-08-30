@@ -10,3 +10,6 @@ data/analysis/cache/
 app/android/
 app/dist/
 *.gpx
+
+# Python bytecode cache (design/ scripts)
+__pycache__/

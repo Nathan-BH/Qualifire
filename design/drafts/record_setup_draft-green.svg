@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844" width="390" height="844">
+  <defs>
+    <clipPath id="tabbar_viewport_clip">
+      <rect x="0" y="790" width="390" height="54" />
+    </clipPath>
+  </defs>
+  <g id="bg" inkscape:label="bg" inkscape:groupmode="layer">
+    <rect id="bg_ground" inkscape:label="bg_ground" x="0" y="0" width="390" height="844" fill="#F0F7F0" />
+  </g>
+  <g id="content" inkscape:label="content" inkscape:groupmode="layer">
+    <g id="content_theme_pill" inkscape:label="content_theme_pill">
+      <rect id="content_theme_pill_bg" inkscape:label="content_theme_pill_bg" x="294" y="14" width="80" height="28" fill="none" stroke="#C8DEC8" stroke-width="1" rx="14" />
+      <text id="content_theme_pill_label" inkscape:label="content_theme_pill_label" x="334" y="32" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="400" fill="#5A6B5E" text-anchor="middle">☾ night</text>
+    </g>
+    <circle id="content_logo_ring" inkscape:label="content_logo_ring" cx="195" cy="95" r="33" fill="none" stroke="#17231A" stroke-width="7" />
+    <line id="content_logo_slash" inkscape:label="content_logo_slash" x1="179" y1="79" x2="211" y2="111" stroke="#1B6E3C" stroke-width="8" stroke-linecap="round" />
+    <text id="content_app_title" inkscape:label="content_app_title" x="195" y="142" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="19" font-weight="800" fill="#17231A" text-anchor="middle" letter-spacing="5" style="text-transform:uppercase">QUALIFIRE</text>
+    <g id="content_map" inkscape:label="content_map">
+      <rect id="content_map_ground" inkscape:label="content_map_ground" x="20" y="166" width="350" height="160" fill="#FFFFFF" stroke="#C8DEC8" stroke-width="1" rx="16" />
+      <line id="content_map_street_1" inkscape:label="content_map_street_1" x1="83" y1="172" x2="118" y2="320" stroke="#C8DEC8" stroke-width="2" stroke-linecap="round" />
+      <line id="content_map_street_2" inkscape:label="content_map_street_2" x1="195" y1="172" x2="230" y2="320" stroke="#C8DEC8" stroke-width="2" stroke-linecap="round" />
+      <line id="content_map_street_3" inkscape:label="content_map_street_3" x1="307" y1="172" x2="342" y2="320" stroke="#C8DEC8" stroke-width="2" stroke-linecap="round" />
+      <path id="content_map_route_line_casing" inkscape:label="content_map_route_line_casing" d="M116.1 314.28 L116.68 314.23 L117.09 314.63 L118.24 315.19 L119.87 316 L120.77 315.75 L122.01 315.24 L123.26 314.33 L124.44 313.22 L125.66 312.15 L126.87 311.04 L128.12 309.98 L129.33 308.86 L130.64 308.61 L130.87 307.55 L131.03 306.08 L131.31 305.37 L132.18 304.26 L133.23 302.99 L134.19 301.83 L135.21 300.56 L135.82 299.2 L136.33 297.73 L137.16 296.31 L138.34 295.05 L139.43 293.88 L140.48 292.62 L141.57 291.45 L142.72 290.29 L143.87 289.17 L145.02 287.96 L146.17 286.74 L147.32 285.58 L148.86 285.23 L150.52 285.13 L152.18 284.82 L153.84 284.62 L154.74 283.3 L155.57 281.78 L156.53 280.42 L157.58 279.1 L158.64 277.84 L159.75 276.52 L160.81 275.2 L161.61 273.74 L162.66 272.42 L163.81 271.1 L164.87 269.79 L165.86 268.47 L166.85 267.06 L167.74 265.59 L168.61 264.17 L169.44 262.7 L170.04 261.13 L170.84 259.62 L171.51 258.15 L172.22 256.58 L172.95 255.06 L173.69 253.49 L174.36 252.07 L175.38 250.81 L176.72 249.85 L178.06 248.78 L179.41 247.72 L180.72 246.66 L182.03 245.54 L183.37 244.43 L184.71 243.32 L186.05 242.2 L187.36 241.09 L188.67 239.98 L190.02 238.91 L191.33 237.85 L192.95 237.6 L194.49 238.36 L196.02 239.02 L197.68 239.67 L199.22 240.28 L200.75 240.89 L202.32 241.5 L203.72 241.44 L204.27 240.18 L204.46 239.42 L205.29 236.69 L203.85 236.03 L202.32 235.37 L200.75 234.81 L199.25 234.16 L197.72 233.75 L196.41 234.16 L195.32 233.85 L193.88 233.25 L192.44 232.84 L191.17 232.08 L189.98 230.97 L189.89 229.35 L190.27 227.73 L191.39 226.46 L192.64 225.3 L193.79 224.24 L195.29 223.02 L196.63 222.01 L197.97 220.95 L199.41 219.83 L200.75 218.67 L201.93 217.66 L203.02 216.49 L204.17 215.23 L205.35 214.01 L206.47 212.8 L207.62 211.53 L208.77 210.32 L209.86 209.1 L211.01 207.89 L212.1 206.77 L213.25 205.51 L214.3 204.39 L215.45 203.18 L216.44 202.17 L218.01 201.31 L219.73 201.41 L221.52 201.61 L222.83 202.32 L224.3 201.71 L225.87 200.95 L227.47 200.24 L229.03 199.54 L230.66 198.78 L232.29 198.07 L234.02 197.56 L235.71 197.21 L237.44 196.85 L238.97 196.2 L240.31 195.23 L241.69 194.22 L243 193.21 L244.37 192.2 L245.68 191.18 L247.02 190.22 L248.4 189.21 L249.71 188.2 L251.08 187.24 L252.36 186.27 L252.93 185.97 L253.48 186.58 L253.83 186.63 L254.6 186.07 L255.78 185.06 L257.06 183.9 L258.3 182.83 L259.58 181.67 L260.92 180.56 L262.23 179.69 L263.61 178.94 L265.14 178.13 L266.74 177.62 L268.05 177.21 L269.2 176.86 L270.45 176 L271.76 176.66 L272.62 177.87 L273.1 179.19 L273.9 179.09" fill="none" stroke="#14120C" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+      <path id="content_map_route_line" inkscape:label="content_map_route_line" d="M116.1 314.28 L116.68 314.23 L117.09 314.63 L118.24 315.19 L119.87 316 L120.77 315.75 L122.01 315.24 L123.26 314.33 L124.44 313.22 L125.66 312.15 L126.87 311.04 L128.12 309.98 L129.33 308.86 L130.64 308.61 L130.87 307.55 L131.03 306.08 L131.31 305.37 L132.18 304.26 L133.23 302.99 L134.19 301.83 L135.21 300.56 L135.82 299.2 L136.33 297.73 L137.16 296.31 L138.34 295.05 L139.43 293.88 L140.48 292.62 L141.57 291.45 L142.72 290.29 L143.87 289.17 L145.02 287.96 L146.17 286.74 L147.32 285.58 L148.86 285.23 L150.52 285.13 L152.18 284.82 L153.84 284.62 L154.74 283.3 L155.57 281.78 L156.53 280.42 L157.58 279.1 L158.64 277.84 L159.75 276.52 L160.81 275.2 L161.61 273.74 L162.66 272.42 L163.81 271.1 L164.87 269.79 L165.86 268.47 L166.85 267.06 L167.74 265.59 L168.61 264.17 L169.44 262.7 L170.04 261.13 L170.84 259.62 L171.51 258.15 L172.22 256.58 L172.95 255.06 L173.69 253.49 L174.36 252.07 L175.38 250.81 L176.72 249.85 L178.06 248.78 L179.41 247.72 L180.72 246.66 L182.03 245.54 L183.37 244.43 L184.71 243.32 L186.05 242.2 L187.36 241.09 L188.67 239.98 L190.02 238.91 L191.33 237.85 L192.95 237.6 L194.49 238.36 L196.02 239.02 L197.68 239.67 L199.22 240.28 L200.75 240.89 L202.32 241.5 L203.72 241.44 L204.27 240.18 L204.46 239.42 L205.29 236.69 L203.85 236.03 L202.32 235.37 L200.75 234.81 L199.25 234.16 L197.72 233.75 L196.41 234.16 L195.32 233.85 L193.88 233.25 L192.44 232.84 L191.17 232.08 L189.98 230.97 L189.89 229.35 L190.27 227.73 L191.39 226.46 L192.64 225.3 L193.79 224.24 L195.29 223.02 L196.63 222.01 L197.97 220.95 L199.41 219.83 L200.75 218.67 L201.93 217.66 L203.02 216.49 L204.17 215.23 L205.35 214.01 L206.47 212.8 L207.62 211.53 L208.77 210.32 L209.86 209.1 L211.01 207.89 L212.1 206.77 L213.25 205.51 L214.3 204.39 L215.45 203.18 L216.44 202.17 L218.01 201.31 L219.73 201.41 L221.52 201.61 L222.83 202.32 L224.3 201.71 L225.87 200.95 L227.47 200.24 L229.03 199.54 L230.66 198.78 L232.29 198.07 L234.02 197.56 L235.71 197.21 L237.44 196.85 L238.97 196.2 L240.31 195.23 L241.69 194.22 L243 193.21 L244.37 192.2 L245.68 191.18 L247.02 190.22 L248.4 189.21 L249.71 188.2 L251.08 187.24 L252.36 186.27 L252.93 185.97 L253.48 186.58 L253.83 186.63 L254.6 186.07 L255.78 185.06 L257.06 183.9 L258.3 182.83 L259.58 181.67 L260.92 180.56 L262.23 179.69 L263.61 178.94 L265.14 178.13 L266.74 177.62 L268.05 177.21 L269.2 176.86 L270.45 176 L271.76 176.66 L272.62 177.87 L273.1 179.19 L273.9 179.09" fill="none" stroke="#1B6E3C" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+      <line id="content_map_gate_tick_1_casing" inkscape:label="content_map_gate_tick_1_casing" x1="118.29" y1="308.16" x2="113.91" y2="320.4" stroke="#14120C" stroke-width="5" stroke-linecap="round" />
+      <line id="content_map_gate_tick_1" inkscape:label="content_map_gate_tick_1" x1="118.29" y1="308.16" x2="113.91" y2="320.4" stroke="#1B6E3C" stroke-width="2" stroke-linecap="round" opacity="0.6" />
+      <line id="content_map_gate_tick_2_casing" inkscape:label="content_map_gate_tick_2_casing" x1="119.41" y1="309.09" x2="127.11" y2="319.57" stroke="#14120C" stroke-width="5" stroke-linecap="round" />
+      <line id="content_map_gate_tick_2" inkscape:label="content_map_gate_tick_2" x1="119.41" y1="309.09" x2="127.11" y2="319.57" stroke="#1B6E3C" stroke-width="2" stroke-linecap="round" opacity="0.6" />
+      <line id="content_map_gate_tick_3_casing" inkscape:label="content_map_gate_tick_3_casing" x1="152.49" y1="275.06" x2="162.67" y2="283.15" stroke="#14120C" stroke-width="5" stroke-linecap="round" />
+      <line id="content_map_gate_tick_3" inkscape:label="content_map_gate_tick_3" x1="152.49" y1="275.06" x2="162.67" y2="283.15" stroke="#1B6E3C" stroke-width="2" stroke-linecap="round" opacity="0.6" />
+      <line id="content_map_gate_tick_4_casing" inkscape:label="content_map_gate_tick_4_casing" x1="200.12" y1="233.65" x2="195.25" y2="245.7" stroke="#14120C" stroke-width="5" stroke-linecap="round" />
+      <line id="content_map_gate_tick_4" inkscape:label="content_map_gate_tick_4" x1="200.12" y1="233.65" x2="195.25" y2="245.7" stroke="#1B6E3C" stroke-width="2" stroke-linecap="round" opacity="0.6" />
+      <line id="content_map_gate_tick_5_casing" inkscape:label="content_map_gate_tick_5_casing" x1="219.89" y1="194.91" x2="219.58" y2="207.91" stroke="#14120C" stroke-width="5" stroke-linecap="round" />
+      <line id="content_map_gate_tick_5" inkscape:label="content_map_gate_tick_5" x1="219.89" y1="194.91" x2="219.58" y2="207.91" stroke="#1B6E3C" stroke-width="2" stroke-linecap="round" opacity="0.6" />
+      <circle id="content_map_rider_dot" inkscape:label="content_map_rider_dot" cx="116.1" cy="314.28" r="5.5" fill="#2F7DE1" stroke="#FFFFFF" stroke-width="2" />
+      <rect id="content_map_placeholder_note" inkscape:label="content_map_placeholder_note" x="20" y="166" width="4" height="4" fill="none" />
+    </g>
+    <text id="content_flow_from_label" inkscape:label="content_flow_from_label" x="20" y="344" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#5A6B5E" text-anchor="start" letter-spacing="2">DETECTED START</text>
+    <g id="content_from_pill_1" inkscape:label="content_from_pill_1">
+      <rect id="content_from_pill_1_bg" inkscape:label="content_from_pill_1_bg" x="20" y="360" width="59.8" height="24" fill="none" stroke="#1B6E3C" stroke-width="1" rx="12" />
+      <text id="content_from_pill_1_label" inkscape:label="content_from_pill_1_label" x="49.9" y="377" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#B98A0A" text-anchor="middle">home ✓</text>
+    </g>
+    <g id="content_from_pill_2" inkscape:label="content_from_pill_2">
+      <rect id="content_from_pill_2_bg" inkscape:label="content_from_pill_2_bg" x="85.8" y="360" width="47.2" height="24" fill="none" stroke="#C8DEC8" stroke-width="1" rx="12" />
+      <text id="content_from_pill_2_label" inkscape:label="content_from_pill_2_label" x="109.4" y="377" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#5A6B5E" text-anchor="middle">work</text>
+    </g>
+    <g id="content_from_pill_3" inkscape:label="content_from_pill_3">
+      <rect id="content_from_pill_3_bg" inkscape:label="content_from_pill_3_bg" x="139" y="360" width="110.2" height="24" fill="none" stroke="#C8DEC8" stroke-width="1" rx="12" />
+      <text id="content_from_pill_3_label" inkscape:label="content_from_pill_3_label" x="194.1" y="377" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#5A6B5E" text-anchor="middle">Leuven station</text>
+    </g>
+    <g id="content_from_pill_4" inkscape:label="content_from_pill_4">
+      <rect id="content_from_pill_4_bg" inkscape:label="content_from_pill_4_bg" x="255.2" y="360" width="47.2" height="24" fill="none" stroke="#C8DEC8" stroke-width="1" rx="12" />
+      <text id="content_from_pill_4_label" inkscape:label="content_from_pill_4_label" x="278.8" y="377" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#5A6B5E" text-anchor="middle">fosh</text>
+    </g>
+    <g id="content_from_pill_5" inkscape:label="content_from_pill_5">
+      <rect id="content_from_pill_5_bg" inkscape:label="content_from_pill_5_bg" x="308.4" y="360" width="59.8" height="24" fill="none" stroke="#C8DEC8" stroke-width="1" rx="12" />
+      <text id="content_from_pill_5_label" inkscape:label="content_from_pill_5_label" x="338.3" y="377" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#5A6B5E" text-anchor="middle">church</text>
+    </g>
+    <text id="content_flow_to_label" inkscape:label="content_flow_to_label" x="20" y="394" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#5A6B5E" text-anchor="start" letter-spacing="2">GOING TO</text>
+    <g id="content_to_pill_1" inkscape:label="content_to_pill_1">
+      <rect id="content_to_pill_1_bg" inkscape:label="content_to_pill_1_bg" x="20" y="410" width="47.2" height="24" fill="none" stroke="#1B6E3C" stroke-width="1" rx="12" />
+      <text id="content_to_pill_1_label" inkscape:label="content_to_pill_1_label" x="43.6" y="427" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#B98A0A" text-anchor="middle">work</text>
+    </g>
+    <g id="content_to_pill_2" inkscape:label="content_to_pill_2">
+      <rect id="content_to_pill_2_bg" inkscape:label="content_to_pill_2_bg" x="73.2" y="410" width="110.2" height="24" fill="none" stroke="#C8DEC8" stroke-width="1" rx="12" />
+      <text id="content_to_pill_2_label" inkscape:label="content_to_pill_2_label" x="128.3" y="427" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#5A6B5E" text-anchor="middle">Leuven station</text>
+    </g>
+    <g id="content_to_pill_3" inkscape:label="content_to_pill_3">
+      <rect id="content_to_pill_3_bg" inkscape:label="content_to_pill_3_bg" x="189.4" y="410" width="47.2" height="24" fill="none" stroke="#C8DEC8" stroke-width="1" rx="12" />
+      <text id="content_to_pill_3_label" inkscape:label="content_to_pill_3_label" x="213" y="427" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#5A6B5E" text-anchor="middle">fosh</text>
+    </g>
+    <g id="content_to_pill_4" inkscape:label="content_to_pill_4">
+      <rect id="content_to_pill_4_bg" inkscape:label="content_to_pill_4_bg" x="242.6" y="410" width="59.8" height="24" fill="none" stroke="#C8DEC8" stroke-width="1" rx="12" />
+      <text id="content_to_pill_4_label" inkscape:label="content_to_pill_4_label" x="272.5" y="427" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#5A6B5E" text-anchor="middle">church</text>
+    </g>
+    <text id="content_flow_route_label" inkscape:label="content_flow_route_label" x="20" y="444" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#5A6B5E" text-anchor="start" letter-spacing="2">WHICH ROUTE TODAY?</text>
+    <g id="content_route_pill_1" inkscape:label="content_route_pill_1">
+      <rect id="content_route_pill_1_bg" inkscape:label="content_route_pill_1_bg" x="20" y="460" width="40.9" height="24" fill="none" stroke="#1B6E3C" stroke-width="1" rx="12" />
+      <text id="content_route_pill_1_label" inkscape:label="content_route_pill_1_label" x="40.45" y="477" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#B98A0A" text-anchor="middle">Dry</text>
+    </g>
+    <g id="content_route_pill_2" inkscape:label="content_route_pill_2">
+      <rect id="content_route_pill_2_bg" inkscape:label="content_route_pill_2_bg" x="66.9" y="460" width="40.9" height="24" fill="none" stroke="#C8DEC8" stroke-width="1" rx="12" />
+      <text id="content_route_pill_2_label" inkscape:label="content_route_pill_2_label" x="87.35" y="477" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#5A6B5E" text-anchor="middle">Wet</text>
+    </g>
+    <text id="content_route_hint_l1" inkscape:label="content_route_hint_l1" x="195" y="500" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12.5" font-weight="400" fill="#46564A" text-anchor="middle">the pick is intent — ride a different road and</text>
+    <text id="content_route_hint_l2" inkscape:label="content_route_hint_l2" x="195" y="516.25" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12.5" font-weight="400" fill="#46564A" text-anchor="middle">the ride scores as the road you actually took</text>
+    <text id="content_route_hint_l3" inkscape:label="content_route_hint_l3" x="195" y="532.5" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12.5" font-weight="400" fill="#46564A" text-anchor="middle">(§8a)</text>
+    <text id="content_ghost_line" inkscape:label="content_ghost_line" x="195" y="556.75" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#46564A" text-anchor="middle">6 rides found — you are racing 6 ghosts</text>
+    <text id="content_ready_line" inkscape:label="content_ready_line" x="195" y="582.95" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#46564A" text-anchor="middle">Ready to record.</text>
+    <g id="content_record_button" inkscape:label="content_record_button">
+      <rect id="content_record_button_bg" inkscape:label="content_record_button_bg" x="20" y="612.95" width="350" height="100" fill="#1B6E3C" rx="20" />
+      <text id="content_record_button_label" inkscape:label="content_record_button_label" x="195" y="658.95" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="30" font-weight="800" fill="#FFFFFF" text-anchor="middle" letter-spacing="3">● RECORD</text>
+      <text id="content_record_button_sub" inkscape:label="content_record_button_sub" x="195" y="680.95" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="400" fill="#FFFFFF" text-anchor="middle">arms the ride · nothing starts yet</text>
+    </g>
+  </g>
+  <g id="tabbar" inkscape:label="tabbar" inkscape:groupmode="layer" clip-path="url(#tabbar_viewport_clip)">
+    <rect id="tabbar_bg" inkscape:label="tabbar_bg" x="0" y="790" width="390" height="54" fill="#F0F7F0" />
+    <line id="tabbar_top_border" inkscape:label="tabbar_top_border" x1="0" y1="790" x2="390" y2="790" stroke="#C8DEC8" stroke-width="1" stroke-linecap="round" />
+    <line id="tabbar_record_active_bar" inkscape:label="tabbar_record_active_bar" x1="4" y1="792" x2="88" y2="792" stroke="#1B6E3C" stroke-width="3" stroke-linecap="round" />
+    <text id="tabbar_record_label" inkscape:label="tabbar_record_label" x="46" y="824" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#17231A" text-anchor="middle" letter-spacing="2" style="text-transform:uppercase">RECORD</text>
+    <text id="tabbar_rides_label" inkscape:label="tabbar_rides_label" x="138" y="824" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#5A6B5E" text-anchor="middle" letter-spacing="2" style="text-transform:uppercase">RIDES</text>
+    <text id="tabbar_routes_label" inkscape:label="tabbar_routes_label" x="230" y="824" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#5A6B5E" text-anchor="middle" letter-spacing="2" style="text-transform:uppercase">ROUTES</text>
+    <text id="tabbar_result_label" inkscape:label="tabbar_result_label" x="322" y="824" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#5A6B5E" text-anchor="middle" letter-spacing="2" style="text-transform:uppercase">RESULT</text>
+    <text id="tabbar_settings_label" inkscape:label="tabbar_settings_label" x="414" y="824" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#5A6B5E" text-anchor="middle" letter-spacing="2" style="text-transform:uppercase">SETTINGS</text>
+    <text id="tabbar_demo_label" inkscape:label="tabbar_demo_label" x="506" y="824" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#5A6B5E" text-anchor="middle" letter-spacing="2" style="text-transform:uppercase">DEMO</text>
+  </g>
+</svg>

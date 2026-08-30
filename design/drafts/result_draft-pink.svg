@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844" width="390" height="844">
+  <defs>
+    <clipPath id="tabbar_viewport_clip">
+      <rect x="0" y="790" width="390" height="54" />
+    </clipPath>
+  </defs>
+  <g id="bg" inkscape:label="bg" inkscape:groupmode="layer">
+    <rect id="bg_ground" inkscape:label="bg_ground" x="0" y="0" width="390" height="844" fill="#FDF2F6" />
+  </g>
+  <g id="content" inkscape:label="content" inkscape:groupmode="layer">
+    <rect id="content_pb_card_bg" inkscape:label="content_pb_card_bg" x="16" y="260" width="358" height="366" fill="#FFFFFF" stroke="#EBCFD9" stroke-width="1" rx="16" />
+    <rect id="content_last_card_bg" inkscape:label="content_last_card_bg" x="16" y="40" width="358" height="180" fill="#FFFFFF" stroke="#EBCFD9" stroke-width="1" rx="16" />
+    <text id="content_last_heading" inkscape:label="content_last_heading" x="16" y="24" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="700" fill="#6E5C63" text-anchor="start" letter-spacing="2" style="text-transform:uppercase">YOUR LAST RIDE</text>
+    <text id="content_last_route" inkscape:label="content_last_route" x="195" y="64" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#6E5C63" text-anchor="middle">Home Work Dry</text>
+    <text id="content_last_lap" inkscape:label="content_last_lap" x="195" y="94" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="32" font-weight="800" fill="#A667F0" text-anchor="middle" style="font-variant-numeric:tabular-nums">14:02.5</text>
+    <text id="content_last_rank" inkscape:label="content_last_rank" x="195" y="114" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="400" fill="#6E5C63" text-anchor="middle">P2 of 9 on this route</text>
+    <text id="content_last_trace_link" inkscape:label="content_last_trace_link" x="195" y="140" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="400" fill="#6E5C63" text-anchor="middle" letter-spacing="1.5" style="text-transform:uppercase">VIEW TRACE ›</text>
+    <g id="content_last_record_another" inkscape:label="content_last_record_another">
+      <rect id="content_last_record_another_bg" inkscape:label="content_last_record_another_bg" x="109" y="164" width="172" height="40" fill="#C2185B" rx="10" />
+      <text id="content_last_record_another_label" inkscape:label="content_last_record_another_label" x="195" y="189" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="800" fill="#FFFFFF" text-anchor="middle" letter-spacing="1">RECORD ANOTHER</text>
+    </g>
+    <text id="content_pb_heading" inkscape:label="content_pb_heading" x="16" y="244" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="700" fill="#6E5C63" text-anchor="start" letter-spacing="2" style="text-transform:uppercase">PERSONAL BESTS — TAP A ROUTE</text>
+    <text id="content_pb_1_route" inkscape:label="content_pb_1_route" x="30" y="280" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="15" font-weight="700" fill="#241A1E" text-anchor="start">Home Work Dry</text>
+    <text id="content_pb_1_hint" inkscape:label="content_pb_1_hint" x="30" y="296" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#6E5C63" text-anchor="start">personal best 13:58.1 · 9 rides on file</text>
+    <text id="content_pb_1_chev" inkscape:label="content_pb_1_chev" x="360" y="282" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="15" font-weight="400" fill="#6E5C63" text-anchor="middle">▾</text>
+    <text id="content_pb_1_ranking_hint" inkscape:label="content_pb_1_ranking_hint" x="30" y="318" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#6E5C63" text-anchor="start">last 3 on this route</text>
+    <text id="content_pb_1_rank_p1_pos" inkscape:label="content_pb_1_rank_p1_pos" x="30" y="330" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#241A1E" text-anchor="start">P1</text>
+    <text id="content_pb_1_rank_p1_date" inkscape:label="content_pb_1_rank_p1_date" x="74" y="330" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#6E5C63" text-anchor="start">Tue 12 Aug</text>
+    <text id="content_pb_1_rank_p1_time" inkscape:label="content_pb_1_rank_p1_time" x="300" y="330" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#241A1E" text-anchor="end" style="font-variant-numeric:tabular-nums">13:58</text>
+    <text id="content_pb_1_rank_p1_gap" inkscape:label="content_pb_1_rank_p1_gap" x="360" y="330" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#6E5C63" text-anchor="end" style="font-variant-numeric:tabular-nums" />
+    <text id="content_pb_1_rank_p2_pos" inkscape:label="content_pb_1_rank_p2_pos" x="30" y="350" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#241A1E" text-anchor="start">P2</text>
+    <text id="content_pb_1_rank_p2_date" inkscape:label="content_pb_1_rank_p2_date" x="74" y="350" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#B98A0A" text-anchor="start">today</text>
+    <text id="content_pb_1_rank_p2_time" inkscape:label="content_pb_1_rank_p2_time" x="300" y="350" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#241A1E" text-anchor="end" style="font-variant-numeric:tabular-nums">14:03</text>
+    <text id="content_pb_1_rank_p2_gap" inkscape:label="content_pb_1_rank_p2_gap" x="360" y="350" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#6E5C63" text-anchor="end" style="font-variant-numeric:tabular-nums">+5s</text>
+    <text id="content_pb_1_rank_p3_pos" inkscape:label="content_pb_1_rank_p3_pos" x="30" y="370" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#241A1E" text-anchor="start">P3</text>
+    <text id="content_pb_1_rank_p3_date" inkscape:label="content_pb_1_rank_p3_date" x="74" y="370" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#6E5C63" text-anchor="start">Fri 08 Aug</text>
+    <text id="content_pb_1_rank_p3_time" inkscape:label="content_pb_1_rank_p3_time" x="300" y="370" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#241A1E" text-anchor="end" style="font-variant-numeric:tabular-nums">14:11</text>
+    <text id="content_pb_1_rank_p3_gap" inkscape:label="content_pb_1_rank_p3_gap" x="360" y="370" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#6E5C63" text-anchor="end" style="font-variant-numeric:tabular-nums">+13s</text>
+    <text id="content_pb_1_pbsectors_hint" inkscape:label="content_pb_1_pbsectors_hint" x="30" y="408" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#6E5C63" text-anchor="start">personal best sectors</text>
+    <text id="content_pb_1_pbsec_s1_label" inkscape:label="content_pb_1_pbsec_s1_label" x="30" y="420" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#241A1E" text-anchor="start">S1</text>
+    <text id="content_pb_1_pbsec_s1_time" inkscape:label="content_pb_1_pbsec_s1_time" x="360" y="420" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#241A1E" text-anchor="end" style="font-variant-numeric:tabular-nums">3:00.4</text>
+    <text id="content_pb_1_pbsec_s2_label" inkscape:label="content_pb_1_pbsec_s2_label" x="30" y="440" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#241A1E" text-anchor="start">S2</text>
+    <text id="content_pb_1_pbsec_s2_time" inkscape:label="content_pb_1_pbsec_s2_time" x="360" y="440" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#241A1E" text-anchor="end" style="font-variant-numeric:tabular-nums">3:18.9</text>
+    <text id="content_pb_1_pbsec_s3_label" inkscape:label="content_pb_1_pbsec_s3_label" x="30" y="460" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#241A1E" text-anchor="start">S3</text>
+    <text id="content_pb_1_pbsec_s3_time" inkscape:label="content_pb_1_pbsec_s3_time" x="360" y="460" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#241A1E" text-anchor="end" style="font-variant-numeric:tabular-nums">3:34.2</text>
+    <text id="content_pb_1_pbsec_s4_label" inkscape:label="content_pb_1_pbsec_s4_label" x="30" y="480" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#241A1E" text-anchor="start">S4</text>
+    <text id="content_pb_1_pbsec_s4_time" inkscape:label="content_pb_1_pbsec_s4_time" x="360" y="480" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#241A1E" text-anchor="end" style="font-variant-numeric:tabular-nums">3:04.6</text>
+    <line id="content_pb_1_divider" inkscape:label="content_pb_1_divider" x1="16" y1="506" x2="374" y2="506" stroke="#EBCFD9" stroke-width="1" stroke-linecap="round" />
+    <text id="content_pb_2_route" inkscape:label="content_pb_2_route" x="30" y="532" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="15" font-weight="700" fill="#241A1E" text-anchor="start">Work Home Dry</text>
+    <text id="content_pb_2_hint" inkscape:label="content_pb_2_hint" x="30" y="548" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#6E5C63" text-anchor="start">personal best 15:03.4 · 6 rides on file</text>
+    <text id="content_pb_2_chev" inkscape:label="content_pb_2_chev" x="360" y="534" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="15" font-weight="400" fill="#6E5C63" text-anchor="middle">›</text>
+    <line id="content_pb_2_divider" inkscape:label="content_pb_2_divider" x1="16" y1="560" x2="374" y2="560" stroke="#EBCFD9" stroke-width="1" stroke-linecap="round" />
+    <text id="content_pb_3_route" inkscape:label="content_pb_3_route" x="30" y="586" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="15" font-weight="700" fill="#241A1E" text-anchor="start">Home Church</text>
+    <text id="content_pb_3_hint" inkscape:label="content_pb_3_hint" x="30" y="602" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#6E5C63" text-anchor="start">personal best 10:41.0 · 5 rides on file</text>
+    <text id="content_pb_3_chev" inkscape:label="content_pb_3_chev" x="360" y="588" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="15" font-weight="400" fill="#6E5C63" text-anchor="middle">›</text>
+    <text id="content_footer_note_l1" inkscape:label="content_footer_note_l1" x="16" y="646" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#6E5C63" text-anchor="start">Position is a fact; colour is a judgement — a mid-pack ride</text>
+    <text id="content_footer_note_l2" inkscape:label="content_footer_note_l2" x="16" y="659.65" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#6E5C63" text-anchor="start">is never dressed as failure. Purple beats your best, green</text>
+    <text id="content_footer_note_l3" inkscape:label="content_footer_note_l3" x="16" y="673.3" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#6E5C63" text-anchor="start">beats your recent average, yellow is an ordinary lap.</text>
+  </g>
+  <g id="tabbar" inkscape:label="tabbar" inkscape:groupmode="layer" clip-path="url(#tabbar_viewport_clip)">
+    <rect id="tabbar_bg" inkscape:label="tabbar_bg" x="0" y="790" width="390" height="54" fill="#FDF2F6" />
+    <line id="tabbar_top_border" inkscape:label="tabbar_top_border" x1="0" y1="790" x2="390" y2="790" stroke="#EBCFD9" stroke-width="1" stroke-linecap="round" />
+    <text id="tabbar_record_label" inkscape:label="tabbar_record_label" x="46" y="824" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#6E5C63" text-anchor="middle" letter-spacing="2" style="text-transform:uppercase">RECORD</text>
+    <text id="tabbar_rides_label" inkscape:label="tabbar_rides_label" x="138" y="824" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#6E5C63" text-anchor="middle" letter-spacing="2" style="text-transform:uppercase">RIDES</text>
+    <text id="tabbar_routes_label" inkscape:label="tabbar_routes_label" x="230" y="824" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#6E5C63" text-anchor="middle" letter-spacing="2" style="text-transform:uppercase">ROUTES</text>
+    <line id="tabbar_result_active_bar" inkscape:label="tabbar_result_active_bar" x1="280" y1="792" x2="364" y2="792" stroke="#C2185B" stroke-width="3" stroke-linecap="round" />
+    <text id="tabbar_result_label" inkscape:label="tabbar_result_label" x="322" y="824" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#241A1E" text-anchor="middle" letter-spacing="2" style="text-transform:uppercase">RESULT</text>
+    <text id="tabbar_settings_label" inkscape:label="tabbar_settings_label" x="414" y="824" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#6E5C63" text-anchor="middle" letter-spacing="2" style="text-transform:uppercase">SETTINGS</text>
+    <text id="tabbar_demo_label" inkscape:label="tabbar_demo_label" x="506" y="824" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#6E5C63" text-anchor="middle" letter-spacing="2" style="text-transform:uppercase">DEMO</text>
+  </g>
+</svg>
