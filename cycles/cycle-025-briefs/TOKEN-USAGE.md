@@ -182,8 +182,25 @@ STATE.md/DECISIONS.md/BACKLOG.md/cycle-025.md bookkeeping pass. `git push` was n
 again this session (confirmed dead earlier -- 403 from proxy, no github.com egress from this
 shell); all commits remain local on `main`, ahead of `origin/main`.
 
-### Phase 12 onward — cycle 025 execution continues (append below as it happens)
+### Phase 12 — 2026-08-30: Fable AND Sonnet both exhausted for the week -- Opus/Haiku substitution
+
+Immediately after Phase 11's report, Nathan reported the weekly Fable quota AND Sonnet quota
+both exhausted, with roughly 10% of "all models" left until Monday 05:00 reset. He proposed an
+emergency tier substitution: Opus (the strongest model still available) takes over both the
+Plan and Inspect roles Fable normally holds, and Haiku takes over the Execute role Sonnet
+normally holds, for anything attempted the rest of this week.
 
 | date | tier | model | tokens | outcome |
 |---|---|---|---|---|
-| _(none yet — resume here next session; inspect `dca0f92` FIRST before anything else)_ | | | | |
+| 2026-08-30 | Opus (substituting for Fable) -- WP-stale-first-fix-cleanup inspect, retry (fresh context, adversarial) | opus | 107,795 | **PASS.** Closes the gap left by Phase 11's Fable-limit cutoff. D-023 compliance proven by extracting and diffing both encoder versions byte-for-byte over 8 fixtures (identical); classifier boundary math traced by hand (t==startedAtMs correctly NOT flagged, accuracy/time-cap boundaries both exact); all named downstream consumers (outage/stop/distance/max-speed/firstFixDelayS/matcher-anchoring) verified to read only `cleanFixes`; test quality independently assessed as genuinely behavioural, not smoke-only. Two informational (non-blocking) notes: an `accuracyM===undefined` doctrine inconsistency between fixFlags.ts and engine.ts/computeMaxSpeedKmh worth a future decision record, and a theoretical interior-hole edge case in outage detection that provably can't occur given goodFixSeen's irreversible latch. commit `dca0f92` is now fully closed -- no code change needed, this entry supersedes its "NOT YET INSPECTED" flag. |
+
+**WP-stale-first-fix-cleanup (P1-P4) is now COMPLETE: planned, executed, inspected, PASS.**
+No further work attempted this phase pending Nathan's decision on whether the remaining ~10%
+"all models" budget should fund one more (small) WP under the Opus-plan/Haiku-execute/
+Opus-inspect substitution, or be preserved unspent for the rest of the week.
+
+### Phase 13 onward — cycle 025 execution continues (append below as it happens)
+
+| date | tier | model | tokens | outcome |
+|---|---|---|---|---|
+| _(none yet)_ | | | | |
