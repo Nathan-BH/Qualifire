@@ -27,7 +27,6 @@ import type { RideResult } from '../store/types.ts';
 import { TRACK_IDS } from '../live/refs.ts';
 import { MIN_HISTORY, allTimeBestLapS, fmt, lapValues, ownLapBarredFromRanking, positionAmong,
   rankedCountFor, rankingPoolFor, sectorValues, tierFor, type UiTier } from './colourModel.ts';
-import { chipColors } from './chips.tsx';
 import { getLastRideOrStored, type FinishedRide } from './lastRide.ts';
 import { lastFreeRide } from '../store/freeRides.ts';
 import { buildPbDetail, buildPbRows, dateTimeLabel, lapCellLabel, routeLabel } from './rideHistoryModel.ts';
@@ -48,6 +47,20 @@ function tierColour(tier: UiTier, t: PaddockTheme): string {
     default: return t.textDim;
   }
 }
+
+/** WP-sector-coloured-trail P1 (ruled 2026-08-26): the LINE colour a sector
+ * span earns per tier. Deliberately NOT chipColors(tier, t).text — the
+ * purple chip's .text is PURPLE_INK (near-black ink for text ON a purple
+ * chip), which would paint a purple sector's line almost black. And
+ * deliberately NOT tierColour() above — that maps 'neutral'/'est' to
+ * visible ink colours for TEXT, while an unearned verdict must leave the
+ * line unpainted (D-013). Absent keys fall through to null at the use
+ * site, so 'neutral' and 'est' sectors keep the base line colour. */
+const SPAN_TIER_COLOUR: Partial<Record<UiTier, string>> = {
+  purple: colors.purple,
+  green: colors.green,
+  yellow: colors.neutral,
+};
 
 /** The rank line under the big lap figure — D-028's "an estimated lap never
  * ranks" and D-008's MIN_HISTORY floor, both stated in plain words. `hist` is
@@ -166,19 +179,25 @@ export default function ResultScreen() {
     ? rankLineFor(ride, rideLaps, ownLapBarredFromRanking(ride.routeId, ride.rideId))
     : '';
 
-  // B-57: gate colours for the "view trace" browse map — mirrors
-  // RecordScreen's gateColours memo, but keyed off the finished ride's OWN
-  // sectors (there is no live engine on this screen). Only a clean sector
-  // with a real moving time earns a colour; index 0 (START) never does.
-  const resultGateColours: (string | null)[] = ride
+  // Ruled 2026-08-26 (WP-sector-coloured-trail P1 — supersedes B-57's gate
+  // colouring ON THIS SCREEN): all verdict colour lives on the sector LINE
+  // SPANS; gate ticks are neutral static boundary markers ("they are gates"
+  // — they mark boundaries, they don't score). Same per-sector verdict
+  // computation the gate colours used (tierFor against the sector's own
+  // window, excluding this ride's value from it), same array shape: index i
+  // is the colour of sector i — the stretch of line ENDING at gate i; index
+  // 0 (START — no sector ends there) stays null. Only a clean sector with a
+  // real moving time and an EARNED tier paints its span; 'neutral'
+  // (< MIN_HISTORY) and unscored sectors stay uncoloured, so the base line
+  // shows through (D-013: nothing is judged on too little history).
+  const resultSectorColours: (string | null)[] = ride
     ? [
       null,
       ...[...ride.sectors].sort((a, b) => a.index - b.index).map((sec) =>
         sec.quality === 'clean' && sec.movingS !== null
-          ? chipColors(
-            tierFor(sec.movingS, sectorValues(ride.routeId, sec.index, ride.rideId).filter((v) => v !== sec.movingS)),
-            t,
-          ).text
+          ? SPAN_TIER_COLOUR[
+            tierFor(sec.movingS, sectorValues(ride.routeId, sec.index, ride.rideId).filter((v) => v !== sec.movingS))
+          ] ?? null
           : null),
     ]
     : [];
@@ -236,10 +255,10 @@ export default function ResultScreen() {
             </Text>
           </Pressable>
           {traceOpen ? (
-            // Shows the ROUTE on real streets with today's gate colours; the
+            // Shows the ROUTE on real streets with sector-coloured spans; the
             // true ridden trace needs a JSONL reader (future work, D-023).
             <RouteMapView variant="browse" routeId={ride.routeId} lat={null} lon={null}
-              zoom={1} height={300} showRider={false} gateColours={resultGateColours} />
+              zoom={1} height={300} showRider={false} sectorColours={resultSectorColours} />
           ) : null}
 
           <Pressable style={[st.slimBtn, { backgroundColor: t.accent }]} onPress={() => tabNav.go('record')}>

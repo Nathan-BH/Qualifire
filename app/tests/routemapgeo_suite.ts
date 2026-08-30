@@ -9,7 +9,7 @@ import { assert, loadJson, test, TESTS_DIR } from './lib.ts';
 import {
   allGatesBounds, allGatesFeatureCollection, bearingBetween, gatesFeatureCollection,
   gateTicksFeatureCollection, metresBetween, riderFeature, routeBounds, routeLineFeature,
-  routeSplitFeatures,
+  routeSplitFeatures, sectorSpansFeatureCollection,
 } from '../src/ui/routeMapGeo.ts';
 import type { RouteAsset } from '../src/ui/routeMapMath.ts';
 
@@ -327,4 +327,78 @@ test('routemapgeo: routeSplitFeatures — active:false is single behind; no/off-
   const pathless: RouteAsset = { ...a, path: undefined };
   assert(routeSplitFeatures(pathless, rider, { active: true, offRoute: false }) === null,
     'a pathless asset must yield null, same rule as routeLineFeature');
+});
+
+// ================================================================ WP-sector-coloured-trail P1 (Result trace spans)
+
+test('routemapgeo: sector spans — 4 per manifest route, adjacent spans share the gate vertex, ends anchored at gateIdx[0]/gateIdx[last]', () => {
+  for (const [id, a] of Object.entries(manifest.routes)) {
+    const fc = sectorSpansFeatureCollection(a);
+    assert(fc !== null, `${id}: expected a FeatureCollection, got null`);
+    assert(fc!.features.length === 4, `${id}: expected 4 sector spans, got ${fc!.features.length}`);
+    fc!.features.forEach((feat, k) => {
+      assert(feat.geometry.type === 'LineString', `${id}: span ${k} is not a LineString`);
+      assert(feat.properties.sector === k + 1, `${id}: span ${k} expected sector ${k + 1}, got ${feat.properties.sector}`);
+      assert(feat.geometry.coordinates.length >= 2, `${id}: span ${k} has <2 coordinates`);
+      for (const [lon, lat] of feat.geometry.coordinates) {
+        assert(lon > 4.6 && lon < 4.73, `${id}: span lon ${lon} out of expected Leuven range — swap regression?`);
+        assert(lat > 50.8 && lat < 50.89, `${id}: span lat ${lat} out of expected Leuven range — swap regression?`);
+      }
+    });
+    for (let k = 0; k + 1 < fc!.features.length; k++) {
+      const cs = fc!.features[k].geometry.coordinates;
+      const endK = cs[cs.length - 1];
+      const startNext = fc!.features[k + 1].geometry.coordinates[0];
+      assert(endK[0] === startNext[0] && endK[1] === startNext[1],
+        `${id}: span ${k} does not end where span ${k + 1} begins`);
+      const g = a.path![a.gateIdx![k + 1]];
+      assert(endK[0] === g[1] && endK[1] === g[0],
+        `${id}: span ${k}/${k + 1} boundary is not the swapped path[gateIdx[${k + 1}]]`);
+    }
+    const first = fc!.features[0].geometry.coordinates[0];
+    const p0 = a.path![a.gateIdx![0]];
+    assert(first[0] === p0[1] && first[1] === p0[0], `${id}: first span must start at the swapped path[gateIdx[0]]`);
+    const lastCs = fc!.features[fc!.features.length - 1].geometry.coordinates;
+    const last = lastCs[lastCs.length - 1];
+    const pn = a.path![a.gateIdx![a.gateIdx!.length - 1]];
+    assert(last[0] === pn[1] && last[1] === pn[0], `${id}: last span must end at the swapped path[gateIdx[last]]`);
+  }
+});
+
+test('routemapgeo: sector spans — gate-indexed colour lands on the span ENDING at that gate, \'\' treated as null, none given -> none carried', () => {
+  const a = manifest.routes.Morning;
+  const none = sectorSpansFeatureCollection(a);
+  assert(none !== null, 'expected spans with no colours arg');
+  for (const feat of none!.features) {
+    assert(!('colour' in feat.properties), 'no sectorColours given but a span carries colour');
+  }
+  const withColours = sectorSpansFeatureCollection(a, [null, '#A667F0', null, '#3ED598', null]);
+  withColours!.features.forEach((feat, k) => {
+    const sector = k + 1;
+    if (sector === 1) {
+      assert(feat.properties.colour === '#A667F0', `sector 1 expected #A667F0, got ${feat.properties.colour}`);
+    } else if (sector === 3) {
+      assert(feat.properties.colour === '#3ED598', `sector 3 expected #3ED598, got ${feat.properties.colour}`);
+    } else {
+      assert(!('colour' in feat.properties), `sector ${sector} should carry no colour property`);
+    }
+  });
+  const withEmpty = sectorSpansFeatureCollection(a, [null, '', '#123456', null, null]);
+  withEmpty!.features.forEach((feat, k) => {
+    if (k + 1 === 2) {
+      assert(feat.properties.colour === '#123456', `sector 2 expected #123456, got ${feat.properties.colour}`);
+    } else {
+      assert(!('colour' in feat.properties), `sector ${k + 1} should carry no colour ('' -> null, B-50 hardening)`);
+    }
+  });
+});
+
+test('routemapgeo: sector spans — null without a path, without gateIdx, or with a gateIdx/gates length mismatch', () => {
+  const a = manifest.routes.Morning;
+  const pathless: RouteAsset = { ...a, path: undefined };
+  assert(sectorSpansFeatureCollection(pathless) === null, 'no path must yield null (fall back to the plain line)');
+  const noIdx: RouteAsset = { ...a, gateIdx: undefined };
+  assert(sectorSpansFeatureCollection(noIdx) === null, 'no gateIdx must yield null');
+  const mismatch: RouteAsset = { ...a, gateIdx: a.gateIdx!.slice(0, 3) };
+  assert(sectorSpansFeatureCollection(mismatch) === null, 'gateIdx/gates length mismatch must yield null');
 });

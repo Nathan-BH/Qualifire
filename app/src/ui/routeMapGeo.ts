@@ -363,3 +363,55 @@ export function gateTicksFeatureCollection(
     }),
   };
 }
+
+// ==================================================== WP-sector-coloured-trail P1 (2026-08-26 ruling)
+
+export interface SectorSpanProperties {
+  /** 1-based sector number — the span ENDING at gate `sector`. */
+  sector: number;
+  colour?: string;
+}
+
+/**
+ * One LineString per SECTOR — the slice of `path` between consecutive gates
+ * (path[gateIdx[i-1]] .. path[gateIdx[i]], inclusive both ends, so adjacent
+ * spans share their boundary vertex) — so the finished-ride trace can paint
+ * each sector's stretch of the route in the colour that sector earned
+ * (ruled 2026-08-26: verdict colour lives on the line spans; gate ticks are
+ * neutral markers). `sectorColours` is GATE-indexed, the same shape
+ * ResultScreen already computes for B-57's gate colours: index i is the
+ * colour of the sector ending at gate i (sector i, 1-based); index 0
+ * (START — no sector ends there) is ignored. `colour` is OMITTED when a
+ * sector has no earned colour, and '' is treated as null — the same
+ * ['has','colour'] paint convention and B-50 hardening as the gate builders
+ * above. The path's lead-in (before gateIdx[0]) and lead-out (after the
+ * last gateIdx) are covered by NO span: they are outside the timed lap and
+ * stay the base line colour. Returns null when the asset cannot honestly be
+ * split — no/short path, or no gateIdx matching the gate count — so the
+ * caller falls back to the plain single-colour line.
+ */
+export function sectorSpansFeatureCollection(
+  a: RouteAsset, sectorColours?: (string | null)[],
+): GeoFeatureCollection<LineStringGeometry, SectorSpanProperties> | null {
+  if (!a.path || a.path.length < 2) return null;
+  if (!a.gateIdx || a.gateIdx.length !== a.gates.length || a.gateIdx.length < 2) return null;
+  const features: GeoFeature<LineStringGeometry, SectorSpanProperties>[] = [];
+  for (let i = 1; i < a.gateIdx.length; i++) {
+    const slice = a.path.slice(a.gateIdx[i - 1], a.gateIdx[i] + 1);
+    if (slice.length < 2) continue; // degenerate span (duplicate gateIdx) — nothing drawable
+    const raw = sectorColours?.[i] ?? null;
+    const colour = raw === '' ? null : raw;
+    const properties: SectorSpanProperties = colour !== null
+      ? { sector: i, colour }
+      : { sector: i };
+    features.push({
+      type: 'Feature',
+      geometry: {
+        type: 'LineString',
+        coordinates: slice.map(([lat, lon]) => [lon, lat] as GeoPosition),
+      },
+      properties,
+    });
+  }
+  return { type: 'FeatureCollection', features };
+}

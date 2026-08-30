@@ -42,6 +42,7 @@ import { cropFor, gateTickPx, offRouteM, projectToPixel, type RouteAsset } from 
 import {
   allGatesBounds, allGatesFeatureCollection, bearingBetween,
   gateTicksFeatureCollection, metresBetween, nearestOnPath, riderFeature, routeBounds, routeLineFeature,
+  sectorSpansFeatureCollection,
 } from './routeMapGeo.ts';
 import { patchMapStyle } from './routeMapStyle.ts';
 import { colors, radius } from './theme.ts';
@@ -117,6 +118,14 @@ type RouteMapProps = {
   /** colour per crossed gate, index 0 = START. Gates ahead stay dark; a gate
    * only takes a colour once its sector has actually been scored. */
   gateColours?: (string | null)[];
+  /** WP-sector-coloured-trail P1 (ruled 2026-08-26): GATE-indexed sector
+   * verdict colours — index i colours the SECTOR ending at gate i (the line
+   * span between gates i-1 and i); index 0 (START) is ignored. When present
+   * (the Result "view trace" map only, for now — the live map is Phase 2)
+   * the MapLibre rung overlays one coloured span per earned sector on top of
+   * the base line. The PNG rung cannot honour it (the line is baked into the
+   * image) — accepted rung degradation, same as WP-E's dotted-ahead. */
+  sectorColours?: (string | null)[];
   /** 'live' (default) = the recording ribbon; 'browse' = a free-standing
    * pannable map with no live semantics (Routes list, Result "view trace"). */
   variant?: RouteMapVariant;
@@ -344,6 +353,13 @@ function MapLibreRouteMap(props: RouteMapProps & {
     ? allGatesFeatureCollection(ASSETS, props.crossedGates, colors.neutral, props.gateRouteIds)
     : null;
   const gateTicksFC = gatesOnly ? null : gateTicksFeatureCollection(asset!, props.gateColours);
+  // WP-sector-coloured-trail P1: null unless the caller supplied sector
+  // colours AND the asset can honestly be split (path + matching gateIdx —
+  // sectorSpansFeatureCollection's own null rule); the plain base line
+  // alone then remains, exactly as today.
+  const sectorSpansFC = gatesOnly || !props.sectorColours
+    ? null
+    : sectorSpansFeatureCollection(asset!, props.sectorColours);
   const bounds = gatesOnly ? allGatesBounds(ASSETS, props.gateRouteIds) : routeBounds(asset!);
   const boundsTuple: [number, number, number, number] | null = bounds
     ? [bounds.minLon, bounds.minLat, bounds.maxLon, bounds.maxLat]
@@ -423,6 +439,28 @@ function MapLibreRouteMap(props: RouteMapProps & {
               layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
             <M.Layer id="route-core" type="line"
               paint={{ 'line-color': colors.neutral, 'line-width': 4 }}
+              layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
+          </M.GeoJSONSource>
+        ) : null}
+        {/* WP-sector-coloured-trail P1 (ruled 2026-08-26): each sector's
+            stretch of the line painted in the colour that sector earned,
+            drawn OVER the base core — width 6 inside the width-7 casing,
+            deliberately bolder than the width-4 core for the same reason
+            WP-E's earned ticks are bolder: an earned-yellow sector
+            (colors.neutral) must never be pixel-identical to an unscored
+            stretch (D-013/D-030). Unearned sectors paint transparent, so the
+            base yellow core shows through. Solid lines + the same
+            data-driven ['has','colour'] expression family as the gate-ticks
+            layer below — NO line-dasharray (the 2026-08-24 device-only
+            dasharray bug class) and no line-gradient. Key === id per the
+            cycle-025 frozen-id rule in the comment below. */}
+        {sectorSpansFC ? (
+          <M.GeoJSONSource key="sector-spans" id="sector-spans" data={sectorSpansFC}>
+            <M.Layer id="sector-spans-core" type="line"
+              paint={{
+                'line-color': ['case', ['has', 'colour'], ['get', 'colour'], 'rgba(0,0,0,0)'],
+                'line-width': 6,
+              }}
               layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
           </M.GeoJSONSource>
         ) : null}
