@@ -565,3 +565,93 @@ test('gpx+: cycle 025 — every lock event is exported in sidecar order with its
   assert(gpx.indexOf('atChainageM="10"') < gpx.indexOf('atChainageM="120"'), 'locks out of sidecar order');
   assert(gpx.includes('<qf:routeDistanceM>5325</qf:routeDistanceM>'), 'routeDistanceM missing (first lock, Morning)');
 });
+
+// ---------------------------------------------------------------- (q) cycle 025: stale-first-fix cleanup
+
+test('gpx+: cycle025 stale-fix — flagged pre-START/warm-up fixes are excluded from outages, stops, firstFix* (P2 semantics) and counted in qf:excludedFixes; the trkpts themselves stay exported, flagged inline', async () => {
+  const t0 = 1755167000000;
+  const { storage, clock } = makeEnv(t0 - 3000);
+  const rideId = await storage.startRide();
+  const fixes: Fix[] = [
+    // the 2026-08-25 shape: one stale cached fix 9 s before START, then five
+    // coarse points frozen at the door, then the real ride
+    { tUnixMs: t0 - 9000, lat: 50.79, lon: 4.59, accuracyM: 12, preStart: true },
+  ];
+  for (let i = 1; i <= 5; i++) fixes.push({ tUnixMs: t0 + i * 1000, lat: 50.8, lon: 4.6, accuracyM: 45, warmup: true });
+  for (let i = 0; i < 8; i++) fixes.push({ tUnixMs: t0 + 6000 + i * 1000, lat: 50.8 + i * 0.0001, lon: 4.6, accuracyM: 8 });
+  for (const f of fixes) { clock.t = f.tUnixMs; await storage.appendFix(rideId, f); }
+  await storage.appendEvent(rideId, { kind: 'button', tUnixMs: t0, button: 'start' });
+  await storage.endRide(rideId);
+  const gpx = await storage.exportGpxPlus(rideId);
+  // record-but-flag: every fix still a trkpt, flags visible per point
+  assert((gpx.match(/<trkpt /g) ?? []).length === 14, 'flagged fixes must still be exported as trkpts (D-023 record-but-flag)');
+  assert((gpx.match(/<qf:preStart\/>/g) ?? []).length === 1, 'preStart point flag missing/miscounted');
+  assert((gpx.match(/<qf:warmup\/>/g) ?? []).length === 5, 'warmup point flags missing/miscounted');
+  // P2: firstFix* from the first NON-flagged fix; delay >= 0; exclusions counted, not vanished
+  assert(gpx.includes(`<qf:firstFixAt>${isoTime(t0 + 6000)}</qf:firstFixAt>`), 'firstFixAt not the first non-flagged fix');
+  assert(gpx.includes('<qf:firstFixDelayS>6</qf:firstFixDelayS>'), 'firstFixDelayS not measured from the first non-flagged fix');
+  assert(gpx.includes('<qf:excludedFixes preStart="1" warmup="5"/>'), 'excludedFixes counts wrong/missing');
+  // the old pipeline logged a phantom 10 s outage (stale->door) and a phantom stop (frozen door points)
+  assert(!gpx.includes('<qf:outages>'), 'phantom outage derived from flagged fixes');
+  assert(!gpx.includes('<qf:stops>'), 'phantom stop derived from flagged fixes');
+  // P3 rider: max speed comes from the clean moving fixes (~11.1 m/s), not the 130 m/s stale jump
+  const m = gpx.match(/<qf:maxSpeedKmh>([\d.]+)<\/qf:maxSpeedKmh>/);
+  assert(m !== null, 'maxSpeedKmh missing');
+  const kmh = Number(m![1]);
+  assert(kmh > 35 && kmh < 45, `maxSpeedKmh ${kmh} — expected ~40 from the clean fixes only`);
+});
+
+test('gpx+: cycle025 stale-fix — an UNFLAGGED pre-START fix (ride recorded before the flags existed) is still excluded from derived stats via the start-press timestamp', async () => {
+  const t0 = 1755167000000;
+  const { storage, clock } = makeEnv(t0 - 3000);
+  const rideId = await storage.startRide();
+  const fixes: Fix[] = [{ tUnixMs: t0 - 9000, lat: 50.79, lon: 4.59 }]; // no flag on disk — old ride
+  for (let i = 0; i < 8; i++) fixes.push({ tUnixMs: t0 + i * 1000, lat: 50.8 + i * 0.0001, lon: 4.6 });
+  for (const f of fixes) { clock.t = f.tUnixMs; await storage.appendFix(rideId, f); }
+  await storage.appendEvent(rideId, { kind: 'button', tUnixMs: t0, button: 'start' });
+  await storage.endRide(rideId);
+  const gpx = await storage.exportGpxPlus(rideId);
+  assert(!gpx.includes('<qf:outages>'), 'phantom 9 s outage from the unflagged stale fix (the 4 recorded ride days re-export dirty)');
+  assert(gpx.includes(`<qf:firstFixAt>${isoTime(t0)}</qf:firstFixAt>`), 'firstFixAt not the first post-press fix');
+  assert(gpx.includes('<qf:firstFixDelayS>0</qf:firstFixDelayS>'), 'firstFixDelayS not clamped to the post-press fix');
+  assert(gpx.includes('<qf:excludedFixes preStart="1" warmup="0"/>'), 'export-time pre-START exclusion not counted');
+  assert(!gpx.includes('<qf:preStart/>'), 'per-trkpt flag fabricated for a fix that carries none on disk');
+});
+
+test('gpx+: cycle025 P3 — maxSpeedKmh filters poor-accuracy and gap-adjacent samples (mid-ride re-acquisition spikes)', async () => {
+  const t0 = 1755167000000;
+  const { storage, clock } = makeEnv(t0);
+  const rideId = await storage.startRide();
+  const fixes: Fix[] = [];
+  // clean riding at ~5.6 m/s (~20 km/h)
+  for (let i = 0; i <= 4; i++) fixes.push({ tUnixMs: t0 + i * 1000, lat: 50.8 + i * 0.00005, lon: 4.6, accuracyM: 8 });
+  // a ~200 km/h jump carried by a 90 m-accuracy point (the 23rd's 500 m-acc class) -> acc prong
+  fixes.push({ tUnixMs: t0 + 5000, lat: 50.8007, lon: 4.6, accuracyM: 90 });
+  fixes.push({ tUnixMs: t0 + 6000, lat: 50.80075, lon: 4.6, accuracyM: 8 });
+  // a 14 s outage, then a good-accuracy catch-up point at ~120 km/h -> gap-adjacency prong
+  fixes.push({ tUnixMs: t0 + 20000, lat: 50.80175, lon: 4.6, accuracyM: 8 });
+  fixes.push({ tUnixMs: t0 + 21000, lat: 50.80205, lon: 4.6, accuracyM: 8 });
+  fixes.push({ tUnixMs: t0 + 22000, lat: 50.8021, lon: 4.6, accuracyM: 8 });
+  fixes.push({ tUnixMs: t0 + 23000, lat: 50.80215, lon: 4.6, accuracyM: 8 });
+  for (const f of fixes) { clock.t = f.tUnixMs; await storage.appendFix(rideId, f); }
+  await storage.endRide(rideId);
+  const gpx = await storage.exportGpxPlus(rideId);
+  assert(gpx.includes('<qf:outages>'), 'the real 14 s outage must STILL be logged — the filter is for max-speed only');
+  const m = gpx.match(/<qf:maxSpeedKmh>([\d.]+)<\/qf:maxSpeedKmh>/);
+  assert(m !== null, 'maxSpeedKmh missing');
+  const kmh = Number(m![1]);
+  assert(kmh > 15 && kmh < 25,
+    `maxSpeedKmh ${kmh} — a poor-acc (~200 km/h) or gap-adjacent (~120 km/h) sample leaked through the filter`);
+});
+
+test('gpx+: cycle025 P3 — maxSpeedKmh is omitted (never a fabricated 0) when no sample survives the filter', async () => {
+  const { storage, clock } = makeEnv();
+  const rideId = await storage.startRide();
+  clock.t += 1000;
+  await storage.appendFix(rideId, { tUnixMs: clock.t, lat: 50.8, lon: 4.6, accuracyM: 90 });
+  clock.t += 1000;
+  await storage.appendFix(rideId, { tUnixMs: clock.t, lat: 50.8001, lon: 4.6, accuracyM: 90 });
+  await storage.endRide(rideId);
+  const gpx = await storage.exportGpxPlus(rideId);
+  assert(!gpx.includes('<qf:maxSpeedKmh>'), 'maxSpeedKmh emitted although every sample endpoint is poor-accuracy');
+});

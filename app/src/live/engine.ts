@@ -417,9 +417,16 @@ export class LiveEngine {
 
   /** Feed one raw GPS fix (degrees, epoch ms). `accuracyM` (metres, per the
    * fix's reported horizontal accuracy) is optional — undefined is treated as
-   * "unknown", never as poor. Never throws into the caller's recording loop —
-   * display state is worth strictly less than the raw ride. */
-  feed(lat: number, lon: number, tUnixMs: number, accuracyM?: number): void {
+   * "unknown", never as poor. `flagged` (cycle 025 WP-stale-first-fix P1,
+   * record-but-flag) marks a pre-START / warm-up fix the recording loop
+   * already classified: it contributes NOTHING derived — not buffered, no
+   * candidate anchoring (on 2026-08-25 all 20 candidates anchored 9 s before
+   * START on a stale cached fix), not even the idle auto-start below. The
+   * raw JSONL still records it (location/index.ts appends before feeding).
+   * Never throws into the caller's recording loop — display state is worth
+   * strictly less than the raw ride. */
+  feed(lat: number, lon: number, tUnixMs: number, accuracyM?: number, flagged?: boolean): void {
+    if (flagged === true) return;
     // Headless relaunch mid-ride: module state is fresh but fixes keep coming.
     // Auto-start; gates already behind resolve via D-016(b) arming/skip, so
     // earlier sectors surface honestly as estimated/missed.

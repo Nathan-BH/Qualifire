@@ -9,6 +9,19 @@ export interface Fix {
   ele?: number;
   tUnixMs: number;
   accuracyM?: number;
+  /** Cycle 025 (WP-stale-first-fix P1, Nathan 2026-08-26 record-but-flag):
+   * this fix's timestamp precedes the START press — a stale cached Android
+   * fix delivered after the button (observed on all four ride days; worst:
+   * −9.1 s). The fix is still recorded like any other (D-023 — this field is
+   * ADDITIVE only, written only when true; nothing existing is renamed,
+   * removed, or restructured); every DERIVED consumer (engine feed, export
+   * stats, matcher anchoring) excludes it. */
+  preStart?: boolean;
+  /** Same pass: poor/unknown-accuracy fix during the initial GPS warm-up
+   * window, before the first good fix (location/fixFlags.ts: accuracy >
+   * WARMUP_ACC_M, capped at WARMUP_MAX_S so a bad-GPS day never flags a
+   * whole ride). Written only when true. */
+  warmup?: boolean;
 }
 
 /** First line of every ride file. */

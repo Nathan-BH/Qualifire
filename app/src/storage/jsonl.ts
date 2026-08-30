@@ -36,6 +36,13 @@ export function encodeFix(fix: Fix): string {
     lon: fix.lon,
     ...(fix.ele !== undefined ? { ele: fix.ele } : {}),
     ...(fix.accuracyM !== undefined ? { accuracyM: fix.accuracyM } : {}),
+    // Cycle 025 (WP-stale-first-fix P1): ADDITIVE flag fields only — written
+    // when true, omitted otherwise, so an unflagged fix's line stays
+    // byte-identical to the pre-flag encoder (D-023; pinned by a test).
+    // decodeRideFile needs no change: it pushes parsed fix records verbatim,
+    // so the flags round-trip automatically.
+    ...(fix.preStart === true ? { preStart: true } : {}),
+    ...(fix.warmup === true ? { warmup: true } : {}),
   };
   return JSON.stringify(rec) + '\n';
 }

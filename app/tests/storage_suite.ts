@@ -426,3 +426,28 @@ test('storage: appendFix guards — non-finite fix and ended ride rejected', asy
   await storage.appendFix(rideId, { tUnixMs: clock.t + 1000, lat: 50.8, lon: 4.6 }).catch(() => { threw = true; });
   assert(threw, 'append after endRide accepted');
 });
+
+// ------------------------------------------- cycle 025: stale-first-fix flags (D-023 additive)
+
+test('storage: cycle025 stale-fix — preStart/warmup flags round-trip the JSONL additively; an unflagged fix line is byte-identical to the pre-flag encoder', async () => {
+  const { fs, storage, clock } = makeEnv();
+  const rideId = await storage.startRide();
+  clock.t += 1000;
+  await storage.appendFix(rideId, { tUnixMs: clock.t, lat: 50.79, lon: 4.59, accuracyM: 12, preStart: true });
+  clock.t += 1000;
+  await storage.appendFix(rideId, { tUnixMs: clock.t, lat: 50.8, lon: 4.6, accuracyM: 45, warmup: true });
+  clock.t += 1000;
+  await storage.appendFix(rideId, { tUnixMs: clock.t, lat: 50.8, lon: 4.6, accuracyM: 8 });
+  const text = fs.files.get(`rides/${rideId}.jsonl`)!;
+  const lines = text.trim().split('\n');
+  assert(lines.length === 4, `${lines.length} lines, want 4 (header + 3 fixes)`);
+  assert(lines[1].endsWith(',"preStart":true}'), `preStart flag not encoded (or not last field): ${lines[1]}`);
+  assert(lines[2].endsWith(',"warmup":true}'), `warmup flag not encoded (or not last field): ${lines[2]}`);
+  assert(lines[3] === `{"kind":"fix","tUnixMs":${clock.t},"lat":50.8,"lon":4.6,"accuracyM":8}`,
+    `unflagged fix line changed shape — D-023 additive-only violated: ${lines[3]}`);
+  const dec = decodeRideFile(text);
+  assert(dec.fixes.length === 3 && dec.nDropped === 0, `decode: ${dec.fixes.length} fixes / ${dec.nDropped} dropped`);
+  assert(dec.fixes[0].preStart === true && dec.fixes[1].warmup === true
+    && dec.fixes[2].preStart === undefined && dec.fixes[2].warmup === undefined,
+    'flags did not round-trip verbatim through the tolerant decoder');
+});

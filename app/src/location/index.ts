@@ -20,6 +20,7 @@ import Constants from 'expo-constants'; // [UNTESTED ON DEVICE]
 import { appendFix, startRide, endRide, appendRideEvent } from '../storage';
 import { liveEngine } from '../live/engine';
 import { checkElevationOutlier, ELEVATION_OUTLIER_RATE_MPS } from './elevationOutlier';
+import { classifyFix, newWarmupState } from './fixFlags';
 import { ActiveSession, saveSession, loadSession, clearSession } from './session';
 
 export const LOCATION_TASK = 'qualifire-ride-tracking';
@@ -100,6 +101,12 @@ let lastError: string | null = null;
 // against yet — that's fine, checkElevationOutlier just isn't called for it).
 let prevEle: number | null = null;
 let prevEleTUnixMs: number | null = null;
+
+// Cycle 025 (WP-stale-first-fix P1): warm-up classifier state — reset in
+// startTracking. fixFlags.ts's own WARMUP_MAX_S window keeps a headless
+// mid-ride relaunch (fresh module state, ride minutes old) from ever
+// re-flagging mid-ride fixes as warm-up.
+let warmupState = newWarmupState();
 
 const listeners = new Set<(s: TrackerStatus) => void>();
 
@@ -185,6 +192,16 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
     const locations = data?.locations ?? [];
     for (const loc of locations) {
       const ele = loc.coords.altitude ?? undefined;
+      // Cycle 025 (WP-stale-first-fix P1, Nathan 2026-08-26 record-but-flag):
+      // classify BEFORE appending so the flag is part of the recorded line.
+      // ADDITIVE ONLY — the fix's own fields are stored verbatim as ever
+      // (D-023); a flagged fix is recorded like any other and only DERIVED
+      // consumers (elevation diagnostics below, engine feed, export stats)
+      // exclude it.
+      const flags = classifyFix(
+        loc.timestamp, loc.coords.accuracy ?? undefined, s.startedAtMs, warmupState,
+      );
+      const flagged = flags.preStart === true || flags.warmup === true;
       try {
         await appendFix(s.rideId, {
           lat: loc.coords.latitude,
@@ -192,6 +209,7 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
           ele, // stored VERBATIM — D-023. Never clamped/smoothed here or anywhere upstream of disk.
           tUnixMs: loc.timestamp,
           accuracyM: loc.coords.accuracy ?? undefined,
+          ...flags,
         });
         fixesThisLaunch += 1;
         fixesSinceHeartbeat += 1;
@@ -209,7 +227,10 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
       // written above — this is a read-only side channel, never a rewrite of
       // what just got appended (D-023). Swallow-everything, same doctrine as
       // every other diagnostics call on this path.
-      if (ele !== undefined && Number.isFinite(ele)) {
+      // Cycle 025 (WP-stale-first-fix P1): flagged fixes are excluded from
+      // this derived diagnostic too — a stale pre-START ele must neither be
+      // compared nor become the comparison base for the first real fix.
+      if (!flagged && ele !== undefined && Number.isFinite(ele)) {
         if (prevEle !== null && prevEleTUnixMs !== null) {
           const check = checkElevationOutlier(prevEle, prevEleTUnixMs, ele, loc.timestamp);
           if (check?.isOutlier) {
@@ -230,7 +251,7 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
       // a route ride re-locks with earlier sectors surfacing as
       // estimated/missed (honest, D-016(b)); a free ride stays in free mode.
       try {
-        liveEngine.feed(loc.coords.latitude, loc.coords.longitude, loc.timestamp, loc.coords.accuracy ?? undefined);
+        liveEngine.feed(loc.coords.latitude, loc.coords.longitude, loc.timestamp, loc.coords.accuracy ?? undefined, flagged);
       } catch {
         /* display-only */
       }
@@ -338,6 +359,7 @@ export async function startTracking(opts?: {
   lastError = null;
   prevEle = null;
   prevEleTUnixMs = null;
+  warmupState = newWarmupState();
   liveEngine.start({
     pickId: opts?.routePick ?? null,
     mode: opts?.mode ?? 'route',

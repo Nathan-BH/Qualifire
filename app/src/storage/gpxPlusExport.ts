@@ -1,9 +1,11 @@
 /** GPX 1.1 + qf: extensions (GPX+ diagnostics). Pure — no expo, no Node imports.
  *
  * exportGpx (gpxExport.ts) stays byte-identical: GPX+ only ADDS an
- * xmlns:qf attribute on <gpx>, an optional per-trkpt <extensions><qf:acc>
- * (only when accuracyM is present), and a file-level <extensions><qf:session>
- * block between </trk> and </gpx>. Everything else — point order, elevation
+ * xmlns:qf attribute on <gpx>, an optional per-trkpt <extensions> block
+ * (<qf:acc> when accuracyM is present; <qf:preStart/> / <qf:warmup/> when
+ * the fix carries a cycle-025 stale-fix flag), and a file-level
+ * <extensions><qf:session> block between </trk> and </gpx>. Everything else
+ * — point order, elevation
  * carry-forward, metadata/name/type — matches buildGpx exactly.
  *
  * Round-trip constraint (same as gpxExport.ts): core's parser only looks at
@@ -50,6 +52,16 @@ export type RefLookup = (track: string) => RefLine;
 
 /** Consecutive fixes further apart than this (seconds) count as a GPS outage. */
 export const OUTAGE_GAP_S = 5;
+
+/** Cycle 025 (WP-stale-first-fix P3): accuracy gate for max-speed samples.
+ * The 2026-08-23/24/25 reviews' fake 43–92 km/h "sprints" all came from
+ * points that were poor-accuracy and/or immediately after an outage resumed
+ * — a max-speed figure Qualifire shows must filter on BOTH qf:acc and
+ * gap-adjacency (the 24th's rule, re-endorsed by the 25th). 20 m sits below
+ * every observed warm-up/catch-up accuracy worth distrusting here and above
+ * a normal riding fix; deliberately NOT engine.ts's POOR_ACCURACY_M = 50
+ * (matcher-anchoring calibration, owned by B-75). */
+export const MAX_SPEED_ACC_M = 20;
 
 function gateName(track: string, gateIndex: number): string {
   return PROPOSED_GATES[track as TrackId]?.[gateIndex]?.name ?? `gate${gateIndex}`;
@@ -146,6 +158,37 @@ function findStops(fixes: FixRecord[]): Stop[] {
   return out;
 }
 
+/** Cycle 025 (WP-stale-first-fix P3): max speed, km/h, over already-
+ * flag-filtered fixes, with the review-mandated filter: the speed sample
+ * (fix i-1 -> fix i) is discarded when either endpoint's accuracy is worse
+ * than MAX_SPEED_ACC_M, when the pair itself spans an outage gap, or when it
+ * is the first sample after an outage resumes (mid-ride re-acquisition
+ * catch-up — the fake 50–83 km/h points of 2026-08-24/25 that P1's
+ * pre-START rule alone cannot catch). undefined accuracy = "unknown, never
+ * poor" (engine.ts's doctrine). Returns null when no sample survives —
+ * honest omission, never a fabricated 0. NOT core/src/live.ts's
+ * re-acquisition hop bounding (vMaxReacq) nor engine.ts's REACQ_JUMP_M
+ * advance discount (B-90 family): those guard the lock race's evidence;
+ * this guards a summary statistic. Cite, don't merge (WP ruling). */
+function computeMaxSpeedKmh(fixes: FixRecord[]): number | null {
+  if (fixes.length < 2) return null;
+  const lats = fixes.map((f) => f.lat);
+  const lons = fixes.map((f) => f.lon);
+  const tSec = fixes.map((f) => f.tUnixMs / 1000);
+  const { x, y } = toXY(lats, lons, lats[0], lons[0]);
+  const { v } = computeKinematics(tSec, x, y);
+  const accOk = (f: FixRecord): boolean => f.accuracyM === undefined || f.accuracyM <= MAX_SPEED_ACC_M;
+  const gapAt = (i: number): boolean => tSec[i] - tSec[i - 1] > OUTAGE_GAP_S;
+  let best: number | null = null;
+  for (let i = 1; i < fixes.length; i++) {
+    if (!accOk(fixes[i]) || !accOk(fixes[i - 1])) continue;
+    if (gapAt(i)) continue;
+    if (i >= 2 && gapAt(i - 1)) continue;
+    if (best === null || v[i] > best) best = v[i];
+  }
+  return best === null ? null : best * 3.6;
+}
+
 /** Builds the ` <extensions>\n  <qf:session>...\n </extensions>\n` block.
  * Always emitted for a GPX+ document, even when every child is omitted. */
 function buildSessionBlock(
@@ -160,12 +203,35 @@ function buildSessionBlock(
   const startEv = evs.find((e): e is ButtonEvent => e.kind === 'button' && e.button === 'start');
   if (startEv) lines.push(`   <qf:startPressedAt>${isoTime(startEv.tUnixMs)}</qf:startPressedAt>`);
 
-  const firstFix = fixes.length > 0 ? fixes[0] : null;
+  // Cycle 025 (WP-stale-first-fix P1/P2, Nathan 2026-08-26 record-but-flag):
+  // every fix-DERIVED stat in this block (firstFixAt/firstFixDelayS, outages,
+  // stops, routeFidelity, maxSpeedKmh) excludes flagged fixes — the recorded
+  // preStart/warmup flags, PLUS an export-time pre-START timestamp test
+  // against the start press, so the four ride files recorded before the
+  // flags existed clean up on re-export too. Derived-side only: buildGpxPlus
+  // still renders every fix as a trkpt, and the raw JSONL is never rewritten
+  // (D-023). firstFixDelayS semantics (P2, decided this pass): the delay to
+  // the first NON-flagged fix — >= 0 by construction, never again "how stale
+  // was the cached fix"; the excluded points are counted in qf:excludedFixes
+  // (and flagged per-trkpt) rather than silently vanishing.
+  const isExcluded = (f: FixRecord): boolean =>
+    f.preStart === true || f.warmup === true ||
+    (startEv !== undefined && f.tUnixMs < startEv.tUnixMs);
+  const cleanFixes = fixes.filter((f) => !isExcluded(f));
+  const nPreStart = fixes.filter(
+    (f) => f.preStart === true || (startEv !== undefined && f.tUnixMs < startEv.tUnixMs),
+  ).length;
+  const nWarmup = fixes.length - cleanFixes.length - nPreStart;
+
+  const firstFix = cleanFixes.length > 0 ? cleanFixes[0] : null;
   if (firstFix) lines.push(`   <qf:firstFixAt>${isoTime(firstFix.tUnixMs)}</qf:firstFixAt>`);
 
   if (startEv && firstFix) {
     const delayS = (firstFix.tUnixMs - startEv.tUnixMs) / 1000;
     lines.push(`   <qf:firstFixDelayS>${num(delayS)}</qf:firstFixDelayS>`);
+  }
+  if (nPreStart + nWarmup > 0) {
+    lines.push(`   <qf:excludedFixes preStart="${nPreStart}" warmup="${nWarmup}"/>`);
   }
 
   if (events !== null) {
@@ -209,11 +275,13 @@ function buildSessionBlock(
         if (!refFor) throw new Error('no refFor injected');
         if (!settledLockEv) throw new Error('no settled (non-soft) lock');
         const ref = refFor(settledLockEv.track);
-        const lats = fixes.map((f) => f.lat);
-        const lons = fixes.map((f) => f.lon);
+        // Cycle 025 (WP-stale-first-fix P1): fidelity is a derived stat too —
+        // a stale at-the-door fix must not count as an off-route excursion.
+        const lats = cleanFixes.map((f) => f.lat);
+        const lons = cleanFixes.map((f) => f.lon);
         const { x, y } = toXY(lats, lons, ref.lat0, ref.lon0);
         const { xtd } = projectRideOffline(x, y, ref);
-        const nFixes = fixes.length;
+        const nFixes = cleanFixes.length;
         if (nFixes > 0) {
           let onCount = 0;
           let maxXtd = 0;
@@ -223,7 +291,7 @@ function buildSessionBlock(
           }
           const onRoutePct = ((100 * onCount) / nFixes).toFixed(1);
           const maxXtdCapped = Math.min(maxXtd, 999).toFixed(1);
-          const segs = findOffRouteSegments(fixes, xtd, CORRIDOR_M).slice(0, 20);
+          const segs = findOffRouteSegments(cleanFixes, xtd, CORRIDOR_M).slice(0, 20);
           lines.push(
             `   <qf:routeFidelity track="${escapeXml(settledLockEv.track)}" corridorM="${num(CORRIDOR_M)}"` +
               ` onRoutePct="${onRoutePct}" maxXtdM="${maxXtdCapped}">`,
@@ -290,7 +358,7 @@ function buildSessionBlock(
     lines.push(`   </qf:elevationOutliers>`);
   }
 
-  const outages = findOutages(fixes);
+  const outages = findOutages(cleanFixes);
   if (outages.length > 0) {
     lines.push(`   <qf:outages>`);
     for (const o of outages) {
@@ -299,13 +367,21 @@ function buildSessionBlock(
     lines.push(`   </qf:outages>`);
   }
 
-  const stops = findStops(fixes);
+  const stops = findStops(cleanFixes);
   if (stops.length > 0) {
     lines.push(`   <qf:stops>`);
     for (const s of stops) {
       lines.push(`    <qf:stop fromT="${isoTime(s.fromMs)}" toT="${isoTime(s.toMs)}"/>`);
     }
     lines.push(`   </qf:stops>`);
+  }
+
+  // Cycle 025 (WP-stale-first-fix P3): the app's ONE max-speed figure — no
+  // UI or export computed one before this pass, so the first ever shipped is
+  // born filtered (see computeMaxSpeedKmh). Omitted when nothing survives.
+  const maxKmh = computeMaxSpeedKmh(cleanFixes);
+  if (maxKmh !== null) {
+    lines.push(`   <qf:maxSpeedKmh>${maxKmh.toFixed(1)}</qf:maxSpeedKmh>`);
   }
 
   if (events !== null) {
@@ -374,10 +450,17 @@ export function buildGpxPlus(
   let lastEle = 0;
   for (const f of fixes) {
     if (f.ele !== undefined && Number.isFinite(f.ele)) lastEle = f.ele;
-    const accLine =
-      f.accuracyM !== undefined && Number.isFinite(f.accuracyM)
-        ? `    <extensions><qf:acc>${num(f.accuracyM)}</qf:acc></extensions>\n`
-        : '';
+    // Cycle 025 (WP-stale-first-fix P1): flagged points are still exported —
+    // record-but-flag — carrying their flag inline so any consumer can apply
+    // the same exclusion the qf:session stats do. An unflagged fix's output
+    // is byte-identical to before (same single-line <extensions> shape).
+    const extXml =
+      (f.accuracyM !== undefined && Number.isFinite(f.accuracyM)
+        ? `<qf:acc>${num(f.accuracyM)}</qf:acc>`
+        : '') +
+      (f.preStart === true ? '<qf:preStart/>' : '') +
+      (f.warmup === true ? '<qf:warmup/>' : '');
+    const accLine = extXml === '' ? '' : `    <extensions>${extXml}</extensions>\n`;
     pts.push(
       `   <trkpt lat="${num(f.lat)}" lon="${num(f.lon)}">\n` +
         `    <ele>${num(lastEle)}</ele>\n` +

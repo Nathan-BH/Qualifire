@@ -1004,3 +1004,36 @@ test('live: B1 regression — a prefix soft lock\'s own FINISH must not leak its
   assert(final.sectors.length === 4 && final.sectors.every((s) => s.kind === 'done' && !s.estimated),
     `sectors not all real after finalize: ${final.sectors.map((s) => s.kind)}`);
 });
+
+// --------------------------------------------------------------------------
+// cycle 025 (WP-stale-first-fix P1): flagged fixes are inert to the matcher
+// --------------------------------------------------------------------------
+
+test('live: cycle025 stale-fix — a flagged fix is inert (not buffered, no auto-start, no anchoring); the matcher anchors on the first REAL fix', () => {
+  const ref = refFor('Morning');
+  const engine = new LiveEngine(fixtureSpecs());
+  const diag: DiagnosticEvent[] = [];
+  engine.subscribeDiagnostics((e) => diag.push(e));
+  const t0Ms = 1755167000000;
+  // the 2026-08-25 shape: a stale cached fix 9 s before the first real one,
+  // geometrically far down the track, with GOOD claimed accuracy (so the
+  // POOR_ACCURACY_M retry would never rescue a wrong anchor seeded from it)
+  const [staleLat, staleLon] = morningLatLonAt(ref, 4000);
+  engine.feed(staleLat, staleLon, t0Ms - 9000, 12, true);
+  assert(engine.getState().fixesFed === 0, 'flagged fix entered the engine buffer');
+  assert(diag.length === 0, `flagged fix produced ${diag.length} diagnostics`);
+  // the real ride: chainage 0 -> 800 m, good accuracy
+  let tMs = t0Ms;
+  for (let i = 0; i <= 40; i++) {
+    const [lat, lon] = morningLatLonAt(ref, i * 20);
+    engine.feed(lat, lon, tMs, 15);
+    tMs += 1000;
+  }
+  const anchors = diag.filter((d) => d.track === 'Morning' && d.phase === 'anchor');
+  assert(anchors.length === 1, `${anchors.length} Morning anchor diagnostics, want 1`);
+  assert(anchors[0].atT === t0Ms / 1000,
+    `Morning anchored at ${anchors[0].atT}, want ${t0Ms / 1000} — anchored on the flagged pre-START fix?`);
+  const final = engine.getState();
+  assert(final.track === 'Morning' && final.phase !== 'detecting',
+    `lock never reached from the real fixes: phase=${final.phase} track=${final.track}`);
+});
