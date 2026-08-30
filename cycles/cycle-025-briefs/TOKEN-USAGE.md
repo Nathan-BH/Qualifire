@@ -133,8 +133,57 @@ locally on `main`, ahead of `origin/main` -- `git push` was attempted once, fail
 proxy` (no github.com egress from this shell), and was not retried per Nathan's own instruction to
 not retry pushes hard.
 
-### Phase 10 onward — cycle 025 execution continues (append below as it happens)
+### Phase 10 — 2026-08-27 to 30: work between coordinator sessions (Nathan + other tooling)
+
+Between this coordinator's Phase 9 report and this Phase 10 entry (roughly 3 days), commits
+`0b4ba39` through `ac8777a` landed on `main` outside this coordinator's direct knowledge --
+`0b4ba39` (route naming updates, matching `BRIEF-record-variant-display.md`'s work>>station
+Alt/Std overlay) and `126a177` (`cycle025: EAS Update OTA setup`, matching
+`BRIEF-eas-update-setup.md`) both follow the D-039 commit convention, so were very likely done
+via this same protocol in a separate session not covered by this ledger. `1b6fe3c` ("route
+update") applied `BRIEF-eveninga-map-line.md`'s fix (confirmed: test count 252->249/0/3 exactly
+matches that brief's final predicted state). The remaining commits (`e23cfef` build6,
+`00c864e`/`2dd24f1` publish-preview scripts, `ff130a1` troubleshooting, `576e245`/`63d50fd`/
+`ac8777a` chatgpt design experiments) are Nathan's own manual work, outside subagent dispatch
+and outside this ledger's scope. No token figures available for any of Phase 10's first stretch
+-- none of it was dispatched or observed by this coordinator.
+
+### Phase 11 — 2026-08-30: marathon resumed (Sunday evening, budget-bounded), stopped on Fable exhaustion
+
+Nathan resumed the marathon with an explicit budget ceiling: "10% fable usage left and 16% all
+models left this week... continue with all the work packages until usage limits is used"
+(resets Monday 05:00). Before dispatching anything, the coordinator discovered and reconciled
+Phase 10's untracked history (above) rather than assuming stale context. Given the scarcity of
+fable specifically (the Plan and Inspect tiers' required model), the coordinator made two
+efficiency calls not used in Phase 9: (a) skipped a separate Haiku triage dispatch for each WP,
+since the coordinator's own review of every remaining WP's NEEDS-NATHAN section already
+confirmed each was unblocked and ready for planning; (b) wrote the routing-fork WP's plain-
+language document directly as a coordinator chore rather than a Fable dispatch, since the WP's
+own text was already the complete draft (pure translation, no code-reading required).
 
 | date | tier | model | tokens | outcome |
 |---|---|---|---|---|
-| _(none yet — resume here for the remaining WPs in a future session)_ | | | | |
+| 2026-08-30 | Direct (coordinator, no dispatch) | sonnet | ~3k | `ROUTING-FORK-FOR-NATHAN.md` written directly (WP-routing-fork-plain-language) -- commit `aede4a0` |
+| 2026-08-30 | Fable -- WP-sector-coloured-trail P1 plan (read code, wrote brief) | fable | 167,624 | `BRIEF-sector-coloured-trail-p1.md` written: sector-span line-colouring on the Result/VIEW TRACE map only (Phase 2 live-map deferred, needs on-device verification this pipeline can't do) |
+| 2026-08-30 | Sonnet -- WP-sector-coloured-trail P1 execute | sonnet | 80,528 | all edits applied per brief; 255 tests (252 pass/0 fail/3 skip), tsc clean; 1 flagged discrepancy (unexpected-but-benign CRLF git warning) |
+| 2026-08-30 | Fable -- WP-sector-coloured-trail P1 inspect (fresh context, adversarial) | fable | 84,107 | **PASS.** Boundary-math traced by hand on all 20 routes (no gaps/overlaps/off-by-one), colour palette confirmed canonical, scope discipline confirmed, CRLF warning confirmed pre-existing/benign; caught one thing the executor missed -- an untracked ride-data folder that must not be swept into the commit -- commit `f9ba39c` |
+| 2026-08-30 | Fable -- WP-stale-first-fix-cleanup P1-P4 plan (read code, wrote brief) | fable | 207,755 | `BRIEF-stale-first-fix-cleanup.md` written (981 lines): additive preStart/warmup fix-flagging (D-023-safe), threaded through outage/stop/distance/firstFixDelayS/matcher-anchoring, new accuracy+gap-filtered max-speed figure, elevationOutliers omit-when-empty confirmed already intentional |
+| 2026-08-30 | Sonnet -- WP-stale-first-fix-cleanup execute | sonnet | 116,091 | all edits applied per brief exactly; 264 tests (261 pass/0 fail/3 skip), tsc clean; explicit D-023 guard self-check passed (unflagged fix's encoded line byte-identical to before) |
+| 2026-08-30 | Fable -- WP-stale-first-fix-cleanup inspect (fresh context, adversarial) | fable | 83,793 (partial -- did not complete) | **DID NOT FINISH.** Cut off mid-inspection by the API: "You've reached your Fable 5 limit." Got through source-diff verification (confirmed matches brief) before being terminated; no verdict was rendered. Marathon stopped here per plan (continue until usage limits hit) -- Fable is now unusable for the rest of this week (resets Monday 05:00), so neither Plan nor Inspect tier can run again this session. Work committed anyway (`dca0f92`) as tested-but-uninspected, explicitly flagged as not done per D-039 until inspected -- preserving real, tsc-clean, test-passing work rather than leaving it uncommitted against the risk of Nathan's own concurrent manual commits on this repo. |
+| 2026-08-30 | Direct (coordinator) | sonnet | ~3k | this `TOKEN-USAGE.md` update, plus final report to Nathan |
+
+**Marathon stopped on hard Fable exhaustion, exactly as anticipated going in.** Two WPs landed
+fully done and inspected (`aede4a0` doc, `f9ba39c` sector-trail P1). One WP (`dca0f92`,
+stale-first-fix-cleanup) is committed, tested, and tsc-clean, but genuinely NOT inspected --
+top priority for the first Fable dispatch of the next session, ahead of any new work. Untouched
+this session: WP-live-ghost-position, WP-palette-draft-pass, WP-whole-app-export-import,
+WP-virgin-cold-start-epic (deliberately last per its own text), and the coordinator
+STATE.md/DECISIONS.md/BACKLOG.md/cycle-025.md bookkeeping pass. `git push` was not attempted
+again this session (confirmed dead earlier -- 403 from proxy, no github.com egress from this
+shell); all commits remain local on `main`, ahead of `origin/main`.
+
+### Phase 12 onward — cycle 025 execution continues (append below as it happens)
+
+| date | tier | model | tokens | outcome |
+|---|---|---|---|---|
+| _(none yet — resume here next session; inspect `dca0f92` FIRST before anything else)_ | | | | |
