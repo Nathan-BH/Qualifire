@@ -199,8 +199,30 @@ No further work attempted this phase pending Nathan's decision on whether the re
 "all models" budget should fund one more (small) WP under the Opus-plan/Haiku-execute/
 Opus-inspect substitution, or be preserved unspent for the rest of the week.
 
-### Phase 13 onward — cycle 025 execution continues (append below as it happens)
+### Phase 13 — 2026-08-30/31: WP-palette-draft-pass complete; WP-live-ghost-position P1 paused at reset boundary
+
+Nathan authorized spending down the rest of the week's ~9% "all models" budget on the
+Opus-plans/Opus-inspects + Haiku-executes substitute pipeline (Phase 12's arrangement).
 
 | date | tier | model | tokens | outcome |
 |---|---|---|---|---|
-| _(none yet)_ | | | | |
+| 2026-08-30 | Opus (substituting for Fable) -- WP-palette-draft-pass plan | opus | 150,075 | `BRIEF-palette-draft-pass.md` written (894 lines), every command pre-verified in a sandbox; found and solved a hidden trap (`#F5C542` is both day's chrome accent AND the yellow verdict hex -- a naive hex-count parity check would have been misleading) |
+| 2026-08-30 | Haiku (substituting for Sonnet) -- WP-palette-draft-pass execute | haiku | 57,111 | all 10 numbered steps run verbatim, every output matched the brief's predictions exactly -- much cheaper than a Sonnet execute, as expected for a fully mechanical brief |
+| 2026-08-30 | Opus (substituting for Fable) -- WP-palette-draft-pass inspect (fresh context, adversarial) | opus | 122,449 | **PASS.** Independently re-verified the swap/restore correctness live in-process, re-checked verdict-parity by element-id partition (catching the #F5C542 trap the naive check would have missed), reimplemented the WCAG contrast formula from scratch and cross-checked numbers, confirmed naming isolation by grep. Flagged (not fixed): Gate B's "42/42 not-worse" headline needs its qualifier carried along (34 of those 42 pairs are still below absolute AA, inherited from day/B-149) -- commit `ecd4f56` |
+| 2026-08-30 | Direct (coordinator) | sonnet | ~1k | added `__pycache__/` to `.gitignore` (one-line fix flagged by the inspector), folded into `ecd4f56` |
+| 2026-08-30/31 | Opus (substituting for Fable) -- WP-live-ghost-position P1 plan | opus | 239,044 | `BRIEF-live-ghost-position-p1.md` written (957 lines), Stage 1 (live "P4 of 10" chip) only -- Stage 2 (moving map dots) explicitly deferred, needs on-device verification. Key finding: the chip must use moving time, matching colourModel.ts's existing ranking basis, not raw wall-clock (D-042/B-59 trap). This single dispatch took ~8 hours wall-clock and 239k tokens -- unusually slow, on a mount that was already running slower than normal all night. |
+| 2026-08-31 | Direct (coordinator) | sonnet | ~1k | this `TOKEN-USAGE.md` update, plus final report to Nathan |
+
+**Paused here, not on quota exhaustion this time but on Nathan's own call.** It's now past his
+Monday 05:00 local reset boundary (session clock crossed to 2026-08-31 05:40 UTC ~ 07:40 CEST
+mid-dispatch), and given how unusually expensive/slow the last Opus plan call was, Nathan chose
+to stop and check his actual usage situation before spending more, rather than assume the
+Haiku/Opus substitute pipeline should keep running blind. `BRIEF-live-ghost-position-p1.md` is
+committed (`244245f`) and ready to execute+inspect in a future session -- via Fable/Sonnet if
+the reset freed them up, or via Haiku/Opus again if not. No app code was touched by this pause.
+
+### Phase 14 onward — cycle 025 execution continues (append below as it happens)
+
+| date | tier | model | tokens | outcome |
+|---|---|---|---|---|
+| _(none yet — resume by checking whether Fable/Sonnet are usable again post-reset, then either execute BRIEF-live-ghost-position-p1.md as-is or re-plan with fresh-tier judgment)_ | | | | |
