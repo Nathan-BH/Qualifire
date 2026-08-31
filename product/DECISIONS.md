@@ -306,11 +306,13 @@ Rationale: Nathan asked for a real map look — "roads, colors, forest and every
 Reversibility: cheap — re-capture and re-run; the transform and gate pixels are stable (`routes.json` verified byte-identical, `diff -q` clean).
 
 ## D-039 — Every task runs the model-tier protocol: frontier plans and inspects, cheap models execute
-Date: 2026-08-17 · Status: ACTIVE — Nathan's ruling, after the cycle-013 experiment
+Date: 2026-08-17 · Status: ACTIVE — Nathan's ruling, after the cycle-013 experiment · **AMENDED by D-046 (2026-08-31): the Plan tier no longer bulk-reads raw files itself**
 Decision: All work in this project routes through four model tiers — Haiku triage, frontier (Fable) planning, Sonnet execution from a self-contained brief, fresh-context frontier inspection — with a size threshold exempting chores. The binding text lives in `process/CONVENTIONS.md` → "Model tiers"; `process/CYCLE.md` maps the tiers onto the cycle phases; the repo-root `CLAUDE.md` points every new chat session at both.
 Rationale: maximise frontier-model thinking per token by never spending it on mechanical execution. Cycle 013 is the evidence: triage cost ~28k tokens, execution ~158k on Sonnet, inspection ~57k; the stop-on-ambiguity rule caught a planner error (brief claimed 10 Morning seed ghosts, the seed has 9) before it became a wrong hardcoded test, and the fresh-context inspector found two real defects the in-spec executor sailed past.
 Reversibility: cheap — process text only; no code depends on it.
 Evidence: `cycles/cycle-013.md`.
+
+**AMENDED by D-046 (2026-08-31):** Fable is the most expensive tier per token; its job is the thinking, not the reading. See D-046.
 
 ## D-040 — Scheduled cycles: a supervised trial, superseding D-003's "on demand only" for the trial window
 Date: 2026-08-17 · Status: ACTIVE — Nathan's ruling ("lets first do overday task, and then in the evening i can ask for an overnight task")
@@ -366,3 +368,26 @@ Decision:
 Rationale: Nathan's own answers, verbatim in the two Q&A files.
 Reversibility: cheap — comparison-layer rules and scope text; nothing is stored (D-023), so re-ruling costs no migration.
 Evidence: `cycles/cycle-025-briefs/QUESTIONS-FOR-NATHAN.md` (Q19, Q22, and the ranking answer under WP-relaunch/WP-result-ranking); `cycles/cycle-025-briefs/QUESTIONS-FOR-NATHAN2.md` (the countdown-ladder answer).
+## D-046 — Plan-tier token diet: a cheap Digest sub-step reads and condenses files; Fable thinks and writes the brief, it does not bulk-read
+Date: 2026-08-31 · Status: ACTIVE — Nathan's ruling, mid-session, after watching the B-39 planning
+pass cost ~320k tokens on Fable reading files directly.
+Decision: The Plan tier (D-039) is split into two steps. **Digest** (Haiku, or Sonnet only where
+Haiku's read would be unreliable) does the file reading: locates the files a task needs, and
+produces a condensed, factual, line-anchored digest — exact quotes, line numbers, current
+behaviour — with no design opinion in it. **Plan (Fable)** receives that digest, not raw file
+access, as its starting input, and spends its tokens on the thinking: designing the fix and
+writing the brief. Fable may still open a specific file directly to spot-check an anchor the
+digest leaves ambiguous, or to dry-run/verify the finished brief before handing it off (the
+existing "dry-run the whole edit set" step in brief-writing is unchanged) — the rule is against
+Fable doing its own broad exploratory reading, not against it ever touching a file. `CONVENTIONS.md`
+→ "Model tiers" carries the binding table update.
+Rationale: Nathan, in chat: "really limit fable usage so it is only applied for the thinking of
+the implementation... Fable should not read a lot of files, use other models to summarize files
+and current state before handing the thinking to fable" — flagged directly after the B-39 Plan
+dispatch (`cycles/cycle-025-briefs/BRIEF-b39-empty-seed-install.md`) came back having spent
+320,574 tokens and 76 tool calls, most of it Fable's own file reads rather than design thinking.
+Reversibility: cheap — process text only; no code or in-flight brief depends on it. The already-
+written B-39 brief is not redone under the new flow — it was dry-run verified and paid for
+already; the diet applies going forward.
+Evidence: this chat, 2026-08-31; `cycles/cycle-025-briefs/BRIEF-b39-empty-seed-install.md`'s
+recorded token cost.

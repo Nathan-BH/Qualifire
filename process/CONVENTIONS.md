@@ -35,7 +35,8 @@ Thinking is scarce and expensive; execution is plentiful and cheap. Every task r
 | Tier | Model | Does | Never does |
 |---|---|---|---|
 | **Triage** | Haiku subagent | Confirms the task is real and actionable, locates files, yes/no checks | design, edits |
-| **Plan** | Frontier — the main chat model (Fable) | Reads the code *itself*, writes the brief | the edits |
+| **Digest** (added 2026-08-31, D-046) | Haiku subagent, or Sonnet only where Haiku's read would be unreliable | Reads the files/state a Plan task needs; produces a condensed, factual, line-anchored digest — exact quotes, line numbers, current behaviour, no design opinion | deciding anything, writing the brief |
+| **Plan** | Frontier — the main chat model (Fable) | Reads the **digest**, does the thinking: designs the fix, writes the brief. May open a specific file directly to spot-check an anchor the digest leaves ambiguous, or to dry-run/verify the finished brief | broad exploratory reading of its own; re-deriving what the digest already covered |
 | **Execute** | Sonnet subagent | The edits + tests, from the brief alone | redesign, guessing |
 | **Inspect** | Frontier subagent, **fresh context** | Adversarial verification; reruns every check itself | trusting the executor's report; editing |
 
@@ -45,6 +46,7 @@ Binding rules:
 - **Stop-on-ambiguity.** Every brief carries: *"if any ambiguity or surprise arises, STOP and report back — never guess."* An escalation is evidence the brief was underspecified — log it, don't resent it. (Cycle 013: this rule caught a planner error before it shipped.)
 - **Derive, never hardcode.** Facts about the repo — counts, names, versions — are derived at execution time, never copied from comments or briefs. (Cycle 013: the brief said 10 Morning seed ghosts; the seed had 9.)
 - **Fresh-context inspection.** The inspector shares no context with planner or executor. An agent reviewing its own work in-context rationalizes; one with clean context finds what the executor sailed past.
+- **Plan-tier token diet (added 2026-08-31, D-046).** Fable is the most expensive tier per token; its job is the thinking, not the reading. The Digest sub-step above does the file reading for it — Fable's dispatch prompt should hand it the digest (or instruct it to dispatch its own Digest subagent first) rather than pointing it at a pile of files to read cold. Cycle 025's B-39 planning pass is the cautionary example: Fable reading files itself cost 320,574 tokens for one brief. This does not weaken "derive, never hardcode" below — the digest is where deriving happens now, and Fable's own dry-run verification step (still required before a brief is finalised) still catches a bad digest.
 - **The size threshold.** A subagent costs ~30–80k tokens of overhead before any work happens. A chore — under ~10 lines of mechanical change, or answerable by one read — is done directly by the planner. Tiers pay for themselves on real tasks, not on renames.
 - **Bookkeeping stays with the coordinator.** BACKLOG status, STATE.md, the cycle record — never the executor's job, and never skipped.
 - **The tiers are visible (Nathan, 2026-08-17).** In an interactive chat, every dispatch is announced as it happens — tier, model, one-line mandate — escalations are surfaced verbatim, and the task ends with a readout table: tier | model | tokens | outcome. Nathan judges the distribution by watching it work, not by trusting a summary. Unattended runs put the same readout in their report.
