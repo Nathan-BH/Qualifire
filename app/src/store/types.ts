@@ -48,6 +48,11 @@ export interface Route {
   refLineId: string;
   gateSetVersion: number;
   seeded: boolean;
+  /** OPEN-ITEMS item 2 (COLD-START §3 step 9): the ride whose recorded track
+   * is this route's benchmark — "ride 1 IS the reference by default";
+   * promoting a later clean lap rewrites this field. Optional: seed routes
+   * predate it (their reference is the archive-built refLine, not one ride). */
+  referenceRideId?: string;
 }
 
 export interface GateSet {

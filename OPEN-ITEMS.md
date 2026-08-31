@@ -13,26 +13,20 @@ add new ones as they surface, don't let it grow back into what it replaced.
 1. ~~Empty-seed install path~~ — **DONE 2026-08-31.** The catalog/results store reads at
    call time, not import time; hardcoded fallbacks resolve to nothing on a blank install
    instead of leaking Nathan's data; a `virgin` EAS profile exists.
-2. **Retroactive way creation + ride-1-as-reference — up next.** Record a ride with no
-   matching landmark/way, name the start and end at STOP (the only manual onboarding step),
-   auto-create the way from that pair, and the ride you just recorded becomes both the
-   reference line and (per the all-purple-first-ride rule in `STATE.md`) your first scored
-   lap. This is the actual "record → name → it's a real route" skeleton. Needs:
-     - a landmark-naming UI at the STOP step (none exists today)
-     - wiring through `catalogStore.ts`'s already-built-but-unused `saveUserCatalog()`
-       write seam
-     - a reference-ride concept in the data model (doesn't exist yet — `Route.refLineId`
-       is a reference *line*, not a marked reference *ride*)
-     - **fix the known stub while touching this code:** `initCatalogStore()`'s
-       `recompute()` sits outside its try/catch and can throw on a malformed
-       `catalog.user.json` (see `STATE.md` → "Known stubs/footguns")
-   Design reference: `product/proposals/COLD-START.md` §3 (steps 5–9), specifically "setup
-   is retroactive, not prospective."
-3. **Save-flow gate UI + provisional gates.** Seed gates at 25/50/75%, snap away from
-   traffic-signal intersections (≥150 m clear), tap-then-nudge adjustment. Design
-   reference: `product/proposals/SETUP-UX.md` (the adjustment UI is pre-answered there —
-   cite it, don't redesign) and `product/proposals/ROUTING-AND-SEGMENTATION.md` §3 (the
-   snap rule).
+2. ~~Retroactive way creation + ride-1-as-reference~~ — **DONE 2026-08-31.** Record a ride
+   with no matching landmark/way, name the start and end at STOP, and it becomes a real
+   `Way` + provisional `Route`, marked as its own reference ride. Two briefs
+   (`briefs/BRIEF-retroactive-way-creation.md` + `-part2-ui.md`), independently inspected:
+   PASS WITH FINDINGS, all non-blocking (logged in `STATE.md` -> "Known stubs/footguns").
+   **Still owed:** Nathan's on-device pass (card renders correctly, keyboard doesn't cover
+   the input on the 'ending' screen, a save actually shows up on ROUTES).
+3. **Save-flow gate UI + provisional gates — up next.** A freshly-created route today has
+   only a start/finish gate set (1%/99%, no sectors) and an unresolvable `refLineId` — this
+   package builds a real reference line from the reference ride's own GPS track, then seeds
+   sector gates at 25/50/75%, snapped away from traffic-signal intersections (≥150 m
+   clear), with tap-then-nudge adjustment. Design reference: `product/proposals/SETUP-UX.md`
+   (the adjustment UI is pre-answered there -- cite it, don't redesign) and
+   `product/proposals/ROUTING-AND-SEGMENTATION.md` §3 (the snap rule).
 4. **Empty-state pass.** "0 rides found", no route lock on ride 1, and whatever DEMO should
    say when a stranger sees the bundled 'Morning' ride on an otherwise-blank install.
 5. **Whole-app export/import.** Zip the catalog, ride-history store, free-ride cache, and
@@ -60,6 +54,14 @@ add new ones as they surface, don't let it grow back into what it replaced.
 - **Raw-time scoring default, the implementation half** — the *rule* (raw wall-clock time
   is the default) is settled (see `STATE.md`); colours/ranks still compare moving time in
   code. Needs the actual switch.
+- **Flat-earth distance approximation** (`store/catalog.ts`'s `metresBetween`) — hardcoded
+  at Leuven's latitude; skews landmark radii and track lengths for a rider far from ~51°N.
+  Directly relevant to "someone else can use this app" but not urgent while all real usage
+  is still Nathan's. Flagged by inspection 2026-08-31.
+- **Two small polish items from the way-creation inspection** — the naming card's loop
+  copy always says "one new place" even when the loop starts at an existing landmark
+  (cosmetic); two `wayCreation.ts` matching branches (end-side sliver-reuse, both-endpoints-
+  already-loop) are correct but not directly test-covered.
 
 ## Needs Nathan, whenever he gets to it — not blocking
 

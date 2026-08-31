@@ -188,3 +188,53 @@ test('B-39 VIRGIN install: empty seed + nothing added => zero catalog, zero live
     assert(catalogTrackSpecs().length === 20, 'restored: the shipped seed is back for every later suite');
   }
 });
+
+test('item-2 fix: a decodable-but-malformed catalog.user.json no longer throws out of initCatalogStore — seed only, file untouched', async () => {
+  store.resetCatalogStoreForTests();
+  const origWarn = console.warn;
+  console.warn = () => {};
+  try {
+    const fs = createMemoryFsAdapter();
+    const malformed = '{"schemaVersion":1,"landmarks":[null],"ways":[],"routes":[],"gateSets":[]}';
+    fs.files.set(store.USER_CATALOG_FILE, malformed);
+    // Before the fix this REJECTED (TypeError inside mergeCatalogs — the
+    // recompute() sat outside the try) and App.tsx's boot chain silently
+    // skipped initRideHistory. Now: same posture as an undecodable file.
+    const got = await store.initCatalogStore(fs);
+    await store.flushCatalogWrites();
+    assert(JSON.stringify(got) === JSON.stringify(seedMod.shippedCatalog()), 'runs on the seed alone');
+    assert(store.userCatalog().landmarks.length === 0, 'the malformed additions are not trusted');
+    assert(fs.files.get(store.USER_CATALOG_FILE) === malformed,
+      "left exactly as found (it is the only copy of the rider's places)");
+  } finally {
+    console.warn = origWarn;
+    store.resetCatalogStoreForTests();
+  }
+});
+
+test('item-2 seam: a virgin ride drafts, gets named, and saveUserCatalog lands it on disk with the reference ride marked', async () => {
+  store.resetCatalogStoreForTests(emptyCatalog());
+  try {
+    const fs = createMemoryFsAdapter();
+    await store.initCatalogStore(fs);
+    const wc = await import('../src/store/wayCreation.ts');
+    const fixes = Array.from({ length: 20 }, (_, i) => ({ lat: 50.87 + i * 0.001, lon: 4.7 }));
+    const draft = wc.draftWayCreation(store.currentCatalog(), { rideId: 'ride-e2e', startedAtMs: 123, fixes });
+    assert(draft !== null, 'virgin catalog: an unmatched ride drafts');
+    const built = wc.buildWayCreationCatalog(store.userCatalog(), draft!, { start: 'Home', end: 'Work' });
+    const errs = await store.saveUserCatalog(built);
+    await store.flushCatalogWrites();
+    assert(errs.length === 0, `saveUserCatalog must accept the built catalog: ${errs.join('; ')}`);
+    assert(typeof fs.files.get(store.USER_CATALOG_FILE) === 'string', 'catalog.user.json written');
+    const r = store.currentCatalog().routes[0];
+    assert(r !== undefined && r.referenceRideId === 'ride-e2e', 'the ride just recorded IS the reference (COLD-START §3 step 9)');
+    // Survives a re-boot from the same disk.
+    store.resetCatalogStoreForTests(emptyCatalog());
+    await store.initCatalogStore(fs);
+    assert(store.currentCatalog().routes[0]?.referenceRideId === 'ride-e2e', 'reference designation survives re-init');
+    assert(store.currentCatalog().landmarks.length === 2 && store.currentCatalog().ways.length === 1
+      && store.currentCatalog().gateSets.length === 1, 'landmarks/way/gates all round-trip');
+  } finally {
+    store.resetCatalogStoreForTests();
+  }
+});

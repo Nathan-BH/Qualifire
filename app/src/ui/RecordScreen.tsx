@@ -43,9 +43,13 @@ import { chipColors, type Tier } from './chips';
 import { fmt, ghostsFor, lapValues, sectorValues, tierFor } from './colourModel';
 import { dropRecorded, rememberRide } from './lastRide';
 import { rememberFreeRide } from '../store/freeRides';
+import { buildWayCreationCatalog, draftWayCreation, type WayCreationDraft } from '../store/wayCreation';
+import { createExpoFsAdapter } from '../storage/expoFsAdapter';
+import { decodeRideFile } from '../storage/jsonl';
+import { WayNamingCard } from './wayNamingCard';
 import { deleteRide } from '../storage';
 import { removeStoredResult } from '../store/resultsStore';
-import { currentCatalog } from '../store/catalogStore';
+import { currentCatalog, saveUserCatalog, userCatalog } from '../store/catalogStore';
 import { freeRideRouteIds, landmarkAt } from '../store/catalog';
 import { defaultEndpoints, routeLabel, routeVariantLabel, sortRoutesForDisplay } from '../store/defaultRoute';
 import type { Route } from '../store/types';
@@ -56,6 +60,33 @@ import { useTheme } from './themeContext';
  * [ASSUMPTION — tune on device: long enough to survive a glance delay, short
  * enough that the carousel is not effectively disabled.] */
 const PIN_MS = 20000;
+
+/** OPEN-ITEMS item 2: does the just-finished unlocked ride warrant the STOP
+ * naming offer, and as what? Reads the ride's raw JSONL (the only record of
+ * where it went) and drafts against the runtime catalog. Null on ANY failure
+ * — the stop flow must never break on a naming convenience. */
+async function namingDraftFor(rideId: string, startedAtMs: number): Promise<WayCreationDraft | null> {
+  try {
+    const fs = createExpoFsAdapter();
+    const text = await fs.readText(`rides/${rideId}.jsonl`);
+    if (text === null) return null;
+    const decoded = decodeRideFile(text);
+    return draftWayCreation(currentCatalog(), {
+      rideId,
+      startedAtMs,
+      fixes: decoded.fixes.map((f) => ({ lat: f.lat, lon: f.lon })),
+    });
+  } catch {
+    return null;
+  }
+}
+
+/** The matched existing landmark's label for the naming card, or null when
+ * the endpoint is a new place (the card shows an input instead). */
+function existingLandmarkLabel(r: WayCreationDraft['start']): string | null {
+  if (r.kind !== 'existing') return null;
+  return currentCatalog().landmarks.find((l) => l.id === r.landmarkId)?.label ?? r.landmarkId;
+}
 
 /** Stationary detection (B-51, RecordScreen-owned): the live ribbon dims and
  * releases its zoom-bar lock while genuinely moving is not the same as at a
@@ -136,6 +167,13 @@ export default function RecordScreen({
   const [recoveredKind, setRecoveredKind] = useState<'relaunch' | 'remount'>('relaunch');
   const [busy, setBusy] = useState(false);
   const [lastSummary, setLastSummary] = useState<RideSummary | null>(null);
+  // OPEN-ITEMS item 2: the STOP-step naming offer for an unlocked ride whose
+  // endpoints match no existing way (null = no offer). While non-null the
+  // 'ending' phase shows the naming card and holds the reversed launch mark.
+  const [naming, setNaming] = useState<WayCreationDraft | null>(null);
+  // Mirror for the [] useCallback closures below, same reason as sessionRef.
+  const namingRef = useRef<WayCreationDraft | null>(null);
+  namingRef.current = naming;
   const [live, setLive] = useState<LiveEngineState>(liveEngine.getState());
   const [showLap, setShowLap] = useState(false);
   const [held, setHeld] = useState(false); // manual red-light hold (§18)
@@ -371,6 +409,11 @@ export default function RecordScreen({
       rememberFreeRide(finalState, s ? { startedAtMs: s.startedAtMs } : undefined); // WP-B: no-op unless this actually was a free ride with >=1 crossing
       const sum = await stopTracking();
       setLastSummary(sum);
+      // Retroactive way creation (OPEN-ITEMS item 2): an unlocked ride with
+      // a real session may be ride 1 on a brand-new way — compute the naming
+      // offer BEFORE the phase flip so 'ending' can show it. Null (no offer)
+      // covers: locked rides, matched endpoints, short rides, read failures.
+      const draft = s && finalState.track === null ? await namingDraftFor(s.rideId, s.startedAtMs) : null;
       // Cycle 024 (WP-A2, Nathan 2026-08-19): "at the end when you press
       // stop it would be nice to show the animation again — but reversed."
       // session clears and phase flips to 'ending' TOGETHER, after the ride
@@ -381,7 +424,10 @@ export default function RecordScreen({
       setRecovered(false);
       setPauseMenu(false);
       setPhase('ending');
-      setShowAnim('rev');
+      setNaming(draft);
+      // The reversed mark waits for the naming card (its close handlers
+      // below start it); with no offer it plays at once, exactly as before.
+      if (draft === null) setShowAnim('rev');
     } catch (e) {
       Alert.alert('Could not stop cleanly', e instanceof Error ? e.message : String(e));
       // No navigation, no animation — stay exactly where the ride actually
@@ -389,6 +435,36 @@ export default function RecordScreen({
       // fall back to 'setup' (mirrors sessionRef, not the stale `session`
       // closure — same reason onStart/onEnd read it throughout this file).
       setPhase(sessionRef.current ? 'running' : 'setup');
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  // OPEN-ITEMS item 2 — the naming card's two exits. Skip loses nothing: the
+  // ride was already saved (rememberRide/rememberFreeRide/raw JSONL) before
+  // the card existed, and the next unmatched ride offers again.
+  const onNamingSkip = useCallback(() => {
+    setNaming(null);
+    setShowAnim('rev');
+  }, []);
+
+  const onNamingSave = useCallback(async (names: { start: string; end: string }) => {
+    const draft = namingRef.current;
+    if (!draft) return;
+    setBusy(true);
+    try {
+      const built = buildWayCreationCatalog(userCatalog(), draft, names);
+      const errs = await saveUserCatalog(built);
+      if (errs.length > 0) {
+        // saveUserCatalog refused (the MERGED catalog would not validate)
+        // and changed nothing — surface WHY, keep the card up; SKIP remains.
+        Alert.alert('Could not create the way', errs.join('\n'));
+        return;
+      }
+      setNaming(null);
+      setShowAnim('rev');
+    } catch (e) {
+      Alert.alert('Could not create the way', e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
@@ -680,6 +756,16 @@ export default function RecordScreen({
         <Text style={styles.trackLine}>
           {lastSummary ? `Ride saved — ${fmtElapsed(lastSummary.endMs - lastSummary.startMs)}.` : 'Ride saved.'}
         </Text>
+        {naming !== null ? (
+          <WayNamingCard
+            startExistingLabel={existingLandmarkLabel(naming.start)}
+            endExistingLabel={existingLandmarkLabel(naming.end)}
+            loop={naming.loop}
+            busy={busy}
+            onSave={onNamingSave}
+            onSkip={onNamingSkip}
+          />
+        ) : null}
         <View style={{ flex: 1 }} />
         {showAnim === 'rev' && (
           <LaunchAnimation

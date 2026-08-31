@@ -43,6 +43,14 @@ besides Nathan can use this app" is a top-priority goal, not just a design lens.
   map paints each sector's line span in the colour that sector earned; gate ticks stay
   neutral markers. Extending this to the live/racing screen and the demo ride is scoped
   but **parked** — see Open items.
+- **Retroactive way creation + ride-1-as-reference is built.** Record a ride whose start/end
+  don't match any known landmark, and a naming card offers to name them at STOP; on save it
+  creates the landmark(s) (reusing/shrinking around existing ones, handling loops), a `Way`,
+  a provisional `Route` with a 1%/99% start/finish gate set (no sector gates yet — that's
+  the save-flow-gates package next), and marks that ride as the route's reference
+  (`Route.referenceRideId`). Skipping the card writes nothing; the ride itself was already
+  saved beforehand either way. `store/wayCreation.ts` (the pure draft/build logic) +
+  `ui/wayNamingCard.tsx` (the card) + `RecordScreen.tsx`'s `onEnd` flow.
 - **On the phone:** the dev client (Fast Refresh) and the rebuildable "Qualifire Preview"
   standalone APK; a `virgin` EAS build profile now exists but hasn't been built yet.
 
@@ -79,13 +87,25 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
 
 ## Known stubs / footguns
 
-- `catalogStore.ts`'s `initCatalogStore()` can throw on a malformed `catalog.user.json`
-  (`recompute()` sits outside its try). Unreachable today — nothing writes that file yet —
-  but the first thing that does write it (the retroactive-way-creation work) must fix this
-  before it ships.
+- ~~`catalogStore.ts`'s `initCatalogStore()` can throw on a malformed `catalog.user.json`~~
+  — **fixed** with the retroactive-way-creation work: `recompute()` now runs inside the
+  try/catch, reproduced-and-verified by inspection (a malformed file no longer throws, and
+  `initRideHistory` still runs afterward).
 - The virgin app's empty-seed mode is a **bundle-time** env constant. Any future
   `eas update` to a virgin channel must set `EXPO_PUBLIC_SEED_MODE=empty` explicitly, or the
   OTA bundle silently reverts to Nathan's seed.
+- A new route's `refLineId` (from the retroactive-way-creation work) deliberately points at
+  nothing resolvable yet — every consumer already degrades gracefully (warns + skips, or
+  renders no map line). A real reference line, built from the reference ride's own GPS
+  track, is explicit unbuilt work for the save-flow-gates package.
+- `metresBetween` (`store/catalog.ts`) is a flat-earth approximation hardcoded at Leuven's
+  latitude — a rider far from ~51°N would get skewed distances (landmark radii, track
+  lengths). Pre-existing, not introduced by any recent work, but directly relevant to
+  "someone else can use this app" — flagged by inspection 2026-08-31.
+- Two small, non-blocking findings from the same inspection: the way-naming card's loop
+  copy always says "one new place" even when the loop starts at an existing landmark
+  (cosmetic only); two matching-logic branches in `wayCreation.ts` (end-side sliver-reuse,
+  both-endpoints-already-loop) are implemented correctly but not directly test-covered yet.
 - `DemoScreen.tsx`'s `'Morning'` literal is still hardcoded — the one deliberate exception
   to the empty-seed work (it replays a bundled scripted asset, not the catalog). On a
   virgin build a stranger will see Leuven's Morning ride in DEMO; whether that needs a

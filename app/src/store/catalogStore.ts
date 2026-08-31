@@ -90,7 +90,22 @@ export async function initCatalogStore(fs: FsAdapter): Promise<Catalog> {
       }
     }
   } catch { /* unreadable => same as missing for this session; nothing written */ }
-  recompute();
+  try {
+    recompute();
+  } catch {
+    // decodeCatalog checks that the four arrays exist but not their elements,
+    // so a decodable-but-malformed file (e.g. {"landmarks":[null], ...} — a
+    // torn write, a hand edit, an older app version) used to throw out of
+    // mergeCatalogs HERE, past App.tsx's .then chain, silently skipping
+    // initRideHistory. Same posture as an undecodable file: ignored for this
+    // session, never overwritten. recompute() on an empty user catalog cannot
+    // throw (the seed is bundled and structurally sound).
+    console.warn(
+      `initCatalogStore: ${USER_CATALOG_FILE} decoded but did not merge — ignored for this session, left untouched`,
+    );
+    user = emptyCatalog();
+    recompute();
+  }
   return current;
 }
 
