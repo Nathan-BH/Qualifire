@@ -1,59 +1,101 @@
-# STATE — Qualifire
+# STATE — Qualifire (virgin branch)
 
-**Single source of truth for *current status*.** Updated only by the Team Principal, at the end of a cycle. Keep under ~100 lines.
-
-**On precedence.** This file is the authoritative snapshot of *where the project stands* — anyone wanting the current picture reads this and nothing else. It achieves that by **pointing at** the detailed records rather than copying them: decisions in `product/DECISIONS.md`, open work in `product/BACKLOG.md`, roster in `team/TEAM.md`.
-
-So there is no conflict with D-004. A fact should never appear both here and there. Where a summary line here has drifted from its record, the drift is a bug in *this* file and the Principal regenerates it — the detailed record is never edited to match a stale summary.
-
-Last updated: 2026-08-24 · After cycle 024 (full regen — this file was overdue since cycle 016, carrying five bolted-on correction paragraphs; all folded in below, none survive)
+**Single source of truth for current status.** Rewritten 2026-08-31 when this branch was
+cut from `main` — everything below is current as of that cut plus the work landed on it
+since. Keep this short; when it drifts from reality, rewrite it, don't patch around the
+drift.
 
 ---
 
-## Phase
+## What this branch is
 
-**Phase 2 — the app is real, on the phone, and its live engine now scores every route in the catalog.** Cycle 024 was the largest cycle to date: eleven work packages (route references and catalog, the full-catalog pick-bias lock engine, UI de-hardcoding, the ride-history store, the RECORD three-phase flow, the RIDES/RESULT redesign, free-ride "new" mode, race-map render fixes, GPX+ diagnostics closure, a route workbench tool, and an offline gate-field replay tool) plus a two-pass editable-SVG design folder and two out-of-queue device hotfixes (a footer overlap, a map-rendering regression) landed in the same push. Full account: `cycles/cycle-024.md`.
+`virgin` is the primary line of work now (Nathan, 2026-08-31). `main` stays a frozen
+snapshot of the original archive-powered personal app — its 624-ride GPX archive, its
+`data/analysis/` tooling, its full decision/backlog history, and its team-of-named-roles
+process all still live there untouched, just not carried onto this branch. See
+`process/CONVENTIONS.md` for what actually changed about how work happens here.
 
-## Settled
+## The goal
 
-D-001 … D-044. **Cycle 024 highlights:** **D-044** (2026-08-20) — MorningB's ratified v2 gate chainages, and the `REACQ_JUMP_M` fix stopping a GPS re-acquisition teleport from winning the live lock race; this is what makes the full-catalog engine trustworthy. **D-043** (2026-08-19) — a rebuildable "Qualifire Preview" standalone APK is allowed beside the dev client. **D-042** (2026-08-17) — raw wall-clock time becomes the scoring default (luck counts); **implementation is still pending** (B-59, deliberately deferred past cycle 024 too — colours/ranks still compare moving time). **D-041** (2026-08-17) — MapLibre + OpenFreeMap on every screen incl. live; cycle 024's WP-E and its Aug-24 hotfix are corrections to this map's rendering, not to the decision itself.
+A working prototype Nathan can hand to someone else: install from nothing, record a ride,
+have the app turn that ride into a real route (name the endpoints, get gates, get scored),
+and — separately — export/import the whole app so it can move between phones. "Someone else
+besides Nathan can use this app" is a top-priority goal, not just a design lens.
 
-## The dataset
+## Where the app actually is
 
-`data/activities/`: **624 GPX rides** (Aug 2024 → Aug 2026, all e-bike) + `data/activity-index.csv`. Plus `data/activities/TEST in app rides/`: 6 individual app-recorded GPX files and 4 per-day subfolders (2026-08-19/20/22/23) of further app rides. `data/analysis/cache/` holds **125** parsed archive rides as `.npz`. Catalog (`app/src/store/catalog.seed.json`): **6 landmarks, 13 ways, 20 routes** — and as of WP-D2 (cycle 024) **all 20 are live engine candidates** (`app/src/live/refs.ts` `TRACK_IDS`, verified by direct read 2026-08-24), not just the 4 that scored through cycle 023.
+- **Code:** `app/core/` (timing engine, parity-proven), `app/src/live/` (full-catalog
+  pick-bias engine), `app/src/store/` (catalog + results, **now empty-seed-capable** — see
+  below), `app/src/ui/` (six tabs: record/rides/routes/result/settings/demo).
+  `app/tests/`: **273 tests, 270 pass, 0 fail, 3 skip**. `tsc --noEmit`: clean, exit 0.
+  Both verified on this branch 2026-08-31 (nothing in `app/` changed by the branch cut
+  itself).
+- **The empty-seed install path is built.** `store/seed.ts` + `store/catalogStore.ts`: the
+  runtime catalog is the shipped seed merged read-side with an on-phone
+  `catalog.user.json` (never copied to disk, so a seed edit still reaches every install).
+  `EXPO_PUBLIC_SEED_MODE=empty` (the `virgin` EAS profile, or `scripts/dev-virgin.ps1` for
+  a dev-client peek) ships a genuinely blank catalog: 0 landmarks, 0 ways, 0 routes, 0
+  ghosts. Everything that reads the catalog does so at call time
+  (`currentCatalog()`/`shippedResults()`), not import time, so a stranger's blank install
+  no longer leaks Nathan's home/work/Morning-route data.
+- **Maps:** MapLibre + OpenFreeMap live on every screen including the live ride.
+- **Sector-coloured trail (Result screen only) is built.** A finished ride's "VIEW TRACE"
+  map paints each sector's line span in the colour that sector earned; gate ticks stay
+  neutral markers. Extending this to the live/racing screen and the demo ride is scoped
+  but **parked** — see Open items.
+- **On the phone:** the dev client (Fast Refresh) and the rebuildable "Qualifire Preview"
+  standalone APK; a `virgin` EAS build profile now exists but hasn't been built yet.
 
-## Open work
+## Open items
 
-`product/BACKLOG.md` is authoritative — **152 items** (69 carried in, 83 filed at cycle 024's close — see `product/BACKLOG.md` → "Cycle 024 follow-ups"). Top of the list, in plain language:
+See `OPEN-ITEMS.md` — short, curated toward the goal above. The full historical backlog
+(152 items, most already resolved) is on `main`'s `product/BACKLOG.md` if something old
+needs a second look.
 
-1. **The free-ride "new>>new" design task (B-139)** — Nathan's own explicit deferral: picking an unknown place at *both* ends of a ride has no ratified layout yet. Small-to-medium design pass, not urgent.
-2. **A real app contrast bug (B-149)** — pale purple text on a bare background in `RidesScreen.tsx`'s sector rows and `RecordScreen.tsx`'s gate-colour memo is hard to read; confirmed by inspection, deliberately left unfixed in this cycle's design mockups (which mirror what ships, bugs included) but still needs an actual code fix. Small.
-3. **Residual re-acquisition hole (B-90)** — `REACQ_JUMP_M` (D-044) closes the large teleport case; hops ≤245 m can still slip through uncounted in theory (worst real-corpus case seen: 138 m, never alone enough to win a lock). Cheap, one field + one line in `core/src/live.ts`.
-4. **On-device checks only Nathan can do** — B-74 (Issue-1 day-mode remount retest), B-116 (confirm the footer-overlap fix saw the real OS nav bar, not preview-harness chrome), B-141/B-145/B-146 (WP-E's prestart-dotted-preview eyeball, `riderBlue` ratification, and the full both-themes/both-rungs map visual check the brief always intended for him).
-5. **Older, still open:** the §29 routing/typed-destination fork (unruled); B-47 battery A/B (needed before any further standalone-APK map work); the station/church/fosh route-triage items (B-61–B-64, Nathan's eye needed on which are real alternatives vs detours); B-59 (D-042's raw-time implementation, deliberately deferred again).
+## Ground rules (what's settled about how the app behaves)
 
-## Blockers
+Distilled from `main`'s decision log 2026-08-31 — only what still actually constrains the
+virgin prototype. Full rationale/history for any of these is on `main` if ever needed.
 
-None in code. Nothing is git-blocked this cycle (unlike cycle 015's B-40). The map slate and the engine slate are both unblocked and landed. What remains waits on Nathan's eye (above) or on a future design pass (free-ride new>>new).
+- **Single-user personal app, no accounts, no social, no store distribution** — except
+  "someone else can use it from a blank install" is now the top-priority goal above; that's
+  a capability, not a multi-user/social pivot.
+- **Scoring:** three colour tiers (purple/green/yellow), F1 palette. No noise floor: a
+  route's first-ever ride logs all-purple sectors (you can't have lost to anyone yet); one
+  prior ride compares purple/yellow; two or more run the full model on the average of rides
+  on record. The ranking window is the 9 most recent previous rides plus the current one —
+  never a global ranking, never "of 11".
+- **Sectors:** every route has exactly 4, gates at 25/50/75% of route distance — never
+  scaled by route length. Gates snap away from traffic-signal-controlled intersections
+  (≥150 m clear) since a gate at a red light corrupts that sector's times. Adjustment UI is
+  tap-then-nudge with ± buttons, never finger-dragging (thumb covers the line).
+  Start/end gates sit at 1%/99% of route distance by default.
+- **Timing default is raw wall-clock time** (luck counts) — moving-time is opt-in. (The
+  scoring/UI implementation of this default is still pending — see Open items.)
+- **Raw ride recordings are append-only** — never rewritten in place; a schema change gets
+  a migration, not a silent mutation of history.
+- **The live ride screen shows a real map** (MapLibre + OpenFreeMap), heading-up, locked
+  zoom, no pan/zoom while moving, route line + own position only.
 
-## Awaiting Nathan
+## Known stubs / footguns
 
-1. **The `product/` re-split** (this cycle, WP-I) — `COLD-START.md`, `SETUP-UX.md`, `ROUTING-AND-SEGMENTATION.md`, `TRIAGE-ideas-18-27.md` moved to `product/proposals/`; `MAPLIBRE-SPIKE.md`, `MAP-STACK-OPTIONS.md`, `BUILD-PIPELINE.md`, `GPX-PLUS-proposal.md` moved to `product/superseded/`. Every move is reversible (`mv` back) — a glance, not an approval gate.
-2. **`BUILD-3-RUNBOOK.md` moved to `safe_to_delete/`** (this cycle, WP-I) — reversible now, but the point of that folder is that its contents eventually get deleted for real, so worth a glance before that happens.
-3. On-device checks listed under "Open work" #4.
-4. §29 (type a destination, get a raceable track) — still his fork alone to call.
-5. Parked taste checks, unchanged for several cycles: D-021's REF badge, quali-card auto-collapse, real sector names.
+- `catalogStore.ts`'s `initCatalogStore()` can throw on a malformed `catalog.user.json`
+  (`recompute()` sits outside its try). Unreachable today — nothing writes that file yet —
+  but the first thing that does write it (the retroactive-way-creation work) must fix this
+  before it ships.
+- The virgin app's empty-seed mode is a **bundle-time** env constant. Any future
+  `eas update` to a virgin channel must set `EXPO_PUBLIC_SEED_MODE=empty` explicitly, or the
+  OTA bundle silently reverts to Nathan's seed.
+- `DemoScreen.tsx`'s `'Morning'` literal is still hardcoded — the one deliberate exception
+  to the empty-seed work (it replays a bundled scripted asset, not the catalog). On a
+  virgin build a stranger will see Leuven's Morning ride in DEMO; whether that needs a
+  label or a swap is an open empty-state call.
+- Three empty directory shells survive from the branch cut (`cycles/`,
+  `cycles/cycle-024-briefs/`, `cycles/cycle-025-briefs/`) — this mount denies `rmdir` on
+  them the way it denies `unlink` on some files. Harmless; git doesn't track empty dirs.
+  Clear them from Explorer whenever.
 
-## Roster
+## Nathan's own files (unmanaged by any agent)
 
-`team/TEAM.md` is authoritative.
-
-## Ground truth — what actually exists
-
-- **Code:** `app/core/` (engine, parity-proven); `app/src/live/` (full-catalog pick-bias engine, `REACQ_JUMP_M`); `app/src/store/` (catalog + free-ride store); `app/src/ui/` (six tabs — record/rides/routes/result/settings/demo — RECORD now a setup→armed→running→ending flow, RIDES/RESULT redesigned to the cycle-022 mockup). `app/tests/` — **239 tests: 236 pass, 0 fail, 3 skip** (re-run 2026-08-24, device); `npx tsc --noEmit` — clean, exit 0 (re-run 2026-08-24, device). Both rerun independently for this bookkeeping pass, not carried forward from the tracker.
-- **Maps:** MapLibre + OpenFreeMap live on every screen (D-041); cycle 024's WP-E fixed off-route measurement (path-based, not chord), replaced gate circles with theme-aware perpendicular ticks, and drove the route-line ahead/behind split off real ride progress — then a same-day device report (2026-08-24) reverted the dotted-ahead line to solid (a real MapLibre `line-dasharray` rendering quirk on-device) and added casing/outline to the unscored gate ticks. PNG stays the fallback rung; the free-ride ("new" mode) gates-only map still shows the pre-cycle-023 circle style — filed as B-140.
-- **On the phone:** dev-client (Fast Refresh) and the rebuildable "Qualifire Preview" standalone APK (D-043) both current.
-- **`design/`** (new, cycle 024, WP-J) — 18 canonical SVGs (day+night × 9 screens), regenerated from `design/make_screens.py`, plus `design/edited/` for Nathan's Inkscape round-trip. Round-trip cycle-start check now in `process/CONVENTIONS.md`.
-- **`product/`** — now split `live / proposals / superseded` (this cycle, WP-I); disposition unchanged in substance from the plan the 2026-08-20 brief set out, just executed.
-- **Known stubs/flags:** B-59 (D-042 raw-time default) still unimplemented — colours/ranks still compare moving time; `app/tests/results_cache_suite.ts` is a dead WP-A1-era stub, safe to delete (B-121). **New 2026-08-31 (B-39 DONE, inspection findings):** `catalogStore.ts`'s `initCatalogStore()` can throw on a malformed `catalog.user.json` (`recompute()` sits outside its try) — unreachable today since nothing writes that file yet, but **B-36 (the first writer) must fix this before shipping**. The virgin app's empty-seed mode is a bundle-time env constant (`EXPO_PUBLIC_SEED_MODE`) — any future `eas update` to a virgin channel must set it explicitly or the OTA bundle silently reverts to Nathan's seed.
-- Brand: `product/brand/` incl. `make_brandboard.py`. Data analysis: `data/analysis/` (all measured, now including `09_build_workbench_data.py` and `10_gatefield_replay.py`). `safe_to_delete/` — Nathan empties periodically.
+`IDEAS.md` (raw idea log) and `Nathan/` (his running notes and future plans — "the main
+place i write all my comments and future plans") are read, never written, by any agent.

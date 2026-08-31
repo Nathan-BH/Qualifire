@@ -1,12 +1,36 @@
-# CLAUDE.md — Qualifire
+# CLAUDE.md — Qualifire (virgin branch)
 
 Orientation for any Claude session working in this repo. Binding.
 
-1. **Read `STATE.md` first.** It is the single source of truth; if a fact appears in two places, `STATE.md` wins.
-2. **Every task runs the model-tier protocol (D-039, diet amended D-046).** `process/CONVENTIONS.md` → "Model tiers": Haiku subagent triages; a Digest subagent (Haiku, or Sonnet only where Haiku's read would be unreliable) reads the files/state and condenses them into a factual, line-anchored digest; the frontier model reads *that digest*, not raw files, and does the thinking — designs the fix and writes a self-contained brief (it may still spot-check a specific anchor directly, or dry-run the finished brief, but does not bulk-read cold); a Sonnet subagent executes from the brief alone under a stop-on-ambiguity rule; a fresh-context frontier subagent inspects adversarially and reruns every check. If this chat runs on Sonnet (coordinator mode), planning and inspection are dispatched as `model: "fable"` subagents, and executor escalations are forwarded verbatim to a Fable subagent — the Sonnet coordinator never rules on ambiguity itself. Chores under ~10 mechanical lines skip the tiers — subagent overhead (~30–80k tokens) must pay for itself. **Narrate the tiers in chat**: announce each dispatch (tier, model, mandate), surface escalations, end with a tier/model/tokens/outcome readout table.
-2b. **When Nathan asks what's pending**, don't recite backlog IDs — give a plain-language menu (one sentence per workable item, rough size, blocked-on-him or not) and let him pick; the pick then runs through the tiers.
-3. **Nothing is done because an agent said so.** Progress points at a checkable artifact: a test that failed before and passes after, a file that exists, a decision Nathan ratified.
-4. **File ownership is strict** (`process/CONVENTIONS.md`): `IDEAS.md` is Nathan's, never edited; `STATE.md` and `product/DECISIONS.md` are Principal-only; `BACKLOG.md` items are the Product Owner's, Principal sets status only. One writer per file.
-5. **Never delete** — move to `safe_to_delete/`. Dates always absolute.
-6. **Verification:** `cd app && node --experimental-strip-types tests/run.ts` (zero FAIL) and `npx tsc --noEmit` (clean). Regenerate `demos/mockup.html` in the same pass as any shipped design change.
-7. Process details: `process/CYCLE.md`. Cycle records: `cycles/` (Librarian-written, ≤40 lines).
+1. **Read `STATE.md` first.** It's the single source of truth: current status, what's
+   settled about how the app behaves, and what's actually still open. If a fact appears
+   in two places, `STATE.md` wins.
+2. **Every real task runs the model-tier pipeline:** a Haiku **Digest** subagent reads
+   files and condenses them into a factual, line-anchored digest; the frontier model
+   (**Plan**, dispatched as `model: "fable"`) reads that digest — not raw files — and does
+   the thinking: designs the fix, writes a self-contained brief. A Sonnet **Execute**
+   subagent implements the brief alone under a stop-on-ambiguity rule (any anchor
+   mismatch or undecided call → stop and report verbatim, never guess, never rule on it
+   from the coordinator's chat — forward it to a fresh Fable). A fresh-context Fable
+   **Inspect** pass adversarially reruns every check before anything's called done.
+   Chores under ~10 mechanical lines skip the pipeline — subagent overhead
+   (~30–80k tokens) has to pay for itself. **Narrate every dispatch in chat** (tier,
+   model, one-line mandate) and end with a tier/model/tokens/outcome readout table.
+3. **Nothing is done because an agent said so.** Progress points at a checkable
+   artifact: a test that failed before and passes after, a file that exists, a change
+   Nathan has actually seen.
+4. **File ownership:** `IDEAS.md` is Nathan's, never edited by an agent. `STATE.md` and
+   `OPEN-ITEMS.md` are the coordinator's to rewrite as work lands — no other file needs
+   a standing owner now that there's no team of named roles.
+5. **Never delete.** Move to `safe_to_delete/` (gitignored) instead — this mount also
+   sometimes denies outright `rm`/`rmdir` on specific files/dirs (Windows-side locks);
+   `mv` works where `rm` doesn't, so prefer it.
+6. **Verification:** `cd app && node --experimental-strip-types tests/run.ts` (zero FAIL)
+   and `cd app && ./node_modules/.bin/tsc --noEmit` (clean, exit 0; avoid bare `npx tsc`
+   on this mount — the resolution overhead alone can blow a 45s call budget).
+7. **Git on this mount:** `device_bash` commands should run with `GIT_OPTIONAL_LOCKS=0`.
+   A stray `.git/index.lock` or `.git/HEAD.lock` sometimes survives a git call that
+   otherwise succeeded — `mv` it aside (`mv .git/index.lock .git/index_lock_stale_$(date +%s)`),
+   never delete it. Real git writes (add/commit) do go through despite the warning noise.
+8. Process details, honesty rules, and the full model-tier explanation:
+   `process/CONVENTIONS.md`.
