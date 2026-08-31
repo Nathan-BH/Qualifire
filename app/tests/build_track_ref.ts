@@ -29,7 +29,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
-  parseGpx, meanOrigin, buildReference, cumdist, M_PER_DEG_LAT, M_PER_DEG_LON,
+  parseGpx, meanOrigin, buildReference, collapseStationaryRuns, cumdist,
   type RidePoints,
 } from '../core/src/index.ts';
 
@@ -37,78 +37,6 @@ const FIXTURES_DIR = path.join(import.meta.dirname, 'fixtures');
 const REFS_PATH = path.join(FIXTURES_DIR, 'refs.json');
 
 const round = (v: number, d: number) => Math.round(v * 10 ** d) / 10 ** d;
-
-/** Planar distance (metres) between two lat/lon points, equirectangular about
- * their own midpoint latitude — accurate enough for a 15 m threshold check. */
-function pointDistM(alat: number, alon: number, blat: number, blon: number): number {
-  const latMidRad = ((alat + blat) / 2) * (Math.PI / 180);
-  const dy = (alat - blat) * M_PER_DEG_LAT;
-  const dx = (alon - blon) * M_PER_DEG_LON * Math.cos(latMidRad);
-  return Math.hypot(dx, dy);
-}
-
-/** Stationary-run collapse (data/analysis/way-curation.md, "On smoothing it
- * out"): where consecutive fixes stay within 15 m of the run's first fix for
- * more than 20 s, replace the whole run with ONE centroid point (mean
- * lat/lon/ele, first t). Pure; operates on the point order as given. */
-export function collapseStationaryRuns(ride: RidePoints): RidePoints {
-  const RADIUS_M = 15;
-  const MIN_DURATION_S = 20;
-  const n = ride.lat.length;
-  const outT: number[] = [];
-  const outLat: number[] = [];
-  const outLon: number[] = [];
-  const outEle: number[] = [];
-  let collapsedPoints = 0;
-  let runsCollapsed = 0;
-
-  let i = 0;
-  while (i < n) {
-    let j = i;
-    while (
-      j + 1 < n &&
-      pointDistM(ride.lat[i], ride.lon[i], ride.lat[j + 1], ride.lon[j + 1]) <= RADIUS_M
-    ) {
-      j += 1;
-    }
-    const duration = ride.t[j] - ride.t[i];
-    if (j > i && duration > MIN_DURATION_S) {
-      let sla = 0, slo = 0, sel = 0;
-      for (let k = i; k <= j; k++) {
-        sla += ride.lat[k];
-        slo += ride.lon[k];
-        sel += ride.ele[k];
-      }
-      const count = j - i + 1;
-      outT.push(ride.t[i]);
-      outLat.push(sla / count);
-      outLon.push(slo / count);
-      outEle.push(sel / count);
-      collapsedPoints += count;
-      runsCollapsed += 1;
-      i = j + 1;
-    } else {
-      outT.push(ride.t[i]);
-      outLat.push(ride.lat[i]);
-      outLon.push(ride.lon[i]);
-      outEle.push(ride.ele[i]);
-      i += 1;
-    }
-  }
-
-  console.log(
-    `collapseStationaryRuns: ${runsCollapsed} run(s), ${collapsedPoints} raw points -> ` +
-      `${runsCollapsed} centroid point(s); ${n} -> ${outT.length} points`,
-  );
-
-  return {
-    name: ride.name,
-    t: Float64Array.from(outT),
-    lat: Float64Array.from(outLat),
-    lon: Float64Array.from(outLon),
-    ele: Float64Array.from(outEle),
-  };
-}
 
 /** Same rounding build_fixtures.ts's `fixtureRef` applies: rx/ry to mm, then
  * chainage RECOMPUTED from the rounded coords and rounded to 1e-6 m — what
@@ -145,7 +73,13 @@ function main(): void {
   const xml = fs.readFileSync(gpxPath, 'utf8');
   const base = path.basename(gpxPath).replace(/\.gpx$/, '');
   let ride = parseGpx(xml, base);
-  ride = collapseStationaryRuns(ride);
+  const collapsed = collapseStationaryRuns(ride);
+  const collapsedPoints = collapsed.runs.reduce((a, r) => a + r.nPoints, 0);
+  console.log(
+    `collapseStationaryRuns: ${collapsed.runs.length} run(s), ${collapsedPoints} raw points -> ` +
+      `${collapsed.runs.length} centroid point(s); ${ride.t.length} -> ${collapsed.ride.t.length} points`,
+  );
+  ride = collapsed.ride;
   if (reversed) ride = reversePoints(ride);
 
   const { lat0, lon0 } = meanOrigin([ride]);

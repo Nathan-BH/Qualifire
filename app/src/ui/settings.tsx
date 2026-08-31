@@ -6,8 +6,12 @@
  */
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import * as FileSystem from 'expo-file-system/legacy';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { setEarconsEnabled } from '../location';
+import { createExpoFsAdapter } from '../storage/expoFsAdapter';
+import { USER_CATALOG_FILE } from '../store/catalogStore';
+import { USER_REFS_FILE } from '../live/userRefs';
+import { saveTextFile } from './saveGpx';
 import { PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
 
@@ -125,6 +129,32 @@ function Row(props: { label: string; hint?: string; t: PaddockTheme; children: R
   );
 }
 
+/** Debug export (OPEN-ITEMS item 3, Part C — NOT item 5's whole-app
+ * export/import, which stays parked): share ONE storage-root JSON via the
+ * proven saveGpx.ts rungs. A missing file is an honest "nothing yet", never
+ * an empty share. */
+async function shareStoreFile(rel: string, outName: string): Promise<void> {
+  try {
+    const text = await createExpoFsAdapter().readText(rel);
+    if (text === null) {
+      Alert.alert('Nothing to share yet', `${rel} does not exist on this phone.`);
+      return;
+    }
+    const res = await saveTextFile(outName, 'application/json', text);
+    if (res.method === 'saf') Alert.alert('Exported', `${outName} saved to the folder you picked.`);
+    else if (res.method === 'share-text') Alert.alert('Shared', `${outName} sent as text via the share sheet.`);
+  } catch (e) {
+    Alert.alert('Share failed', e instanceof Error ? e.message : String(e));
+  }
+}
+
+/** e.g. 2026-08-31 -> "20260831", for stamped export names. */
+function dateStamp(nowMs: number): string {
+  const d = new Date(nowMs);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
+}
+
 export default function SettingsScreen() {
   const { t, mode, toggleMode } = useTheme();
   const { s, set } = useSettings();
@@ -175,6 +205,28 @@ export default function SettingsScreen() {
         </Row>
       </View>
 
+      <Text style={[st.h2, { color: t.textDim }]}>DATA</Text>
+      <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
+        <Row label="Places & routes" t={t}
+          hint="share catalog.user.json — everything the save flow created on this phone">
+          <Pressable
+            style={[st.shareBtn, { borderColor: t.cardBorder }]}
+            onPress={() => void shareStoreFile(USER_CATALOG_FILE, `qualifire-catalog-${dateStamp(Date.now())}.json`)}
+          >
+            <Text style={[st.shareText, { color: t.text }]}>share</Text>
+          </Pressable>
+        </Row>
+        <Row label="Reference lines" t={t}
+          hint="share refs.user.json — the reference lines built from your rides (per-ride GPX+ lives on RIDES)">
+          <Pressable
+            style={[st.shareBtn, { borderColor: t.cardBorder }]}
+            onPress={() => void shareStoreFile(USER_REFS_FILE, `qualifire-refs-${dateStamp(Date.now())}.json`)}
+          >
+            <Text style={[st.shareText, { color: t.text }]}>share</Text>
+          </Pressable>
+        </Row>
+      </View>
+
       <Text style={{ color: t.textDim, fontSize: 11.5, marginTop: 12 }}>
         Saved on the phone and restored on launch. A corrupt file falls back to
         these defaults rather than blocking the app.
@@ -192,4 +244,6 @@ const st = StyleSheet.create({
   segText: { fontSize: 11.5 },
   sw: { width: 44, height: 25, borderRadius: 25, justifyContent: 'center' },
   knob: { position: 'absolute', width: 19, height: 19, borderRadius: 19 },
+  shareBtn: { borderWidth: 1, borderRadius: 9, paddingHorizontal: 12, paddingVertical: 6 },
+  shareText: { fontSize: 11.5, letterSpacing: 1 },
 });

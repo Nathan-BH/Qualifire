@@ -19,6 +19,7 @@
  */
 import refsJson from '../../tests/fixtures/refs.json';
 import type { RefLine, TrackId } from '../../core/src/index.ts';
+import { userRefFor } from './userRefs.ts';
 
 type RawRef = { rx: number[]; ry: number[]; ch: number[]; lat0: number; lon0: number };
 const rawTracks = refsJson.tracks as unknown as Record<string, RawRef>;
@@ -35,7 +36,15 @@ export function refFor(track: TrackId): RefLine {
   const hit = cache.get(track);
   if (hit) return hit;
   const r = rawTracks[track];
-  if (!r) throw new Error(`refFor: unknown track "${track}"`);
+  if (!r) {
+    // OPEN-ITEMS item 3: routes born on the phone get their reference line
+    // built from the reference ride and registered in userRefs.ts. Bundled
+    // tracks win any id collision (same seed-wins rule as mergeCatalogs).
+    // Not cached here — userRefs keeps its own registry, already typed.
+    const u = userRefFor(track);
+    if (u) return u;
+    throw new Error(`refFor: unknown track "${track}"`);
+  }
   const ch = Float64Array.from(r.ch);
   const ref: RefLine = {
     rx: Float64Array.from(r.rx),

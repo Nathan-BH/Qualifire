@@ -1,5 +1,5 @@
 /**
- * Get a GPX document off the phone without any native module that isn't
+ * Get a text document (GPX, debug JSON) off the phone without any native module that isn't
  * already in dev build 944bcc6f. [UNTESTED ON DEVICE]
  *
  * expo-sharing is NOT a dependency of the built dev client, so instead:
@@ -33,20 +33,28 @@ export function gpxBaseName(startMs: number): string {
   );
 }
 
-export async function saveGpx(baseName: string, gpxText: string): Promise<SaveGpxResult> {
+/** Generalized save: any small text file, full name + MIME supplied by the
+ * caller. Same two rungs as the original GPX path: SAF create-in-a-folder
+ * primary, RN Share-as-text fallback (Android intent cap ~1 MB — fine for
+ * GPX and the debug JSONs this serves). */
+export async function saveTextFile(
+  fileName: string,
+  mime: string,
+  text: string,
+): Promise<SaveGpxResult> {
   // --- Primary: SAF "save to a folder you pick" -------------------------
   try {
     const perm = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
     if (perm.granted) {
-      // MIME: octet-stream + explicit .gpx in the name. Android's MimeTypeMap
-      // doesn't know application/gpx+xml, which can mangle the extension.
-      // [UNTESTED — worst case is an odd file name, not data loss]
+      // MIME quirk note (unchanged from the GPX original): Android's
+      // MimeTypeMap can mangle unknown extensions, so callers keep passing
+      // octet-stream for .gpx. [UNTESTED — worst case is an odd file name]
       const fileUri = await FileSystem.StorageAccessFramework.createFileAsync(
         perm.directoryUri,
-        `${baseName}.gpx`,
-        'application/octet-stream',
+        fileName,
+        mime,
       );
-      await FileSystem.writeAsStringAsync(fileUri, gpxText);
+      await FileSystem.writeAsStringAsync(fileUri, text);
       return { method: 'saf', fileUri };
     }
   } catch {
@@ -56,12 +64,16 @@ export async function saveGpx(baseName: string, gpxText: string): Promise<SaveGp
   // --- Fallback: share sheet as text ------------------------------------
   try {
     const res = await Share.share(
-      { message: gpxText, title: `${baseName}.gpx` },
-      { dialogTitle: `Export ${baseName}.gpx` },
+      { message: text, title: fileName },
+      { dialogTitle: `Export ${fileName}` },
     );
     if (res.action === Share.dismissedAction) return { method: 'cancelled' };
     return { method: 'share-text' };
   } catch {
     return { method: 'cancelled' };
   }
+}
+
+export async function saveGpx(baseName: string, gpxText: string): Promise<SaveGpxResult> {
+  return saveTextFile(`${baseName}.gpx`, 'application/octet-stream', gpxText);
 }

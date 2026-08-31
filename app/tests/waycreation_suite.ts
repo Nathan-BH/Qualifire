@@ -148,3 +148,25 @@ test('wayCreation: a loop build needs (and gets) a loopDiscriminator and validat
   const errs = validateCatalog(mergeCatalogs(emptyCatalog(), built));
   assert(errs.length === 0, `loop build must validate, got: ${errs.join('; ')}`);
 });
+
+test('wayCreation: a seeded build carries the 5-gate set, origin geometric, and validates', () => {
+  const d = draftWayCreation(emptyCatalog(), { ...RIDE, fixes: northRide(20) })!;
+  const seed = { chainageM: [10, 250, 500, 750, 990] };
+  const built = buildWayCreationCatalog(emptyCatalog(), d, { start: 'Home', end: 'Work' }, seed);
+  const gs = built.gateSets[0];
+  assert(gs.chainageM.length === 5, '5 gates = 4 sectors (STATE.md ground rule)');
+  assert(gs.chainageM.every((v, i) => v === seed.chainageM[i]), 'seed carried verbatim');
+  assert(gs.origin === 'geometric', 'R&S §3 honesty clause: geometric, never silent');
+  assert(gs.version === 1 && built.routes[0].gateSetVersion === 1, 'born at v1, no upgrade step');
+  const errs = validateCatalog(mergeCatalogs(emptyCatalog(), built));
+  assert(errs.length === 0, `seeded build must validate, got: ${errs.join('; ')}`);
+});
+
+test('wayCreation: the un-seeded fallback keeps the provisional pair, now flagged geometric', () => {
+  const d = draftWayCreation(emptyCatalog(), { ...RIDE, fixes: northRide(20) })!;
+  const built = buildWayCreationCatalog(emptyCatalog(), d, { start: 'Home', end: 'Work' });
+  const gs = built.gateSets[0];
+  assert(gs.chainageM.length === 2, 'no seed => the 1%/99% pair, unchanged');
+  assert(gs.origin === 'geometric', 'the fallback pair is geometric too');
+  assert(typeof gs.note === 'string' && gs.note.startsWith('provisional'), 'still says what it is');
+});

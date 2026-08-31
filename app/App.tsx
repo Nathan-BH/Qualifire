@@ -36,6 +36,7 @@ import { ThemeProvider, useTheme } from './src/ui/themeContext';
 import { initRideHistory } from './src/ui/lastRide';
 import { initFreeRidePersistence } from './src/store/freeRides';
 import { initCatalogStore } from './src/store/catalogStore';
+import { initUserRefs } from './src/live/userRefs';
 import { createExpoFsAdapter } from './src/storage/expoFsAdapter';
 import { TabNavProvider, type Tab } from './src/ui/tabNav';
 
@@ -92,6 +93,7 @@ function Shell() {
     // mounted screens with the merged catalog too.
     const fs = createExpoFsAdapter();
     initCatalogStore(fs)
+      .then(() => initUserRefs(fs))
       .then(() => initRideHistory(fs))
       .then(
         () => setWindowHydrated(true),

@@ -60,6 +60,12 @@ export interface GateSet {
   version: number;
   chainageM: number[];
   createdAtMs: number;
+  /** ROUTING-AND-SEGMENTATION §3 honesty clause: 'geometric' = placed from
+   * geometry/proxies (quantiles, the reference ride's own stops), a starting
+   * grid, never to be described as good placement; 'measured' is reserved
+   * for placement from real multi-ride stop data (unbuilt). Optional: sets
+   * that predate this field (the shipped seed) carry neither claim. */
+  origin?: 'measured' | 'geometric';
   note?: string;
 }
 

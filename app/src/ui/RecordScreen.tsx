@@ -46,11 +46,14 @@ import { rememberFreeRide } from '../store/freeRides';
 import { buildWayCreationCatalog, draftWayCreation, type WayCreationDraft } from '../store/wayCreation';
 import { createExpoFsAdapter } from '../storage/expoFsAdapter';
 import { decodeRideFile } from '../storage/jsonl';
+import { buildRefFromRideFixes, saveUserRef } from '../live/userRefs';
+import { seedGateChainages } from '../store/gateSeeding';
+import { GateAdjustCard } from './gateAdjustCard';
 import { WayNamingCard } from './wayNamingCard';
 import { deleteRide } from '../storage';
 import { removeStoredResult } from '../store/resultsStore';
 import { currentCatalog, saveUserCatalog, userCatalog } from '../store/catalogStore';
-import { freeRideRouteIds, landmarkAt } from '../store/catalog';
+import { addGateSet, freeRideRouteIds, landmarkAt } from '../store/catalog';
 import { defaultEndpoints, routeLabel, routeVariantLabel, sortRoutesForDisplay } from '../store/defaultRoute';
 import type { Route } from '../store/types';
 import { PaddockTheme, colors, radius } from './theme';
@@ -65,16 +68,26 @@ const PIN_MS = 20000;
  * naming offer, and as what? Reads the ride's raw JSONL (the only record of
  * where it went) and drafts against the runtime catalog. Null on ANY failure
  * — the stop flow must never break on a naming convenience. */
-async function namingDraftFor(rideId: string, startedAtMs: number): Promise<WayCreationDraft | null> {
+/** The ride's raw recorded fixes (flags included), or null on any failure. */
+async function readRideFixes(rideId: string) {
   try {
     const fs = createExpoFsAdapter();
     const text = await fs.readText(`rides/${rideId}.jsonl`);
     if (text === null) return null;
-    const decoded = decodeRideFile(text);
+    return decodeRideFile(text).fixes;
+  } catch {
+    return null;
+  }
+}
+
+async function namingDraftFor(rideId: string, startedAtMs: number): Promise<WayCreationDraft | null> {
+  const fixes = await readRideFixes(rideId);
+  if (fixes === null) return null;
+  try {
     return draftWayCreation(currentCatalog(), {
       rideId,
       startedAtMs,
-      fixes: decoded.fixes.map((f) => ({ lat: f.lat, lon: f.lon })),
+      fixes: fixes.map((f) => ({ lat: f.lat, lon: f.lon })),
     });
   } catch {
     return null;
@@ -86,6 +99,13 @@ async function namingDraftFor(rideId: string, startedAtMs: number): Promise<WayC
 function existingLandmarkLabel(r: WayCreationDraft['start']): string | null {
   if (r.kind !== 'existing') return null;
   return currentCatalog().landmarks.find((l) => l.id === r.landmarkId)?.label ?? r.landmarkId;
+}
+
+/** What the gate-adjust step carries between CREATE WAY and its own save. */
+interface GateAdjustDraft {
+  routeId: string;
+  refLengthM: number;
+  chainageM: number[];
 }
 
 /** Stationary detection (B-51, RecordScreen-owned): the live ribbon dims and
@@ -174,6 +194,13 @@ export default function RecordScreen({
   // Mirror for the [] useCallback closures below, same reason as sessionRef.
   const namingRef = useRef<WayCreationDraft | null>(null);
   namingRef.current = naming;
+  // OPEN-ITEMS item 3 (Part B): the seeded-gates adjustment step, shown by
+  // 'ending' after a CREATE WAY whose reference line + gate seed were built
+  // (naming is cleared first — the two cards are never up together). Its
+  // exit handlers are what start the reversed mark then.
+  const [adjust, setAdjust] = useState<GateAdjustDraft | null>(null);
+  const adjustRef = useRef<GateAdjustDraft | null>(null);
+  adjustRef.current = adjust;
   const [live, setLive] = useState<LiveEngineState>(liveEngine.getState());
   const [showLap, setShowLap] = useState(false);
   const [held, setHeld] = useState(false); // manual red-light hold (§18)
@@ -453,7 +480,18 @@ export default function RecordScreen({
     if (!draft) return;
     setBusy(true);
     try {
-      const built = buildWayCreationCatalog(userCatalog(), draft, names);
+      // OPEN-ITEMS item 3 (Part A): build the route's real reference line
+      // from the ride that is becoming its reference. null on ANY failure
+      // => the way saves exactly as before (unresolvable refLineId) —
+      // building a reference must never block creating the way.
+      const fixes = await readRideFixes(draft.rideId);
+      const builtRef = fixes ? buildRefFromRideFixes(fixes) : null;
+      // Part B: with a real reference line, the v1 gate set is born fully
+      // seeded (5 gates, 4 sectors, snapped clear of the ride's own stops).
+      const seed = builtRef
+        ? { chainageM: seedGateChainages(builtRef.ref.length, builtRef.stopChainageM) }
+        : undefined;
+      const built = buildWayCreationCatalog(userCatalog(), draft, names, seed);
       const errs = await saveUserCatalog(built);
       if (errs.length > 0) {
         // saveUserCatalog refused (the MERGED catalog would not validate)
@@ -461,10 +499,70 @@ export default function RecordScreen({
         Alert.alert('Could not create the way', errs.join('\n'));
         return;
       }
+      if (builtRef) {
+        // wayCreation.ts sets refLineId = route id = `route:<rideId>` —
+        // persist under that id so refFor() resolves it from now on
+        // (registered in memory at once; the file write is best-effort).
+        await saveUserRef(`route:${draft.rideId}`, builtRef.ref);
+      }
       setNaming(null);
-      setShowAnim('rev');
+      if (builtRef && seed) {
+        // SETUP-UX §4: offer tap-then-nudge before the reversed mark plays;
+        // the card's exits (onAdjustKeep/onAdjustSave) start the animation.
+        setAdjust({
+          routeId: `route:${draft.rideId}`,
+          refLengthM: builtRef.ref.length,
+          chainageM: seed.chainageM,
+        });
+      } else {
+        setShowAnim('rev');
+      }
     } catch (e) {
       Alert.alert('Could not create the way', e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  // OPEN-ITEMS item 3 (Part B) — the adjust card's two exits. KEEP costs
+  // nothing: the seeded v1 set was already saved by CREATE WAY. SAVE with
+  // moved gates mints VERSION 2 through the existing addGateSet ("a gate
+  // move mints a new version; history is never deleted" — store/catalog.ts).
+  const onAdjustKeep = useCallback(() => {
+    setAdjust(null);
+    setShowAnim('rev');
+  }, []);
+
+  const onAdjustSave = useCallback(async (chainageM: number[]) => {
+    const a = adjustRef.current;
+    if (!a) return;
+    const moved = chainageM.some((v, i) => Math.abs(v - a.chainageM[i]) > 1e-6);
+    if (!moved) {
+      setAdjust(null);
+      setShowAnim('rev');
+      return;
+    }
+    setBusy(true);
+    try {
+      const errs = await saveUserCatalog(
+        addGateSet(userCatalog(), {
+          routeId: a.routeId,
+          version: 2,
+          chainageM,
+          createdAtMs: Date.now(),
+          origin: 'geometric',
+          note: 'adjusted at save (tap-then-nudge) from the seeded proposal',
+        }),
+      );
+      if (errs.length > 0) {
+        // refused — surface WHY, keep the card up; KEEP remains available.
+        Alert.alert('Could not save the gates', errs.join('\n'));
+        return;
+      }
+      setAdjust(null);
+      setShowAnim('rev');
+    } catch (e) {
+      Alert.alert('Could not save the gates', e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
@@ -756,7 +854,15 @@ export default function RecordScreen({
         <Text style={styles.trackLine}>
           {lastSummary ? `Ride saved — ${fmtElapsed(lastSummary.endMs - lastSummary.startMs)}.` : 'Ride saved.'}
         </Text>
-        {naming !== null ? (
+        {adjust !== null ? (
+          <GateAdjustCard
+            refLengthM={adjust.refLengthM}
+            initialChainageM={adjust.chainageM}
+            busy={busy}
+            onKeep={onAdjustKeep}
+            onSave={onAdjustSave}
+          />
+        ) : naming !== null ? (
           <WayNamingCard
             startExistingLabel={existingLandmarkLabel(naming.start)}
             endExistingLabel={existingLandmarkLabel(naming.end)}

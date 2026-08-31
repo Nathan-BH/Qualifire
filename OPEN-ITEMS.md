@@ -20,23 +20,33 @@ add new ones as they surface, don't let it grow back into what it replaced.
    PASS WITH FINDINGS, all non-blocking (logged in `STATE.md` -> "Known stubs/footguns").
    **Still owed:** Nathan's on-device pass (card renders correctly, keyboard doesn't cover
    the input on the 'ending' screen, a save actually shows up on ROUTES).
-3. **Save-flow gate UI + provisional gates — up next.** A freshly-created route today has
-   only a start/finish gate set (1%/99%, no sectors) and an unresolvable `refLineId` — this
-   package builds a real reference line from the reference ride's own GPS track, then seeds
-   sector gates at 25/50/75%, snapped away from traffic-signal intersections (≥150 m
-   clear), with tap-then-nudge adjustment. Design reference: `product/proposals/SETUP-UX.md`
-   (the adjustment UI is pre-answered there -- cite it, don't redesign) and
-   `product/proposals/ROUTING-AND-SEGMENTATION.md` §3 (the snap rule).
+3. ~~Save-flow gate UI + provisional gates~~ — **DONE 2026-08-31.** A freshly-created route
+   now builds a real reference line from the reference ride's own GPS track and seeds 4
+   sector gates at 25/50/75% chainage, nudged away from wherever that ride sat stationary
+   (a zero-network proxy for traffic-signal avoidance — real OSM-signal-based `'measured'`
+   placement is parked below), with tap-then-nudge adjustment per `SETUP-UX.md` §4. Three
+   briefs, independently inspected: PASS WITH FINDINGS, all non-blocking (see `STATE.md` ->
+   "Known stubs/footguns"). **Still owed:** Nathan's on-device pass (adjust card renders and
+   nudges correctly, a route seeded today actually shows 4 sectors on ROUTES/live).
+   A small debug-export mechanism landed alongside it (see item 5 below) so tomorrow's
+   on-device test produces something inspectable afterward.
 4. **Empty-state pass.** "0 rides found", no route lock on ride 1, and whatever DEMO should
    say when a stranger sees the bundled 'Morning' ride on an otherwise-blank install.
-5. **Whole-app export/import.** Zip the catalog, ride-history store, free-ride cache, and
-   settings into one file; a checkbox for whether to include raw ride recordings (they're
-   append-only, so this can grow large — get a real size estimate before promising it);
-   import is overwrite, not merge, gated behind an explicit confirm listing what dies plus
-   an automatic pre-import backup of current state. Version-stamp both directions — refuse
-   or migrate an unknown schema, never guess. This is what makes a lost/replaced phone, or
-   handing your exact setup to a friend, survivable — separate from item 2 above, which is
-   what lets a total stranger start from nothing.
+5. **Whole-app export/import.** ~~Zip the catalog...~~ still parked as described below — but a
+   **smaller debug-export now exists (2026-08-31, part of item 3's work)**: Settings can
+   share `catalog.user.json` and `refs.user.json` directly, and per-ride GPX+ (already
+   existed) carries rich session diagnostics. That covers "get today's state and one ride's
+   trace off the phone for feedback" without needing the full zip/import/overwrite machinery
+   below, which stays scoped for when a lost/replaced phone or a friend's setup actually needs
+   it:
+   Zip the catalog, ride-history store, free-ride cache, and settings into one file; a
+   checkbox for whether to include raw ride recordings (they're append-only, so this can grow
+   large — get a real size estimate before promising it); import is overwrite, not merge,
+   gated behind an explicit confirm listing what dies plus an automatic pre-import backup of
+   current state. Version-stamp both directions — refuse or migrate an unknown schema, never
+   guess. This is what makes a lost/replaced phone, or handing your exact setup to a friend,
+   survivable — separate from item 2 above, which is what lets a total stranger start from
+   nothing.
 
 ## Parked (scoped, not urgent)
 
@@ -54,14 +64,18 @@ add new ones as they surface, don't let it grow back into what it replaced.
 - **Raw-time scoring default, the implementation half** — the *rule* (raw wall-clock time
   is the default) is settled (see `STATE.md`); colours/ranks still compare moving time in
   code. Needs the actual switch.
-- **Flat-earth distance approximation** (`store/catalog.ts`'s `metresBetween`) — hardcoded
-  at Leuven's latitude; skews landmark radii and track lengths for a rider far from ~51°N.
-  Directly relevant to "someone else can use this app" but not urgent while all real usage
-  is still Nathan's. Flagged by inspection 2026-08-31.
 - **Two small polish items from the way-creation inspection** — the naming card's loop
   copy always says "one new place" even when the loop starts at an existing landmark
   (cosmetic); two `wayCreation.ts` matching branches (end-side sliver-reuse, both-endpoints-
   already-loop) are correct but not directly test-covered.
+- **Real (OSM-signal-based) `'measured'` gate placement.** Today's sector gates snap away from
+  the reference ride's own stops — a real but one-ride proxy, honestly flagged
+  `origin: 'geometric'`. Getting to `'measured'` needs either a real traffic-signal data
+  source (Overpass/OSM query, network + caching design) or the ≥5-clean-rides re-scoring
+  ROUTING-AND-SEGMENTATION §3 describes. Not urgent — geometric gates are usable now.
+- **`expo-sharing` native module.** The debug-export share buttons work today via the existing
+  SAF/share-text mechanism; a real native share sheet needs an APK rebuild to add the
+  dependency. Cosmetic/convenience upgrade only.
 
 ## Needs Nathan, whenever he gets to it — not blocking
 

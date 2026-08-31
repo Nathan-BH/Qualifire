@@ -27,7 +27,7 @@ besides Nathan can use this app" is a top-priority goal, not just a design lens.
 - **Code:** `app/core/` (timing engine, parity-proven), `app/src/live/` (full-catalog
   pick-bias engine), `app/src/store/` (catalog + results, **now empty-seed-capable** — see
   below), `app/src/ui/` (six tabs: record/rides/routes/result/settings/demo).
-  `app/tests/`: **273 tests, 270 pass, 0 fail, 3 skip**. `tsc --noEmit`: clean, exit 0.
+  `app/tests/`: **302 tests, 299 pass, 0 fail, 3 skip**. `tsc --noEmit`: clean, exit 0.
   Both verified on this branch 2026-08-31 (nothing in `app/` changed by the branch cut
   itself).
 - **The empty-seed install path is built.** `store/seed.ts` + `store/catalogStore.ts`: the
@@ -46,11 +46,31 @@ besides Nathan can use this app" is a top-priority goal, not just a design lens.
 - **Retroactive way creation + ride-1-as-reference is built.** Record a ride whose start/end
   don't match any known landmark, and a naming card offers to name them at STOP; on save it
   creates the landmark(s) (reusing/shrinking around existing ones, handling loops), a `Way`,
-  a provisional `Route` with a 1%/99% start/finish gate set (no sector gates yet — that's
-  the save-flow-gates package next), and marks that ride as the route's reference
-  (`Route.referenceRideId`). Skipping the card writes nothing; the ride itself was already
-  saved beforehand either way. `store/wayCreation.ts` (the pure draft/build logic) +
-  `ui/wayNamingCard.tsx` (the card) + `RecordScreen.tsx`'s `onEnd` flow.
+  a `Route`, and marks that ride as the route's reference (`Route.referenceRideId`). Skipping
+  the card writes nothing; the ride itself was already saved beforehand either way.
+  `store/wayCreation.ts` (the pure draft/build logic) + `ui/wayNamingCard.tsx` (the card) +
+  `RecordScreen.tsx`'s `onEnd` flow.
+- **Save-flow gates + real reference line are built (2026-08-31).** The reference ride's raw
+  GPS fixes now build a real `RefLine` (filtered, resampled, smoothed) persisted to a new
+  `refs.user.json`; `live/refs.ts`'s `refFor()` falls back to it, so a freshly-created route
+  is drawable/raceable, not just structurally present. Four sector gates seed at exact
+  25/50/75% chainage quantiles, nudged (≤±250 m) toward the nearest point ≥150 m clear of
+  wherever the reference ride itself sat stationary ≥20 s — a zero-network proxy for
+  traffic-signal avoidance, since there's no real intersection data source wired in yet. Every
+  seeded `GateSet` is honestly flagged `origin: 'geometric'` (never `'measured'` — see Known
+  stubs). A tap-then-nudge adjustment card (`ui/gateAdjustCard.tsx`, per
+  `product/proposals/SETUP-UX.md` §4) lets Nathan move any of the 3 sector gates before
+  confirming; confirming mints `gateSetVersion` 2. `store/gateSeeding.ts` (pure seeding logic)
+  + `live/userRefs.ts` (ref persistence) + `ui/gateAdjustModel.ts`/`gateAdjustCard.tsx` +
+  `RecordScreen.tsx` wiring. Three briefs, independently inspected: PASS WITH FINDINGS, all
+  non-blocking (see Known stubs).
+- **A small debug-export mechanism is built (2026-08-31).** Settings has a new DATA section:
+  share `catalog.user.json` or `refs.user.json` via the existing SAF/share-text mechanism (no
+  new native dependency — the dev client's `expo-sharing` module isn't built in yet, see Known
+  stubs). Per-ride GPX+ share already existed on the Rides screen and already carries rich
+  session diagnostics (route locks, gate crossings, stops, outages, elevation outliers). This
+  is deliberately smaller than the whole-app export/import in Open items — no zip, no import,
+  just "get today's state and one ride's full trace off the phone" for feedback.
 - **On the phone:** the dev client (Fast Refresh) and the rebuildable "Qualifire Preview"
   standalone APK; a `virgin` EAS build profile now exists but hasn't been built yet.
 
@@ -94,14 +114,26 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
 - The virgin app's empty-seed mode is a **bundle-time** env constant. Any future
   `eas update` to a virgin channel must set `EXPO_PUBLIC_SEED_MODE=empty` explicitly, or the
   OTA bundle silently reverts to Nathan's seed.
-- A new route's `refLineId` (from the retroactive-way-creation work) deliberately points at
-  nothing resolvable yet — every consumer already degrades gracefully (warns + skips, or
-  renders no map line). A real reference line, built from the reference ride's own GPS
-  track, is explicit unbuilt work for the save-flow-gates package.
-- `metresBetween` (`store/catalog.ts`) is a flat-earth approximation hardcoded at Leuven's
-  latitude — a rider far from ~51°N would get skewed distances (landmark radii, track
-  lengths). Pre-existing, not introduced by any recent work, but directly relevant to
-  "someone else can use this app" — flagged by inspection 2026-08-31.
+- ~~A new route's `refLineId` deliberately pointed at nothing resolvable~~ — **fixed**
+  2026-08-31 by the save-flow-gates package: `refFor()` now falls back to a real `RefLine`
+  built from the reference ride's own GPS track and persisted to `refs.user.json`.
+- ~~`metresBetween` (`store/catalog.ts`) was a flat-earth approximation hardcoded at Leuven's
+  latitude~~ — **fixed** 2026-08-31: uses the point pair's own mean latitude now, works
+  anywhere on Earth (matches `ui/routeMapGeo.ts`'s `metresBetween`, which already did this
+  correctly).
+- **Gate placement is honestly `origin: 'geometric'`, never `'measured'`.** Sector gates snap
+  away from where the *single* reference ride sat stationary — a real proxy, but a one-ride
+  proxy, not real traffic-signal data. `product/proposals/ROUTING-AND-SEGMENTATION.md` §3's
+  honesty clause reserves `'measured'` for a re-run on ≥5 real rides; that re-scoring isn't
+  built. Also not built: §3's variable 3–6-sector-count algorithm — deliberately out of scope,
+  the shipped ground rule (exactly 4 sectors, fixed 25/50/75%) is what's implemented.
+- **`refs.user.json`'s boot-time read/write path is unit-tested (memory fs round-trip) but not
+  yet verified on-device.** Same category as the retroactive-way-creation stubs below — owed
+  an on-device pass.
+- **No `expo-sharing` native module in the current dev client.** The new debug-export share
+  buttons reuse the existing SAF/share-text mechanism instead of the native share sheet;
+  works today, but is a slightly clunkier flow than a real "Share..." sheet would be. A future
+  APK rebuild could add `expo-sharing` for the nicer flow.
 - Two small, non-blocking findings from the same inspection: the way-naming card's loop
   copy always says "one new place" even when the loop starts at an existing landmark
   (cosmetic only); two matching-logic branches in `wayCreation.ts` (end-side sliver-reuse,

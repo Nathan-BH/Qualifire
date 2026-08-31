@@ -6,22 +6,21 @@
  * STOP step should offer to name its endpoints (draftWayCreation) and, once
  * named, build the user-catalog additions (buildWayCreationCatalog) that
  * catalogStore.saveUserCatalog() persists: landmark(s) born from the visited
- * endpoints, one Way linking them, one Route, and one PROVISIONAL two-gate
- * set (start/finish at 1%/99% of the ridden track length — the settled
- * default; the 25/50/75% sector gates are the NEXT work package, OPEN-ITEMS
- * item 3, deliberately absent here).
+ * endpoints, one Way linking them, one Route, and its v1 gate set: the full
+ * 5-gate seed (1%/99% start/finish + 25/50/75% sector gates on the caller's
+ * built reference line — store/gateSeeding.ts) when a `seed` is supplied,
+ * else the PROVISIONAL start/finish pair at 1%/99% of the ridden length.
  *
- * Honest limits, by design (each is the next package's job, not a bug):
- *  - route.refLineId is set to the route's own id, which resolves to NO
- *    entry in refs.json — live/tracks.ts skips the route with a
- *    console.warn, and routeMapView returns null on the unknown asset, so
- *    the route exists structurally but is not yet raceable or drawable.
- *    Building a real reference line from the reference ride's recorded
- *    track is explicitly deferred; faking one would be worse than none.
+ * Honest limits, by design:
+ *  - route.refLineId is set to the route's own id. Since the save-flow
+ *    package (OPEN-ITEMS item 3) the CALLER builds and persists a real
+ *    reference line under that id (live/userRefs.ts) whenever it can; when
+ *    it cannot, the id resolves to nothing and every consumer degrades as
+ *    before (tracks.ts warns + skips; routeMapView draws no user routes
+ *    either way — they have no RouteAsset).
  *  - route.referenceRideId records the ride-1-as-reference designation
- *    (COLD-START §3 step 9: "ride 1 IS the reference by default").
- *    Deriving that ride into the route's first scored all-purple lap needs
- *    the reference line + sector gates above, so it is deferred with them.
+ *    (COLD-START §3 step 9). Deriving that ride into the route's first
+ *    scored all-purple lap is STILL deferred — a later package.
  *
  * Pure — no fs, no Date.now(); the caller supplies every fact.
  */
@@ -199,15 +198,19 @@ export function draftWayCreation(c: Catalog, ride: RideFacts): WayCreationDraft 
  * The user catalog with the named way merged in: userCat (this phone's
  * additions, catalogStore.userCatalog()) plus the draft's new landmark(s)
  * carrying the rider's names, one Way, one Route (referenceRideId = the ride
- * just finished), and the provisional start/finish gate set at 1%/99% of the
- * ridden length (the settled start/end-gate default; STATE.md ground rules).
- * Feed the result to saveUserCatalog(), which validates the MERGE before
- * accepting. Names are trimmed here; the caller enforces non-empty.
+ * just finished), and its v1 gate set — `seed.chainageM` (the 5-gate
+ * gateSeeding.ts proposal on the built reference line) when given, else the
+ * provisional 1%/99% start/finish pair on the ridden length. Both carry
+ * origin:'geometric' (R&S §3 honesty clause: a starting grid, not measured
+ * placement). Feed the result to saveUserCatalog(), which validates the
+ * MERGE before accepting. Names are trimmed here; the caller enforces
+ * non-empty.
  */
 export function buildWayCreationCatalog(
   userCat: Catalog,
   draft: WayCreationDraft,
   names: { start: string; end: string },
+  seed?: { chainageM: number[] },
 ): Catalog {
   const wayId = `way:${draft.rideId}`;
   const routeId = `route:${draft.rideId}`;
@@ -234,13 +237,25 @@ export function buildWayCreationCatalog(
     seeded: false,
     referenceRideId: draft.rideId,
   };
-  const gateSet: GateSet = {
-    routeId,
-    version: 1,
-    chainageM: [0.01 * draft.trackLengthM, 0.99 * draft.trackLengthM],
-    createdAtMs: draft.startedAtMs,
-    note: 'provisional: start/finish gates only — sector gates are the next work package',
-  };
+  const gateSet: GateSet = seed
+    ? {
+        routeId,
+        version: 1,
+        chainageM: seed.chainageM,
+        createdAtMs: draft.startedAtMs,
+        origin: 'geometric',
+        note:
+          'seeded: start/finish at 1%/99%, sectors at 25/50/75% of the reference line, ' +
+          "nudged clear of the reference ride's own stops — a proposal, not measured placement",
+      }
+    : {
+        routeId,
+        version: 1,
+        chainageM: [0.01 * draft.trackLengthM, 0.99 * draft.trackLengthM],
+        createdAtMs: draft.startedAtMs,
+        origin: 'geometric',
+        note: 'provisional: start/finish gates only — no reference line could be built from this ride',
+      };
   return {
     schemaVersion: userCat.schemaVersion,
     landmarks,
