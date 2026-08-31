@@ -21,7 +21,7 @@
  */
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import seedResultsJson from '../store/results.seed.json';
+import { shippedResults } from '../store/seed.ts';
 import { storedResults } from '../store/resultsStore.ts';
 import type { RideResult } from '../store/types.ts';
 import { TRACK_IDS } from '../live/refs.ts';
@@ -36,7 +36,9 @@ import { useSettings } from './settings.tsx';
 import { PaddockTheme, colors, radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
 
-const SEED_RESULTS = seedResultsJson as unknown as RideResult[];
+/** B-39 (store/seed.ts): [] in a virgin build — the PB list then lists only
+ * routes this phone has actually ridden. */
+const SEED_RESULTS: RideResult[] = shippedResults();
 
 function tierColour(tier: UiTier, t: PaddockTheme): string {
   switch (tier) {

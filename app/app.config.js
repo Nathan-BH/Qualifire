@@ -2,6 +2,18 @@
 // The preview profile builds a SEPARATE app so it sits next to the dev client
 // instead of replacing it. Everything else comes from app.json unchanged.
 module.exports = ({ config }) => {
+  // B-39 / D-045: the VIRGIN build -- a third, separate app (a blank install for
+  // another rider, or for Nathan to test the cold start himself). Its eas.json
+  // profile also sets EXPO_PUBLIC_SEED_MODE=empty, which is what actually
+  // empties the seed (src/store/seed.ts); this block only keeps the virgin app
+  // from replacing the dev client or the preview.
+  if (process.env.APP_VARIANT === 'virgin') {
+    return {
+      ...config,
+      name: 'Qualifire Virgin',
+      android: { ...config.android, package: `${config.android.package}.virgin` },
+    };
+  }
   if (process.env.APP_VARIANT !== 'preview') return config;
   return {
     ...config,

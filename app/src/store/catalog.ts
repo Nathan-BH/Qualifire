@@ -224,3 +224,29 @@ export function sectorsComparable(a: GateSet, b: GateSet): boolean {
   if (a.chainageM.length !== b.chainageM.length) return false;
   return a.chainageM.every((v, i) => Math.abs(v - b.chainageM[i]) < 1e-6);
 }
+
+/**
+ * B-39 (empty-seed install path): the runtime catalog is the shipped seed
+ * PLUS the rider's own additions (store/catalogStore.ts's user catalog file),
+ * merged read-side on every boot. The seed is never copied onto the phone —
+ * so a seed change (a new route, a moved gate) still reaches Nathan's phone
+ * the way it always has — and a virgin build (empty seed) runs on the user
+ * catalog alone. Seed entries win every id collision: a user entry whose id
+ * already exists in the seed is dropped, never merged over it (gate sets
+ * collide on routeId + version). Seed order first, user order after — every
+ * "first in catalog order" rule keeps meaning what it meant. Pure;
+ * validateCatalog() judges the result.
+ */
+export function mergeCatalogs(seed: Catalog, user: Catalog): Catalog {
+  const lm = new Set(seed.landmarks.map((l) => l.id));
+  const wy = new Set(seed.ways.map((w) => w.id));
+  const rt = new Set(seed.routes.map((r) => r.id));
+  const gs = new Set(seed.gateSets.map((g) => `${g.routeId}@${g.version}`));
+  return {
+    schemaVersion: seed.schemaVersion,
+    landmarks: [...seed.landmarks, ...user.landmarks.filter((l) => !lm.has(l.id))],
+    ways: [...seed.ways, ...user.ways.filter((w) => !wy.has(w.id))],
+    routes: [...seed.routes, ...user.routes.filter((r) => !rt.has(r.id))],
+    gateSets: [...seed.gateSets, ...user.gateSets.filter((g) => !gs.has(`${g.routeId}@${g.version}`))],
+  };
+}

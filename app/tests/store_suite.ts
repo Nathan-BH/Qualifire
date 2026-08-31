@@ -17,7 +17,9 @@ import {
   CORRIDOR_M, PROPOSED_GATES, gateChainages, nearestOnSegments, toXY,
 } from '../core/src/index.ts';
 import { deriveRideResult } from '../src/store/derive.ts';
-import { fallbackRouteId, routeLabel, routeVariantLabel, sortRoutesForDisplay } from '../src/store/defaultRoute.ts';
+import {
+  defaultEndpoints, defaultMapRouteId, fallbackRouteId, routeLabel, routeVariantLabel, sortRoutesForDisplay,
+} from '../src/store/defaultRoute.ts';
 import {
   addGateSet,
   decodeCatalog,
@@ -27,6 +29,7 @@ import {
   gateSetFor,
   landmarkAt,
   lapsComparable,
+  mergeCatalogs,
   metresBetween,
   needsRoutePick,
   routesForWay,
@@ -707,4 +710,97 @@ test('sortRoutesForDisplay: Std lists before Alt in BOTH station-work directions
     `station>home keeps catalog order, got ${wayIds('station>home')}`);
   assert(wayIds('work>church') === 'WorkChurchA,WorkChurchB',
     `work>church keeps catalog order, got ${wayIds('work>church')}`);
+});
+
+// ------------------------------------------------------------- B-39 remainder: the empty-seed install path (cycle 025)
+
+/** A small, valid, non-overlapping addition far from every seed landmark
+ * (Antwerp, ~40 km from the Leuven seed) — what a rider's own first way
+ * would look like once B-36 writes one. */
+function userAddition(): Catalog {
+  const c = emptyCatalog();
+  c.landmarks = [
+    { id: 'alpha', label: 'alpha', lat: 51.2, lon: 4.4, radiusM: 150, activeFromMs: 0, activeUntilMs: null, offerAtStart: true },
+    { id: 'beta', label: 'beta', lat: 51.25, lon: 4.45, radiusM: 150, activeFromMs: 0, activeUntilMs: null, offerAtStart: true },
+  ];
+  c.ways = [{ id: 'alpha>beta', startLandmarkId: 'alpha', endLandmarkId: 'beta', routeIds: ['AlphaBeta'] }];
+  c.routes = [{ id: 'AlphaBeta', wayId: 'alpha>beta', refLineId: 'AlphaBeta', gateSetVersion: 1, seeded: false }];
+  c.gateSets = [{ routeId: 'AlphaBeta', version: 1, chainageM: [100, 1000, 2000, 3000, 3900], createdAtMs: 0 }];
+  return c;
+}
+
+test('mergeCatalogs: seed first, user additions after; seed wins every id collision; empty seed => user alone; empty user => seed unchanged', () => {
+  const seed = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
+  const user = userAddition();
+  const merged = mergeCatalogs(seed, user);
+  assert(merged.landmarks.length === seed.landmarks.length + 2, 'two user landmarks appended');
+  assert(merged.ways.length === seed.ways.length + 1 && merged.routes.length === seed.routes.length + 1
+    && merged.gateSets.length === seed.gateSets.length + 1, 'one user way/route/gate set appended');
+  assert(merged.landmarks[0].id === seed.landmarks[0].id && merged.routes[0].id === seed.routes[0].id,
+    'seed order comes first — "first in catalog order" keeps its meaning');
+  assert(merged.landmarks[merged.landmarks.length - 1].id === 'beta' && merged.routes[merged.routes.length - 1].id === 'AlphaBeta',
+    'user entries come after the seed, in their own order');
+  assert(validateCatalog(merged).length === 0, `merged seed+user must validate: ${validateCatalog(merged).join('; ')}`);
+
+  // Collisions: a user entry re-using a seed id is dropped, the seed entry survives untouched.
+  const clash = userAddition();
+  clash.landmarks.push({ ...seed.landmarks[0], label: 'IMPOSTOR' });
+  clash.ways.push({ ...seed.ways[0], routeIds: [] });
+  clash.routes.push({ ...seed.routes[0], gateSetVersion: 99 });
+  clash.gateSets.push({ ...seed.gateSets[0], chainageM: [1, 2] });
+  const m2 = mergeCatalogs(seed, clash);
+  assert(m2.landmarks.length === merged.landmarks.length && m2.ways.length === merged.ways.length
+    && m2.routes.length === merged.routes.length && m2.gateSets.length === merged.gateSets.length,
+    'colliding user entries are dropped, not appended');
+  assert(m2.landmarks.find((l) => l.id === seed.landmarks[0].id)!.label === seed.landmarks[0].label,
+    'the seed landmark, not the impostor, survives');
+  assert(m2.routes.find((r) => r.id === seed.routes[0].id)!.gateSetVersion === seed.routes[0].gateSetVersion,
+    'the seed route, not the impostor, survives');
+  // A same-route gate set at a NEW version is not a collision (a gate move mints a version).
+  const bump = userAddition();
+  bump.gateSets.push({ ...seed.gateSets[0], version: seed.gateSets[0].version + 1000 });
+  assert(mergeCatalogs(seed, bump).gateSets.length === merged.gateSets.length + 1,
+    'a gate set at a new version for a seed route is appended');
+
+  // The two ends of the install path.
+  assert(JSON.stringify(mergeCatalogs(emptyCatalog(), user)) === JSON.stringify(user),
+    'empty seed (virgin build) + user = the user catalog, byte for byte');
+  assert(JSON.stringify(mergeCatalogs(seed, emptyCatalog())) === JSON.stringify(seed),
+    'seed + nothing added = the seed, byte for byte (Nathan\'s build today)');
+});
+
+test('defaultMapRouteId: first CATALOG route with a drawable asset; undrawable skipped; empty catalog => null; real seed => first seed route', () => {
+  const c = emptyCatalog();
+  c.routes = [
+    { id: 'NoAsset', wayId: 'w', refLineId: 'NoAsset', gateSetVersion: 1, seeded: false },
+    { id: 'Drawable', wayId: 'w', refLineId: 'DrawableRef', gateSetVersion: 1, seeded: false },
+    { id: 'Later', wayId: 'w', refLineId: 'LaterRef', gateSetVersion: 1, seeded: false },
+  ];
+  const drawable = new Set(['DrawableRef', 'LaterRef', 'Morning']);
+  assert(defaultMapRouteId(c, (ref) => drawable.has(ref)) === 'DrawableRef', 'first route WITH an asset wins, by refLineId');
+  assert(defaultMapRouteId(c, () => false) === null, 'nothing drawable => null');
+  assert(defaultMapRouteId(emptyCatalog(), () => true) === null, 'empty catalog (virgin build) => null, never the manifest\'s own first key');
+  const seed = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
+  const manifest = loadJson<{ routes: Record<string, unknown> }>(
+    path.join(TESTS_DIR, '..', 'assets', 'routes', 'routes.json'));
+  const got = defaultMapRouteId(seed, (ref) => manifest.routes[ref] !== undefined);
+  assert(got === seed.routes[0].refLineId, `real seed: expected the first seed route's ref ${seed.routes[0].refLineId}, got ${got}`);
+  assert(got === Object.keys(manifest.routes)[0],
+    'real seed: identical to the manifest-first-key fallback it replaces (byte-identical behaviour for Nathan\'s build)');
+});
+
+test('defaultEndpoints: first two offerable landmarks in catalog order; dormant skipped; short catalogs => null', () => {
+  const seed = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
+  const offer = seed.landmarks.filter((l) => l.offerAtStart).map((l) => l.id);
+  const got = defaultEndpoints(seed);
+  assert(got.from === offer[0] && got.to === offer[1], `real seed: ${JSON.stringify(got)} vs first two offerable ${offer[0]},${offer[1]}`);
+  assert(got.from === 'home' && got.to === 'work', 'real seed: the old literal defaults, exactly (regression guard for RecordScreen)');
+  const c = emptyCatalog();
+  assert(defaultEndpoints(c).from === null && defaultEndpoints(c).to === null, 'empty catalog => both null (RecordScreen opens new>>new)');
+  c.landmarks = [
+    { id: 'dormant', label: 'd', lat: 51, lon: 4, radiusM: 100, activeFromMs: 0, activeUntilMs: null, offerAtStart: false },
+    { id: 'only', label: 'o', lat: 51.1, lon: 4.1, radiusM: 100, activeFromMs: 0, activeUntilMs: null, offerAtStart: true },
+  ];
+  const one = defaultEndpoints(c);
+  assert(one.from === 'only' && one.to === null, 'a dormant landmark is never a default; one offerable => from only');
 });

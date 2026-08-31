@@ -36,17 +36,15 @@
  * catalog covers as routes are added — the forward-compat property this
  * module needs, through the mechanism that actually exists today.
  */
-import catalogJson from './catalog.seed.json';
 import { gateSetFor } from './catalog.ts';
+import { currentCatalog } from './catalogStore.ts';
 import { deriveRideResult } from './derive.ts';
 import { emptyResultsIndex, rebuildIndex, removeResult, upsertResult } from './results.ts';
-import type { Catalog, ResultsIndex, RideResult } from './types.ts';
+import type { ResultsIndex, RideResult } from './types.ts';
 import { catalogTrackSpecs } from '../live/tracks.ts';
 import type { FsAdapter } from '../storage/fsAdapter.ts';
 import { decodeRideFile } from '../storage/jsonl.ts';
 import { CORRIDOR_M, crossTime, projectRideOffline, toXY, type RefLine } from '../../core/src/index.ts';
-
-const CATALOG = catalogJson as unknown as Catalog;
 
 export const RESULTS_DIR = 'results';
 export const RESULTS_INDEX_FILE = 'results/index.json';
@@ -419,7 +417,7 @@ export async function backfillMissingResults(fs: FsAdapter, rideIds: string[]): 
 
       const accepted: { result: RideResult; proj: Projected }[] = [];
       for (const spec of specs) {
-        const gateSetVersion = gateSetFor(CATALOG, spec.id)?.version ?? 1;
+        const gateSetVersion = gateSetFor(currentCatalog(), spec.id)?.version ?? 1;
         const result = deriveRideResult({
           rideId,
           t, lat, lon,

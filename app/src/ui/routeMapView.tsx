@@ -39,6 +39,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image, LayoutChangeEvent, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import manifest from '../../assets/routes/routes.json';
 import { cropFor, gateTickPx, offRouteM, projectToPixel, type RouteAsset } from './routeMapMath.ts';
+import { currentCatalog } from '../store/catalogStore.ts';
+import { defaultMapRouteId } from '../store/defaultRoute.ts';
 import {
   allGatesBounds, allGatesFeatureCollection, bearingBetween,
   gateTicksFeatureCollection, metresBetween, nearestOnPath, riderFeature, routeBounds, routeLineFeature,
@@ -73,8 +75,14 @@ try {
 
 const ASSETS = (manifest as unknown as { routes: Record<string, RouteAsset> }).routes;
 /** Fallback when no route is known yet (candidate not picked/locked): the
- * first route in the asset manifest, not a literal track name (B-39). */
-const DEFAULT_ROUTE_ID: string | null = Object.keys(ASSETS)[0] ?? null;
+ * first CATALOG route with a drawable asset (B-39, empty-seed install path)
+ * — not the manifest's first key, which in a virgin build (empty catalog,
+ * manifest still bundled) would draw a shipped route the rider does not
+ * have. Null => both rungs render nothing. Resolved per render: the runtime
+ * catalog can grow after boot (store/catalogStore.ts). */
+function defaultRouteId(): string | null {
+  return defaultMapRouteId(currentCatalog(), (ref) => ASSETS[ref] !== undefined);
+}
 const IMAGES: Record<string, number> = {
   Morning: require('../../assets/routes/Morning.png'),
   EveningA: require('../../assets/routes/EveningA.png'),
@@ -221,7 +229,7 @@ function MapLibreRouteMap(props: RouteMapProps & {
   const { t, mode: themeMode } = useTheme();
   const styleUrl = themeMode === 'night' ? MAP_STYLE_NIGHT : MAP_STYLE_DAY;
   const gatesOnly = props.gatesOnly ?? false;
-  const id = props.routeId ?? DEFAULT_ROUTE_ID;
+  const id = props.routeId ?? defaultRouteId();
   const asset = !gatesOnly && id !== null ? ASSETS[id] : undefined;
   const h = props.height ?? 190;
 
@@ -585,7 +593,7 @@ function PngRouteMap(props: RouteMapProps) {
   // say so and draw the route from `path` instead of showing black.
   const [imgFailed, setImgFailed] = useState(false);
   useEffect(() => { setZoom(props.zoom ?? 4); }, [props.zoom]);
-  const id = props.routeId ?? DEFAULT_ROUTE_ID;
+  const id = props.routeId ?? defaultRouteId();
   const asset = id !== null ? ASSETS[id] : undefined;
   const img = id !== null ? IMAGES[id] : undefined;
   const h = props.height ?? 190;

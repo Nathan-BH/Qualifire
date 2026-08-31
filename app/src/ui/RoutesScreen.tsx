@@ -3,27 +3,28 @@
  * phone: the six landmarks with their real radii, dormant ones marked, and the
  * routes that exist per way.
  *
- * Everything here is READ from src/store/catalog.seed.json, which was built
- * from data/analysis/landmarks_v1.json — Nathan's curated set. Nothing is
- * discovered at runtime: places and routes enter the catalog because he agreed
- * they are places and routes (DATA-MODEL §8a).
+ * Everything here is READ from the runtime catalog (store/catalogStore.ts —
+ * B-39): the shipped seed (src/store/catalog.seed.json, built from
+ * data/analysis/landmarks_v1.json — Nathan's curated set) plus whatever this
+ * phone has added. Nothing is discovered at runtime: places and routes enter
+ * the catalog because the rider agreed they are places and routes
+ * (DATA-MODEL §8a). Empty in a virgin build until the rider creates them.
  */
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import catalogJson from '../store/catalog.seed.json';
-import type { Catalog } from '../store/types.ts';
+import { currentCatalog } from '../store/catalogStore.ts';
 import { rankedCountFor } from './colourModel.ts';
 import { routeLabel, sortRoutesForDisplay } from '../store/defaultRoute.ts';
 import RouteMapView from './routeMapView.tsx';
 import { radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
 
-const CATALOG = catalogJson as unknown as Catalog;
-
 export default function RoutesScreen() {
   const { t } = useTheme();
   const [open, setOpen] = useState<string | null>(null);
   const now = Date.now();
+  // B-39: read per render, never captured at import (see RecordScreen).
+  const CATALOG = currentCatalog();
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
@@ -45,6 +46,12 @@ export default function RoutesScreen() {
             </View>
           );
         })}
+        {/* B-39 minimal empty state (a blank install has no places yet) — a
+            bare card read as broken; B-43's empty-state pass owns the real
+            design and may replace this line. */}
+        {CATALOG.landmarks.length === 0 ? (
+          <Text style={{ color: t.textDim, fontSize: 14, paddingVertical: 9 }}>No places yet.</Text>
+        ) : null}
         <Text style={{ color: t.textDim, fontSize: 11.5, paddingVertical: 9 }}>
           Dormant places keep seeding history but are never offered at START.
           Radius is measured, not guessed: p90 of the endpoint spread, capped at half
@@ -53,6 +60,10 @@ export default function RoutesScreen() {
       </View>
 
       <Text style={[st.h2, { color: t.textDim }]}>WAYS</Text>
+      {/* B-39 minimal empty state — same note as the places card above. */}
+      {CATALOG.ways.length === 0 ? (
+        <Text style={{ color: t.textDim, fontSize: 14, marginBottom: 10 }}>No ways yet.</Text>
+      ) : null}
       {CATALOG.ways.map((w) => {
         const from = CATALOG.landmarks.find((l) => l.id === w.startLandmarkId);
         const to = CATALOG.landmarks.find((l) => l.id === w.endLandmarkId);

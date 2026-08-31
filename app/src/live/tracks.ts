@@ -2,24 +2,24 @@
  * All-catalog route specs for LiveEngine (cycle 024, WP-D2 — Nathan's
  * 2026-08-20 B-65 ruling: "every route I ratified should lock and score
  * live"). One TrackSpec per catalog route, pairing its reference polyline
- * (refs.json, via refFor) with its current gate set (catalog.seed.json, via
- * gateSetFor). Pure — reads the SAME catalog seed the rest of the app reads,
- * so the phone and the test suite can never disagree about what "every
- * route" means.
+ * (refs.json, via refFor) with its current gate set (the runtime catalog —
+ * store/catalogStore.ts, seed + this phone's additions — via gateSetFor).
+ * Pure — reads the SAME catalog the rest of the app reads, so the phone and
+ * the test suite can never disagree about what "every route" means. Read at
+ * CALL time, never captured at import (B-39: the catalog can be empty at
+ * boot and grow later).
  */
-import catalogJson from '../store/catalog.seed.json';
 import { gateSetFor } from '../store/catalog.ts';
-import type { Catalog } from '../store/types.ts';
+import { currentCatalog } from '../store/catalogStore.ts';
 import { refFor } from './refs.ts';
 import type { TrackSpec } from './engine.ts';
-
-const CATALOG = catalogJson as unknown as Catalog;
 
 /** One spec per catalog route. A route whose refLineId has no entry in
  * refs.json, or no gate set at its current gateSetVersion, is skipped with a
  * console.warn — defensive only: after WP-D1 every one of the 20 catalog
  * routes resolves (see live_suite.ts's "none skipped" regression test). */
 export function catalogTrackSpecs(): TrackSpec[] {
+  const CATALOG = currentCatalog();
   const specs: TrackSpec[] = [];
   for (const route of CATALOG.routes) {
     let ref: TrackSpec['ref'];

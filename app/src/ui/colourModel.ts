@@ -15,7 +15,7 @@
  * window is computed here from ordered history. Which is exactly why switching
  * models costs nothing but this function.
  */
-import seed from '../store/results.seed.json';
+import { shippedResults } from '../store/seed.ts';
 import { ranks, sectorHistory } from '../store/results.ts';
 import type { RideResult } from '../store/types.ts';
 import { recordedResults } from './lastRide.ts';
@@ -40,7 +40,9 @@ export const MIN_HISTORY = 5;
 
 export type UiTier = 'purple' | 'green' | 'neutral' | 'yellow' | 'est';
 
-const GHOSTS = seed as unknown as RideResult[];
+/** The archive ghosts this build ships with — [] in a virgin build (B-39,
+ * store/seed.ts): colours and ranks then run on the phone's own rides only. */
+const GHOSTS: RideResult[] = shippedResults();
 
 /** All rankable history for a route, ascending startedAtMs, unwindowed.
  * Filtered by the store's own `ranks()` — not a local lookalike — so an

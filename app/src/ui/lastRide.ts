@@ -19,17 +19,15 @@
  * Until a ride finishes in this session, `get()` returns null and Result falls
  * back to showing a ghost, clearly labelled as such. Never invent a lap.
  */
-import catalogJson from '../store/catalog.seed.json';
 import { gateSetFor } from '../store/catalog.ts';
+import { currentCatalog } from '../store/catalogStore.ts';
 import { ranks } from '../store/results.ts';
 import * as resultsStore from '../store/resultsStore.ts';
 import type { LiveEngineState } from '../live/engine.ts';
-import type { Catalog, RideResult, SectorQuality } from '../store/types.ts';
+import type { RideResult, SectorQuality } from '../store/types.ts';
 import { RESULT_SCHEMA_VERSION } from '../store/types.ts';
 import type { FsAdapter } from '../storage/fsAdapter.ts';
 import { decodeIndex } from '../storage/rideIndex.ts';
-
-const CATALOG = catalogJson as unknown as Catalog;
 
 export interface FinishedRide {
   rideId: string;
@@ -108,7 +106,8 @@ export function rememberRide(
     }),
   };
 
-  // The ridden route's OWN current gate set (catalog.seed.json) — resolved
+  // The ridden route's OWN current gate set (the runtime catalog,
+  // store/catalogStore.ts — B-39) — resolved
   // unconditionally, same as before this brief (gateSetVersion has already
   // been real, not hardcoded, since cycle 024/WP-D2). NOT core/gates.ts's
   // gateChainages()/PROPOSED_GATES, which WP-D2 left covering only the four
@@ -118,7 +117,7 @@ export function rememberRide(
   // today's 0/0 back-compat shape. Falls back to 0/0 if a gate set is somehow
   // unresolvable — defensive only; the live engine only ever locks a track
   // catalogTrackSpecs() itself resolved a gate set for.
-  const gateSet = gateSetFor(CATALOG, routeId);
+  const gateSet = gateSetFor(currentCatalog(), routeId);
   const gates = meta ? (gateSet ? gateSet.chainageM : null) : null;
   const derivedBy = {
     engineVersion: 'live',

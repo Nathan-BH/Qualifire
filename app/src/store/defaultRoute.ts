@@ -90,3 +90,29 @@ export function fallbackRouteId(c: Catalog, results: RideResult[]): string | nul
   }
   return c.routes[0]?.id ?? null;
 }
+
+/** B-39 (empty-seed install path): the route the map draws when nothing is
+ * picked or locked yet — the FIRST CATALOG ROUTE that has a drawable asset,
+ * never the asset manifest's own key order (routeMapView.tsx used to take
+ * `Object.keys(ASSETS)[0]`, which in a virgin build — empty catalog, but the
+ * manifest still bundled — would quietly draw one of the shipped routes for
+ * a rider who has none). Null when no catalog route is drawable: the map
+ * then renders nothing rather than somebody else's road. `drawable` is the
+ * caller's own asset lookup, so this stays pure. Today's seed: the first
+ * route is Morning, which is also the manifest's first key — byte-identical
+ * behaviour for Nathan's build. */
+export function defaultMapRouteId(c: Catalog, drawable: (refLineId: string) => boolean): string | null {
+  for (const r of c.routes) if (drawable(r.refLineId)) return r.refLineId;
+  return null;
+}
+
+/** B-39 (empty-seed install path): RecordScreen's initial STARTING FROM /
+ * GOING TO — the first two offerable landmarks in catalog order (today's
+ * seed: home, work — byte-identical to the old literals), null when the
+ * catalog has fewer than that; the caller substitutes its 'new' pseudo-
+ * landmark for null, so a blank install opens on new>>new — the free ride,
+ * which needs no catalog at all. */
+export function defaultEndpoints(c: Catalog): { from: string | null; to: string | null } {
+  const offer = c.landmarks.filter((l) => l.offerAtStart);
+  return { from: offer[0]?.id ?? null, to: offer[1]?.id ?? null };
+}

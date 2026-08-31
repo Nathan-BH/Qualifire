@@ -326,7 +326,10 @@ function pendingSectors(n: number): LiveSector[] {
 }
 
 export class LiveEngine {
-  private readonly specs: TrackSpec[];
+  /** Injected by tests; null = resolve catalogTrackSpecs() at every start()
+   * (B-39: the runtime catalog can be empty at boot and grow later, so the
+   * module-scope singleton must never snapshot it at construction). */
+  private readonly specs: TrackSpec[] | null;
   private phase: LiveEngineState['phase'] = 'idle';
   private cands: Candidate[] = [];
   private locked: Candidate | null = null;
@@ -355,7 +358,7 @@ export class LiveEngine {
   /** Default: one candidate per ratified catalog route (catalogTrackSpecs(),
    * tracks.ts). Tests inject a smaller/legacy set explicitly. */
   constructor(specs?: TrackSpec[]) {
-    this.specs = specs ?? catalogTrackSpecs();
+    this.specs = specs ?? null;
   }
 
   start(opts?: EngineStartOptions): void {
@@ -365,7 +368,8 @@ export class LiveEngine {
     this.locked = null;
     this.lockKind = 'none';
     this.pickHonoured = false;
-    const pickSpec = this.pick !== null ? this.specs.find((s) => s.id === this.pick) : undefined;
+    const allSpecs = this.specs ?? catalogTrackSpecs();
+    const pickSpec = this.pick !== null ? allSpecs.find((s) => s.id === this.pick) : undefined;
     this.sectors = pendingSectors(pickSpec ? pickSpec.gates.length - 1 : N_SECTORS_DEFAULT);
     this.lap = null;
     this.freeCrossings = [];
@@ -379,7 +383,7 @@ export class LiveEngine {
     // WP-B coordinator addendum: routeIds (undefined/null => every spec, the
     // unfiltered default) restricts which specs even get a candidate — see
     // the file header.
-    const specs = opts?.routeIds ? this.specs.filter((s) => opts.routeIds!.includes(s.id)) : this.specs;
+    const specs = opts?.routeIds ? allSpecs.filter((s) => opts.routeIds!.includes(s.id)) : allSpecs;
     this.cands = specs.map((spec) => ({
       track: spec.id,
       ref: spec.ref,

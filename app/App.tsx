@@ -35,6 +35,7 @@ import { PaddockTheme } from './src/ui/theme';
 import { ThemeProvider, useTheme } from './src/ui/themeContext';
 import { initRideHistory } from './src/ui/lastRide';
 import { initFreeRidePersistence } from './src/store/freeRides';
+import { initCatalogStore } from './src/store/catalogStore';
 import { createExpoFsAdapter } from './src/storage/expoFsAdapter';
 import { TabNavProvider, type Tab } from './src/ui/tabNav';
 
@@ -84,10 +85,18 @@ function Shell() {
   // arrives so ghost counts on the idle screen refresh without a location tick.
   const [, setWindowHydrated] = useState(false);
   useEffect(() => {
-    initRideHistory(createExpoFsAdapter()).then(
-      () => setWindowHydrated(true),
-      () => {},
-    );
+    // B-39 (empty-seed install path): the runtime catalog (seed + this
+    // phone's own additions, store/catalogStore.ts) loads FIRST — the ride
+    // history's backfill resolves routes through it — then the history.
+    // initCatalogStore never throws; the same state bump then re-renders the
+    // mounted screens with the merged catalog too.
+    const fs = createExpoFsAdapter();
+    initCatalogStore(fs)
+      .then(() => initRideHistory(fs))
+      .then(
+        () => setWindowHydrated(true),
+        () => {},
+      );
     // WP-B: the free-ride cache rehydrates the same way, alongside the
     // fixed-route store above — same fire-and-forget shape, same file (D-023:
     // both are derived conveniences, never load-bearing for boot).

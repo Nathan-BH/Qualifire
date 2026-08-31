@@ -45,10 +45,10 @@ import { dropRecorded, rememberRide } from './lastRide';
 import { rememberFreeRide } from '../store/freeRides';
 import { deleteRide } from '../storage';
 import { removeStoredResult } from '../store/resultsStore';
-import catalogJson from '../store/catalog.seed.json';
+import { currentCatalog } from '../store/catalogStore';
 import { freeRideRouteIds, landmarkAt } from '../store/catalog';
-import { routeLabel, routeVariantLabel, sortRoutesForDisplay } from '../store/defaultRoute';
-import type { Catalog, Route } from '../store/types';
+import { defaultEndpoints, routeLabel, routeVariantLabel, sortRoutesForDisplay } from '../store/defaultRoute';
+import type { Route } from '../store/types';
 import { PaddockTheme, colors, radius } from './theme';
 import { useTheme } from './themeContext';
 
@@ -66,8 +66,6 @@ const PIN_MS = 20000;
  * against a real ride yet.] */
 const STOPPED_AFTER_MS = 6000;
 const MOVE_EPS_M = 10;
-
-const CATALOG = catalogJson as unknown as Catalog;
 
 /** WP-B: a UI-only pseudo-landmark ("new" — Nathan's 2026-08-20 notes: "go
  * from work>>new for example, or from new>>home"), never a catalog entry —
@@ -148,8 +146,16 @@ export default function RecordScreen({
   const [pauseMenu, setPauseMenu] = useState(false);
   // Start flow (§21): where from, where to. Detected-or-picked; the ride still
   // scores against whatever road is actually ridden (§8a: the pick is intent).
-  const [from, setFrom] = useState('home');
-  const [to, setTo] = useState('work');
+  // B-39 (empty-seed install path): the runtime catalog — shipped seed plus
+  // this phone's own additions (store/catalogStore.ts) — read per render,
+  // never captured at import: it can be empty at boot and grow later.
+  const CATALOG = currentCatalog();
+  // B-39: data-driven, never literal ids — the first two offerable catalog
+  // landmarks (today's seed: home, work), or the 'new' pseudo-landmark when
+  // the catalog has none, so a blank install opens on new>>new: the free
+  // ride, which needs no catalog at all.
+  const [from, setFrom] = useState(() => defaultEndpoints(currentCatalog()).from ?? NEW_ID);
+  const [to, setTo] = useState(() => defaultEndpoints(currentCatalog()).to ?? NEW_ID);
   // §8a route pick (Nathan 2026-08-16, re-confirmed 2026-08-18): only asked
   // when the way has >1 ratified route. Stored WITH its wayId so a pick can
   // never leak onto a different way when START / GOING TO change — a stale
