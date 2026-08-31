@@ -9,13 +9,17 @@
 import type { Catalog, GateSet, Landmark, Route, Way } from './types.ts';
 import { CATALOG_SCHEMA_VERSION } from './types.ts';
 
-/** Metres between two lat/lon, flat-earth at Leuven's latitude (±0.1% here). */
+/** Metres between two lat/lon, equirectangular approximation using the pair's
+ * own mean latitude (not a hardcoded constant) — good enough at
+ * landmark/route scale anywhere on Earth. Same approach as
+ * ui/routeMapGeo.ts's metresBetween; that one already did this correctly. */
 export function metresBetween(
   a: { lat: number; lon: number },
   b: { lat: number; lon: number },
 ): number {
   const dy = (a.lat - b.lat) * 111320;
-  const dx = (a.lon - b.lon) * 111320 * Math.cos((50.87 * Math.PI) / 180);
+  const meanLat = (a.lat + b.lat) / 2;
+  const dx = (a.lon - b.lon) * 111320 * Math.cos((meanLat * Math.PI) / 180);
   return Math.hypot(dx, dy);
 }
 
