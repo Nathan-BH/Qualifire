@@ -6,7 +6,7 @@
  */
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import * as FileSystem from 'expo-file-system/legacy';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { setEarconsEnabled } from '../location';
 import { createExpoFsAdapter } from '../storage/expoFsAdapter';
 import { USER_CATALOG_FILE } from '../store/catalogStore';
@@ -159,7 +159,7 @@ export default function SettingsScreen() {
   const { t, mode, toggleMode } = useTheme();
   const { s, set } = useSettings();
   return (
-    <View style={{ flex: 1, padding: 16 }}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
       <Text style={[st.h2, { color: t.textDim }]}>APPEARANCE</Text>
       <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
         <Row label="Theme" hint="the race surface follows it" t={t}>
@@ -231,7 +231,7 @@ export default function SettingsScreen() {
         Saved on the phone and restored on launch. A corrupt file falls back to
         these defaults rather than blocking the app.
       </Text>
-    </View>
+    </ScrollView>
   );
 }
 

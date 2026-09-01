@@ -1133,15 +1133,6 @@ export default function RecordScreen({
               </Text>
             </>
           ) : null}
-          <Text style={styles.sub}>
-            {freeRide
-              ? 'free ride — gates from your known routes fire as you cross them; sector times are saved under "free rides", separate from your route history'
-              : !way
-                ? 'no route known for this pair yet — the ride records, but nothing is scored'
-                : ghostCount > 0
-                  ? `${ghostCount} rides found — you are racing ${ghostCount} ghosts`
-                  : 'no history on this way yet — nothing to race'}
-          </Text>
         </View>
         {lastSummary ? (
           <Text style={styles.sub}>
