@@ -6,7 +6,7 @@
     * When I pressed record and went to the start screen there was also no live map visible >> add ASAP
   * After pressing start the map finally appeared with a blue moving dot.
 
-    * I took the road from home to work dry and saw nl yellow line which is good but I saw at some points along my route on the map some black circles, which I believe where around where my gates used to be ? is this a mistake or whats the purpose of that ?
+    * I took the road from home to work dry and saw nl yellow line which is good but I saw at some points along my route on the map some black circles, which I believe where around where my gates used to be ? is this a mistake or whats the purpose of that ? Anyways they should not be there as this is a true virgin app and should be usuable all around the world by anyone.
     * What would be better is to colour the line behind me solid yellow as I ride, this way you really feel like you are setting the road for the first time
   * Upon stopping I could correctly choose where I started + stopped so I added Home and Work
 
@@ -41,7 +41,7 @@
 
   * The RIDES tab is really bad, when pressing a ride it should open properly in full screen as like a subtab ?? (not sure what to call it; similarly to how pressing RECORD brings you to a new place, the START screen. We should use that more so it feels like a real app that brings you to different places)
 
-    * Then you can get full ride information, the trace on the map, the gates, the sectors, export function, set as reference function, discard, ignore from ranking, and more. 
+    * Then you can get full ride information, the trace on the map, the gates, the sectors, export function, set as reference function, discard, ignore from ranking, and more.
   * The RESULTS tab is also not good, its function is weird, it shows random stuff instead like last ride together with random personal bests, does not make sense.
 
     * When a ride finished and is stopped, lets bring people to a proper screen where they can see their trace, sectors again, and all the necessary options to save, set as reference, discard,delete if they want before moving on.
@@ -54,5 +54,5 @@
 
       * Lets think about if its best to have It already in a fixed final form (visally more gaps) to be filled up along
       * Or have it very thight and it expands as more things get added ?
-  * 
+  * also if BRIEF-sector-coloured-trail-p1 still has not be implemented from main branch, I also want it here. I want the sectors coloured instead of the gates!
 
