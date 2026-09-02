@@ -1297,7 +1297,7 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
     paddingVertical: 10,
   },
   cancelBarText: { color: colors.amber, fontSize: 13, fontWeight: '700', letterSpacing: 1 },
-  readout: { alignItems: 'center', gap: 6 },
+  readout: { alignSelf: 'stretch', alignItems: 'center', gap: 6 },
   appTitle: {
     color: t.text,
     fontSize: 19,
