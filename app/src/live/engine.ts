@@ -34,20 +34,23 @@
  *    never blocks an anchored leader — so EveningA/EveningB and Morning/
  *    MorningB still hard-lock at ~400 m exactly as before cycle 024, even
  *    with 16 more candidates running.
- *  - PICK-BIASED lock-then-verify: the RECORD-tab route pick (§8a) is a
- *    HINT, never a shortcut on the 400 m evidence rule. Once the leader has
- *    >=400 m of advance but a same-corridor rival still blocks a clean
- *    margin, the pick's own candidate — if it is the leader or a blocker
- *    that itself has >=400 m — gets a SOFT lock: it is displayed and scored
- *    like a real lock (LiveEngineState.lockKind='soft'), but every candidate
- *    keeps running underneath it. If the pick's candidate goes on to clear
- *    the margin, it's promoted to VERIFIED with no second lock event. If a
- *    DIFFERENT candidate instead pulls >=200 m ahead of the soft pick, the
- *    engine SWITCHES to it (re-evaluated fresh: verified if that candidate
- *    itself has no blockers, soft otherwise) — the ridden road always wins
- *    over the pick, never the reverse. finalize() (called once at ride end)
- *    recovers a route from the FINISH gate when neither a verified nor a
- *    soft lock ever settled, or promotes a still-soft lock to 'finalized'.
+ *  - HARD PICK lock-then-verify (Nathan 2026-08-29, superseding cycle 024's
+ *    pick-as-hint): the RECORD-tab route pick (§8a) is the ONLY route a
+ *    picked ride can ever lock. Once the pick's own candidate has >=400 m of
+ *    corridor-verified advance it gets a SOFT lock: displayed and scored
+ *    like a real lock (LiveEngineState.lockKind='soft'), every candidate
+ *    still running underneath. If it goes on to be the unblocked leader it
+ *    is promoted to VERIFIED with no second lock event. The engine NEVER
+ *    switches to a different candidate, however far ahead one pulls — the
+ *    rider leaving the picked road is scored as missed sectors on the pick,
+ *    never as a silent reassignment to another named route. finalize()
+ *    (called once at ride end) settles only the pick's candidate: from its
+ *    FINISH gate if it completed, by promoting a still-soft lock otherwise,
+ *    or — if the pick never earned even a soft lock — leaves the ride
+ *    unmatched. With NO pick, finalize() recovers whichever candidate
+ *    completed its own route — every gate accounted for AND >=400 m of
+ *    corridor-verified advance before its FINISH gate, so an arming skip
+ *    alone never counts (longest advance wins).
  *    A VERIFIED lock never unlocks or switches (today's invariant, unchanged).
  *
  * Advance is CORRIDOR-VERIFIED travel only: a D-016(a) re-acquisition jump
@@ -67,9 +70,10 @@
  *    deltas arrive with the benchmark work, not fake numbers here.
  *
  * Buzz (D-019): unchanged mechanism (gateFires delta, src/location/index.ts).
- * Under a soft lock the buzzes are the soft candidate's own fires; a later
- * switch rebuilds sectors but past buzzes are never "taken back" — a gate WAS
- * physically crossed on the shared road, buzz or no eventual lock.
+ * Under a soft lock the buzzes are the soft candidate's — the pick's — own
+ * fires, and the pick is never switched away from, so a buzz always belongs
+ * to the route that stays on screen; if the soft lock is never promoted the
+ * buzzes still stand — a gate WAS physically crossed on that road.
  *
  * D-023 (raw forever): everything here is DERIVED and in-memory only; nothing
  * is persisted. The ride JSONL stays untouched.
@@ -202,8 +206,9 @@ export interface TrackSpec {
 
 export interface EngineStartOptions {
   /** the RECORD-tab route pick (a TrackSpec id), or null/omitted for
-   * auto-detect only — never a shortcut on the 400 m evidence rule, only a
-   * tie-breaking hint once that evidence exists (see the file header). */
+   * auto-detect only. A pick is a HARD lock: the only route this ride can
+   * settle on, once its own 400 m of corridor evidence exists (see the file
+   * header). */
   pickId?: string | null;
   /** 'route' (default) = today's lock/verify machinery. 'free' (WP-B) = every
    * gate crossed by any candidate fires and counts, no lock ever settles —
@@ -216,8 +221,9 @@ export interface EngineStartOptions {
 }
 
 /** Raw engine events for the GPX+ sidecar: emitted only for the currently
- * displayed (soft or verified) candidate — at each lock/switch, that
- * candidate's pre-lock history is replayed. */
+ * displayed (soft, verified or finalized) candidate — at its one lock event,
+ * that candidate's pre-lock history is replayed (a soft->verified promotion
+ * or a soft->finalized relabel emits nothing new). */
 export type EngineEvent =
   | {
       type: 'lock';
@@ -294,6 +300,11 @@ export interface LiveEngineState {
    * both-non-estimated crossing pair on the SAME candidate — raw only, never
    * coloured (D-013: no comparable history for a free ride by construction). */
   freeSectors: { routeId: string; index: number; rawS: number }[];
+  /** true once ANY still-running candidate has anchored (joined at its own
+   * start — see ANCHOR_M). Display-only: RecordScreen's status line says
+   * "writing history" instead of "detecting route…" while this is false —
+   * a "nothing known recognised so far" indicator, never a verdict. */
+  anyAnchored: boolean;
 }
 
 interface Candidate {
@@ -572,7 +583,32 @@ export class LiveEngine {
   finalize(): void {
     if (this.mode === 'free') return; // nothing to do — see the file header
     if (this.lockKind === 'verified') return; // nothing to do
-    const finished = this.cands.filter((c) => c.det.nextGateIndex >= c.gates.length);
+    // "Completed its own route" needs BOTH every gate accounted for AND
+    // >= LOCK_MIN_ADVANCE_M of corridor-verified advance BEFORE its FINISH
+    // gate — the same 400 m evidence rule every live lock obeys, measured up
+    // to the gate that defines completion. nextGateIndex alone is not
+    // evidence: D-016(b) arming resolves every gate a candidate's FIRST fix
+    // already lies past, so a ride that merely STARTS near a route's far end
+    // (2026-09-01 ride 2: Work->Home ridden against the only catalog route,
+    // Home->Work) skips all five gates on fix #1 — nextGateIndex ===
+    // gates.length before a metre was ridden. `baseS` is the chainage this
+    // candidate's CURRENT projector was seeded at (carried forward past any
+    // discounted re-acquisition jump), so FINISH - baseS is the advance the
+    // engine watched before the finish line (a post-FINISH jump only makes
+    // it stricter): <= 0 for the ride-2 artifact, and never satisfiable by
+    // riding a route's polyline tail past FINISH (EveningB's runs 601 m — a
+    // bare `adv >= 400` would count it). NOT `anchored`: the cycle 023 retry
+    // re-seeds the projector wherever the first good fix lands and resets
+    // `anchored`, and forward-only projection can never re-anchor from past
+    // ANCHOR_M — that guard (WP-A, 447c2ba) threw away gate-verified
+    // finishes whose first ~400 m had poor accuracy (2026-09-02 Inspect).
+    // Under a RECORD-tab pick (hard lock, Nathan 2026-08-29) only the pick's
+    // own candidate can ever be settled — another candidate having finished
+    // its own route is never a reason to reassign the ride.
+    const finished = this.cands.filter((c) =>
+      c.det.nextGateIndex >= c.gates.length &&
+      c.baseS !== null && c.gates[c.gates.length - 1] - c.baseS >= LOCK_MIN_ADVANCE_M &&
+      (this.pick === null || c.track === this.pick));
     if (finished.length === 0) {
       // Nothing completed its own route. A still-soft lock's display already
       // stood — just relabel it as settled. No pick/never-anchored-anywhere
@@ -596,17 +632,17 @@ export class LiveEngine {
     this.pickHonoured = this.pick !== null && this.pick === winner.track;
     this.cands = [winner];
     if (!alreadyDisplayed) {
-      // Establishing a NEW display target at ride end (nothing was locked
-      // before, or a different candidate was soft-locked): same replay
-      // sequence a live lock/switch uses.
+      // Establishing a NEW display target at ride end: nothing was locked
+      // before (under a pick the only settleable candidate IS the soft one,
+      // so this branch is the no-pick, never-locked path). Same replay
+      // sequence a live lock uses.
       this.phase = 'locked';
-      // Cycle 024 B1 fix: same stale-lap hazard as commitLock() above, and
-      // the exact path the adversarial repro hit — a soft lock's OWN FINISH
-      // firing mid-ride (recompute() scoring & freezing phase='finished' for
-      // THAT candidate) is precisely what leaves `winner` different from
-      // `this.locked` here. Without this reset, recompute() below silently
-      // keeps the old candidate's already-scored lap under the new winner's
-      // name (D-025/D-030: an uncaveated real number that was never earned).
+      // Cycle 024 B1 fix, kept defensively: a stale `this.lap` from a
+      // different, previously displayed candidate must never survive under
+      // the winner's name (D-025/D-030: an uncaveated real number that was
+      // never earned). Since the hard pick (Nathan 2026-08-29) no path
+      // reaches here with a different candidate displayed, so this is a
+      // no-op guard — cheap, and the invariant it protects is worth stating.
       this.lap = null;
       const atT = this.tBuf.length > 0 ? this.tBuf[this.tBuf.length - 1] : 0;
       this.emitEvent({
@@ -666,6 +702,7 @@ export class LiveEngine {
       mode: this.mode,
       freeCrossings: [...this.freeCrossings],
       freeSectors: [...this.freeSectors],
+      anyAnchored: this.cands.some((c) => c.anchored),
     };
   }
 
@@ -716,13 +753,16 @@ export class LiveEngine {
     return best;
   }
 
-  /** Steps 2-5 of the anchored-rule / pick-bias lock algorithm (cycle 024
-   * WP-D2, B-65 ruling — see the file header for the full design). Runs every
-   * fix while lockKind !== 'verified'; owns the none -> soft -> verified
-   * state machine and mid-ride switches. The 400 m evidence rule is never
-   * shortcut: no lock of any kind fires before some candidate has >=400 m of
-   * corridor-verified advance, and a soft lock can only ever be corrected
-   * TOWARD the route with 200 m more measured advance. */
+  /** The lock rule (cycle 024 WP-D2 anchored rule + the hard pick, Nathan
+   * 2026-08-29 — see the file header for the full design). Runs every fix
+   * while lockKind is 'none' or 'soft'. With a pick it owns none -> soft ->
+   * verified for the PICK's candidate only; with no pick, none -> verified
+   * for the unblocked leader. There are no mid-ride switches: the displayed
+   * candidate never changes once set. The 400 m evidence rule is never
+   * shortcut: no lock of any kind fires before the candidate being locked
+   * has >=400 m of corridor-verified advance, and verified additionally
+   * needs it to be the leader with no blocking rival inside the 200 m
+   * margin (an unanchored rival never blocks an anchored leader). */
   private evaluateLockState(tSec: number, accuracyM: number | undefined, poorNow: boolean): void {
     const lead = this.pickLeader();
     if (!lead || lead.adv < LOCK_MIN_ADVANCE_M) return;
@@ -736,48 +776,42 @@ export class LiveEngine {
       return c.anchored || !lead.anchored;
     });
 
-    if (blockers.length === 0) {
-      // Clear evidence at this instant: verified lock. This one branch covers
-      // three cases uniformly — a fresh lock (today's exact behaviour), a
-      // soft -> verified PROMOTION of the SAME candidate (rule 5a: commitLock
-      // below emits no second lock event when the target hasn't changed), and
-      // a SWITCH straight to verified on a different candidate (the ridden
-      // route wins over a soft pick that turned out wrong).
-      this.commitLock(lead, 'verified', tSec, accuracyM, poorNow);
-      return;
-    }
-
-    if (this.lockKind === 'none') {
-      // Never a shortcut: the pick only ever gets a SOFT lock, and only once
-      // ITS OWN candidate — as leader, or as a blocker that itself cleared
-      // 400 m — is part of the tied evidence.
-      if (this.pick === null) return; // no pick: today's exact behaviour, wait for the margin
+    if (this.pick !== null) {
+      // HARD PICK (Nathan 2026-08-29: "what you pick should stay locked until
+      // the end"): the RECORD-tab pick's own candidate is the ONLY candidate
+      // this ride can ever lock. Soft once ITS OWN corridor-verified advance
+      // reaches 400 m; promoted to verified once it is the unblocked leader
+      // (same target => commitLock emits no second lock event); never
+      // switched away from. A rival pulling ahead is not evidence for a
+      // different route — it means the rider left the picked one, and
+      // finalize() then scores the pick (partial sectors, honestly missed)
+      // or leaves the ride unmatched if the pick never earned even a soft
+      // lock. The 400 m evidence rule is unchanged, merely measured on the
+      // pick's own candidate.
       const pickCand = this.cands.find((c) => c.track === this.pick);
-      if (!pickCand) return;
-      const eligible = pickCand === lead || (pickCand.adv >= LOCK_MIN_ADVANCE_M && blockers.includes(pickCand));
-      if (eligible) this.commitLock(pickCand, 'soft', tSec, accuracyM, poorNow);
+      if (!pickCand || pickCand.adv < LOCK_MIN_ADVANCE_M) return;
+      if (pickCand === lead && blockers.length === 0) {
+        this.commitLock(pickCand, 'verified', tSec, accuracyM, poorNow);
+      } else if (this.lockKind === 'none') {
+        this.commitLock(pickCand, 'soft', tSec, accuracyM, poorNow);
+      }
       return;
     }
 
-    // lockKind === 'soft': promotion (5a) is already handled above via the
-    // blockers-empty branch, so blockers is guaranteed non-empty here — any
-    // switch from this branch can only land back in 'soft'. Switch whenever
-    // ANY other candidate has pulled >=200 m ahead of the current soft pick,
-    // regardless of whether the new leader happens to be the pick — once the
-    // pick is provably behind, displaying it would no longer be honest.
-    const cur = this.locked!;
-    if (lead !== cur && lead.adv - cur.adv >= LOCK_MARGIN_M) {
-      this.commitLock(lead, 'soft', tSec, accuracyM, poorNow);
-    }
+    // No pick: today's exact behaviour — a verified lock the instant the
+    // leader has 400 m of advance and no blocker inside the 200 m margin;
+    // otherwise keep waiting. A soft lock only ever exists under a pick, so
+    // there is no soft state to promote or switch from here.
+    if (blockers.length === 0) this.commitLock(lead, 'verified', tSec, accuracyM, poorNow);
   }
 
   /** Settle on `cand` as the displayed candidate at kind `kind`. A no-op
    * target change (promotion of the already-displayed soft candidate) emits
    * no new lock event and replays nothing — its own fires have been emitted
    * and recomputed continuously since it became the soft pick. A NEW target
-   * (a fresh lock, or a switch away from a different soft pick) emits one
-   * lock event and replays that candidate's kept-but-not-yet-emitted events,
-   * exactly as today's single lock path did. */
+   * (the ride's one fresh lock — there are no switches under the hard pick)
+   * emits one lock event and replays that candidate's kept-but-not-yet-
+   * emitted events, exactly as today's single lock path did. */
   private commitLock(
     cand: Candidate, kind: 'soft' | 'verified', tSec: number,
     accuracyM: number | undefined, poorNow: boolean,
@@ -789,16 +823,16 @@ export class LiveEngine {
     this.pickHonoured = this.pick !== null && this.pick === cand.track;
     if (kind === 'verified') this.cands = [cand]; // drop the rest, exactly today's behaviour
     if (isNewTarget) {
-      // Cycle 024 B1 fix: `this.lap` is written once by recompute() and never
-      // cleared (D-022's "score once" rule for a SINGLE candidate's own
-      // FINISH). Re-pointing the display at a DIFFERENT candidate must not
-      // let that stale lap survive — otherwise a switch away from a
-      // candidate whose own FINISH already fired (e.g. a soft lock on a
-      // shorter prefix route, later switched off) would keep showing the
-      // OLD candidate's scored time under the NEW candidate's name. phase is
-      // already forced to 'locked' above (out of any prior 'finished'), so
-      // recompute() below is free to re-score from the new candidate's own
-      // events once (and only once) its own FINISH fires.
+      // Cycle 024 B1 fix, kept defensively: `this.lap` is written once by
+      // recompute() and never cleared (D-022's "score once" rule for a
+      // SINGLE candidate's own FINISH). Re-pointing the display at a
+      // DIFFERENT candidate must never let a stale lap survive under the new
+      // name. Since the hard pick (Nathan 2026-08-29) the displayed
+      // candidate is never switched, so a new target here is always the
+      // ride's FIRST lock with `this.lap` still null — the reset is a no-op
+      // that states the invariant. phase is already forced to 'locked'
+      // above, so recompute() below scores from this candidate's own events
+      // once (and only once) its own FINISH fires.
       this.lap = null;
       this.emitEvent({
         type: 'lock', track: cand.track, atChainageM: cand.proj.chainage, atT: tSec, kind, pick: this.pick,

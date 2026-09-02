@@ -51,7 +51,7 @@ function finishedState(track: string, movingS: number): LiveEngineState {
       [doneSector(movingS / 4), doneSector(movingS / 4), doneSector(movingS / 4), doneSector(movingS / 4)],
     currentSector: null, lastDone: 4,
     lap: { rawS: movingS, stoppedS: 0, movingS, estimated: false },
-    gateFires: 5, fixesFed: 900, onRoute: true,
+    gateFires: 5, fixesFed: 900, onRoute: true, anyAnchored: false,
   } as LiveEngineState;
 }
 

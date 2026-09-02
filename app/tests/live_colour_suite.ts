@@ -45,7 +45,7 @@ function stateWith(over: Partial<LiveEngineState>): LiveEngineState {
   return {
     phase: 'finished', track: 'Morning', sectors: [], currentSector: null, lastDone: 4,
     lap: { rawS: 900, stoppedS: 20, movingS: 880, estimated: false },
-    gateFires: 5, fixesFed: 900, onRoute: true,
+    gateFires: 5, fixesFed: 900, onRoute: true, anyAnchored: false,
     ...over,
   } as LiveEngineState;
 }
@@ -260,28 +260,45 @@ test('D-045.2: the live tower chip field is 10, not 11, on a route with 10 previ
 
 // ============================================================ cycle 024 (WP-D2)
 
-test('cycle024: pick wrong — a finished ride ranks against the RIDDEN route\'s ghosts, never the pick\'s', () => {
+test('cycle024: pick wrong — a HARD pick that never locks records NOTHING: the ride joins neither the pick\'s nor the ridden route\'s history', () => {
+  // Nathan 2026-08-29 ("what you pick stays locked until the end"; WP-A):
+  // a wrong pick is never rescued onto the road actually ridden. This test
+  // used to assert the opposite (cycle 024 pick-as-hint: the ride ranked
+  // against EveningB's ghosts). Under the hard pick, clean_eveningb with
+  // pick=EveningA ends UNMATCHED — EveningA was never ridden, so the pick's
+  // own candidate never earns even a soft lock (measured: track null,
+  // lockKind 'none', zero engine events; live_suite.ts's sibling test covers
+  // the engine side). rememberRide() then treats the unmatched finish exactly
+  // like an abort: `last` cleared, nothing pushed into the comparison window.
+  // The cost of a wrong pick is that ride's history — NEVER a lap credited
+  // to EveningB (D-025) and NEVER one invented for EveningA.
   resetRecordedForTests();
   const f = loadFixture('clean_eveningb');
   const engine = new LiveEngine(catalogTrackSpecs());
   engine.start({ pickId: 'EveningA' });
+  const ghostsABefore = ghostsFor('EveningA').length;
+  const ghostsBBefore = ghostsFor('EveningB').length;
+  const lapsBBefore = JSON.stringify(lapValues('EveningB'));
   for (let i = 0; i < f.fixes.t.length; i++) engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
   engine.finalize();
-  rememberRide(engine.getState());
+  const st = engine.getState();
+  assert(st.track !== 'EveningB', 'a hard pick of EveningA must never end up displaying EveningB');
+  assert(st.track === null,
+    `final track ${st.track}, want null — if the pick now soft-locks on the shared EveningA/EveningB prefix, revisit this test together with live_suite.ts's "pick wrong" case`);
+  assert(st.pick === 'EveningA' && !st.pickHonoured, `pick ${st.pick}, pickHonoured ${st.pickHonoured}`);
+  rememberRide(st);
 
-  const recorded = getLastRide();
-  assert(recorded !== null && recorded.routeId === 'EveningB',
-    `getLastRide().routeId = ${recorded?.routeId}, want EveningB (the ridden route, not the EveningA pick)`);
-
-  const rideId = `session:${recorded!.atMs}`;
-  assert(
-    !ghostsFor('EveningA').some((g) => g.rideId === rideId),
-    'the wrongly-picked route ghosted a ride that was never actually ridden on it',
-  );
-  assert(
-    ghostsFor('EveningB').some((g) => g.rideId === rideId),
-    'the ridden route did not ghost its own just-recorded ride',
-  );
+  const last = getLastRide();
+  assert(last === null,
+    `getLastRide() = ${JSON.stringify(last)}, want null — an unmatched hard-pick ride is not a Result-tab lap`);
+  assert(recordedResults().length === 0,
+    `recordedResults().length = ${recordedResults().length}, want 0 — nothing rankable may be recorded under any route`);
+  assert(ghostsFor('EveningA').length === ghostsABefore,
+    'the wrongly-picked route ghosted a ride that was never actually ridden on it');
+  assert(ghostsFor('EveningB').length === ghostsBBefore,
+    'the ridden route ghosted a ride the hard pick says was never scored against it');
+  assert(JSON.stringify(lapValues('EveningB')) === lapsBBefore,
+    'EveningB\'s lap history changed — a wrong pick must not be silently reassigned to the ridden road');
 
   resetRecordedForTests();
 });

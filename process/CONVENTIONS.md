@@ -95,6 +95,22 @@ would be expensive to reverse; the same question has come up twice with no resol
 there's genuinely nothing left to do without his input. Otherwise decide and keep moving —
 he can always override.
 
+**How to ask (standing convention, added 2026-09-02 at Nathan's request):** collect every
+open question for a cycle in one `QUESTIONS-FOR-NATHAN.md` file inside that cycle's folder
+(`cycles/<cycle-name>/QUESTIONS-FOR-NATHAN.md`) — never only in chat, where it's easy to lose
+track of and impossible for a different session to see. Model it on `main`'s
+`cycles/cycle-025-briefs/QUESTIONS-FOR-NATHAN.md`: a short intro, a "ready to execute now — no
+answer needed" section so it's obvious what isn't blocked, then one numbered question per
+block (tied to the WP file it blocks), each ending in a blank `**Answer:**` line for Nathan to
+type into directly, then optional/non-blocking questions, then genuinely-not-yet-answerable
+bigger decisions kept separate so they don't get answered prematurely. Nathan answers inline
+in the file — in this chat, a fresh chat, or entirely off-hours — and whoever picks the cycle
+up next reads the answers straight from it rather than re-asking. When an Execute pass hits a
+genuine stop-on-ambiguity (see "Model tiers" above) that turns out to be a real, undecided
+product question rather than something a fresh Plan pass can rule on itself, it goes into this
+file too, not just into the chat transcript. Nothing here is a decision until it's folded into
+`STATE.md`/`OPEN-ITEMS.md` — the questions file is the collection point, not the record.
+
 ## How work actually starts
 
 Nathan asks in chat — "keep going", "build B-36", a plain description of what he wants.

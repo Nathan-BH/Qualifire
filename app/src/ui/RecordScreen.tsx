@@ -64,6 +64,13 @@ import { useTheme } from './themeContext';
  * enough that the carousel is not effectively disabled.] */
 const PIN_MS = 20000;
 
+/** Piece 3 (Nathan 2026-09-01, ride 2): fixes fed before "detecting route…"
+ * gives way to "writing history" when no candidate has anchored at its own
+ * start. A candidate that IS going to anchor does so on its first on-corridor
+ * fix within ANCHOR_M of its start, so a few fixes of grace only avoids a
+ * flash on the very first tick. [ASSUMPTION — tune on device.] */
+const WRITING_HISTORY_AFTER_FIXES = 5;
+
 /** OPEN-ITEMS item 2: does the just-finished unlocked ride warrant the STOP
  * naming offer, and as what? Reads the ride's raw JSONL (the only record of
  * where it went) and drafts against the runtime catalog. Null on ANY failure
@@ -209,8 +216,9 @@ export default function RecordScreen({
   // running underneath (D-042: raw time is the truth; no engine or location
   // changes happen here).
   const [pauseMenu, setPauseMenu] = useState(false);
-  // Start flow (§21): where from, where to. Detected-or-picked; the ride still
-  // scores against whatever road is actually ridden (§8a: the pick is intent).
+  // Start flow (§21): where from, where to. Detected-or-picked. The §8a route
+  // pick is a HARD lock (Nathan 2026-08-29): the picked route is the only one
+  // this ride can ever score against — see live/engine.ts's file header.
   // B-39 (empty-seed install path): the runtime catalog — shipped seed plus
   // this phone's own additions (store/catalogStore.ts) — read per render,
   // never captured at import: it can be empty at boot and grow later.
@@ -224,8 +232,9 @@ export default function RecordScreen({
   // §8a route pick (Nathan 2026-08-16, re-confirmed 2026-08-18): only asked
   // when the way has >1 ratified route. Stored WITH its wayId so a pick can
   // never leak onto a different way when START / GOING TO change — a stale
-  // pair silently falls back to the §8a default. Intent, not truth: the
-  // engine still scores whatever road is actually ridden.
+  // pair silently falls back to the §8a default. A hard lock (Nathan
+  // 2026-08-29): the engine scores this route or nothing — it never
+  // reassigns the ride to the road actually ridden.
   const [routePick, setRoutePick] = useState<{ wayId: string; routeId: string } | null>(null);
   // The pick frozen at START — the pre-lock candidate for the LIVE map. Frozen
   // because `fromId` can drift mid-ride in auto mode (detected landmark goes
@@ -653,8 +662,17 @@ export default function RecordScreen({
         ? `last fix ${lastFixAgeS}s ago — GPS struggling?`
         : 'GPS live';
   const routeLocked = live.phase === 'locked' || live.phase === 'finished';
+  // "Writing history" (Nathan 2026-09-01, ride 2): a few fixes in and no
+  // candidate has anchored at its own start => nothing known is being
+  // recognised so far — say so instead of "detecting route…" for the whole
+  // ride. A "so far" indicator, not a verdict: a later lock replaces it.
+  const writingHistory = live.mode !== 'free' && !routeLocked
+    && live.fixesFed >= WRITING_HISTORY_AFTER_FIXES && !live.anyAnchored;
   // Cycle 024 (WP-D2): a soft lock is displayed and scored, but it is not yet
   // corridor-confirmed — say so. Verified/finalized keep today's wording.
+  // Before the soft lock, under a pick, nothing is being *detected* (hard
+  // pick, Nathan 2026-08-29: the engine waits for the pick's own 400 m) —
+  // name the pick and say so, never imply another route might be found.
   // WP-B: a free ride never locks (phase stays 'detecting' the whole ride) —
   // say so plainly rather than showing "detecting route…" forever.
   const routeLine = live.mode === 'free'
@@ -663,7 +681,9 @@ export default function RecordScreen({
       ? live.lockKind === 'soft'
         ? `${live.track ? routeLabel(live.track) : ''} · route locked (your pick) · verifying${live.onRoute ? '' : ' · off route'}`
         : `${live.track ? routeLabel(live.track) : ''} · route locked${live.onRoute ? '' : ' · off route'}`
-      : rideRouteHint ? `detecting route… · you picked ${routeLabel(rideRouteHint)}` : 'detecting route…';
+      : writingHistory
+        ? (rideRouteHint ? `writing history · not on ${routeLabel(rideRouteHint)} yet` : 'writing history · no known route here')
+        : rideRouteHint ? `${routeLabel(rideRouteHint)} · your pick · confirming…` : 'detecting route…';
   // Cycle 024 (WP-A2, Nathan 2026-08-19): "I don't know what 'fixes' are" —
   // the raw count is gone from every user-facing status line; it still lives
   // in the GPX+ sidecar for diagnostics. recordFlow.ts owns the pure rule so
@@ -1129,7 +1149,7 @@ export default function RecordScreen({
                 ))}
               </View>
               <Text style={styles.sub}>
-                the pick is intent — ride a different road and the ride scores as the road you actually took (§8a)
+                what you pick stays locked until the end — ride a different road and this ride will not be scored as that road (§8a)
               </Text>
             </>
           ) : null}
