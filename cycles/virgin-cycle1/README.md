@@ -23,7 +23,7 @@ or ready to hand to an Execute pass, without losing a day to re-planning.
 | C | Drawable user-created routes (the biggest lever — unblocks D, H, I, K) | Brief written, ready to execute (large) | `WP-C-drawable-user-routes.md` |
 | D | Rider-only map before START / on unmatched rides | **DONE — landed on the device 2026-09-02.** 312 tests, 309 pass, 0 fail, 3 skip (7 new). Pieces A + B taken; WP-N bundled in. On-device visual check still outstanding (no device shell this session). | `WP-D-rider-only-map.md` |
 | F | Post-stop "save as new way" offer for any ride, not just unmatched ones | Brief written, ready to execute | `WP-F-post-stop-reference-offer.md` |
-| J | Breadcrumb trail behind the rider | Brief written, ready to execute | `WP-J-breadcrumb-trail.md` |
+| J | Breadcrumb trail behind the rider | **DONE — landed on the device 2026-09-02.** 326 tests, 323 pass, 0 fail, 3 skip (14 new). Step 3 (route-map guard) was a no-op — WP-D already did it. Fresh inspection found + fixed one minor bug (a stale pre-START position could become trail point 0); everything else held up. On-device visual check still outstanding (no device shell this session). | `WP-J-breadcrumb-trail.md` |
 | L | Start auto-detect as a suggestion, not an override (notes5 N5) | Brief written, ready to execute (small) | `WP-L-start-autodetect-suggestion.md` |
 | E | Virgin manifest gate-leak (bundled gates drawn on new>>new free rides) | Not started — **blocked on Q6** | see `QUESTIONS-FOR-NATHAN.md` |
 | G | Specifications / route variants on an existing Way | Not started — **blocked on Q2** | see `QUESTIONS-FOR-NATHAN.md` |
@@ -32,7 +32,7 @@ or ready to hand to an Execute pass, without losing a day to re-planning.
 | K | Sector-coloured trail, phase 2 (live map) | Not started — blocked on C, plus **Q7** (just needs a yes) | see `QUESTIONS-FOR-NATHAN.md` |
 | M | RECORD setup layout (tight-and-grows vs fixed) | Not started — **blocked on Q5** | see `QUESTIONS-FOR-NATHAN.md` |
 | N | Round gate-tick line-cap ends | **DONE — bundled into WP-D's `routeMapView.tsx` edit, 2026-09-02.** | — |
-| O | DEMO tab: selectable "first ride" (dot + trail being written, no route) / "second ride" (route + gates present, sectors colour as passed) modes | Brief written. **Phase 1 (picker + second-ride mode) ready to execute now**; Phase 2 (first-ride mode) blocked on D + J landing (both briefed, no Nathan decision) | `WP-O-demo-tab-modes.md` |
+| O | DEMO tab: selectable "first ride" (dot + trail being written, no route) / "second ride" (route + gates present, sectors colour as passed) modes | Brief written. **Both phases now ready to execute** — Phase 2 (first-ride mode) was blocked on D + J landing; both landed 2026-09-02 (see their rows), so this is unblocked as of the WP-J pass. Not yet executed — a separate Execute pass should pick this up and update this row/WP-O.md itself. | `WP-O-demo-tab-modes.md` |
 | P | Live map + blue dot on RECORD / START / RACE for user-created routes (the "HomeWork" blank map) | **DONE via WP-D** (this brief's own fix, landed 2026-09-02). HomeWork's on-device acceptance script (§4) still outstanding — no device shell this session. | `WP-P-live-map-user-routes-homework.md` |
 | Q | Delete user-created routes / ways / orphan places from ROUTES (cascading, validated) + "Reset to virgin" in SETTINGS → DATA (moves the storage root aside, keeps settings/theme) — Nathan 2026-09-02 "so I can try the real virgin app again from scratch" | Brief written, ready to execute (medium; Parts A + B can land separately). **Does not and cannot remove the "black circles"** — that is WP-E/Q6, see WP-Q §2.6 and the Q6 addendum | `WP-Q-delete-and-reset.md` |
 | 16 | Gate visibility at zoom, on-device re-check | Not code — on-device visual check, do after C + E land | — |
@@ -47,13 +47,14 @@ works, so answers stay attached to the exact question and any chat can read them
 
 1. Read this README, then `CONTEXT.md`, then `QUESTIONS-FOR-NATHAN.md` (check for any
    answers Nathan has typed in since this was written — that unblocks E/G/H/I/K/M).
-2. Pick an unblocked WP with status "brief written, ready to execute" — B, C, F, J, L, O
-   (Phase 1), Q are all independent of each other and of anything still open (D is done). **Recommended
-   order as of 2026-09-02 evening: D → J → O (both phases) → C** — D is the "no map at all"
-   fix Nathan has asked for twice (WP-P), J needs D's guard change landed once, and O Phase 2
-   then gives him a couch test for both. **C is still the highest-value pick** overall (it
-   unblocks the most follow-on work) but is also the largest; B, D, L, O-Phase-1 are
-   small/quick wins if you want something to land same-day.
+2. Pick an unblocked WP with status "brief written, ready to execute" — B, C, F, L, O
+   (both phases — Phase 2 was blocked on D + J, both now done, see O's row), Q are all
+   independent of each other and of anything still open (D and J are done). **Recommended
+   order as of 2026-09-02 evening: O Phase 2 (couch test for D + J) → C** — D + J are landed,
+   so O Phase 2 (the "first ride" demo mode) is now unblocked and gives Nathan a way to see
+   both without a real ride. **C is still the highest-value pick** overall (it unblocks the
+   most follow-on work) but is also the largest; B, F, L, O-Phase-1 are small/quick wins if
+   you want something to land same-day.
 3. Dispatch a Sonnet **Execute** agent against that WP's brief file, exactly as written — the
    brief already did the Plan-tier thinking. Point it at the actual device app folder this
    time (`device_bash` was down all of 2026-09-02's session, forcing a cloud-side git mirror
@@ -118,3 +119,31 @@ If that comes back clean, rebuild/reload and check (per WP-D §4 / WP-P §4):
    line, ticks, and now has ROUND tick ends instead of flat/butt ones (WP-N).
 5. Settings → live map OFF/ON still behaves as before on every phase.
 6. Routes/Result screens (browse, no rider) unchanged — still blank when nothing is picked.
+
+## Testing WP-J today (breadcrumb trail — already on your phone's repo)
+
+Files changed: `app/src/ui/trailModel.ts` (new), `app/src/ui/routeMapView.tsx`,
+`app/src/ui/RecordScreen.tsx`, `app/tests/trail_suite.ts` (new), `app/tests/run.ts`. Nothing
+else touched — Step 3 of the brief (the route-map guard) turned out to be a no-op because WP-D
+already landed that exact change earlier the same day (see WP-P §3.2 point 1 and WP-J's own
+status line). `device_bash` was still down this session, so the test suite and a strict
+standalone type-check of `trailModel.ts` ran in the cloud container instead of on your machine:
+
+```
+cd app
+node --experimental-strip-types tests/run.ts   # expect: 326 tests: 323 pass, 0 fail, 3 skip
+./node_modules/.bin/tsc --noEmit               # not confirmed on a real toolchain this session
+```
+
+If that comes back clean, rebuild/reload and check (per WP-J §4):
+1. Free ride, moving: a solid yellow-on-black-casing line grows behind you with no gap to the
+   dot; standing still adds no blob.
+2. Route ride: a detour off the drawn route still shows the ridden line while OFF ROUTE
+   behaves as before.
+3. HomeWork (or any user-created route with no drawable asset): basemap + dot + trail instead
+   of dot-only — the natural fallback WP-P §3.2 point 1 described.
+4. Zoom 11–18 stays crisp; day/night remount preserves the trail (it's RecordScreen state, not
+   map state); kill/relaunch mid-ride hydrates the trail from the ride file and keeps growing;
+   a new ride starts with an empty trail (START, and after END/DISCARD).
+5. Watch for jank after ~20 minutes of recording — the 5 m/4000-point constants are
+   `[ASSUMPTION — tune on device]` if so.

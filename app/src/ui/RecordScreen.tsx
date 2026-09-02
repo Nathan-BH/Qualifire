@@ -39,6 +39,7 @@ import { isFullscreen, statusItemsFor, type RecordPhase } from './recordFlow';
 import { useTabNav } from './tabNav';
 import RouteMapView from './routeMapView';
 import { metresBetween } from './routeMapGeo';
+import { appendTrailPoint, type TrailPoint } from './trailModel';
 import { useSettings } from './settings';
 import { chipColors, type Tier } from './chips';
 import { fmt, ghostsFor, lapValues, sectorValues, tierFor } from './colourModel';
@@ -246,6 +247,13 @@ export default function RecordScreen({
   // the ride must show the SAME filtered set the engine was actually started
   // with, not whatever from/to happen to read on the (unmounted) setup form.
   const [rideFreeRouteIds, setRideFreeRouteIds] = useState<string[] | null>(null);
+  // WP-J (breadcrumb trail): the rider's own ridden line, accumulated from
+  // the live fix feed below (min-distance decimated — trailModel.ts) and
+  // passed to the RUNNING map only (setup/armed never draw it — nothing
+  // recorded yet). Reset at START, at a discard fold-back, and before the
+  // 'ending' phase flip at END, so a new ride never inherits the last one's
+  // line.
+  const [trail, setTrail] = useState<readonly TrailPoint[]>([]);
 
   // Live status from the location layer.
   useEffect(() => subscribe(setStatus), []);
@@ -276,6 +284,18 @@ export default function RecordScreen({
       lastFixRef.current = { lat, lon };
     }
   }, [status.lastLat, status.lastLon]);
+
+  // WP-J: accumulate the breadcrumb trail from the live fix feed. Bails on no
+  // session (nothing recording), no fix, or a fix that predates this ride's
+  // startedAtMs — the same stale-cached-fix rule fixFlags.ts's `preStart`
+  // uses for the raw JSONL, applied here to the in-memory buffer for the same
+  // reason (a replayed pre-START fix must not draw a phantom leg of trail).
+  useEffect(() => {
+    if (!session) return;
+    if (status.lastLat === null || status.lastLon === null) return;
+    if (status.lastFixMs === null || status.lastFixMs < session.startedAtMs) return;
+    setTrail((prev) => appendTrailPoint(prev, status.lastLat as number, status.lastLon as number));
+  }, [status.lastLat, status.lastLon, status.lastFixMs, session]);
 
   // LAYOUT §2a: the lap chip appears ~1.1 s after the final gate, with the
   // lap earcon — never simultaneously with the sector chip.
@@ -308,6 +328,28 @@ export default function RecordScreen({
         setSession(rec.session);
         setRecoveredKind(rec.restoration);
         setRecovered(true);
+        // WP-J §3 Step 4.4 (recovery hydration): replay the ride's own raw
+        // fixes (the only record, D-023) through appendTrailPoint so the
+        // trail doesn't restart empty after a relaunch mid-ride. Skips
+        // preStart/warmup-flagged fixes, same exclusion the derived
+        // consumers (engine feed, export stats) already apply. Seeds via a
+        // functional update, folding the replay onto whatever the live feed
+        // has already accumulated since mount, rather than overwriting it —
+        // guards the race between this async read and fixes landing live.
+        const rideId = rec.session.rideId;
+        void readRideFixes(rideId).then((fixes) => {
+          if (fixes === null) return;
+          let replayed: readonly TrailPoint[] = [];
+          for (const f of fixes) {
+            if (f.preStart || f.warmup) continue;
+            replayed = appendTrailPoint(replayed, f.lat, f.lon);
+          }
+          setTrail((live) => {
+            let merged = replayed;
+            for (const p of live) merged = appendTrailPoint(merged, p.lat, p.lon);
+            return merged;
+          });
+        });
       } else {
         // Service died (OS kill / battery saver). Offer to finalise.
         Alert.alert(
@@ -402,6 +444,8 @@ export default function RecordScreen({
     // otherwise the map could read stationary for a moment at the very start.
     lastMovedRef.current = null;
     lastFixRef.current = null;
+    // WP-J: a fresh ride must not inherit the previous one's trail either.
+    setTrail([]);
     setPauseMenu(false);
     try {
       const outcome = await ensurePermissions();
@@ -467,6 +511,11 @@ export default function RecordScreen({
       setSession(null);
       setRecovered(false);
       setPauseMenu(false);
+      // WP-J: clear the trail before handing the screen to 'ending' — the
+      // just-finished ride's line must not bleed into the next one's setup/
+      // armed maps (which don't draw a trail anyway, but the state should
+      // read empty the moment this ride is over).
+      setTrail([]);
       setPhase('ending');
       setNaming(draft);
       // The reversed mark waits for the naming card (its close handlers
@@ -623,6 +672,9 @@ export default function RecordScreen({
             setRecovered(false);
             setPauseMenu(false);
             setLastSummary(null);
+            // WP-J: discard folds straight back to setup — the trail dies
+            // with the ride, same as everything else nothing was kept.
+            setTrail([]);
             setPhase('setup');
             try {
               await deleteRide(s.rideId);
@@ -949,6 +1001,7 @@ export default function RecordScreen({
               gatesOnly={live.mode === 'free'}
               crossedGates={live.freeCrossings}
               gateRouteIds={rideFreeRouteIds}
+              trail={trail}
               variant="live"
               liveState={live.phase === 'finished' ? 'finished' : (stationary ? 'stopped' : 'moving')}
               fill

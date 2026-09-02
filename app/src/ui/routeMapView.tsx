@@ -46,6 +46,14 @@
  * when there is one, else sits with no target at all — never the old
  * hardcoded Leuven literal, which was a real-world place unrelated to the
  * rider.
+ *
+ * WP-J (2026-09-02): a `trail` prop draws the rider's own ridden line — a
+ * casing+core polyline styled like the route line, built from RecordScreen's
+ * decimated fix buffer (trailModel.ts) — behind the rider dot. Always
+ * mounted (possibly empty) on the MapLibre rung only; the PNG rung has no
+ * equivalent. This is also the natural fallback on a user-created route with
+ * no drawable asset (the WP-D rider-only case above): basemap + dot + trail,
+ * until WP-C can draw the route itself.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image, LayoutChangeEvent, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -58,6 +66,7 @@ import {
   gateTicksFeatureCollection, metresBetween, nearestOnPath, riderFeature, routeBounds, routeLineFeature,
   sectorSpansFeatureCollection,
 } from './routeMapGeo.ts';
+import { trailLineFeature, type TrailPoint } from './trailModel.ts';
 import { patchMapStyle } from './routeMapStyle.ts';
 import { colors, radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
@@ -171,6 +180,12 @@ type RouteMapProps = {
    * freeRideRouteIds()). undefined/null = every catalog route (the
    * deliberately-unfiltered both-ends-unknown free ride). */
   gateRouteIds?: string[] | null;
+  /** WP-J (breadcrumb trail): the rider's own ridden line, decimated GPS
+   * fixes accumulated by RecordScreen (trailModel.ts). Rendered behind the
+   * rider dot, casing+core styled the same as the route line. Only the
+   * MapLibre rung draws it — the PNG rung has no equivalent (see file
+   * header's rung notes) and is unaffected. */
+  trail?: readonly TrailPoint[];
 };
 
 export default function RouteMapView(props: RouteMapProps) {
@@ -351,6 +366,20 @@ function MapLibreRouteMap(props: RouteMapProps & {
     return feature ? { type: 'FeatureCollection' as const, features: [feature] } : null;
   }, [asset, gatesOnly]);
 
+  // WP-J (breadcrumb trail): always mounted, possibly-empty FeatureCollection
+  // — computed unconditionally, same Rules-of-Hooks reason as routeFC above
+  // (this hook must run before the riderOnly guard below on every render).
+  // "Always mounted, not conditional" matters: maplibre-react-native adds
+  // layers in MOUNT order, not JSX order, so a conditionally-mounted trail
+  // source would mount AFTER the rider source and paint over the dot. An
+  // always-mounted source (empty features when there's nothing to draw yet)
+  // mounts at map-mount time, in JSX order, avoiding that z-stacking bug.
+  const trailFC = useMemo(() => {
+    const tail = props.lat !== null && props.lon !== null ? { lat: props.lat, lon: props.lon } : null;
+    const f = props.trail && props.trail.length > 0 ? trailLineFeature(props.trail, tail) : null;
+    return { type: 'FeatureCollection' as const, features: f ? [f] : [] };
+  }, [props.trail, props.lat, props.lon]);
+
   // WP-D: gatesOnly has no single route asset to bail out on (unchanged). A
   // live surface (showRider) with no asset is now "rider-only" — real tiles
   // + the dot, no route line/ticks — instead of blank; a browse surface (no
@@ -478,6 +507,20 @@ function MapLibreRouteMap(props: RouteMapProps & {
               layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
           </M.GeoJSONSource>
         ) : null}
+        {/* WP-J (breadcrumb trail): the rider's own ridden line, casing+core
+            styled exactly like the route line above (same CASING/colors.neutral,
+            same widths). Always mounted (see trailFC comment above for why —
+            mount-order z-stacking, not JSX order) — an empty FeatureCollection
+            when there's no trail yet, so this source claims its mount slot
+            ahead of the rider dot on every render regardless of `trail`. */}
+        <M.GeoJSONSource key="trail" id="trail" data={trailFC}>
+          <M.Layer id="trail-casing" type="line"
+            paint={{ 'line-color': CASING, 'line-width': 7 }}
+            layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
+          <M.Layer id="trail-core" type="line"
+            paint={{ 'line-color': colors.neutral, 'line-width': 4 }}
+            layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
+        </M.GeoJSONSource>
         {/* Cycle 025: every source carries key === id. MapLibre freezes a child's
             `id` on first render (useFrozenId) and throws "`id` cannot be changed"
             if the same mounted element later gets a different id. The ternary

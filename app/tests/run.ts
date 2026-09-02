@@ -26,6 +26,7 @@ import './recordflow_suite.ts';
 import './elevation_suite.ts';
 import './fixflags_suite.ts';
 import './ridehistory_suite.ts';
+import './trail_suite.ts';
 import { runAll } from './lib.ts';
 
 const { fail } = await runAll();

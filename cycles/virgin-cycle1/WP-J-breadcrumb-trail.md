@@ -1,6 +1,35 @@
-**Status: Brief written 2026-09-02, ready to execute. Not yet built. No decision needed from Nathan. Independent of every other WP; doubles as the live-map fallback on user-created routes until WP-C lands.**
+**Status: DONE. Landed on the device (`app/src/ui/trailModel.ts` new, `app/src/ui/routeMapView.tsx`,
+`app/src/ui/RecordScreen.tsx`, `app/tests/trail_suite.ts` new, `app/tests/run.ts`) on 2026-09-02.
+Test suite: 326 tests, 323 pass, 0 fail, 3 skip (312/309/0/3 post-WP-D baseline + 14 new
+`trailModel` tests). Steps 1, 2 and 4 built as written (5 m/4000-point FIFO trail model,
+always-mounted trail source/layers behind the rider dot, RecordScreen accumulate/reset/pass,
+plus the recommended relaunch-recovery hydration). **Step 3 was a no-op**, per
+`WP-P-live-map-user-routes-homework.md` §3.2 point 1: WP-D (landed earlier the same day) had
+already replaced the `!asset` guard with the `riderOnly` guard, made every `asset!` conditional,
+and turned the gates/gate-ticks source into the three-way ternary Step 3 asked for — verified
+directly against the current `routeMapView.tsx` (not against this brief's own pre-WP-D "current
+state" section) before touching it; no second implementation of that guard was written. `tsc
+--noEmit` against the real tsconfig: only the same known pre-existing environment failure WP-D
+hit (tsconfig extends `expo/tsconfig.base`, unresolvable without `node_modules` — no module
+resolution, no `--jsx`); no new errors reference `trailModel`/`TrailPoint`/`trail` on any
+touched file. `trailModel.ts` additionally verified clean under a standalone strict tsconfig (no
+expo dependency), same approach WP-D used for `cameraTargetFor`. On-device visual checks (§4's
+second paragraph — trail growing behind the dot, no gap to the rider, standing-still/jank
+behaviour, day/night remount, kill/relaunch hydration on a real device) NOT run — no device shell
+this session; see CONTEXT.md's environment notes.**
 **Review doc item: 10. Size: small-medium.**
-**Verified against the mirror at commit `447c2ba`.**
+**Verified against the device tree as staged 2026-09-02; `routeMapView.tsx`/`RecordScreen.tsx`
+mtime 2026-09-02 (post-WP-D).**
+**Fresh-context inspection (2026-09-02, same day) found one real minor defect and fixed it:**
+`RecordScreen.tsx`'s trail-accumulate effect bailed on a stale pre-START fix only when
+`lastFixMs !== null && lastFixMs < startedAtMs` — but WP-D's Piece A nulls `lastFixMs` (while
+keeping the stale `lastLat`/`lastLon`) at `startTracking()`, so the `null` case slipped through
+the guard instead of being caught by it, letting one stale armed-screen position become trail
+point 0 on some starts. Fixed to `lastFixMs === null || lastFixMs < startedAtMs` (coordinator,
+directly — a one-line chore, no re-dispatch). Not headlessly testable; folded into the
+on-device visual checklist above. Everything else the inspector checked (5 m/4000-point FIFO
+correctness, reset-on-discard/restart, relaunch-recovery replay, layer z-order, trail passed
+only to the running map, the Step-3-no-op claim) held up under independent re-verification.
 
 ---
 

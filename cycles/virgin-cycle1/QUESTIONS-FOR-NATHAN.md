@@ -50,7 +50,7 @@ Recommendation: keep the existing ± pad (it's built and glove-friendly), add th
 alternative input on top of the same "select first, then move" model — both coexist. Agree,
 or would you rather the pad go away entirely once scrub exists?
 
-**Answer:**
+**Answer:** alright lets keep the +- pad, but it should still move the gates on a real ride line. Not the straight render I have now.
 
 ### Q2 — `WP-G-specifications-route-variants.md` (route specifications/variants)
 
@@ -59,14 +59,14 @@ are conditions per-*route* (a genuinely new Route under the Way, e.g. "HomeWorkD
 per-*ride* attribute that doesn't create a new Route at all? This decides whether the work is
 medium or a lot larger.
 
-**Answer:**
+**Answer:** Not sure what you mean here. I just think people have freedom to name their rides, and then the rides' name becomes the aggregation of FromToSpec1Spec2...; And the idea is to if everything before Spec2 is the same, then it should recognize it and groupe the ride properly together? So in the RECORD tab, they are together and only ath the Spec2 step the two options appear to differentiate them. Hope this helps.
 
 ### Q4 — `WP-H-ride-detail-screen.md` (RESULTS tab's fate)
 
 Keep RESULTS as a summary-statistics tab, or drop to a 4-tab layout with the new post-stop
 ride-detail screen absorbing its job entirely?
 
-**Answer:**
+**Answer:** Lets drop the results tab entirely.
 
 ### Q5 — `WP-M-record-setup-layout.md` (RECORD setup pill layout)
 
@@ -74,7 +74,7 @@ Tight-and-grows (pills flush-left, wrap, the layout grows naturally as your cata
 — our recommendation, since a fixed "final form" layout would look mostly empty for a
 stranger's first week) or a fixed final-form layout with gaps reserved from day one?
 
-**Answer:**
+**Answer:** Tight and grows, but most importantly add the openmap view back.
 
 ### Q6 — `WP-E-virgin-manifest-leak.md` (bundled gates on a virgin free ride)
 
@@ -101,7 +101,7 @@ scratch" re-test will open with somebody else's gates on the map. That makes thi
 urgent of the open questions for the virgin-test loop. Either option is fine to build; WP-E
 has the plan for both. Full mechanism in `WP-Q-delete-and-reset.md` §2.6.
 
-**Answer:**
+**Answer:** Lets remove everything that's bundled to make the virgin app more realistic. It should only use what is actually made on the phone.
 
 ### Q7 — `WP-K-sector-coloured-trail-phase2.md` (unpause the live-map sector colouring)
 
@@ -110,7 +110,7 @@ your own clarification during the review: this means colouring the *segments bet
 not the gate ticks themselves — you said the gates "should not change colour like they do now
 because it does not make sense, they are gates.")
 
-**Answer:**
+**Answer:** agree, should be in the live racing map + when you popup a ride later in the RIDES tab it should be like that as well. (and maybe add a toggle in the options so people can choose if they rather keep the ride all yellow or have sectors colouring)
 
 ---
 
