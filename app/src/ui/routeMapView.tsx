@@ -34,6 +34,18 @@
  * labels/dimming/course-up above are untouched); dragging or pinching flips
  * `mode` to 'free' so a new GPS fix never yanks the camera back, and a `fill`
  * prop lets the map fill its parent instead of taking a fixed height.
+ *
+ * WP-D (2026-09-02): a THIRD personality, "rider-only" — when there is no
+ * route asset to draw (nothing picked yet, a virgin/empty catalog, or a
+ * route-mode ride that never locked onto a bundled route) a live surface
+ * (`showRider`) still renders real basemap tiles + the rider's blue dot,
+ * instead of returning null. A browse surface (no rider) with no asset still
+ * renders nothing — there is nothing useful to show on Routes/Result without
+ * either a route or a rider. The camera then has no route bounds to fall
+ * back on either: `cameraTargetFor()` (routeMapGeo.ts) follows the live fix
+ * when there is one, else sits with no target at all — never the old
+ * hardcoded Leuven literal, which was a real-world place unrelated to the
+ * rider.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image, LayoutChangeEvent, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -42,7 +54,7 @@ import { cropFor, gateTickPx, offRouteM, projectToPixel, type RouteAsset } from 
 import { currentCatalog } from '../store/catalogStore.ts';
 import { defaultMapRouteId } from '../store/defaultRoute.ts';
 import {
-  allGatesBounds, allGatesFeatureCollection, bearingBetween,
+  allGatesBounds, allGatesFeatureCollection, bearingBetween, cameraTargetFor,
   gateTicksFeatureCollection, metresBetween, nearestOnPath, riderFeature, routeBounds, routeLineFeature,
   sectorSpansFeatureCollection,
 } from './routeMapGeo.ts';
@@ -339,16 +351,20 @@ function MapLibreRouteMap(props: RouteMapProps & {
     return feature ? { type: 'FeatureCollection' as const, features: [feature] } : null;
   }, [asset, gatesOnly]);
 
-  // gatesOnly has no single route asset to bail out on — the !asset guard is
-  // only for the ordinary one-route rung.
-  if (!gatesOnly && !asset) return null;
+  // WP-D: gatesOnly has no single route asset to bail out on (unchanged). A
+  // live surface (showRider) with no asset is now "rider-only" — real tiles
+  // + the dot, no route line/ticks — instead of blank; a browse surface (no
+  // rider) with no asset still has nothing useful to show and stays null.
+  const riderOnly = !gatesOnly && !asset;
+  if (riderOnly && !showRider) return null;
 
   const here = props.lat !== null && props.lon !== null;
   // D-025: off-route reads from the TRUE fix, same call the PNG rung makes.
-  // gatesOnly: no single route to be off (the OFF ROUTE badge below is
-  // suppressed the same way — there is nothing honest to measure against).
-  const off = !gatesOnly && here
-    ? offRouteM(asset!, props.lat as number, props.lon as number) > OFF_ROUTE_M
+  // gatesOnly / riderOnly: no single route to be off (the OFF ROUTE badge
+  // below is suppressed the same way — there is nothing honest to measure
+  // against).
+  const off = !gatesOnly && here && asset
+    ? offRouteM(asset, props.lat as number, props.lon as number) > OFF_ROUTE_M
     : false;
 
   // gatesOnly (WP-B, postdates this WP's brief): still one gate-rings circle
@@ -360,38 +376,28 @@ function MapLibreRouteMap(props: RouteMapProps & {
   const gatesFC = gatesOnly
     ? allGatesFeatureCollection(ASSETS, props.crossedGates, colors.neutral, props.gateRouteIds)
     : null;
-  const gateTicksFC = gatesOnly ? null : gateTicksFeatureCollection(asset!, props.gateColours);
+  const gateTicksFC = !gatesOnly && asset ? gateTicksFeatureCollection(asset, props.gateColours) : null;
   // WP-sector-coloured-trail P1: null unless the caller supplied sector
   // colours AND the asset can honestly be split (path + matching gateIdx —
   // sectorSpansFeatureCollection's own null rule); the plain base line
   // alone then remains, exactly as today.
-  const sectorSpansFC = gatesOnly || !props.sectorColours
-    ? null
-    : sectorSpansFeatureCollection(asset!, props.sectorColours);
-  const bounds = gatesOnly ? allGatesBounds(ASSETS, props.gateRouteIds) : routeBounds(asset!);
-  const boundsTuple: [number, number, number, number] | null = bounds
-    ? [bounds.minLon, bounds.minLat, bounds.maxLon, bounds.maxLat]
+  const sectorSpansFC = !gatesOnly && asset && props.sectorColours
+    ? sectorSpansFeatureCollection(asset, props.sectorColours)
     : null;
+  const bounds = gatesOnly ? allGatesBounds(ASSETS, props.gateRouteIds) : asset ? routeBounds(asset) : null;
 
-  const centre: [number, number] = here
-    ? [props.lon as number, props.lat as number]
-    : bounds
-      ? [(bounds.minLon + bounds.maxLon) / 2, (bounds.minLat + bounds.maxLat) / 2]
-      // Leuven-area fallback: gatesOnly with a genuinely empty filtered
-      // route set (a landmark pair with no ways in that direction yet).
-      : gatesOnly ? [4.68, 50.85] : [asset!.gates[0].lon, asset!.gates[0].lat];
-
-  // 'free' (Cycle 020, after a user drag/pinch): no center/zoom/bounds/bearing
-  // at all, so a new GPS fix never yanks the camera back under the rider.
-  const cameraProps: Partial<CameraStop> = mode === 'free'
-    ? {}
-    : mode === 'fit' && boundsTuple
-      ? {
-        bounds: boundsTuple,
-        bearing: 0,
-        padding: { top: 20, right: 20, bottom: 20, left: 20 },
-      }
-      : { center: centre, zoom: camZoom, bearing: effectiveBearing, pitch: 0, duration: 500 };
+  // WP-D §3.1c: the camera-target rule itself lives in routeMapGeo.ts
+  // (headlessly testable) — this is just wiring the live inputs through.
+  // 'free' (Cycle 020, after a user drag/pinch) is handled inside
+  // cameraTargetFor: no center/zoom/bounds/bearing at all, so a new GPS fix
+  // never yanks the camera back under the rider.
+  const cameraProps: Partial<CameraStop> = cameraTargetFor({
+    mode,
+    here: here ? { lat: props.lat as number, lon: props.lon as number } : null,
+    bounds,
+    zoom: camZoom,
+    bearing: effectiveBearing,
+  });
 
   return (
     <View style={[
@@ -492,7 +498,7 @@ function MapLibreRouteMap(props: RouteMapProps & {
               'circle-stroke-width': 2,
             }} />
           </M.GeoJSONSource>
-        ) : (
+        ) : gateTicksFC ? (
           // WP-E: circles replaced with a short tick perpendicular to the
           // route. Reverted 2026-08-24 (Nathan, live device feedback): the
           // unscored fallback used to be t.textDim (a dim theme-aware grey)
@@ -512,17 +518,19 @@ function MapLibreRouteMap(props: RouteMapProps & {
           // visibility complaint) but thinner and slightly translucent, so a
           // genuinely-earned tier colour (full width, full opacity — any
           // tier, yellow included) still reads as visibly different/bolder.
-          <M.GeoJSONSource key="gate-ticks" id="gate-ticks" data={gateTicksFC!}>
+          // WP-N: line-cap round on both layers, matching the route line
+          // itself (which was already round) — was 'butt' on these two.
+          <M.GeoJSONSource key="gate-ticks" id="gate-ticks" data={gateTicksFC}>
             <M.Layer id="gate-ticks-casing" type="line"
               paint={{ 'line-color': CASING, 'line-width': 5 }}
-              layout={{ 'line-cap': 'butt' }} />
+              layout={{ 'line-cap': 'round' }} />
             <M.Layer id="gate-ticks" type="line" paint={{
               'line-color': ['case', ['has', 'colour'], ['get', 'colour'], colors.neutral],
               'line-width': ['case', ['has', 'colour'], 3, 2],
               'line-opacity': ['case', ['has', 'colour'], 1, 0.6],
-            }} layout={{ 'line-cap': 'butt' }} />
+            }} layout={{ 'line-cap': 'round' }} />
           </M.GeoJSONSource>
-        )}
+        ) : null}
         {showRider && here ? (
           <M.GeoJSONSource key="rider" id="rider" data={riderFeature(props.lat as number, props.lon as number)}>
             {/* WP-E: the rider dot no longer shares colors.neutral with the
@@ -631,7 +639,28 @@ function PngRouteMap(props: RouteMapProps) {
     );
   }
 
-  if (!asset) return null;
+  // WP-D §3.3: mirror the gatesOnly degraded frame above instead of
+  // returning null, for a live surface (showRider) with no route asset —
+  // this rung genuinely cannot draw a basemap without a per-route PNG (no
+  // tiles, no path to project the dot onto), so there is nothing to show but
+  // the frame + a message. Browse surfaces (no rider) still render nothing —
+  // same rule as the MapLibre rung's `riderOnly` guard. No Credit: no image
+  // was drawn, so there is no imagery source to attribute.
+  if (!asset) {
+    if (!showRider) return null;
+    return (
+      <View style={[
+        st.frame,
+        props.fill ? { flex: 1, alignSelf: 'stretch' } : { height: h },
+        { backgroundColor: t.race.bg, borderColor: t.cardBorder },
+        dimmed && st.dimmedFrame,
+      ]}>
+        <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card }]}>
+          map needs the tile map
+        </Text>
+      </View>
+    );
+  }
 
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;

@@ -364,6 +364,56 @@ export function gateTicksFeatureCollection(
   };
 }
 
+// ============================================================ WP-D (rider-only map camera)
+
+/** Pure camera-target rule for the MapLibre rung (WP-D §3.1c), factored out
+ * of the view component so it is headlessly testable. Replaces the old
+ * hardcoded Leuven-area fallback coordinate: when there is genuinely nothing
+ * to target — no fix, no bounds — the camera gets NO target at all (`{}`),
+ * never a real-world place unrelated to the rider. Rule, in order: 'free'
+ * (post-drag/pinch) always `{}` so a new fix never yanks the camera back;
+ * 'fit' with bounds returns the bounds tuple (bearing pinned to 0, the
+ * existing 20px padding); otherwise follow the fix if there is one; else
+ * follow the bounds midpoint if there are bounds (fit-with-null-bounds
+ * degrades here too — same as 'follow' with no fix, useful); else `{}`. */
+export interface CameraTarget {
+  center?: [number, number];
+  zoom?: number;
+  bounds?: [number, number, number, number];
+  bearing?: number;
+  pitch?: number;
+  duration?: number;
+  padding?: { top: number; right: number; bottom: number; left: number };
+}
+
+export function cameraTargetFor(input: {
+  mode: 'follow' | 'fit' | 'free';
+  here: { lat: number; lon: number } | null;
+  bounds: LonLatBoundsBox | null;
+  zoom: number;
+  bearing: number;
+}): CameraTarget {
+  const { mode, here, bounds, zoom, bearing } = input;
+  if (mode === 'free') return {};
+  if (mode === 'fit' && bounds) {
+    return {
+      bounds: [bounds.minLon, bounds.minLat, bounds.maxLon, bounds.maxLat],
+      bearing: 0,
+      padding: { top: 20, right: 20, bottom: 20, left: 20 },
+    };
+  }
+  if (here) {
+    return { center: [here.lon, here.lat], zoom, bearing, pitch: 0, duration: 500 };
+  }
+  if (bounds) {
+    return {
+      center: [(bounds.minLon + bounds.maxLon) / 2, (bounds.minLat + bounds.maxLat) / 2],
+      zoom, bearing, pitch: 0, duration: 500,
+    };
+  }
+  return {};
+}
+
 // ==================================================== WP-sector-coloured-trail P1 (2026-08-26 ruling)
 
 export interface SectorSpanProperties {

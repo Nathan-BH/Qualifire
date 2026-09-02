@@ -1,4 +1,15 @@
-**Status: Brief written 2026-09-02, ready to execute. Not yet built. No decision needed from Nathan. Independent of WP-C, but reads much better after it (every user-created route hits this rung until WP-C lands).**
+**Status: DONE. Landed on the device (`app/src/ui/routeMapView.tsx`, `app/src/ui/routeMapGeo.ts`,
+`app/src/ui/RecordScreen.tsx`, `app/src/location/index.ts`, `app/tests/routemapgeo_suite.ts`) on
+2026-09-02. Test suite: 312 tests, 309 pass, 0 fail, 3 skip (305/302/0/3 baseline + 7 new
+`cameraTargetFor` tests). `tsc --noEmit` run against the real tsconfig: only the known
+pre-existing environment failure (tsconfig extends `expo/tsconfig.base`, unresolvable without
+`node_modules` on this device — no module resolution, no `--jsx`); no new errors on any touched
+file. `cameraTargetFor`/`routeMapGeo.ts` additionally verified clean under a standalone strict
+tsconfig (no expo dependency). Took Pieces A and B (WP-P §2.4's explicit "take both"); bundled
+WP-N's gate-tick line-cap fix into the same `routeMapView.tsx` edit (README's bundling rule).
+WP-P's fix IS this WP, per its own §2.4 — see WP-P's status line. On-device visual checks (WP-D
+§4's second bullet, WP-P §4's acceptance script) NOT run — no device shell this session; see
+CONTEXT.md's environment notes.**
 **Review doc item: 4 (folds in ride-1 item 1). Size: small-medium.**
 **Verified against the mirror at commit `447c2ba`.**
 

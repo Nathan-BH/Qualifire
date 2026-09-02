@@ -30,6 +30,12 @@ collection point.
   now first in the queue) — added 2026-09-02 evening from your two chat messages. WP-O Phase 2
   ("first ride" mode: dot + yellow trail, no route) waits only for WP-D and WP-J to land, not
   for you.
+- **WP-Q** (delete routes/ways/places from ROUTES + "Reset to virgin" in SETTINGS → DATA) —
+  added 2026-09-02 evening from your "delete a routes and landmarks (+ maybe a reset button)"
+  message. Ready to execute, no decision needed. One design default you may want to overrule
+  after using it once: reset **keeps** your settings and theme (reasoning in WP-Q §3.7); say
+  the word and it becomes a one-line change. The "black circles" half of that same message is
+  Q6 below, not WP-Q — see the addendum there.
 
 ## Questions — answer inline, one per block
 
@@ -81,6 +87,19 @@ bundled `Morning` geometry — it is the only route the map can draw until WP-C,
 for the demo now. If your answer here is "strip bundled assets from the virgin profile", the
 DEMO tab then needs its own small bundled fixture (Morning's path + gate indices, no PNG) —
 a follow-on chore, not something that changes your answer or blocks WP-O.
+
+*Addendum 2026-09-02 evening (WP-Q):* you asked for the black circles to go as part of the
+delete/reset work package "if it has not been implemented in a work package brief yet". It has
+— this is that brief, and it is waiting on this answer. Worth knowing before you use WP-Q's
+reset: **resetting to virgin does not remove the circles and cannot.** They come from the
+bundled asset manifest (`assets/routes/routes.json`, the 20 Leuven routes baked into the
+build), not from anything saved on the phone — on a new>>new free ride the map draws
+`routeIds ?? Object.keys(assets)` (`routeMapGeo.ts:112`), i.e. every bundled route's gates,
+without ever consulting the catalog. A factory-fresh virgin install shows them on ride 1; a
+reset puts the phone back to exactly that state. So until Q6 is answered, every "start from
+scratch" re-test will open with somebody else's gates on the map. That makes this the most
+urgent of the open questions for the virgin-test loop. Either option is fine to build; WP-E
+has the plan for both. Full mechanism in `WP-Q-delete-and-reset.md` §2.6.
 
 **Answer:**
 

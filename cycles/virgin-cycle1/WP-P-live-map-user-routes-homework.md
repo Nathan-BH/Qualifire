@@ -1,4 +1,15 @@
-**Status: Brief written 2026-09-02, ready to execute — the implementation IS `WP-D-rider-only-map.md`, unchanged; this WP is the root-cause record for Nathan's "HomeWork shows no map" report, the HomeWork-specific acceptance script, and the landing order it forces. It adds no second implementation of the same lines. No decision needed from Nathan.**
+**Status: DONE via WP-D — landed on the device 2026-09-02 (see `WP-D-rider-only-map.md`'s
+status line for the files and test-suite numbers; this WP added no second implementation of
+the same lines, as designed). Pieces A and B both taken, per this WP's own §2.4 "take both"
+ruling. §2.4's clarification (the running rung hits the same `!asset` guard for a picked user
+route, not just setup/armed) is confirmed correct by the actual code: `RecordScreen.tsx`'s
+running rung passes `gatesOnly={live.mode === 'free'}`, so a picked route (`mode: 'route'`)
+is not gatesOnly and goes through the guard WP-D fixed. On-device acceptance (§4 — cold
+launch, Home→Work pick, START→running, settings toggle, regression) NOT run this session — no
+device shell; see CONTEXT.md's environment notes. §3.4's optional pin was skipped:
+`store_suite.ts`'s existing `defaultMapRouteId` tests (`nothing drawable => null`, `empty
+catalog => null`) already pin the same root cause via the predicate abstraction, per this WP's
+own "skip if an equivalent assertion already exists" escape valve.**
 **Review doc item: 4 (the same item WP-D covers; re-asked by Nathan 2026-09-02: "just add back a live openmap to the record, start and racescreen ... Even if no ride is shown on the map, just the map and blue dot would be great. now if i select HomeWork i dont even see any map"). Size: small (the WP-D brief already exists).**
 **Verified against the device tree as staged 2026-09-02; `routeMapView.tsx` mtime 2026-08-30, `RecordScreen.tsx` mtime 2026-09-02 (post-WP-A).**
 

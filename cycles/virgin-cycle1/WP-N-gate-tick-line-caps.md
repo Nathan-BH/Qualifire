@@ -1,4 +1,7 @@
-**Status: NOT STARTED. Chore — under the ~10-mechanical-line threshold, skip the full pipeline, just do it directly next time someone's in `routeMapView.tsx` for another WP.**
+**Status: DONE. Bundled into WP-D's `routeMapView.tsx` edit, landed on the device 2026-09-02
+(see WP-D's status line for the test-suite numbers) — the `gate-ticks-casing`/`gate-ticks`
+layers' `line-cap` changed from `'butt'` to `'round'`, two one-word style props, no separate
+files touched.**
 **Review doc item: 15 (notes5 N7). Size: chore.**
 
 ## What it is

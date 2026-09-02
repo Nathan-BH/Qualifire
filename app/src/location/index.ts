@@ -352,9 +352,12 @@ export async function startTracking(opts?: {
   sessionLoaded = true;
   fixesThisLaunch = 0;
   fixesSinceHeartbeat = 0;
+  // WP-D Piece A: lastFixMs still resets (it drives "waiting for first fix"
+  // for THIS ride, via fixFlags.ts's warmup window) but lastLat/lastLon no
+  // longer null out here — the running map then mounts already centred on
+  // whatever fix armed/setup last had, instead of a ~1s untargeted view
+  // while startTracking's own first fix arrives.
   lastFixMs = null;
-  lastLat = null;
-  lastLon = null;
   storageErrors = 0;
   lastError = null;
   prevEle = null;
@@ -387,6 +390,21 @@ export async function refreshPositionOnce(): Promise<void> {
   } catch {
     /* display only */
   }
+}
+
+/** WP-D Piece B: like refreshPositionOnce, but checks foreground permission
+ * status FIRST and does nothing (no fix, no prompt) unless already granted —
+ * safe to call unconditionally on a screen mount (e.g. RecordScreen), never
+ * throwing an OS permission dialog at someone just for opening the tab.
+ * [UNTESTED ON DEVICE] */
+export async function refreshPositionIfPermitted(): Promise<void> {
+  try {
+    const perm = await Location.getForegroundPermissionsAsync();
+    if (!perm.granted) return;
+  } catch {
+    return; // display only
+  }
+  await refreshPositionOnce();
 }
 
 export async function stopTracking(): Promise<RideSummary | null> {

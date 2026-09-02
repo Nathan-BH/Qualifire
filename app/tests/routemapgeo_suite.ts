@@ -4,10 +4,11 @@
  * stores [lat, lon], GeoJSON wants [lon, lat]. Get it backwards and the
  * route silently draws in the wrong hemisphere.
  */
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { assert, loadJson, test, TESTS_DIR } from './lib.ts';
 import {
-  allGatesBounds, allGatesFeatureCollection, bearingBetween, gatesFeatureCollection,
+  allGatesBounds, allGatesFeatureCollection, bearingBetween, cameraTargetFor, gatesFeatureCollection,
   gateTicksFeatureCollection, metresBetween, riderFeature, routeBounds, routeLineFeature,
   routeSplitFeatures, sectorSpansFeatureCollection,
 } from '../src/ui/routeMapGeo.ts';
@@ -401,4 +402,71 @@ test('routemapgeo: sector spans — null without a path, without gateIdx, or wit
   assert(sectorSpansFeatureCollection(noIdx) === null, 'no gateIdx must yield null');
   const mismatch: RouteAsset = { ...a, gateIdx: a.gateIdx!.slice(0, 3) };
   assert(sectorSpansFeatureCollection(mismatch) === null, 'gateIdx/gates length mismatch must yield null');
+});
+
+// ============================================================ WP-D (rider-only map camera)
+
+test('routemapgeo: cameraTargetFor — free mode is always {}, regardless of fix/bounds', () => {
+  const here = { lat: 50.86, lon: 4.68 };
+  const bounds = { minLon: 4.6, minLat: 50.8, maxLon: 4.7, maxLat: 50.85 };
+  const got = cameraTargetFor({ mode: 'free', here, bounds, zoom: 16, bearing: 90 });
+  assert(Object.keys(got).length === 0, `free mode expected {}, got ${JSON.stringify(got)}`);
+  const got2 = cameraTargetFor({ mode: 'free', here: null, bounds: null, zoom: 16, bearing: 0 });
+  assert(Object.keys(got2).length === 0, `free mode (no fix/bounds) expected {}, got ${JSON.stringify(got2)}`);
+});
+
+test('routemapgeo: cameraTargetFor — fit+bounds returns the bounds tuple, bearing pinned 0, padding 20', () => {
+  const bounds = { minLon: 4.6, minLat: 50.8, maxLon: 4.7, maxLat: 50.85 };
+  const got = cameraTargetFor({ mode: 'fit', here: { lat: 50.86, lon: 4.68 }, bounds, zoom: 16, bearing: 90 });
+  assert(JSON.stringify(got.bounds) === JSON.stringify([4.6, 50.8, 4.7, 50.85]),
+    `expected the bounds tuple, got ${JSON.stringify(got.bounds)}`);
+  assert(got.bearing === 0, `fit must pin bearing to 0, got ${got.bearing}`);
+  assert(JSON.stringify(got.padding) === JSON.stringify({ top: 20, right: 20, bottom: 20, left: 20 }),
+    `expected 20px padding on every side, got ${JSON.stringify(got.padding)}`);
+  assert(got.center === undefined, 'fit+bounds must not also set center');
+});
+
+test('routemapgeo: cameraTargetFor — fit with null bounds degrades to follow (fix if present, else bounds midpoint, else {})', () => {
+  const here = { lat: 50.86, lon: 4.68 };
+  const withFix = cameraTargetFor({ mode: 'fit', here, bounds: null, zoom: 16, bearing: 45 });
+  assert(withFix.bounds === undefined, 'fit+null-bounds must not set bounds');
+  assert(JSON.stringify(withFix.center) === JSON.stringify([4.68, 50.86]),
+    `fit+null-bounds with a fix expected to follow the fix, got ${JSON.stringify(withFix.center)}`);
+  assert(withFix.bearing === 45, `fit+null-bounds with a fix expected the live bearing, got ${withFix.bearing}`);
+
+  const nothing = cameraTargetFor({ mode: 'fit', here: null, bounds: null, zoom: 16, bearing: 0 });
+  assert(Object.keys(nothing).length === 0, `fit+null-bounds+no fix expected {}, got ${JSON.stringify(nothing)}`);
+});
+
+test('routemapgeo: cameraTargetFor — follow centres on the fix as [lon, lat]', () => {
+  const here = { lat: 50.8712, lon: 4.7001 };
+  const got = cameraTargetFor({ mode: 'follow', here, bounds: null, zoom: 16, bearing: 30 });
+  assert(JSON.stringify(got.center) === JSON.stringify([4.7001, 50.8712]),
+    `expected [lon,lat] = [4.7001,50.8712], got ${JSON.stringify(got.center)}`);
+  assert(got.zoom === 16 && got.bearing === 30 && got.pitch === 0 && got.duration === 500,
+    `expected zoom/bearing/pitch/duration wired through, got ${JSON.stringify(got)}`);
+  assert(got.bounds === undefined, 'follow-with-fix must not set bounds');
+});
+
+test('routemapgeo: cameraTargetFor — follow with no fix but bounds centres on the bounds midpoint', () => {
+  const bounds = { minLon: 4.6, minLat: 50.8, maxLon: 4.8, maxLat: 50.9 };
+  const got = cameraTargetFor({ mode: 'follow', here: null, bounds, zoom: 12, bearing: 0 });
+  assert(got.center !== undefined
+    && Math.abs(got.center[0] - 4.7) < 1e-9 && Math.abs(got.center[1] - 50.85) < 1e-9,
+    `expected the bounds midpoint ~[4.7,50.85], got ${JSON.stringify(got.center)}`);
+  assert(got.zoom === 12, `expected zoom wired through, got ${got.zoom}`);
+});
+
+test('routemapgeo: cameraTargetFor — no fix, no bounds, not free/fit -> {} (no hardcoded real-world fallback)', () => {
+  const got = cameraTargetFor({ mode: 'follow', here: null, bounds: null, zoom: 16, bearing: 0 });
+  assert(Object.keys(got).length === 0, `expected {}, got ${JSON.stringify(got)}`);
+});
+
+test('routemapgeo/routeMapView: no hardcoded Leuven literal (4.68/50.85) survives anywhere in the camera path', () => {
+  const geoSrc = fs.readFileSync(path.join(TESTS_DIR, '..', 'src', 'ui', 'routeMapGeo.ts'), 'utf8');
+  const viewSrc = fs.readFileSync(path.join(TESTS_DIR, '..', 'src', 'ui', 'routeMapView.tsx'), 'utf8');
+  for (const [name, src] of [['routeMapGeo.ts', geoSrc], ['routeMapView.tsx', viewSrc]] as const) {
+    assert(!src.includes('4.68'), `${name}: found the old Leuven-fallback longitude literal (4.68)`);
+    assert(!src.includes('50.85'), `${name}: found the old Leuven-fallback latitude literal (50.85)`);
+  }
 });

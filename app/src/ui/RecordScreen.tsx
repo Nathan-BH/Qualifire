@@ -25,6 +25,7 @@ import {
   getRecoveryState,
   getStatus,
   noteButtonPress,
+  refreshPositionIfPermitted,
   refreshPositionOnce,
   startTracking,
   stopTracking,
@@ -248,6 +249,13 @@ export default function RecordScreen({
 
   // Live status from the location layer.
   useEffect(() => subscribe(setStatus), []);
+
+  // WP-D Piece B: a non-prompting position refresh on mount, so a returning
+  // user sees the rider dot on the setup map without pressing RECORD first —
+  // refreshPositionIfPermitted() checks permission before asking for a fix
+  // and never triggers an OS prompt just from opening this tab.
+  // [UNTESTED ON DEVICE]
+  useEffect(() => { void refreshPositionIfPermitted(); }, []);
 
   // Live sector state from the engine (display-only, derived; D-023).
   useEffect(() => liveEngine.subscribe(setLive), []);
@@ -1077,10 +1085,12 @@ export default function RecordScreen({
         </View>
         <Text style={styles.appTitle}>Qualifire</Text>
         {/* B-51: at the rack, before START — real pannable streets, the
-            candidate route (whichever way/route is picked so far; falls
-            back to the first route in the asset manifest inside
-            RouteMapView when nothing is picked yet, which is acceptable
-            as the candidate). */}
+            candidate route (whichever way/route is picked so far). WP-D
+            (2026-09-02): when nothing is picked yet — or the pick is a
+            user-created route with no drawable asset (WP-P's "HomeWork") —
+            RouteMapView now renders rider-only (real tiles + the dot, no
+            route line) instead of a blank space; it no longer falls back to
+            drawing some other route from the asset manifest. */}
         {settings.liveMap ? (
           <View style={{ alignSelf: 'stretch' }}>
             <RouteMapView
