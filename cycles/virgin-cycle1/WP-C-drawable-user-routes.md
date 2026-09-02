@@ -1,4 +1,27 @@
-**Status: Brief written 2026-09-02, ready to execute. Not yet built. No decision needed from Nathan to start. LARGE — the single biggest lever in the whole review; unblocks WP-D (partially), WP-H, WP-I, WP-K. A mandatory both-themes on-device visual check is owed after it lands.**
+**Status: DONE — landed on the device 2026-09-02.** Section 3 (§3.1 `routeAssetRuntime.ts`,
+§3.2 `routeMapView.tsx` wiring, §3.3 stale comments) all landed exactly as written. §4's new
+suite (`tests/routeasset_runtime_suite.ts`) landed as 12 tests covering all 8 described
+categories: 345 tests, 342 pass, 0 fail, 3 skip (up from the 333/330/0/3 baseline). Files
+touched matched §6 exactly — `routeMapGeo.ts`/`routeMapMath.ts` needed no changes, and
+`RecordScreen.tsx`/`engine.ts` were not touched. WP-D's `riderOnly` guard and WP-J's
+always-mounted trail source (both landed in `routeMapView.tsx` since this brief was written)
+turned out to be a straightforward slot-in: both are downstream of the `asset` variable this
+WP resolves differently, and neither needed re-litigating. The new builder was additionally
+validated against real Morning refs+gates (not just the synthetic fixtures in the test
+suite) and reproduced the Python-rendered manifest within the tolerances §3.1 itself claims
+(gates 0.1–0.4 m, scale ~0.26%, offx exact, offy ~0.09 px) — **note (fresh inspection,
+2026-09-02): this manifest-match is Morning-specific, EveningA/B's manifest was fit to a
+different source and differs 1.9–2.9% in scale, harmless since the runtime transform only
+needs internal self-consistency.** The inspector's stronger, general-purpose check: a gate
+drawn by the new builder, pushed back through the engine's own scoring math, rescores to
+within 7e-7 m of where it was requested, on a ref built from real ride fixes — i.e. gates
+draw exactly where they score, independent of any manifest comparison. §5's verification
+commands ran in
+the cloud container (`device_bash` down this session) — `tsc --noEmit` fails on unrelated
+missing-node_modules/no-`--jsx` grounds across the whole app, same as every other WP this
+session; zero errors in the two new pure files. The §5 on-device visual check (both themes)
+is still owed — genuinely unfakable headless, exactly as flagged. Unblocks WP-H (map half),
+WP-I (map half), WP-K.
 **Review doc item: 3. Size: large.**
 **Verified against the mirror at commit `447c2ba`.**
 

@@ -54,6 +54,15 @@
  * equivalent. This is also the natural fallback on a user-created route with
  * no drawable asset (the WP-D rider-only case above): basemap + dot + trail,
  * until WP-C can draw the route itself.
+ *
+ * WP-C (2026-09-02): both rungs now resolve `id -> RouteAsset` through ONE
+ * function (`assetFor`/`assetDeps`, wiring routeAssetRuntime.ts's pure
+ * resolver): the bundled manifest FIRST, a runtime-built asset from the
+ * route's ref + gate chainages SECOND — the same seed-wins order as
+ * live/refs.ts's refFor()/store/catalog.ts's mergeCatalogs(). A route born
+ * on the phone (RECORD save/naming flow) is therefore drawable the moment
+ * its ref + gate set exist, on every rung, without a bundled PNG or manifest
+ * entry.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image, LayoutChangeEvent, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -61,6 +70,8 @@ import manifest from '../../assets/routes/routes.json';
 import { cropFor, gateTickPx, offRouteM, projectToPixel, type RouteAsset } from './routeMapMath.ts';
 import { currentCatalog } from '../store/catalogStore.ts';
 import { defaultMapRouteId } from '../store/defaultRoute.ts';
+import { refFor } from '../live/refs.ts';
+import { allRouteAssets, resolveRouteAsset, type RouteAssetDeps } from './routeAssetRuntime.ts';
 import {
   allGatesBounds, allGatesFeatureCollection, bearingBetween, cameraTargetFor,
   gateTicksFeatureCollection, metresBetween, nearestOnPath, riderFeature, routeBounds, routeLineFeature,
@@ -95,14 +106,30 @@ try {
 }
 
 const ASSETS = (manifest as unknown as { routes: Record<string, RouteAsset> }).routes;
+/** live/refs.ts's refFor() throws on an unknown track rather than returning
+ * null (userRefs.ts's own fallback inside it already returns null there) —
+ * swallow to null here so routeAssetRuntime's injected-deps contract can
+ * report "no ref" uniformly, without a try/catch at every call site. */
+const safeRefFor = (id: string) => { try { return refFor(id); } catch { return null; } };
+function assetDeps(): RouteAssetDeps {
+  return { manifest: ASSETS, catalog: currentCatalog(), refFor: safeRefFor };
+}
+/** WP-C: resolves an id to a RouteAsset — bundled manifest first, a
+ * runtime-built asset from the route's ref + gate chainages second. null
+ * when neither exists (unknown id, or a user route with no ref/gate set
+ * yet). */
+function assetFor(id: string | null): RouteAsset | null {
+  return id === null ? null : resolveRouteAsset(id, assetDeps());
+}
 /** Fallback when no route is known yet (candidate not picked/locked): the
  * first CATALOG route with a drawable asset (B-39, empty-seed install path)
  * — not the manifest's first key, which in a virgin build (empty catalog,
  * manifest still bundled) would draw a shipped route the rider does not
  * have. Null => both rungs render nothing. Resolved per render: the runtime
- * catalog can grow after boot (store/catalogStore.ts). */
+ * catalog can grow after boot (store/catalogStore.ts). WP-C: "drawable" now
+ * includes a runtime-built user-route asset, not just the bundled manifest. */
 function defaultRouteId(): string | null {
-  return defaultMapRouteId(currentCatalog(), (ref) => ASSETS[ref] !== undefined);
+  return defaultMapRouteId(currentCatalog(), (ref) => assetFor(ref) !== null);
 }
 const IMAGES: Record<string, number> = {
   Morning: require('../../assets/routes/Morning.png'),
@@ -257,7 +284,7 @@ function MapLibreRouteMap(props: RouteMapProps & {
   const styleUrl = themeMode === 'night' ? MAP_STYLE_NIGHT : MAP_STYLE_DAY;
   const gatesOnly = props.gatesOnly ?? false;
   const id = props.routeId ?? defaultRouteId();
-  const asset = !gatesOnly && id !== null ? ASSETS[id] : undefined;
+  const asset = !gatesOnly ? assetFor(id) ?? undefined : undefined;
   const h = props.height ?? 190;
 
   const variant = props.variant ?? 'live';
@@ -402,8 +429,13 @@ function MapLibreRouteMap(props: RouteMapProps & {
   // multi-route field, so this rung is deliberately left as circles rather
   // than guessing at a multi-route tick design (flagged in the handoff
   // notes). The single-route rung below gets the WP-E tick treatment.
+  // WP-C: the gates-only field must also include user routes' (runtime-built)
+  // gates — allRouteAssets() enumerates the whole catalog through the same
+  // resolver assetFor() uses, seed routes included (manifest wins on those
+  // by identity). Only built when gatesOnly is actually true.
+  const drawable = gatesOnly ? allRouteAssets(assetDeps()) : ASSETS;
   const gatesFC = gatesOnly
-    ? allGatesFeatureCollection(ASSETS, props.crossedGates, colors.neutral, props.gateRouteIds)
+    ? allGatesFeatureCollection(drawable, props.crossedGates, colors.neutral, props.gateRouteIds)
     : null;
   const gateTicksFC = !gatesOnly && asset ? gateTicksFeatureCollection(asset, props.gateColours) : null;
   // WP-sector-coloured-trail P1: null unless the caller supplied sector
@@ -413,7 +445,7 @@ function MapLibreRouteMap(props: RouteMapProps & {
   const sectorSpansFC = !gatesOnly && asset && props.sectorColours
     ? sectorSpansFeatureCollection(asset, props.sectorColours)
     : null;
-  const bounds = gatesOnly ? allGatesBounds(ASSETS, props.gateRouteIds) : asset ? routeBounds(asset) : null;
+  const bounds = gatesOnly ? allGatesBounds(drawable, props.gateRouteIds) : asset ? routeBounds(asset) : null;
 
   // WP-D §3.1c: the camera-target rule itself lives in routeMapGeo.ts
   // (headlessly testable) — this is just wiring the live inputs through.
@@ -645,7 +677,7 @@ function PngRouteMap(props: RouteMapProps) {
   const [imgFailed, setImgFailed] = useState(false);
   useEffect(() => { setZoom(props.zoom ?? 4); }, [props.zoom]);
   const id = props.routeId ?? defaultRouteId();
-  const asset = id !== null ? ASSETS[id] : undefined;
+  const asset = assetFor(id) ?? undefined;
   const img = id !== null ? IMAGES[id] : undefined;
   const h = props.height ?? 190;
 

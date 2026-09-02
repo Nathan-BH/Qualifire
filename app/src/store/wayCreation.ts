@@ -16,8 +16,8 @@
  *    package (OPEN-ITEMS item 3) the CALLER builds and persists a real
  *    reference line under that id (live/userRefs.ts) whenever it can; when
  *    it cannot, the id resolves to nothing and every consumer degrades as
- *    before (tracks.ts warns + skips; routeMapView draws no user routes
- *    either way — they have no RouteAsset).
+ *    before (tracks.ts warns + skips; routeMapView builds a RouteAsset at
+ *    runtime from that ref (ui/routeAssetRuntime.ts)).
  *  - route.referenceRideId records the ride-1-as-reference designation
  *    (COLD-START §3 step 9). Deriving that ride into the route's first
  *    scored all-purple lap is STILL deferred — a later package.

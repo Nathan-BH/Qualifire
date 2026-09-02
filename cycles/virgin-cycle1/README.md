@@ -20,7 +20,7 @@ or ready to hand to an Execute pass, without losing a day to re-planning.
 |---|---|---|---|
 | A | Ride-2 engine bug (reverse-ride false "matched"), RECORD-tab pick made a hard lock, "writing history" status line | **DONE — landed on your phone's repo just now.** 305 tests, 302 pass, 0 fail, 3 skip. | `WP-A-ride2-hardpick-writinghistory.md` (record of what shipped) |
 | B | GPX+ pick + lock-change logging | Brief written, ready to execute | `WP-B-gpxplus-pick-lock-logging.md` |
-| C | Drawable user-created routes (the biggest lever — unblocks D, H, I, K) | Brief written, ready to execute (large) | `WP-C-drawable-user-routes.md` |
+| C | Drawable user-created routes (the biggest lever — unblocks D, H, I, K) | **DONE — landed on the device 2026-09-02, independently inspected.** 345 tests, 342 pass, 0 fail, 3 skip (12 new). The proof that matters: a drawn gate, pushed back through the engine's own scoring math, rescores to within 7e-7 m of where it was requested — gates draw exactly where they score, verified on a real ride-derived ref, not just synthetic fixtures. (Matching the bundled manifest's exact scale/offset only holds for Morning — EveningA/B's Python-rendered manifest was fit to a different source and differs 1.9–2.9%; harmless, since the runtime transform only needs to agree with itself, but not a "matches the manifest" claim in general.) On-device visual check still outstanding (no device shell this session). | `WP-C-drawable-user-routes.md` |
 | D | Rider-only map before START / on unmatched rides | **DONE — landed on the device 2026-09-02.** 312 tests, 309 pass, 0 fail, 3 skip (7 new). Pieces A + B taken; WP-N bundled in. On-device visual check still outstanding (no device shell this session). | `WP-D-rider-only-map.md` |
 | F | Post-stop "save as new way" offer for any ride, not just unmatched ones | Brief written, ready to execute | `WP-F-post-stop-reference-offer.md` |
 | J | Breadcrumb trail behind the rider | **DONE — landed on the device 2026-09-02.** 326 tests, 323 pass, 0 fail, 3 skip (14 new). Step 3 (route-map guard) was a no-op — WP-D already did it. Fresh inspection found + fixed one minor bug (a stale pre-START position could become trail point 0); everything else held up. On-device visual check still outstanding (no device shell this session). | `WP-J-breadcrumb-trail.md` |
@@ -47,14 +47,12 @@ works, so answers stay attached to the exact question and any chat can read them
 
 1. Read this README, then `CONTEXT.md`, then `QUESTIONS-FOR-NATHAN.md` (check for any
    answers Nathan has typed in since this was written — that unblocks E/G/H/I/K/M).
-2. Pick an unblocked WP with status "brief written, ready to execute" — B, C, F, L, O
-   (both phases — Phase 2 was blocked on D + J, both now done, see O's row), Q are all
-   independent of each other and of anything still open (D and J are done). **Recommended
-   order as of 2026-09-02 evening: O Phase 2 (couch test for D + J) → C** — D + J are landed,
-   so O Phase 2 (the "first ride" demo mode) is now unblocked and gives Nathan a way to see
-   both without a real ride. **C is still the highest-value pick** overall (it unblocks the
-   most follow-on work) but is also the largest; B, F, L, O-Phase-1 are small/quick wins if
-   you want something to land same-day.
+2. Pick an unblocked WP with status "brief written, ready to execute" — B, F, L, Q are all
+   independent of each other and of anything still open (C, D, J, O are all landed now — see
+   their rows). C landing also unblocks H's map half, I's map half, and K (see their rows for
+   the remaining blockers — Q4/nav-model for H, Q1 for I's scrub half, Q7 for K); those rows
+   haven't been re-edited by this pass, so check `QUESTIONS-FOR-NATHAN.md` before picking one
+   up. B, F, L are small/quick wins if you want something to land same-day.
 3. Dispatch a Sonnet **Execute** agent against that WP's brief file, exactly as written — the
    brief already did the Plan-tier thinking. Point it at the actual device app folder this
    time (`device_bash` was down all of 2026-09-02's session, forcing a cloud-side git mirror
@@ -177,3 +175,39 @@ If that comes back clean, rebuild/reload, open DEMO, and check (per WP-O §4):
    a new ride starts with an empty trail (START, and after END/DISCARD).
 5. Watch for jank after ~20 minutes of recording — the 5 m/4000-point constants are
    `[ASSUMPTION — tune on device]` if so.
+
+## Testing WP-C today (drawable user-created routes — already on your phone's repo)
+
+Files changed: `app/src/ui/routeAssetRuntime.ts` (new), `app/src/ui/routeMapView.tsx`,
+`app/tests/routeasset_runtime_suite.ts` (new), `app/tests/run.ts`,
+`app/src/store/wayCreation.ts` + `app/src/ui/gateAdjustCard.tsx` (comments only). Nothing
+else touched — `routeMapGeo.ts`/`routeMapMath.ts` needed no changes, exactly as the brief
+predicted (§2.3): they only assume the `RouteAsset` shape, never the manifest. WP-D's
+`riderOnly` guard and WP-J's always-mounted trail source (both already landed in
+`routeMapView.tsx`) are both downstream of the `asset` variable this WP now resolves
+differently — neither needed touching. `device_bash` was still down this session, so the
+test suite ran in the cloud container instead of on your machine, plus an extra check: the
+new builder was run against real Morning refs (`tests/fixtures/refs.json`) and gate
+chainages (`core/src/gates.ts`) and reproduced the Python-rendered manifest within the
+brief's own claimed tolerance (gates 0.1–0.4 m, scale ~0.26%, offx exact, offy ~0.09 px):
+
+```
+cd app
+node --experimental-strip-types tests/run.ts   # expect: 345 tests: 342 pass, 0 fail, 3 skip
+./node_modules/.bin/tsc --noEmit               # not confirmed on a real toolchain this session
+```
+
+If that comes back clean, rebuild/reload and check (per WP-C §5):
+1. Virgin profile: record a short ride, name it → SETUP shows the new route (was blank before
+   WP-D/WP-C; WP-D alone only got you dot+basemap); ARMED shows it with the rider dot; a second
+   ride on that route shows the live map with line + gate ticks; ROUTES tab shows its trace;
+   RESULT → VIEW TRACE shows the sector-coloured spans.
+2. Shipped build: the 20 seed routes still render byte-identically (manifest wins by identity,
+   never rebuilt); the free-ride gate field now also contains any user route's gates.
+3. The PNG rung may not be reachable on the current dev client (MapLibre native module present
+   since build 4) — the brief flags this explicitly; note honestly rather than claiming it was
+   seen if you can't reach it.
+
+**This unblocks the map half of WP-H and WP-I, and all of WP-K** (their README rows still say
+"blocked on C" as of this pass — not re-edited here per the coordinator's own instruction to
+update those rows separately; see their rows for what else still blocks them).

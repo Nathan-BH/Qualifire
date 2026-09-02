@@ -8,9 +8,9 @@
  * Shown by RecordScreen's 'ending' phase after CREATE WAY saved a route
  * whose gates were seeded (gateSeeding.ts). Dumb UI: owns only selection and
  * the working chainage list; RecordScreen owns persistence (KEEP = nothing,
- * SAVE with moved gates = a v2 gate set via addGateSet). No map: a
- * user-created route has no RouteAsset yet (routeMapView renders bundled
- * assets only) — §4's map-mirror joins when user routes become drawable.
+ * SAVE with moved gates = a v2 gate set via addGateSet). No map yet — the
+ * route IS drawable since WP-C; the map-mirror itself is a separate item
+ * (needs a live-chainage override into `buildRuntimeRouteAsset`).
  */
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';

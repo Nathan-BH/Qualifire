@@ -47,11 +47,17 @@ left unconfirmed.
 | Coordinator direct fix (1-line guard fix for the above defect) | Chore | — (coordinator, no subagent, <10 lines) | — | — | Fixed and committed directly, no dispatch |
 | Execute — WP-O (demo tab: both modes, both phases) | Execute | Sonnet | ~204.5k | 79 | Landed: 333 tests/330 pass/0 fail/3 skip (+7) |
 | Inspect — WP-O fresh inspection | Inspect | Fable (fresh context) | ~132.4k | 34 | PASS — 3 trivial doc-drift notes, no functional defects |
+| Execute — WP-C (drawable user-created routes — biggest lever, largest WP) | Execute | Sonnet | ~261.1k | 89 | Landed fully: 345 tests/342 pass/0 fail/3 skip (+12) |
+| Inspect — WP-C fresh inspection | Inspect | Fable (fresh context) | ~197.1k | 69 | PASS — highest-scrutiny pass of the session; found a stronger validation (drawn gates rescore to ≤7e-7 m) and one doc-overclaim (manifest-match is Morning-specific, not general), no blocking defects |
+| Coordinator direct doc-wording fix (README + WP-C status, per inspection note above) | Chore | — (coordinator, no subagent, wording only) | — | — | Fixed and committed directly, no dispatch |
 
-**Subtotal this stretch: ~1.76M tokens across 11 subagent dispatches** (the WP-J fix was a
-direct coordinator edit, not a dispatch). **Running cycle total: roughly 3.26M tokens across
-23 subagent dispatches.** Landed this stretch: WP-D, WP-N (bundled), WP-J, WP-O (both phases),
-WP-P (fixed via WP-D). Briefed but not yet executed: WP-P's own doc (root-cause record), WP-Q.
-Nathan answered Q1/Q2/Q4/Q5/Q6/Q7 in `QUESTIONS-FOR-NATHAN.md` during this stretch — those
-answers unblock WP-E/G/H/I/K/M, but those five still only have short stub files, not
-execution-ready briefs, so a Plan pass is needed before any of them can be executed.
+**Subtotal this stretch: ~2.22M tokens across 13 subagent dispatches** (2 fixes were direct
+coordinator edits, not dispatches). **Running cycle total: roughly 3.72M tokens across 25
+subagent dispatches.** Landed this stretch: WP-D, WP-N (bundled), WP-J, WP-O (both phases),
+WP-C, WP-P (fixed via WP-D). WP-C landing unblocks WP-H's map half, WP-I's map half, and all
+of WP-K's map-side scope (their README rows still need updating to drop "blocked on C").
+Briefed but not yet executed: WP-Q, WP-B, WP-F, WP-L (all ready, no re-planning needed).
+Nathan answered Q1/Q2/Q4/Q5/Q6/Q7 in `QUESTIONS-FOR-NATHAN.md` — those answers unblock
+WP-E/G/H/I/K/M, but those five still only have short stub files, not execution-ready briefs,
+so a Digest+Plan pass is needed before any of them can be executed. Deferred pending Nathan's
+call on which (if any) to re-plan next, given session-token-budget pacing.
