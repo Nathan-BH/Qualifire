@@ -25,6 +25,11 @@ collection point.
   (breadcrumb trail), **WP-L** (start auto-detect suggestion) — all have execution-ready
   briefs in this folder and don't need anything from you to start.
 - **WP-N** (round gate-tick line-caps) — a two-line style chore, no brief needed.
+- **WP-O Phase 1** (DEMO tab mode picker + "second ride" sector-colouring mode) and **WP-P**
+  (your "HomeWork shows no map" report — root-caused; the fix is WP-D as already written,
+  now first in the queue) — added 2026-09-02 evening from your two chat messages. WP-O Phase 2
+  ("first ride" mode: dot + yellow trail, no route) waits only for WP-D and WP-J to land, not
+  for you.
 
 ## Questions — answer inline, one per block
 
@@ -70,6 +75,12 @@ stranger's first week) or a fixed final-form layout with gaps reserved from day 
 Strip bundled route assets from the `virgin` EAS build profile entirely, or keep them and
 filter every map rung by the runtime catalog instead (this also only fixes the related
 bundled-"Morning"-in-DEMO leak if DEMO is handled as its own separate case)?
+
+*Addendum 2026-09-02 (WP-O):* the new two-mode DEMO tab deliberately keeps running on the
+bundled `Morning` geometry — it is the only route the map can draw until WP-C, and you asked
+for the demo now. If your answer here is "strip bundled assets from the virgin profile", the
+DEMO tab then needs its own small bundled fixture (Morning's path + gate indices, no PNG) —
+a follow-on chore, not something that changes your answer or blocks WP-O.
 
 **Answer:**
 

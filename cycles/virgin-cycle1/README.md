@@ -21,7 +21,7 @@ or ready to hand to an Execute pass, without losing a day to re-planning.
 | A | Ride-2 engine bug (reverse-ride false "matched"), RECORD-tab pick made a hard lock, "writing history" status line | **DONE — landed on your phone's repo just now.** 305 tests, 302 pass, 0 fail, 3 skip. | `WP-A-ride2-hardpick-writinghistory.md` (record of what shipped) |
 | B | GPX+ pick + lock-change logging | Brief written, ready to execute | `WP-B-gpxplus-pick-lock-logging.md` |
 | C | Drawable user-created routes (the biggest lever — unblocks D, H, I, K) | Brief written, ready to execute (large) | `WP-C-drawable-user-routes.md` |
-| D | Rider-only map before START / on unmatched rides | Brief written, ready to execute | `WP-D-rider-only-map.md` |
+| D | Rider-only map before START / on unmatched rides | Brief written, ready to execute — **now first in the queue** (Nathan re-asked 2026-09-02; see WP-P). Take Pieces A + B; bundle WP-N | `WP-D-rider-only-map.md` |
 | F | Post-stop "save as new way" offer for any ride, not just unmatched ones | Brief written, ready to execute | `WP-F-post-stop-reference-offer.md` |
 | J | Breadcrumb trail behind the rider | Brief written, ready to execute | `WP-J-breadcrumb-trail.md` |
 | L | Start auto-detect as a suggestion, not an override (notes5 N5) | Brief written, ready to execute (small) | `WP-L-start-autodetect-suggestion.md` |
@@ -32,6 +32,8 @@ or ready to hand to an Execute pass, without losing a day to re-planning.
 | K | Sector-coloured trail, phase 2 (live map) | Not started — blocked on C, plus **Q7** (just needs a yes) | see `QUESTIONS-FOR-NATHAN.md` |
 | M | RECORD setup layout (tight-and-grows vs fixed) | Not started — **blocked on Q5** | see `QUESTIONS-FOR-NATHAN.md` |
 | N | Round gate-tick line-cap ends | Not started — chore, <10 lines, no brief needed, just do it | — |
+| O | DEMO tab: selectable "first ride" (dot + trail being written, no route) / "second ride" (route + gates present, sectors colour as passed) modes | Brief written. **Phase 1 (picker + second-ride mode) ready to execute now**; Phase 2 (first-ride mode) blocked on D + J landing (both briefed, no Nathan decision) | `WP-O-demo-tab-modes.md` |
+| P | Live map + blue dot on RECORD / START / RACE for user-created routes (the "HomeWork" blank map) | Root-caused; **fix = WP-D as written** (this brief is the root-cause record, HomeWork acceptance script and landing order). Ready to execute via D | `WP-P-live-map-user-routes-homework.md` |
 | 16 | Gate visibility at zoom, on-device re-check | Not code — on-device visual check, do after C + E land | — |
 | 17 | Audio/TTS motivational library | **Explicitly parked** by Nathan 2026-09-01 — needs a new build anyway; do not pick up before the virgin path (A–N) is solid | — |
 
@@ -44,10 +46,13 @@ works, so answers stay attached to the exact question and any chat can read them
 
 1. Read this README, then `CONTEXT.md`, then `QUESTIONS-FOR-NATHAN.md` (check for any
    answers Nathan has typed in since this was written — that unblocks E/G/H/I/K/M).
-2. Pick an unblocked WP with status "brief written, ready to execute" — B, C, D, F, J, L are
-   all independent of each other and of anything still open. **C is the highest-value pick**
-   (it unblocks the most follow-on work) but is also the largest; B, D, L are small/quick
-   wins if you want something to land same-day.
+2. Pick an unblocked WP with status "brief written, ready to execute" — B, C, D, F, J, L, O
+   (Phase 1) are all independent of each other and of anything still open. **Recommended
+   order as of 2026-09-02 evening: D → J → O (both phases) → C** — D is the "no map at all"
+   fix Nathan has asked for twice (WP-P), J needs D's guard change landed once, and O Phase 2
+   then gives him a couch test for both. **C is still the highest-value pick** overall (it
+   unblocks the most follow-on work) but is also the largest; B, D, L, O-Phase-1 are
+   small/quick wins if you want something to land same-day.
 3. Dispatch a Sonnet **Execute** agent against that WP's brief file, exactly as written — the
    brief already did the Plan-tier thinking. Point it at the actual device app folder this
    time (`device_bash` was down all of 2026-09-02's session, forcing a cloud-side git mirror
