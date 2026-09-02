@@ -34,7 +34,7 @@ or ready to hand to an Execute pass, without losing a day to re-planning.
 | N | Round gate-tick line-cap ends | **DONE — bundled into WP-D's `routeMapView.tsx` edit, 2026-09-02.** | — |
 | O | DEMO tab: selectable "first ride" (dot + trail being written, no route) / "second ride" (route + gates present, sectors colour as passed) modes | **DONE — both phases landed on the device 2026-09-02.** 333 tests, 330 pass, 0 fail, 3 skip (7 new). `demoModel.ts`'s pure fixture/tier functions plus the two-pill picker landed together (WP-D + WP-J were both already in). One test-harness-only wrinkle found and fixed: `demoModel.ts` statically imports `colourModel.ts`, which statically imports the bare-JSON seed — same Node ESM import-attribute wall `live_colour_suite.ts` already solved, so `demo_suite.ts` uses the same `registerHooks` + dynamic-import pattern; no app-code change. On-device visual check still outstanding (no device shell this session). | `WP-O-demo-tab-modes.md` |
 | P | Live map + blue dot on RECORD / START / RACE for user-created routes (the "HomeWork" blank map) | **DONE via WP-D** (this brief's own fix, landed 2026-09-02). HomeWork's on-device acceptance script (§4) still outstanding — no device shell this session. | `WP-P-live-map-user-routes-homework.md` |
-| Q | Delete user-created routes / ways / orphan places from ROUTES (cascading, validated) + "Reset to virgin" in SETTINGS → DATA (moves the storage root aside, keeps settings/theme) — Nathan 2026-09-02 "so I can try the real virgin app again from scratch" | Brief written, ready to execute (medium; Parts A + B can land separately). **Does not and cannot remove the "black circles"** — that is WP-E/Q6, see WP-Q §2.6 and the Q6 addendum | `WP-Q-delete-and-reset.md` |
+| Q | Delete user-created routes / ways / orphan places from ROUTES (cascading, validated) + "Reset to virgin" in SETTINGS → DATA (moves the storage root aside, keeps settings/theme) — Nathan 2026-09-02 "so I can try the real virgin app again from scratch" | **DONE — both Parts A and B landed on the device 2026-09-02.** 358 tests, 355 pass, 0 fail, 3 skip (12 new; independent inspection rerun confirmed 358, not 357 — a stale-baseline arithmetic slip in the executor's own count). Cascade rules (last-route-drops-way, orphan-landmark-only-when-unreferenced-by-any-way, all gate-set versions go, refs.user.json/results cleaned up) and the reset safety rails (move-not-delete to a timestamped sibling, refused during an active recording, two-step confirm, settings/theme kept) all landed exactly as specified. One real discrepancy found and resolved: the brief's `root.move(aside)` assumed a synchronous call, but the installed expo-file-system (56.0.9) has `move` as async (`Promise<void>`) — used `moveSync` instead (its synchronous twin, confirmed present), keeping `archiveStorageRoot`'s synchronous signature. **Does not and cannot remove the "black circles"** — that is WP-E/Q6, see WP-Q §2.6 and the Q6 addendum. On-device visual/confirm-dialog check still outstanding (no device shell this session). | `WP-Q-delete-and-reset.md` |
 | 16 | Gate visibility at zoom, on-device re-check | Not code — on-device visual check, do after C + E land | — |
 | 17 | Audio/TTS motivational library | **Explicitly parked** by Nathan 2026-09-01 — needs a new build anyway; do not pick up before the virgin path (A–N) is solid | — |
 
@@ -211,3 +211,62 @@ If that comes back clean, rebuild/reload and check (per WP-C §5):
 **This unblocks the map half of WP-H and WP-I, and all of WP-K** (their README rows still say
 "blocked on C" as of this pass — not re-edited here per the coordinator's own instruction to
 update those rows separately; see their rows for what else still blocks them).
+
+## Testing WP-Q today (delete + reset to virgin — already on your phone's repo)
+
+Files changed: `app/src/store/catalogDelete.ts` (new), `app/src/ui/RoutesScreen.tsx` (Part A
+UI), `app/src/ui/settings.tsx` (Part B UI + stale header fix), `app/src/live/userRefs.ts`
+(`removeUserRef`), `app/src/store/resultsStore.ts` (`storedResultsForRoute`),
+`app/src/ui/lastRide.ts` + `app/src/store/freeRides.ts` (reset seams renamed to
+`resetRecorded`/`resetFreeRides`, old `...ForTests` names kept as aliases so no test file
+needed touching for that), `app/src/storage/expoFsAdapter.ts` (`archiveStorageRoot`, using
+`moveSync` — see the README status row above for why), `app/src/store/catalogStore.ts`
+(comment only), `app/tests/catalogdelete_suite.ts` (new), `app/tests/run.ts` (registers it),
+`app/tests/userrefs_suite.ts`, `app/tests/resultsstore_suite.ts`, `app/tests/catalogstore_suite.ts`
+(new cases each). `RecordScreen.tsx`, `routeMapView.tsx`, `routeMapGeo.ts` — untouched, exactly
+as the brief specified (no overlap with WP-C's asset-runtime work, verified against the actual
+files before editing). `device_bash` was still down this session, so the test suite ran in the
+cloud container instead of on your machine; `tsc --noEmit` couldn't run at all there (no
+`node_modules`, no network to fetch a standalone `typescript`) — every edited file got a manual
+type-correctness pass instead (including confirming `Directory.moveSync`'s real signature
+against the installed package's own `.ts` sources), but a real `tsc --noEmit` run on your
+machine is worth doing before trusting a build:
+
+```
+cd app
+node --experimental-strip-types tests/run.ts   # expect: 358 tests: 355 pass, 0 fail, 3 skip
+./node_modules/.bin/tsc --noEmit               # not run this session — no node_modules in the cloud container
+grep -n "deleteFile\|delete()" src/storage/expoFsAdapter.ts   # expect only the pre-existing deleteFile
+grep -rn "ForTests()" src/ui/settings.tsx      # expect no output
+```
+
+If that comes back clean, rebuild/reload and check (per WP-Q §4.3):
+
+**Part A**, on a build with at least one named ride:
+1. ROUTES → expand a way → `delete route` on its only route → dialog names the route, says the
+   way goes too, lists any now-orphaned places → Delete → card disappears; RIDES still lists the
+   ride, now unmatched after the "matching routes…" pass.
+2. Two ways sharing a place (ride A→B then B→A, name both): deleting one way keeps both places
+   and the other way.
+3. On the dev/preview build (shipped seed): no delete buttons anywhere on the 6/13/20 seed
+   items; a user-created way on top of them shows them.
+
+**Part B**:
+4. SETTINGS → DATA → `reset…` while a ride is recording → refused with "stop it first".
+5. Not recording → first dialog shows correct counts and "settings and theme stay" → Continue…
+   → second dialog ("cannot be undone") → Reset → "Reset done" names the aside folder.
+6. Without restarting: RIDES/ROUTES empty states, RESULT shows no last ride, RECORD opens
+   new>>new; theme and the five preference toggles unchanged.
+7. Kill and relaunch: launch animation, then exactly first-launch state; ride once → naming
+   offer appears as on day 1.
+8. **Expected, not a regression:** the black circles are still there on that first free ride —
+   that's WP-E/Q6, not this WP (§2.6).
+9. (Optional) confirm `qualifire.reset-<stamp>/` exists next to a fresh `qualifire/` with the
+   old data intact.
+
+Two small wording spots were my own judgment call, not given verbatim in the brief: the
+"delete way" confirm body for a way with more than one route (the brief only wrote exact copy
+for the route-delete flow), and the "reset…" button's text colour — the brief said "danger/dim",
+but this repo's own D-013 rule is "no red anywhere" and `PaddockTheme` has no `danger` token, so
+it uses `t.textDim` (matching RidesScreen's own delete button) with the destructive styling
+living entirely in the Alert.alert confirm, same as everywhere else in the app.

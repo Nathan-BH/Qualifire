@@ -54,10 +54,10 @@ export function demoTier(i: number, value: number | null): UiTier {
 
 /** Gate-indexed colours for RouteMapView's `sectorColours` prop: index 0
  * null, index i = colour of sector i iff i <= gatesDone, else null. `paint`
- * maps a tier to its colour string (the screen passes
- * `(tier) => chipColors(tier, t).text`). */
+ * maps a tier to its map-line colour (the screen passes `tierLineColour`
+ * from `chips.tsx`; null = not-yet-earned, transparent on the map). */
 export function demoSectorColours(
-  script: DemoScript, gatesDone: number, paint: (tier: UiTier) => string,
+  script: DemoScript, gatesDone: number, paint: (tier: UiTier) => string | null,
 ): (string | null)[] {
   return [
     null,

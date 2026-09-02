@@ -18,6 +18,7 @@ import './live_colour_suite.ts';
 import './towermodel_suite.ts';
 import './resultsstore_suite.ts';
 import './catalogstore_suite.ts';
+import './catalogdelete_suite.ts';
 import './waycreation_suite.ts';
 import './userrefs_suite.ts';
 import './gateseeding_suite.ts';

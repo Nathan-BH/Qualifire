@@ -28,13 +28,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, Vibration, View } from 'react-native';
 import manifest from '../../assets/routes/routes.json';
-import { chipColors, type Tier } from './chips';
+import { tierLineColour, type Tier } from './chips';
 import { buildDemoScript, demoSectorColours, demoTier, type DemoMode } from './demoModel.ts';
 import { LiveSectorPane, type LiveViewModel } from './liveView';
 import RouteMapView from './routeMapView';
 import { positionAtTime, type RouteAsset } from './routeMapMath';
 import { useSettings } from './settings';
-import { PaddockTheme, radius } from './theme';
+import { colors, PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
 import { appendTrailPoint, type TrailPoint } from './trailModel.ts';
 import { routeLabel } from '../store/defaultRoute';
@@ -155,7 +155,7 @@ export default function DemoScreen() {
   // sector-span prop. Gate ticks themselves are never coloured — that is the
   // point of this mode (Nathan's 2026-09-01 ruling) — so no gate-tick colour
   // array is built or passed here at all.
-  const sectorColours = demoSectorColours(script, gatesDone, (tier) => chipColors(tier, t).text);
+  const sectorColours = demoSectorColours(script, gatesDone, tierLineColour);
 
   const headerCopy = mode === 'second'
     ? `A real archived ${routeLabel(ROUTE)} lap replayed at ${RATE}x — the reference line and gates are already there; each sector paints its colour as you cross the gate that ends it. Nothing is recorded.`
@@ -187,7 +187,7 @@ export default function DemoScreen() {
               2026-08-18); the rider dot still rides the real line. */}
           {mode === 'second' ? (
             <RouteMapView routeId={ROUTE} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
-              zoom={4} sectorColours={sectorColours} variant="browse" />
+              zoom={4} sectorColours={sectorColours} leadColour={colors.grey} variant="browse" />
           ) : (
             <RouteMapView routeId={DEMO_FIRST_RIDE_ID} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
               zoom={4} trail={trail} variant="browse" />

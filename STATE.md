@@ -71,6 +71,11 @@ besides Nathan can use this app" is a top-priority goal, not just a design lens.
   session diagnostics (route locks, gate crossings, stops, outages, elevation outliers). This
   is deliberately smaller than the whole-app export/import in Open items — no zip, no import,
   just "get today's state and one ride's full trace off the phone" for feedback.
+- **Delete and reset landed (2026-09-02, `cycles/virgin-cycle1/WP-Q-delete-and-reset.md`).**
+  ROUTES tab can delete user-created routes/ways/orphan places (cascading, validated via
+  `store/catalogDelete.ts`); SETTINGS → DATA has "Reset to virgin" (moves the storage root
+  aside to a timestamped sibling, keeps settings/theme, refuses during an active recording,
+  two-step confirm). Bundled-gate rings on a new>>new free ride are unaffected — WP-E/Q6.
 - **On the phone:** the dev client (Fast Refresh) and the rebuildable "Qualifire Preview"
   standalone APK; a `virgin` EAS build profile now exists but hasn't been built yet.
 

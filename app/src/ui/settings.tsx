@@ -1,16 +1,20 @@
 /**
  * App settings — the toggles Nathan asked to have "flexible" (IDEAS §18/§21/§24,
- * mockup 2026-08-16). In-memory only for now: nothing persists across a restart
- * until there is a settings store. Every one of these is a real switch that
- * other screens read, never a decorative row.
+ * mockup 2026-08-16). Persisted to <documentDirectory>settings.json (legacy
+ * API, load()/writeAsStringAsync below) — every one of these is a real
+ * switch that other screens read, never a decorative row.
  */
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import * as FileSystem from 'expo-file-system/legacy';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { setEarconsEnabled } from '../location';
-import { createExpoFsAdapter } from '../storage/expoFsAdapter';
-import { USER_CATALOG_FILE } from '../store/catalogStore';
-import { USER_REFS_FILE } from '../live/userRefs';
+import { loadSession } from '../location/session';
+import { listRides } from '../storage';
+import { createExpoFsAdapter, archiveStorageRoot } from '../storage/expoFsAdapter';
+import { USER_CATALOG_FILE, initCatalogStore, userCatalog } from '../store/catalogStore';
+import { USER_REFS_FILE, initUserRefs } from '../live/userRefs';
+import { initFreeRidePersistence, resetFreeRides } from '../store/freeRides';
+import { initRideHistory, resetRecorded } from './lastRide';
 import { saveTextFile } from './saveGpx';
 import { PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
@@ -115,9 +119,19 @@ function Switch({ on, onToggle, t }: { on: boolean; onToggle: () => void; t: Pad
   );
 }
 
-function Row(props: { label: string; hint?: string; t: PaddockTheme; children: React.ReactNode }) {
+function Row(props: {
+  label: string; hint?: string; t: PaddockTheme; children: React.ReactNode;
+  /** WP-Q: a visual break above this row (top border + extra gap) so it
+   * reads as its own group rather than a sibling of the row above — used for
+   * DATA's "Reset to virgin" row, one step down from the two share rows. */
+  sep?: boolean;
+}) {
   return (
-    <View style={[st.row, { borderBottomColor: props.t.cardBorder }]}>
+    <View style={[
+      st.row,
+      { borderBottomColor: props.t.cardBorder },
+      props.sep ? { borderTopWidth: 1, borderTopColor: props.t.cardBorder, marginTop: 4, paddingTop: 14 } : null,
+    ]}>
       <View style={{ flex: 1, paddingRight: 10 }}>
         <Text style={{ color: props.t.text, fontSize: 14 }}>{props.label}</Text>
         {props.hint ? (
@@ -153,6 +167,92 @@ function dateStamp(nowMs: number): string {
   const d = new Date(nowMs);
   const p = (n: number) => String(n).padStart(2, '0');
   return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
+}
+
+/** WP-Q: e.g. 2026-09-02T22:11:46 -> "20260902-221146" — same shape as
+ * storage/core.ts's makeRideId, for the reset archive folder's own name. */
+function resetStamp(nowMs: number): string {
+  const d = new Date(nowMs);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${dateStamp(nowMs)}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+
+/** WP-Q §3.4 step "on confirm": move the storage root aside (settings.json's
+ * theme read first and written back after, so it survives the move), then
+ * clear every in-memory store and re-run the boot chain exactly as App.tsx
+ * does at launch (§3.4 step 4) — all against the now-empty root, all
+ * tolerant of missing files. Wrapped in one try/catch: if the move already
+ * happened before a later step throws, the phone is still a consistent
+ * "empty root" state (every init tolerates it), so no rollback is needed —
+ * the catch text says so rather than claiming the reset failed outright. */
+async function performReset(): Promise<void> {
+  // Hoisted so the catch block can tell "the move itself never happened, so
+  // nothing changed" apart from "the move happened, a later step failed, but
+  // the phone is still a consistent empty-root state" — the two failure
+  // messages are not interchangeable for a destructive operation.
+  let asideName: string | null = null;
+  let moved = false;
+  try {
+    const fs = createExpoFsAdapter();
+    const theme = await fs.readText('settings.json');
+    asideName = archiveStorageRoot('qualifire', resetStamp(Date.now()));
+    moved = true;
+    if (theme !== null) await fs.writeText('settings.json', theme);
+    resetRecorded();
+    resetFreeRides();
+    await initCatalogStore(fs);
+    await initUserRefs(fs);
+    await initRideHistory(fs);
+    await initFreeRidePersistence(fs);
+    const movedMsg = asideName !== null
+      ? `Your old data is in <documents>/${asideName} on the phone.`
+      : 'There was nothing on this phone to move — it was already at first launch.';
+    Alert.alert(
+      'Reset done',
+      `This build is back at its first launch. Close Qualifire fully and reopen it to see the launch animation and a clean RECORD tab.\n${movedMsg}`,
+    );
+  } catch (e) {
+    const afterMoveMsg = moved
+      ? `Your old data was moved aside${asideName !== null ? ` to <documents>/${asideName}` : ''}, but finishing the reset failed. Restart the app.`
+      : 'Nothing was moved — the reset did not start. Your data is untouched.';
+    Alert.alert('Reset failed', `${e instanceof Error ? e.message : String(e)}\n${afterMoveMsg}`);
+  }
+}
+
+/** WP-Q §3.4: two-step confirm, second step destructive-styled, counts shown
+ * up front, refused outright while a ride is recording. */
+async function onResetPress(): Promise<void> {
+  const active = await loadSession();
+  if (active) {
+    Alert.alert('A ride is being recorded', 'Stop it on the RECORD tab first.');
+    return;
+  }
+  const rides = await listRides();
+  const uc = userCatalog();
+  const r = rides.length;
+  const p = uc.landmarks.length;
+  const w = uc.ways.length;
+  const q = uc.routes.length;
+  Alert.alert(
+    'Reset to virgin?',
+    `${r} ride${r === 1 ? '' : 's'}, ${p} place${p === 1 ? '' : 's'}, ${w} way${w === 1 ? '' : 's'}, ${q} route${q === 1 ? '' : 's'} and every result will be moved out of the app. Your settings and theme stay. Export anything you want to keep first (RIDES → Export GPX+, or the two share buttons above).`,
+    [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Continue…',
+        onPress: () => {
+          Alert.alert(
+            'Really reset?',
+            'This cannot be undone from inside the app.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Reset', style: 'destructive', onPress: () => void performReset() },
+            ],
+          );
+        },
+      },
+    ],
+  );
 }
 
 export default function SettingsScreen() {
@@ -223,6 +323,22 @@ export default function SettingsScreen() {
             onPress={() => void shareStoreFile(USER_REFS_FILE, `qualifire-refs-${dateStamp(Date.now())}.json`)}
           >
             <Text style={[st.shareText, { color: t.text }]}>share</Text>
+          </Pressable>
+        </Row>
+        {/* WP-Q Part B: visually separated from the two share rows above (a
+            top border) so it never reads as a sibling "share" action. Text is
+            dim, never the accent — this repo's own D-013 rule is "no red
+            anywhere" (theme.ts), so "dim" (not a nonexistent "danger" token)
+            is the honest reading of the brief's "danger/dim colour"; the
+            destructive style lives entirely in the two-step Alert.alert
+            confirm, same as RidesScreen's own delete button. */}
+        <Row label="Reset to virgin" t={t} sep
+          hint="move every ride, result, place, way and route aside and start this build over from its first launch — settings and theme are kept">
+          <Pressable
+            style={[st.shareBtn, { borderColor: t.cardBorder }]}
+            onPress={() => void onResetPress()}
+          >
+            <Text style={[st.shareText, { color: t.textDim }]}>reset…</Text>
           </Pressable>
         </Row>
       </View>

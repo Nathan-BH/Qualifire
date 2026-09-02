@@ -66,3 +66,27 @@ export function createExpoFsAdapter(rootName = 'qualifire'): FsAdapter {
     },
   };
 }
+
+/** WP-Q reset: moves the whole storage root aside (never deletes — repo
+ * doctrine, CONTEXT.md's "Ground rules") and returns the new sibling
+ * directory's name. Root does not exist yet => returns null (nothing to
+ * move; the caller proceeds — a virgin phone resetting itself is a no-op
+ * here).
+ *
+ * Uses `moveSync`, not the brief's originally-assumed `move`: this file's
+ * whole style is synchronous native calls (`f.write`, `d.create`, `f.delete`
+ * above), and this function's own signature is synchronous (`string | null`,
+ * not a Promise) to match — `Directory.prototype.move` DOES exist in the
+ * installed expo-file-system (56.0.9, verified against
+ * node_modules/expo-file-system/src/internal/NativeFileSystem.types.ts) but
+ * is async (`Promise<void>`); `moveSync` is its synchronous twin and is what
+ * a same-turn, no-await caller needs. Not headless-testable by design (like
+ * everything else in this file); the on-device acceptance in the WP-Q brief
+ * (§4.3) is its test. */
+export function archiveStorageRoot(rootName = 'qualifire', stamp: string): string | null {
+  const root = new Directory(Paths.document, rootName);
+  if (!root.exists) return null;
+  const aside = new Directory(Paths.document, `${rootName}.reset-${stamp}`);
+  root.moveSync(aside);
+  return aside.name;
+}

@@ -105,6 +105,35 @@ test('B-39 catalogStore: a user catalog file merges in (seed first), saveUserCat
   }
 });
 
+test('WP-Q: saveUserCatalog(removeRoute(...).next) removes a user route end-to-end — file and currentCatalog() agree', async () => {
+  store.resetCatalogStoreForTests();
+  try {
+    const fs = createMemoryFsAdapter();
+    await store.initCatalogStore(fs);
+    const errs = await store.saveUserCatalog(userAddition());
+    await store.flushCatalogWrites();
+    assert(errs.length === 0, `setup save must succeed: ${errs.join('; ')}`);
+    assert(store.currentCatalog().routes.some((r) => r.id === 'AlphaBeta'), 'setup: the route is there before deletion');
+
+    const { removeRoute } = await import('../src/store/catalogDelete.ts');
+    const deletion = removeRoute(store.userCatalog(), seedMod.shippedCatalog(), 'AlphaBeta');
+    assert(
+      deletion.removedRouteIds[0] === 'AlphaBeta' && deletion.removedWayIds[0] === 'alpha>beta',
+      'setup: the whole way goes with its only route',
+    );
+    const errs2 = await store.saveUserCatalog(deletion.next);
+    await store.flushCatalogWrites();
+    assert(errs2.length === 0, `delete-save must succeed: ${errs2.join('; ')}`);
+    assert(!store.currentCatalog().routes.some((r) => r.id === 'AlphaBeta'), 'currentCatalog() no longer lists the route');
+    assert(!store.currentCatalog().ways.some((w) => w.id === 'alpha>beta'), 'currentCatalog() no longer lists the way');
+    const text = fs.files.get(store.USER_CATALOG_FILE)!;
+    const decoded = JSON.parse(text) as { routes: { id: string }[] };
+    assert(!decoded.routes.some((r) => r.id === 'AlphaBeta'), 'the file itself no longer lists the route');
+  } finally {
+    store.resetCatalogStoreForTests();
+  }
+});
+
 test('B-39 catalogStore: an undecodable user file is ignored for the session and NEVER overwritten', async () => {
   store.resetCatalogStoreForTests();
   const origWarn = console.warn;

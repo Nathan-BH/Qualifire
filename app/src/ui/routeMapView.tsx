@@ -182,6 +182,14 @@ type RouteMapProps = {
    * the base line. The PNG rung cannot honour it (the line is baked into the
    * image) — accepted rung degradation, same as WP-E's dotted-ahead. */
   sectorColours?: (string | null)[];
+  /** Colour for the untimed lead-in (start -> first gate) and lead-out
+   * (last gate -> end) stretches. Only honoured when `sectorColours` is also
+   * given (a plain browse/first-ride map draws no spans at all). Callers pass
+   * the theme's NO-DATA grey: these stretches are never a sector, so they are
+   * not "unearned yet" like a transparent sector span — they are permanently
+   * non-scorable. Kept as a plain string so this file stays the only place
+   * that knows about the map layers, not the theme. */
+  leadColour?: string;
   /** 'live' (default) = the recording ribbon; 'browse' = a free-standing
    * pannable map with no live semantics (Routes list, Result "view trace"). */
   variant?: RouteMapVariant;
@@ -443,7 +451,7 @@ function MapLibreRouteMap(props: RouteMapProps & {
   // sectorSpansFeatureCollection's own null rule); the plain base line
   // alone then remains, exactly as today.
   const sectorSpansFC = !gatesOnly && asset && props.sectorColours
-    ? sectorSpansFeatureCollection(asset, props.sectorColours)
+    ? sectorSpansFeatureCollection(asset, props.sectorColours, props.leadColour)
     : null;
   const bounds = gatesOnly ? allGatesBounds(drawable, props.gateRouteIds) : asset ? routeBounds(asset) : null;
 
@@ -528,7 +536,10 @@ function MapLibreRouteMap(props: RouteMapProps & {
             data-driven ['has','colour'] expression family as the gate-ticks
             layer below — NO line-dasharray (the 2026-08-24 device-only
             dasharray bug class) and no line-gradient. Key === id per the
-            cycle-025 frozen-id rule in the comment below. */}
+            cycle-025 frozen-id rule in the comment below.
+            The lead-in/lead-out features (properties.lead) always carry a
+            colour, so they never fall through to the base line — they are
+            grey by design, not "not yet run". */}
         {sectorSpansFC ? (
           <M.GeoJSONSource key="sector-spans" id="sector-spans" data={sectorSpansFC}>
             <M.Layer id="sector-spans-core" type="line"

@@ -404,6 +404,47 @@ test('routemapgeo: sector spans — null without a path, without gateIdx, or wit
   assert(sectorSpansFeatureCollection(mismatch) === null, 'gateIdx/gates length mismatch must yield null');
 });
 
+test('routemapgeo: sector spans — leadColour appends grey lead-in/lead-out AFTER the 4 sectors; absent -> exactly 4', () => {
+  const GREY = '#6f6e6a';
+  for (const [id, a] of Object.entries(manifest.routes)) {
+    const bare = sectorSpansFeatureCollection(a, undefined, undefined);
+    assert(bare !== null && bare!.features.length === 4, `${id}: no leadColour must still yield exactly 4 spans`);
+    assert(sectorSpansFeatureCollection(a, undefined, '')!.features.length === 4, `${id}: '' leadColour must be treated as none`);
+
+    const fc = sectorSpansFeatureCollection(a, undefined, GREY)!;
+    const path = a.path!, gi = a.gateIdx!;
+    const expectIn = gi[0] >= 1;
+    const expectOut = gi[gi.length - 1] <= path.length - 2;
+    const expected = 4 + (expectIn ? 1 : 0) + (expectOut ? 1 : 0);
+    assert(fc.features.length === expected, `${id}: expected ${expected} features with leadColour, got ${fc.features.length}`);
+    fc.features.slice(0, 4).forEach((feat, k) => {
+      assert(feat.properties.sector === k + 1 && !('lead' in feat.properties), `${id}: features[${k}] must still be sector ${k + 1}`);
+      assert(!('colour' in feat.properties), `${id}: sector ${k + 1} must not inherit leadColour`);
+    });
+    const leads = fc.features.slice(4);
+    for (const feat of leads) {
+      assert(feat.properties.colour === GREY, `${id}: lead span must carry leadColour`);
+      assert(feat.properties.sector < 1 || feat.properties.sector > 4, `${id}: lead sector index ${feat.properties.sector} collides with a real sector`);
+    }
+    const leadIn = leads.find((f) => f.properties.lead === 'in');
+    const leadOut = leads.find((f) => f.properties.lead === 'out');
+    assert(!!leadIn === expectIn, `${id}: lead-in presence mismatch (gateIdx[0]=${gi[0]})`);
+    assert(!!leadOut === expectOut, `${id}: lead-out presence mismatch`);
+    if (leadIn) {
+      const cs = leadIn.geometry.coordinates, end = cs[cs.length - 1], g0 = path[gi[0]];
+      assert(cs[0][0] === path[0][1] && cs[0][1] === path[0][0], `${id}: lead-in must start at swapped path[0]`);
+      assert(end[0] === g0[1] && end[1] === g0[0], `${id}: lead-in must end at swapped path[gateIdx[0]]`);
+      assert(leadIn.properties.sector === 0, `${id}: lead-in sector must be 0`);
+    }
+    if (leadOut) {
+      const cs = leadOut.geometry.coordinates, end = cs[cs.length - 1], gN = path[gi[gi.length - 1]], pEnd = path[path.length - 1];
+      assert(cs[0][0] === gN[1] && cs[0][1] === gN[0], `${id}: lead-out must start at swapped path[gateIdx[last]]`);
+      assert(end[0] === pEnd[1] && end[1] === pEnd[0], `${id}: lead-out must end at swapped path[last]`);
+      assert(leadOut.properties.sector === gi.length, `${id}: lead-out sector must be gateIdx.length`);
+    }
+  }
+});
+
 // ============================================================ WP-D (rider-only map camera)
 
 test('routemapgeo: cameraTargetFor — free mode is always {}, regardless of fix/bounds', () => {

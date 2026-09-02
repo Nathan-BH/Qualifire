@@ -116,6 +116,21 @@ test('resultsstore: save -> simulated restart -> rehydrates, and feeds recordedR
   lastRide.resetRecordedForTests();
 });
 
+test('resultsstore (WP-Q): storedResultsForRoute filters to one route, ascending startedAtMs, [] for an unknown route', async () => {
+  const fs = createMemoryFsAdapter();
+  await resultsStore.initResultsStore(fs);
+  await resultsStore.saveResult(makeResult('m2', 'Morning', 2000, 800));
+  await resultsStore.saveResult(makeResult('m1', 'Morning', 1000, 810));
+  await resultsStore.saveResult(makeResult('e1', 'EveningA', 1500, 700));
+  await resultsStore.flushResultWrites();
+
+  const morning = resultsStore.storedResultsForRoute('Morning');
+  assert(morning.length === 2, `expected 2 Morning results, got ${morning.length}`);
+  assert(morning[0].rideId === 'm1' && morning[1].rideId === 'm2', `expected ascending startedAtMs order, got ${morning.map((r) => r.rideId)}`);
+  assert(morning.every((r) => r.routeId === 'Morning'), 'every hit is really Morning');
+  assert(resultsStore.storedResultsForRoute('NoSuchRoute').length === 0, 'unknown route: []');
+});
+
 test('resultsstore: corrupt result file and corrupt index.json each degrade silently; valid siblings survive (supersedes B-40 corrupt-cache case)', async () => {
   const fs = createMemoryFsAdapter();
   await resultsStore.initResultsStore(fs);

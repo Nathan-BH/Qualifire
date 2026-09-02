@@ -50,14 +50,17 @@ left unconfirmed.
 | Execute — WP-C (drawable user-created routes — biggest lever, largest WP) | Execute | Sonnet | ~261.1k | 89 | Landed fully: 345 tests/342 pass/0 fail/3 skip (+12) |
 | Inspect — WP-C fresh inspection | Inspect | Fable (fresh context) | ~197.1k | 69 | PASS — highest-scrutiny pass of the session; found a stronger validation (drawn gates rescore to ≤7e-7 m) and one doc-overclaim (manifest-match is Morning-specific, not general), no blocking defects |
 | Coordinator direct doc-wording fix (README + WP-C status, per inspection note above) | Chore | — (coordinator, no subagent, wording only) | — | — | Fixed and committed directly, no dispatch |
+| Execute — WP-Q (delete routes/ways/landmarks + reset-to-virgin — destructive, both Parts A+B) | Execute | Sonnet | ~338.4k | 111 | Landed fully: 357 tests/354 pass/0 fail/3 skip claimed (+12) |
+| Inspect — WP-Q fresh inspection | Inspect | Fable (fresh context) | ~209.5k | 58 | PASS — highest-scrutiny pass of the cycle (destructive operation); hand-traced cascade rules against a scratch catalog, independently confirmed `moveSync` exists in the installed library, corrected the test count to 358/355 (executor's 357/354 was a stale-baseline slip), found 1 minor non-blocking wording defect |
+| Coordinator direct fixes (conditional reset-failure message + 3 doc test-count corrections) | Chore | — (coordinator, no subagent, <10 lines) | — | — | Fixed and committed directly, no dispatch |
 
-**Subtotal this stretch: ~2.22M tokens across 13 subagent dispatches** (2 fixes were direct
-coordinator edits, not dispatches). **Running cycle total: roughly 3.72M tokens across 25
+**Subtotal this stretch: ~2.76M tokens across 15 subagent dispatches** (4 fixes were direct
+coordinator edits, not dispatches). **Running cycle total: roughly 4.26M tokens across 27
 subagent dispatches.** Landed this stretch: WP-D, WP-N (bundled), WP-J, WP-O (both phases),
-WP-C, WP-P (fixed via WP-D). WP-C landing unblocks WP-H's map half, WP-I's map half, and all
-of WP-K's map-side scope (their README rows still need updating to drop "blocked on C").
-Briefed but not yet executed: WP-Q, WP-B, WP-F, WP-L (all ready, no re-planning needed).
-Nathan answered Q1/Q2/Q4/Q5/Q6/Q7 in `QUESTIONS-FOR-NATHAN.md` — those answers unblock
-WP-E/G/H/I/K/M, but those five still only have short stub files, not execution-ready briefs,
-so a Digest+Plan pass is needed before any of them can be executed. Deferred pending Nathan's
-call on which (if any) to re-plan next, given session-token-budget pacing.
+WP-C, WP-Q (both parts), WP-P (fixed via WP-D). WP-C landing unblocks WP-H's map half, WP-I's
+map half, and all of WP-K's map-side scope (their README rows still need updating to drop
+"blocked on C"). Briefed but not yet executed: WP-B, WP-F, WP-L (all ready, no re-planning
+needed). Nathan answered Q1/Q2/Q4/Q5/Q6/Q7 in `QUESTIONS-FOR-NATHAN.md` — those answers
+unblock WP-E/G/H/I/K/M, but those five still only have short stub files, not execution-ready
+briefs, so a Digest+Plan pass is needed before any of them can be executed. Deferred pending
+Nathan's call on which (if any) to re-plan next, given session-token-budget pacing.

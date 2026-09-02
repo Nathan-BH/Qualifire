@@ -182,11 +182,15 @@ export function flushFreeRideWrites(): Promise<void> {
   return writeTail;
 }
 
-/** Test-only: empties the in-memory store and disarms persistence, mirroring
+/** Empties the in-memory store and disarms persistence, mirroring
  * resultsStore.ts's resetResultsStoreForTests / lastRide.ts's
- * resetRecordedForTests. */
-export function resetFreeRidesForTests(): void {
+ * resetRecorded. Originally test-only; WP-Q's "Reset to virgin"
+ * (settings.tsx) is now a real production caller too. */
+export function resetFreeRides(): void {
   rides = [];
   armedFs = null;
   writeTail = Promise.resolve();
 }
+
+/** Alias kept so the existing test suites need no changes. */
+export const resetFreeRidesForTests = resetFreeRides;

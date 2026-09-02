@@ -420,6 +420,7 @@ export interface SectorSpanProperties {
   /** 1-based sector number — the span ENDING at gate `sector`. */
   sector: number;
   colour?: string;
+  lead?: 'in' | 'out';
 }
 
 /**
@@ -434,14 +435,22 @@ export interface SectorSpanProperties {
  * (START — no sector ends there) is ignored. `colour` is OMITTED when a
  * sector has no earned colour, and '' is treated as null — the same
  * ['has','colour'] paint convention and B-50 hardening as the gate builders
- * above. The path's lead-in (before gateIdx[0]) and lead-out (after the
- * last gateIdx) are covered by NO span: they are outside the timed lap and
- * stay the base line colour. Returns null when the asset cannot honestly be
+ * above. The path's lead-in (start -> gateIdx[0]) and lead-out (gateIdx[last] -> end)
+ * are outside the timed lap and are never a sector. By default they get NO
+ * span (base line colour shows). When `leadColour` is a non-empty string, two
+ * extra features are appended AFTER the sector spans — `lead: 'in'` with
+ * `sector: 0` (the span ending at gate 0, matching the gate-indexed
+ * convention) and `lead: 'out'` with `sector: gateIdx.length` (one past the
+ * last gate) — both carrying `colour: leadColour`. Neither value can collide
+ * with a real sector index (1..gateIdx.length-1). A degenerate stretch
+ * (< 2 points, e.g. gateIdx[0] === 0) is skipped, same rule as the loop.
+ * Returns null when the asset cannot honestly be
  * split — no/short path, or no gateIdx matching the gate count — so the
  * caller falls back to the plain single-colour line.
  */
 export function sectorSpansFeatureCollection(
   a: RouteAsset, sectorColours?: (string | null)[],
+  leadColour?: string | null,
 ): GeoFeatureCollection<LineStringGeometry, SectorSpanProperties> | null {
   if (!a.path || a.path.length < 2) return null;
   if (!a.gateIdx || a.gateIdx.length !== a.gates.length || a.gateIdx.length < 2) return null;
@@ -462,6 +471,35 @@ export function sectorSpansFeatureCollection(
       },
       properties,
     });
+  }
+  // Lead-in / lead-out: permanently non-scorable, so a fixed caller-supplied
+  // colour, never data-driven from sectorColours. Appended after the sector
+  // spans so features[0..n-2] stay the real sectors (tests index them).
+  if (leadColour) {
+    const firstGate = a.gateIdx[0];
+    const lastGate = a.gateIdx[a.gateIdx.length - 1];
+    const leadIn = a.path.slice(0, firstGate + 1);
+    if (leadIn.length >= 2) {
+      features.push({
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: leadIn.map(([lat, lon]) => [lon, lat] as GeoPosition),
+        },
+        properties: { sector: 0, lead: 'in', colour: leadColour },
+      });
+    }
+    const leadOut = a.path.slice(lastGate);
+    if (leadOut.length >= 2) {
+      features.push({
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: leadOut.map(([lat, lon]) => [lon, lat] as GeoPosition),
+        },
+        properties: { sector: a.gateIdx.length, lead: 'out', colour: leadColour },
+      });
+    }
   }
   return { type: 'FeatureCollection', features };
 }

@@ -287,12 +287,17 @@ export function dropRecorded(rideId: string): void {
   if (i !== -1) recorded.splice(i, 1);
 }
 
-/** Test-only: empties `recorded` and clears `last` so the headless suite can
- * start each case from a clean slate without leaking state between tests.
- * Also disarms the results store (cycle 024, WP-A1) so one suite cannot leak
- * an armed adapter or a pending write into the next. */
-export function resetRecordedForTests(): void {
+/** Empties `recorded` and clears `last`. Originally test-only (start each
+ * headless case from a clean slate without leaking state between tests) —
+ * WP-Q's "Reset to virgin" (settings.tsx) is now a real production caller
+ * too, ahead of re-running the boot chain against the freshly-emptied
+ * storage root. Also disarms the results store (cycle 024, WP-A1) so one
+ * caller cannot leak an armed adapter or a pending write into the next. */
+export function resetRecorded(): void {
   recorded.length = 0;
   last = null;
   resultsStore.resetResultsStoreForTests();
 }
+
+/** Alias kept so the existing test suites need no changes. */
+export const resetRecordedForTests = resetRecorded;

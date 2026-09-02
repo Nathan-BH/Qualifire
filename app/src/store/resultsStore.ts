@@ -215,6 +215,15 @@ export function getStoredResult(rideId: string): RideResult | null {
   return store.get(rideId) ?? null;
 }
 
+/** WP-Q: every stored result for one route, ascending startedAtMs (same
+ * order as storedResults()); [] for an unknown or unused route. Pure filter
+ * over the in-memory map, no I/O. The caller (RoutesScreen, on route/way
+ * delete) then removes each hit through removeStoredResult — this never
+ * bypasses that single deletion mechanism. */
+export function storedResultsForRoute(routeId: string): RideResult[] {
+  return storedResults().filter((r) => r.routeId === routeId);
+}
+
 // ---------------------------------------------------------------- write
 
 /** Validates, writes results/<rideId>.json, upserts results/index.json, and

@@ -16,7 +16,7 @@ import { collapseStationaryRuns, M_PER_DEG_LAT } from '../core/src/index.ts';
 import type { RidePoints } from '../core/src/index.ts';
 import {
   buildRefFromRideFixes, initUserRefs, saveUserRef, userRefFor, flushUserRefWrites,
-  resetUserRefsForTests, USER_REFS_FILE, type RefFixInput,
+  removeUserRef, resetUserRefsForTests, USER_REFS_FILE, type RefFixInput,
 } from '../src/live/userRefs.ts';
 
 const LAT0 = 50.87;
@@ -164,6 +164,40 @@ test('userRefs: saveUserRef with no armed fs registers in memory and resolves', 
   assert(built !== null, 'setup build should succeed');
   await saveUserRef('route:y', built.ref);
   assert(userRefFor('route:y') !== null, 'expected the ref to be registered in memory');
+});
+
+test('userRefs (WP-Q): removeUserRef drops one entry and rewrites the file with only the rest', async () => {
+  resetUserRefsForTests();
+  const fs = createMemoryFsAdapter();
+  await initUserRefs(fs);
+  const a = buildRefFromRideFixes(northRide(20))!;
+  const b = buildRefFromRideFixes(northRide(25))!;
+  await saveUserRef('route:a', a.ref);
+  await saveUserRef('route:b', b.ref);
+  await flushUserRefWrites();
+
+  await removeUserRef('route:a');
+  await flushUserRefWrites();
+  assert(userRefFor('route:a') === null, 'route:a is gone from the in-memory registry');
+  assert(userRefFor('route:b') !== null, 'route:b is untouched');
+  const text = fs.files.get(USER_REFS_FILE)!;
+  const decoded = JSON.parse(text) as { tracks: Record<string, unknown> };
+  assert(Object.keys(decoded.tracks).join(',') === 'route:b', `file holds only route:b, got ${JSON.stringify(Object.keys(decoded.tracks))}`);
+});
+
+test('userRefs (WP-Q): removeUserRef on an unknown id never throws and writes nothing new', async () => {
+  resetUserRefsForTests();
+  const fs = createMemoryFsAdapter();
+  await initUserRefs(fs);
+  const a = buildRefFromRideFixes(northRide(20))!;
+  await saveUserRef('route:only', a.ref);
+  await flushUserRefWrites();
+  const before = fs.files.get(USER_REFS_FILE);
+
+  await removeUserRef('route:nope');
+  await flushUserRefWrites();
+  assert(fs.files.get(USER_REFS_FILE) === before, 'file text unchanged for an unknown id');
+  assert(userRefFor('route:only') !== null, 'the real entry is untouched');
 });
 
 test('core: collapseStationaryRuns collapses a run to its centroid and reports it', () => {

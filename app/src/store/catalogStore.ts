@@ -24,8 +24,10 @@
  * validateCatalog() rejects; fs errors are swallowed (best-effort, like
  * every sidecar write in this app).
  *
- * Nothing calls saveUserCatalog() yet — it is the seam B-36/B-42
- * (retroactive way creation) write through.
+ * saveUserCatalog() callers: RecordScreen's retroactive-naming flow and its
+ * gate-adjust save (B-36/B-42's write-through seam), and — since WP-Q —
+ * RoutesScreen's per-item delete (route/way/orphan-place, cascading via
+ * store/catalogDelete.ts).
  *
  * Synchronous readers: every consumer calls currentCatalog() at USE time
  * (never captured at import), so what it sees is the seed until

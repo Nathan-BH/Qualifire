@@ -31,6 +31,7 @@ import { getLastRideOrStored, type FinishedRide } from './lastRide.ts';
 import { lastFreeRide } from '../store/freeRides.ts';
 import { buildPbDetail, buildPbRows, dateTimeLabel, lapCellLabel, routeLabel } from './rideHistoryModel.ts';
 import RouteMapView from './routeMapView.tsx';
+import { tierLineColour } from './chips.tsx';
 import { useTabNav } from './tabNav.tsx';
 import { useSettings } from './settings.tsx';
 import { PaddockTheme, colors, radius } from './theme.ts';
@@ -49,20 +50,6 @@ function tierColour(tier: UiTier, t: PaddockTheme): string {
     default: return t.textDim;
   }
 }
-
-/** WP-sector-coloured-trail P1 (ruled 2026-08-26): the LINE colour a sector
- * span earns per tier. Deliberately NOT chipColors(tier, t).text — the
- * purple chip's .text is PURPLE_INK (near-black ink for text ON a purple
- * chip), which would paint a purple sector's line almost black. And
- * deliberately NOT tierColour() above — that maps 'neutral'/'est' to
- * visible ink colours for TEXT, while an unearned verdict must leave the
- * line unpainted (D-013). Absent keys fall through to null at the use
- * site, so 'neutral' and 'est' sectors keep the base line colour. */
-const SPAN_TIER_COLOUR: Partial<Record<UiTier, string>> = {
-  purple: colors.purple,
-  green: colors.green,
-  yellow: colors.neutral,
-};
 
 /** The rank line under the big lap figure — D-028's "an estimated lap never
  * ranks" and D-008's MIN_HISTORY floor, both stated in plain words. `hist` is
@@ -197,9 +184,9 @@ export default function ResultScreen() {
       null,
       ...[...ride.sectors].sort((a, b) => a.index - b.index).map((sec) =>
         sec.quality === 'clean' && sec.movingS !== null
-          ? SPAN_TIER_COLOUR[
+          ? tierLineColour(
             tierFor(sec.movingS, sectorValues(ride.routeId, sec.index, ride.rideId).filter((v) => v !== sec.movingS))
-          ] ?? null
+          )
           : null),
     ]
     : [];
@@ -260,7 +247,7 @@ export default function ResultScreen() {
             // Shows the ROUTE on real streets with sector-coloured spans; the
             // true ridden trace needs a JSONL reader (future work, D-023).
             <RouteMapView variant="browse" routeId={ride.routeId} lat={null} lon={null}
-              zoom={1} height={300} showRider={false} sectorColours={resultSectorColours} />
+              zoom={1} height={300} showRider={false} sectorColours={resultSectorColours} leadColour={colors.grey} />
           ) : null}
 
           <Pressable style={[st.slimBtn, { backgroundColor: t.accent }]} onPress={() => tabNav.go('record')}>

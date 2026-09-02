@@ -179,6 +179,20 @@ export function saveUserRef(id: string, ref: RefLine): Promise<void> {
   return turn.catch(() => {});
 }
 
+/** WP-Q: removes one ref by id (no-op — including no throw — when absent),
+ * then best-effort persists the whole registry, same shape as saveUserRef. */
+export function removeUserRef(id: string): Promise<void> {
+  registry.delete(id);
+  const fs = armedFs;
+  const text = encodeRegistry();
+  const turn = writeTail.then(async () => {
+    if (fs === null) return;
+    await fs.writeText(USER_REFS_FILE, text);
+  });
+  writeTail = turn.catch(() => {});
+  return turn.catch(() => {});
+}
+
 /** Test seam: resolves once every write scheduled so far has settled. */
 export function flushUserRefWrites(): Promise<void> {
   return writeTail;

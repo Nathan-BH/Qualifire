@@ -18,6 +18,30 @@ export const YELLOW_TIER = colors.neutral;
 
 export const PURPLE_INK = '#120521';
 
+/**
+ * The colour a tier paints on a MAP LINE (sector-coloured trail) — the same
+ * colour the sector legend block shows for that tier: purple's chip FILL,
+ * green's chip BORDER, yellow's flat TEXT. This is the single source of truth
+ * for every sector-coloured trail (ResultScreen, DemoScreen, any future
+ * live/race screen) — do not build a local map, and do NOT use
+ * `chipColors(tier, t).text`: purple's `.text` is PURPLE_INK, the near-black
+ * ink for text drawn ON a purple chip, which paints a purple sector's line
+ * almost black (the 2026-09-02 DEMO-tab bug).
+ *
+ * null = no earned colour: the span paints transparent and the yellow base
+ * route line shows through (RouteMapView's "not yet run" fallback).
+ * 'none' / 'neutral' / 'est' are deliberately null — a verdict-less sector is
+ * never given a scored colour on the map.
+ */
+export function tierLineColour(tier: Tier): string | null {
+  switch (tier) {
+    case 'purple': return colors.purple;
+    case 'green': return colors.green;
+    case 'yellow': return YELLOW_TIER;
+    default: return null;
+  }
+}
+
 export interface ChipPalette {
   bg: string;
   border: string;
@@ -28,7 +52,7 @@ export interface ChipPalette {
 export function chipColors(tier: Tier, t: PaddockTheme): ChipPalette {
   switch (tier) {
     case 'purple':
-      return { bg: colors.purple, border: colors.purple, text: PURPLE_INK };
+      return { bg: colors.purple, border: colors.purple, text: PURPLE_INK }; // map lines: use tierLineColour(), never .text
     case 'green':
       return { bg: 'transparent', border: colors.green, text: colors.green };
     case 'neutral':
