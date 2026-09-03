@@ -14,9 +14,11 @@
  * The store seam (saveUserCatalog actually called, boot-time malformed-file
  * fix) lives in catalogstore_suite.ts, which owns the seed shim.
  */
-import { assert, test } from './lib.ts';
+import * as path from 'node:path';
+import { assert, loadFixture, loadJson, test, TESTS_DIR } from './lib.ts';
 import { emptyCatalog, mergeCatalogs, metresBetween, validateCatalog } from '../src/store/catalog.ts';
 import {
+  MATCHED_ENDPOINT_SLACK_M,
   MIN_LANDMARK_RADIUS_M,
   MIN_TRACK_LENGTH_M,
   NEW_LANDMARK_RADIUS_M,
@@ -24,7 +26,7 @@ import {
   draftWayCreation,
   trackLengthM,
 } from '../src/store/wayCreation.ts';
-import type { Catalog, Landmark } from '../src/store/types.ts';
+import type { Catalog, Landmark, Route, Way } from '../src/store/types.ts';
 
 const LAT0 = 50.87;
 const LON0 = 4.70;
@@ -35,10 +37,11 @@ function northRide(nFixes: number, stepLat = 0.001): { lat: number; lon: number 
 function lm(id: string, lat: number, lon: number, radiusM: number): Landmark {
   return { id, label: id, lat, lon, radiusM, activeFromMs: 0, activeUntilMs: null, offerAtStart: true };
 }
-function catWith(landmarks: Landmark[], ways: Catalog['ways'] = []): Catalog {
+function catWith(landmarks: Landmark[], ways: Way[] = [], routes: Route[] = []): Catalog {
   const c = emptyCatalog();
   c.landmarks = landmarks;
   c.ways = ways;
+  c.routes = routes;
   return c;
 }
 const RIDE = { rideId: 'ride-t1', startedAtMs: 1_700_000_000_000 };
@@ -169,4 +172,147 @@ test('wayCreation: the un-seeded fallback keeps the provisional pair, now flagge
   assert(gs.chainageM.length === 2, 'no seed => the 1%/99% pair, unchanged');
   assert(gs.origin === 'geometric', 'the fallback pair is geometric too');
   assert(typeof gs.note === 'string' && gs.note.startsWith('provisional'), 'still says what it is');
+});
+
+// ------------------------------------------------------------ WP-F: the
+// post-stop "save as new way" offer for ANY ride, not just unmatched ones.
+// A ride the live engine locked onto some route X can still end somewhere no
+// way of ours goes — matchedRouteId is evidence about WHERE the ride's
+// endpoints sit, never a veto and never itself the source of an offer, and
+// the matched-way endpoint guard (MATCHED_ENDPOINT_SLACK_M) exists purely to
+// stop a fix a little outside X's own landmark disc from drafting as a
+// spurious brand-new place (the latelock_20260805 regression, §2.5).
+
+/** Point `metresN` due north of p (same flat-earth metric as the store). */
+function northOf(p: { lat: number; lon: number }, metresN: number): { lat: number; lon: number } {
+  return { lat: p.lat + metresN / 111320, lon: p.lon };
+}
+/** Point `metresE` due east of p. */
+function eastOf(p: { lat: number; lon: number }, metresE: number): { lat: number; lon: number } {
+  const meanLat = p.lat;
+  return { lat: p.lat, lon: p.lon + metresE / (111320 * Math.cos((meanLat * Math.PI) / 180)) };
+}
+
+const A0 = { lat: LAT0, lon: LON0 };
+const B0 = northOf(A0, 2115); // ~2115 m north of a — same separation northRide(20) covers
+const a = lm('a', A0.lat, A0.lon, 150);
+const b = lm('b', B0.lat, B0.lon, 150);
+const wayAB: Way = { id: 'a>b', startLandmarkId: 'a', endLandmarkId: 'b', routeIds: ['r-ab'] };
+const routeAB: Route = { id: 'r-ab', wayId: 'a>b', refLineId: 'r-ab', gateSetVersion: 1, seeded: true };
+
+test('WP-F 1: the gap case — a matched-but-different-endpoint ride still offers (the point of the WP)', () => {
+  const g = lm('g', A0.lat, eastOf(A0, 2200).lon, 150);
+  const cat = catWith([a, b, g], [wayAB], [routeAB]);
+  const fixes = [A0, eastOf(A0, 2200)]; // a -> g, NOT a -> b
+  for (const matchedRouteId of ['r-ab', null] as (string | null)[]) {
+    const d = draftWayCreation(cat, { ...RIDE, fixes, matchedRouteId });
+    assert(d !== null, `matchedRouteId=${matchedRouteId}: a->g (no way there) must draft, not null`);
+    assert(d!.start.kind === 'existing' && d!.start.landmarkId === 'a', 'start is the known place a');
+    assert(d!.end.kind === 'existing' && d!.end.landmarkId === 'g', 'end is the known (different) place g');
+  }
+});
+
+test('WP-F 2: an existing pair refuses regardless of the engine verdict (matching vs mismatching vs null)', () => {
+  const cat = catWith([a, b], [wayAB], [routeAB]);
+  const fixes = [A0, B0]; // a -> b, exactly the way that already exists
+  for (const matchedRouteId of ['r-ab', 'some-other-route', null] as (string | null)[]) {
+    const d = draftWayCreation(cat, { ...RIDE, fixes, matchedRouteId });
+    assert(d === null, `matchedRouteId=${matchedRouteId}: existing (a,b) pair must refuse regardless`);
+  }
+});
+
+test('WP-F 3: slack snap — the latelock regression guard, start side', () => {
+  // 225 m from a's centre (150 m radius): 75 m past the edge, same margin
+  // §2.5 measured on latelock_20260805's real first fix.
+  const startFix = northOf(A0, 225);
+  const cat = catWith([a, b], [wayAB], [routeAB]);
+  const fixes = [startFix, B0]; // end lands exactly inside b
+  const matched = draftWayCreation(cat, { ...RIDE, fixes, matchedRouteId: 'r-ab' });
+  assert(matched === null, 'matched: the 75 m-past-edge start snaps to a, pair (a,b) already exists -> null');
+  const unmatched = draftWayCreation(cat, { ...RIDE, fixes, matchedRouteId: null });
+  assert(unmatched !== null && unmatched!.start.kind === 'new' && unmatched!.end.kind === 'existing',
+    'unmatched: today\'s behaviour preserved — new start, existing end');
+});
+
+test('WP-F 3b: slack snap mirrored on the end side', () => {
+  const endFix = northOf(B0, 225); // 75 m past b's edge
+  const cat = catWith([a, b], [wayAB], [routeAB]);
+  const fixes = [A0, endFix]; // start lands exactly inside a
+  const matched = draftWayCreation(cat, { ...RIDE, fixes, matchedRouteId: 'r-ab' });
+  assert(matched === null, 'matched: the 75 m-past-edge end snaps to b, pair (a,b) already exists -> null');
+  const unmatched = draftWayCreation(cat, { ...RIDE, fixes, matchedRouteId: null });
+  assert(unmatched !== null && unmatched!.start.kind === 'existing' && unmatched!.end.kind === 'new',
+    'unmatched: today\'s behaviour preserved — existing start, new end');
+});
+
+test('WP-F 4: the slack never swallows a different known place or a genuinely far new place', () => {
+  // Start lands inside a DIFFERENT landmark c — must stay c regardless of
+  // matchedRouteId (Gym->Home->Work still offers Gym->Work).
+  const c = lm('c', eastOf(A0, 5000).lat, eastOf(A0, 5000).lon, 150);
+  const cat1 = catWith([a, b, c], [wayAB], [routeAB]);
+  const fixesC = [eastOf(A0, 5000), B0];
+  for (const matchedRouteId of ['r-ab', null] as (string | null)[]) {
+    const d = draftWayCreation(cat1, { ...RIDE, fixes: fixesC, matchedRouteId });
+    assert(d !== null && d!.start.kind === 'existing' && d!.start.landmarkId === 'c',
+      `matchedRouteId=${matchedRouteId}: start must stay the DIFFERENT known place c, not snap to a`);
+  }
+  // End 2 km past b's own edge stays new — the genuine Home->Work->Shop case.
+  assert(2000 > MATCHED_ENDPOINT_SLACK_M, 'sanity: 2 km is well beyond the slack');
+  const farEnd = northOf(B0, 150 + 2000);
+  const cat2 = catWith([a, b], [wayAB], [routeAB]);
+  const d2 = draftWayCreation(cat2, { ...RIDE, fixes: [A0, farEnd], matchedRouteId: 'r-ab' });
+  assert(d2 !== null && d2!.end.kind === 'new', '2 km past the way\'s end stays a genuinely new place');
+});
+
+test('WP-F 5: an unknown or stale matchedRouteId behaves exactly like null', () => {
+  const startFix = northOf(A0, 225); // same 75 m-past-edge scenario as WP-F 3
+  const cat = catWith([a, b], [wayAB], [routeAB]);
+  const fixes = [startFix, B0];
+  const withNull = draftWayCreation(cat, { ...RIDE, fixes, matchedRouteId: null });
+  const withUnknownRoute = draftWayCreation(cat, { ...RIDE, fixes, matchedRouteId: 'no-such-route' });
+  assert(withUnknownRoute !== null
+      && withUnknownRoute!.start.kind === withNull!.start.kind
+      && withUnknownRoute!.end.kind === withNull!.end.kind,
+    'an unknown route id must degrade exactly like matchedRouteId: null');
+  // A route whose OWN wayId is missing from the catalog is just as stale.
+  const staleRoute: Route = { id: 'r-stale', wayId: 'way-does-not-exist', refLineId: 'r-stale', gateSetVersion: 1, seeded: true };
+  const catStale = catWith([a, b], [wayAB], [routeAB, staleRoute]);
+  const withStaleWay = draftWayCreation(catStale, { ...RIDE, fixes, matchedRouteId: 'r-stale' });
+  assert(withStaleWay !== null
+      && withStaleWay!.start.kind === withNull!.start.kind
+      && withStaleWay!.end.kind === withNull!.end.kind,
+    'a route whose way id is missing must also degrade like null, never throw');
+});
+
+test('WP-F 6: real fixtures against the shipped seed catalog — matched but genuinely no other way, stays suppressed', () => {
+  // Same read-only-JSON pattern as store_suite.ts: this file's own module
+  // graph must not statically import store/seed.ts (it pulls in the bare
+  // catalog.seed.json import, which plain Node ESM cannot load without the
+  // registerHooks dance other suites use for it — unneeded here since we only
+  // need the shipped catalog's DATA, not the seed-mode selection logic).
+  const seed = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
+  for (const name of ['latelock_20260805', 'clean_morning']) {
+    const f = loadFixture(name);
+    assert(f.track === 'Morning', `fixture sanity: ${name} expected track Morning, got ${f.track}`);
+    const fixes = f.fixes.lat.map((lat, i) => ({ lat, lon: f.fixes.lon[i] }));
+    const d = draftWayCreation(seed, {
+      rideId: `real-${name}`,
+      startedAtMs: 1_700_000_000_000,
+      fixes,
+      matchedRouteId: 'Morning',
+    });
+    assert(d === null, `${name}: home->work already exists as a way — matched-and-suppressed, got ${JSON.stringify(d)}`);
+  }
+});
+
+test('WP-F 7: WayCreationDraft.matchedRouteId round-trips and buildWayCreationCatalog ignores it', () => {
+  const fixes = northRide(20);
+  const d = draftWayCreation(emptyCatalog(), { ...RIDE, fixes, matchedRouteId: 'some-route' })!;
+  assert(d.matchedRouteId === 'some-route', 'matchedRouteId carried onto the draft unchanged');
+  const dNone = draftWayCreation(emptyCatalog(), { ...RIDE, fixes })!;
+  assert(dNone.matchedRouteId === null, 'no matchedRouteId given => null on the draft, not undefined-forever');
+  const built = buildWayCreationCatalog(emptyCatalog(), d, { start: 'Home', end: 'Work' });
+  const errs = validateCatalog(mergeCatalogs(emptyCatalog(), built));
+  assert(errs.length === 0, `build must still validate, got: ${errs.join('; ')}`);
+  assert(!JSON.stringify(built).includes('some-route'), 'matchedRouteId must never leak into the built catalog');
 });

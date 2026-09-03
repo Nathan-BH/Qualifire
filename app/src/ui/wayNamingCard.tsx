@@ -3,12 +3,15 @@
  * true onboarding step... this is where landmarks are born on a cold start").
  * [UNTESTED ON DEVICE]
  *
- * Shown by RecordScreen's 'ending' phase when the just-finished ride never
- * locked a route and store/wayCreation.ts drafted new endpoint(s). Dumb UI:
- * it owns only the two text inputs; RecordScreen owns the draft, the build
- * and the saveUserCatalog() call. An endpoint that matched an EXISTING
- * landmark renders as fixed text, not an input. SKIP is always available and
- * loses nothing — the ride itself was already saved before this card exists.
+ * Shown by RecordScreen's 'ending' phase whenever store/wayCreation.ts
+ * drafted new endpoint(s) — since WP-F that includes a ride the live engine
+ * DID score against some route, as long as its endpoint pair still has no
+ * way of its own (matchedRouteLabel then swaps in the "scored as X, but…"
+ * sub-copy so the card never contradicts what Result shows). Dumb UI: it
+ * owns only the two text inputs; RecordScreen owns the draft, the build and
+ * the saveUserCatalog() call. An endpoint that matched an EXISTING landmark
+ * renders as fixed text, not an input. SKIP is always available and loses
+ * nothing — the ride itself was already saved before this card exists.
  */
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -23,6 +26,11 @@ export interface WayNamingCardProps {
   /** start === end: one place, one input */
   loop: boolean;
   busy: boolean;
+  /** WP-F: set when the live engine scored this ride against a route — the
+   * card's sub-copy then says so explicitly, since Result will show it as
+   * scored even though these endpoints have no way of their own yet. Absent
+   * or null renders the original ("does not match any way") copy. */
+  matchedRouteLabel?: string | null;
   onSave: (names: { start: string; end: string }) => void;
   onSkip: () => void;
 }
@@ -42,7 +50,9 @@ export function WayNamingCard(props: WayNamingCardProps) {
       <Text style={[st.sub, { color: t.textDim }]}>
         {props.loop
           ? 'This ride looped from and back to one new place.'
-          : 'This ride does not match any way you have. Name its start and end to make it a real route — this ride becomes its reference.'}
+          : props.matchedRouteLabel
+            ? `Scored as ${props.matchedRouteLabel}, but no way of yours runs between these two places. Name them to make this a route of its own — this ride becomes its reference.`
+            : 'This ride does not match any way you have. Name its start and end to make it a real route — this ride becomes its reference.'}
       </Text>
 
       <Text style={[st.label, { color: t.textDim }]}>STARTED AT</Text>
