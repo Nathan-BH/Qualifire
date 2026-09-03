@@ -54,13 +54,29 @@ left unconfirmed.
 | Inspect — WP-Q fresh inspection | Inspect | Fable (fresh context) | ~209.5k | 58 | PASS — highest-scrutiny pass of the cycle (destructive operation); hand-traced cascade rules against a scratch catalog, independently confirmed `moveSync` exists in the installed library, corrected the test count to 358/355 (executor's 357/354 was a stale-baseline slip), found 1 minor non-blocking wording defect |
 | Coordinator direct fixes (conditional reset-failure message + 3 doc test-count corrections) | Chore | — (coordinator, no subagent, <10 lines) | — | — | Fixed and committed directly, no dispatch |
 
-**Subtotal this stretch: ~2.76M tokens across 15 subagent dispatches** (4 fixes were direct
-coordinator edits, not dispatches). **Running cycle total: roughly 4.26M tokens across 27
+| Execute — WP-F (post-stop reference offer for any ride) | Execute | Sonnet | ~228.3k | — (not captured before compaction) | Landed fully: 366 tests/363 pass/0 fail/3 skip claimed (+8), incl. a real-fixture regression pin |
+| Inspect — WP-F fresh inspection | Inspect | Fable (fresh context) | ~107.5k | 27 | PASS — no blocking defects; 3 minor non-blocking notes (2 stale/orphaned doc comments, 1 pre-existing loop-branch copy gap, 1 test could gain a counterfactual assert); independently reconfirmed test count and — device shell having come back up mid-inspection — a real `tsc --noEmit` run (exit 0) for the first time this stretch |
+| Coordinator direct fixes (3 stale/orphaned comments in wayCreation.ts/RecordScreen.tsx; tsc-status doc correction across WP-D/J/O/C/Q/F sections of README.md now that tsc genuinely ran clean; WP-F README row + brief status line updated with inspection verdict) | Chore | — (coordinator, no subagent) | — | — | Fixed and committed directly, no dispatch |
+| Coordinator git catch-up (device_bash came back up this stretch — committed everything that had only ever been written to the device filesystem: WP-F's doc/comment fixes as `67c9b96`, then the two WP-F executor files that were never committed at all, `wayNamingCard.tsx`+`waycreation_suite.ts`, as `ecef45c`) | Chore | — (coordinator, no subagent) | — | — | 2 commits landed on `virgin` branch; working tree confirmed clean after |
+
+**Subtotal this stretch: ~3.10M tokens across 17 subagent dispatches** (6 fixes were direct
+coordinator edits, not dispatches). **Running cycle total: roughly 4.60M tokens across 29
 subagent dispatches.** Landed this stretch: WP-D, WP-N (bundled), WP-J, WP-O (both phases),
-WP-C, WP-Q (both parts), WP-P (fixed via WP-D). WP-C landing unblocks WP-H's map half, WP-I's
-map half, and all of WP-K's map-side scope (their README rows still need updating to drop
-"blocked on C"). Briefed but not yet executed: WP-B, WP-F, WP-L (all ready, no re-planning
+WP-C, WP-Q (both parts), WP-P (fixed via WP-D), WP-F. WP-C landing unblocks WP-H's map half,
+WP-I's map half, and all of WP-K's map-side scope (their README rows still need updating to
+drop "blocked on C"). Briefed but not yet executed: WP-B, WP-L (both ready, no re-planning
 needed). Nathan answered Q1/Q2/Q4/Q5/Q6/Q7 in `QUESTIONS-FOR-NATHAN.md` — those answers
 unblock WP-E/G/H/I/K/M, but those five still only have short stub files, not execution-ready
 briefs, so a Digest+Plan pass is needed before any of them can be executed. Deferred pending
 Nathan's call on which (if any) to re-plan next, given session-token-budget pacing.
+
+**Note on git:** `device_bash` came back up partway through the WP-F inspection, after being
+down for the entire rest of this stretch (WP-D through the start of WP-F's execution). Every
+WP up to and including WP-Q had only ever been written straight to the device filesystem via
+the stage/edit/commit-file workaround — none of it was in git. That gap is now closed: all of
+it (WP-D/N/J/O/C/Q, plus WP-F) is committed on the `virgin` branch as of this update, working
+tree clean. `.git` in this repo has a recurring quirk worth knowing about — commands leave a
+stale `index.lock`/`HEAD.lock` that git itself cannot unlink (delete is blocked in the mounted
+folder), so every git invocation needs the lock renamed out of the way first (`mv .git/index.lock
+_to_delete/...` — a same-filesystem rename works even though delete doesn't) or the next git
+command fails with "Unable to create index.lock: File exists".
