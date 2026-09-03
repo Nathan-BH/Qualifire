@@ -13,3 +13,4 @@ app/dist/
 
 # Python bytecode cache (design/ scripts)
 __pycache__/
+_to_delete/

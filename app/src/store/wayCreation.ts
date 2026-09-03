@@ -1,11 +1,12 @@
 /**
  * Retroactive way creation (OPEN-ITEMS item 2; COLD-START §3 steps 5–9).
  *
- * On a virgin install setup is retroactive: ride first, name after. When a
- * finished ride never locked a route, these pure helpers decide whether the
- * STOP step should offer to name its endpoints (draftWayCreation) and, once
- * named, build the user-catalog additions (buildWayCreationCatalog) that
- * catalogStore.saveUserCatalog() persists: landmark(s) born from the visited
+ * On a virgin install setup is retroactive: ride first, name after. For any
+ * finished ride — matched to a route or not (WP-F) — these pure helpers
+ * decide whether the STOP step should offer to name its endpoints
+ * (draftWayCreation) and, once named, build the user-catalog additions
+ * (buildWayCreationCatalog) that catalogStore.saveUserCatalog() persists:
+ * landmark(s) born from the visited
  * endpoints, one Way linking them, one Route, and its v1 gate set: the full
  * 5-gate seed (1%/99% start/finish + 25/50/75% sector gates on the caller's
  * built reference line — store/gateSeeding.ts) when a `seed` is supplied,
@@ -42,7 +43,19 @@ export interface RideFacts {
   rideId: string;
   startedAtMs: number;
   fixes: { lat: number; lon: number }[];
+  /** WP-F: the route the live engine settled this ride on, or null. Evidence
+   * about WHERE the ride started/ended, not a veto — it only stops a fix a
+   * little outside that way's own landmark disc from being drafted as a
+   * brand-new place. */
+  matchedRouteId?: string | null;
 }
+
+/** WP-F: on a ride the engine attributed to route X, an endpoint fix within
+ * this many metres OUTSIDE X's own landmark disc is that landmark, not a new
+ * place. Aligned with live/engine.ts's ANCHOR_M (not imported — store code
+ * must not depend on live/). Measured: latelock_20260805 sits 75 m past the
+ * edge. [ASSUMPTION — tune on device.] */
+export const MATCHED_ENDPOINT_SLACK_M = 300;
 
 export interface EndpointResolution {
   kind: 'existing' | 'new';
@@ -59,6 +72,9 @@ export interface WayCreationDraft {
   /** end resolved to the same landmark as start (way needs a discriminator) */
   loop: boolean;
   trackLengthM: number;
+  /** WP-F: RideFacts.matchedRouteId, carried through so the naming card can
+   * say "scored as X, but…" — display only, ignored by buildWayCreationCatalog. */
+  matchedRouteId?: string | null;
 }
 
 /** Ridden length: fix-to-fix sum, same flat-earth metric the catalog uses. */
@@ -124,14 +140,22 @@ function newLandmark(
  * null (no offer) when: fewer than 2 fixes; the ridden track is shorter than
  * MIN_TRACK_LENGTH_M; or both endpoints resolve to existing landmarks that a
  * way already links in this direction (a repeat ride — way MATCHING is
- * COLD-START §3 step 7, a later package, not creation).
+ * COLD-START §3 step 7, a later package, not creation). This is a function of
+ * the ride's own endpoints ONLY — `ride.matchedRouteId` (WP-F) never creates
+ * or vetoes an offer by itself; it only feeds the matched-way endpoint guard
+ * below, so a ride the live engine locked onto route X can still offer when
+ * it demonstrably continued past X to somewhere no way of ours goes.
  *
  * Endpoint resolution, per end:
  *  1. inside an existing landmark's disc (landmarkAt, active-time filter OFF —
  *     identity matching must include dormant places) → reuse it;
- *  2. else a new landmark at the fix, radius NEW_LANDMARK_RADIUS_M shrunk to
+ *  2. else, when the ride matched a route and this endpoint would otherwise
+ *     be 'new' but sits within MATCHED_ENDPOINT_SLACK_M of that route's own
+ *     way's landmark disc (WP-F) → that landmark is reused instead of being
+ *     drafted as a brand-new place;
+ *  3. else a new landmark at the fix, radius NEW_LANDMARK_RADIUS_M shrunk to
  *     clear every existing disc (and, for the end, the start's new draft);
- *  3. if even MIN_LANDMARK_RADIUS_M cannot fit, the squeezing disc's place is
+ *  4. if even MIN_LANDMARK_RADIUS_M cannot fit, the squeezing disc's place is
  *     reused instead — within 30 m of a disc's edge is that place, GPS-wise.
  *     When the squeezing disc is the start's own draft, the ride is a loop.
  */
@@ -141,6 +165,17 @@ export function draftWayCreation(c: Catalog, ride: RideFacts): WayCreationDraft 
   if (len < MIN_TRACK_LENGTH_M) return null;
   const first = ride.fixes[0];
   const last = ride.fixes[ride.fixes.length - 1];
+
+  // WP-F: the way (if any) the ride's matchedRouteId resolves to in THIS
+  // catalog. A stale or missing route/way id resolves to null and every
+  // consumer below degrades to today's (pre-WP-F) behaviour — never throws.
+  const matchedWay =
+    (ride.matchedRouteId
+      ? (() => {
+          const route = c.routes.find((r) => r.id === ride.matchedRouteId);
+          return route ? c.ways.find((w) => w.id === route.wayId) ?? null : null;
+        })()
+      : null) ?? null;
 
   let start: EndpointResolution;
   const startHit = landmarkAt(c, first);
@@ -156,6 +191,16 @@ export function draftWayCreation(c: Catalog, ride: RideFacts): WayCreationDraft 
       };
     } else {
       start = { kind: 'existing', landmarkId: nearestByEdge(first, c.landmarks)!.id };
+    }
+  }
+
+  // WP-F matched-way endpoint guard (start side): only a 'new' resolution is
+  // ever overridden — an endpoint that already resolved to a DIFFERENT
+  // existing landmark is left alone (Gym→Home→Work still offers Gym→Work).
+  if (matchedWay && start.kind === 'new') {
+    const a = c.landmarks.find((l) => l.id === matchedWay.startLandmarkId);
+    if (a && metresBetween(first, a) - a.radiusM <= MATCHED_ENDPOINT_SLACK_M) {
+      start = { kind: 'existing', landmarkId: a.id };
     }
   }
 
@@ -182,6 +227,14 @@ export function draftWayCreation(c: Catalog, ride: RideFacts): WayCreationDraft 
     }
   }
 
+  // WP-F matched-way endpoint guard (end side), symmetric with the start.
+  if (matchedWay && end.kind === 'new') {
+    const b = c.landmarks.find((l) => l.id === matchedWay.endLandmarkId);
+    if (b && metresBetween(last, b) - b.radiusM <= MATCHED_ENDPOINT_SLACK_M) {
+      end = { kind: 'existing', landmarkId: b.id };
+    }
+  }
+
   const loop = start.landmarkId === end.landmarkId;
 
   if (start.kind === 'existing' && end.kind === 'existing') {
@@ -191,7 +244,15 @@ export function draftWayCreation(c: Catalog, ride: RideFacts): WayCreationDraft 
     if (already) return null;
   }
 
-  return { rideId: ride.rideId, startedAtMs: ride.startedAtMs, start, end, loop, trackLengthM: len };
+  return {
+    rideId: ride.rideId,
+    startedAtMs: ride.startedAtMs,
+    start,
+    end,
+    loop,
+    trackLengthM: len,
+    matchedRouteId: ride.matchedRouteId ?? null,
+  };
 }
 
 /**

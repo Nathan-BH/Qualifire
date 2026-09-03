@@ -73,11 +73,8 @@ const PIN_MS = 20000;
  * flash on the very first tick. [ASSUMPTION — tune on device.] */
 const WRITING_HISTORY_AFTER_FIXES = 5;
 
-/** OPEN-ITEMS item 2: does the just-finished unlocked ride warrant the STOP
- * naming offer, and as what? Reads the ride's raw JSONL (the only record of
- * where it went) and drafts against the runtime catalog. Null on ANY failure
- * — the stop flow must never break on a naming convenience. */
-/** The ride's raw recorded fixes (flags included), or null on any failure. */
+/** The ride's raw recorded fixes (flags included), or null on any failure —
+ * the stop flow must never break on a naming convenience. */
 async function readRideFixes(rideId: string) {
   try {
     const fs = createExpoFsAdapter();
@@ -89,7 +86,11 @@ async function readRideFixes(rideId: string) {
   }
 }
 
-async function namingDraftFor(rideId: string, startedAtMs: number): Promise<WayCreationDraft | null> {
+async function namingDraftFor(
+  rideId: string,
+  startedAtMs: number,
+  matchedRouteId: string | null,
+): Promise<WayCreationDraft | null> {
   const fixes = await readRideFixes(rideId);
   if (fixes === null) return null;
   try {
@@ -97,6 +98,7 @@ async function namingDraftFor(rideId: string, startedAtMs: number): Promise<WayC
       rideId,
       startedAtMs,
       fixes: fixes.map((f) => ({ lat: f.lat, lon: f.lon })),
+      matchedRouteId,
     });
   } catch {
     return null;
@@ -196,9 +198,11 @@ export default function RecordScreen({
   const [recoveredKind, setRecoveredKind] = useState<'relaunch' | 'remount'>('relaunch');
   const [busy, setBusy] = useState(false);
   const [lastSummary, setLastSummary] = useState<RideSummary | null>(null);
-  // OPEN-ITEMS item 2: the STOP-step naming offer for an unlocked ride whose
-  // endpoints match no existing way (null = no offer). While non-null the
-  // 'ending' phase shows the naming card and holds the reversed launch mark.
+  // OPEN-ITEMS item 2 (WP-F: any finished ride, not just unlocked ones):
+  // the STOP-step naming offer for endpoints that match no existing way, or
+  // that diverge >MATCHED_ENDPOINT_SLACK_M from the ride's own matched route
+  // (null = no offer). While non-null the 'ending' phase shows the naming
+  // card and holds the reversed launch mark.
   const [naming, setNaming] = useState<WayCreationDraft | null>(null);
   // Mirror for the [] useCallback closures below, same reason as sessionRef.
   const namingRef = useRef<WayCreationDraft | null>(null);
@@ -497,11 +501,18 @@ export default function RecordScreen({
       rememberFreeRide(finalState, s ? { startedAtMs: s.startedAtMs } : undefined); // WP-B: no-op unless this actually was a free ride with >=1 crossing
       const sum = await stopTracking();
       setLastSummary(sum);
-      // Retroactive way creation (OPEN-ITEMS item 2): an unlocked ride with
-      // a real session may be ride 1 on a brand-new way — compute the naming
-      // offer BEFORE the phase flip so 'ending' can show it. Null (no offer)
-      // covers: locked rides, matched endpoints, short rides, read failures.
-      const draft = s && finalState.track === null ? await namingDraftFor(s.rideId, s.startedAtMs) : null;
+      // Retroactive way creation (OPEN-ITEMS item 2, extended by WP-F): a
+      // finished ride may be ride 1 on a brand-new way — compute the naming
+      // offer BEFORE the phase flip so 'ending' can show it. WP-F: the offer
+      // is about the ride's ENDPOINT PAIR, not the engine's route verdict —
+      // a ride the engine (soft/late/partially) matched can still end
+      // somewhere no way of yours goes. finalState.track is handed over only
+      // so draftWayCreation can refuse to mint a "new place" a few tens of
+      // metres outside the matched way's own landmark (latelock_20260805:
+      // 75 m past home's disc). Null (no offer) now covers: an existing way
+      // in this direction, short rides, read failures — NOT "the engine
+      // locked".
+      const draft = s ? await namingDraftFor(s.rideId, s.startedAtMs, finalState.track) : null;
       // Cycle 024 (WP-A2, Nathan 2026-08-19): "at the end when you press
       // stop it would be nice to show the animation again — but reversed."
       // session clears and phase flips to 'ending' TOGETHER, after the ride
@@ -955,6 +966,7 @@ export default function RecordScreen({
             endExistingLabel={existingLandmarkLabel(naming.end)}
             loop={naming.loop}
             busy={busy}
+            matchedRouteLabel={naming.matchedRouteId ? routeLabel(naming.matchedRouteId) : null}
             onSave={onNamingSave}
             onSkip={onNamingSkip}
           />

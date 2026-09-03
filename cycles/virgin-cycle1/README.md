@@ -22,7 +22,7 @@ or ready to hand to an Execute pass, without losing a day to re-planning.
 | B | GPX+ pick + lock-change logging | Brief written, ready to execute | `WP-B-gpxplus-pick-lock-logging.md` |
 | C | Drawable user-created routes (the biggest lever — unblocks D, H, I, K) | **DONE — landed on the device 2026-09-02, independently inspected.** 345 tests, 342 pass, 0 fail, 3 skip (12 new). The proof that matters: a drawn gate, pushed back through the engine's own scoring math, rescores to within 7e-7 m of where it was requested — gates draw exactly where they score, verified on a real ride-derived ref, not just synthetic fixtures. (Matching the bundled manifest's exact scale/offset only holds for Morning — EveningA/B's Python-rendered manifest was fit to a different source and differs 1.9–2.9%; harmless, since the runtime transform only needs to agree with itself, but not a "matches the manifest" claim in general.) On-device visual check still outstanding (no device shell this session). | `WP-C-drawable-user-routes.md` |
 | D | Rider-only map before START / on unmatched rides | **DONE — landed on the device 2026-09-02.** 312 tests, 309 pass, 0 fail, 3 skip (7 new). Pieces A + B taken; WP-N bundled in. On-device visual check still outstanding (no device shell this session). | `WP-D-rider-only-map.md` |
-| F | Post-stop "save as new way" offer for any ride, not just unmatched ones | Brief written, ready to execute | `WP-F-post-stop-reference-offer.md` |
+| F | Post-stop "save as new way" offer for any ride, not just unmatched ones | **DONE — landed on the device 2026-09-03, inspected same day.** 366 tests, 363 pass, 0 fail, 3 skip (8 new); `tsc --noEmit` confirmed clean on-device. §3.1–3.3 all landed, including the recommended (not just required) pieces: the 300 m `MATCHED_ENDPOINT_SLACK_M` default, `WayCreationDraft.matchedRouteId`, and the "Scored as X, but…" card copy. Real-fixture regression pinned directly (`latelock_20260805` against the shipped seed catalog) and confirmed meaningful by fresh inspection. No blocking defects; 3 minor non-blocking notes (stale doc comments fixed, pre-existing loop-branch copy left as-is, one test could gain a counterfactual assert). On-device visual check still outstanding. | `WP-F-post-stop-reference-offer.md` |
 | J | Breadcrumb trail behind the rider | **DONE — landed on the device 2026-09-02.** 326 tests, 323 pass, 0 fail, 3 skip (14 new). Step 3 (route-map guard) was a no-op — WP-D already did it. Fresh inspection found + fixed one minor bug (a stale pre-START position could become trail point 0); everything else held up. On-device visual check still outstanding (no device shell this session). | `WP-J-breadcrumb-trail.md` |
 | L | Start auto-detect as a suggestion, not an override (notes5 N5) | Brief written, ready to execute (small) | `WP-L-start-autodetect-suggestion.md` |
 | E | Virgin manifest gate-leak (bundled gates drawn on new>>new free rides) | Not started — **blocked on Q6** | see `QUESTIONS-FOR-NATHAN.md` |
@@ -96,9 +96,9 @@ exact wording and every test that pins this behaviour.
 
 Files changed: `app/src/ui/routeMapView.tsx`, `app/src/ui/routeMapGeo.ts`,
 `app/src/ui/RecordScreen.tsx`, `app/src/location/index.ts`, `app/tests/routemapgeo_suite.ts`.
-Nothing else touched. `device_bash` was still down this session (see CONTEXT.md), so the test
-suite and a strict standalone type-check of the new `cameraTargetFor` code ran in the cloud
-container instead of on your machine — worth re-running yourself before trusting a build:
+Nothing else touched. `device_bash` was down for most of this session but came back up before this update — the
+test suite and a real `tsc --noEmit` were both confirmed on your actual toolchain (see below),
+not just the cloud container's manual type-pass this WP originally shipped with:
 
 ```
 cd app
@@ -106,7 +106,7 @@ node --experimental-strip-types tests/run.ts   # 312 was the count right after W
                                                 # WP-J/WP-O landed since, so today's real total
                                                 # is 333 (309→330 pass, 0 fail, 3 skip) — see
                                                 # "Testing WP-O today" below for the live number
-./node_modules/.bin/tsc --noEmit               # not confirmed on a real toolchain this session
+./node_modules/.bin/tsc --noEmit               # confirmed 2026-09-03 on-device: exit 0, no errors
 grep -n "4\.68\|50\.85" src/ui/routeMapView.tsx   # expect no output
 grep -n "asset!" src/ui/routeMapView.tsx           # expect no output
 ```
@@ -127,15 +127,15 @@ Files changed: `app/src/ui/trailModel.ts` (new), `app/src/ui/routeMapView.tsx`,
 `app/src/ui/RecordScreen.tsx`, `app/tests/trail_suite.ts` (new), `app/tests/run.ts`. Nothing
 else touched — Step 3 of the brief (the route-map guard) turned out to be a no-op because WP-D
 already landed that exact change earlier the same day (see WP-P §3.2 point 1 and WP-J's own
-status line). `device_bash` was still down this session, so the test suite and a strict
-standalone type-check of `trailModel.ts` ran in the cloud container instead of on your machine:
+status line). `device_bash` came back up later this session — the test suite and a real
+`tsc --noEmit` were both confirmed on your actual toolchain (see below):
 
 ```
 cd app
 node --experimental-strip-types tests/run.ts   # 326 was the count right after WP-J landed; WP-O
                                                 # landed since, so today's real total is 333 —
                                                 # see "Testing WP-O today" below
-./node_modules/.bin/tsc --noEmit               # not confirmed on a real toolchain this session
+./node_modules/.bin/tsc --noEmit               # confirmed 2026-09-03 on-device: exit 0, no errors
 ```
 
 If that comes back clean, rebuild/reload and check (per WP-J §4):
@@ -157,7 +157,7 @@ Files changed: `app/src/ui/demoModel.ts` (new), `app/src/ui/DemoScreen.tsx`,
 ```
 cd app
 node --experimental-strip-types tests/run.ts   # expect: 333 tests: 330 pass, 0 fail, 3 skip
-./node_modules/.bin/tsc --noEmit               # not confirmed on a real toolchain this session
+./node_modules/.bin/tsc --noEmit               # confirmed 2026-09-03 on-device: exit 0, no errors
 grep -n "gateColours" src/ui/DemoScreen.tsx        # expect no output
 ```
 
@@ -194,7 +194,7 @@ brief's own claimed tolerance (gates 0.1–0.4 m, scale ~0.26%, offx exact, offy
 ```
 cd app
 node --experimental-strip-types tests/run.ts   # expect: 345 tests: 342 pass, 0 fail, 3 skip
-./node_modules/.bin/tsc --noEmit               # not confirmed on a real toolchain this session
+./node_modules/.bin/tsc --noEmit               # confirmed 2026-09-03 on-device: exit 0, no errors
 ```
 
 If that comes back clean, rebuild/reload and check (per WP-C §5):
@@ -225,17 +225,15 @@ needed touching for that), `app/src/storage/expoFsAdapter.ts` (`archiveStorageRo
 `app/tests/userrefs_suite.ts`, `app/tests/resultsstore_suite.ts`, `app/tests/catalogstore_suite.ts`
 (new cases each). `RecordScreen.tsx`, `routeMapView.tsx`, `routeMapGeo.ts` — untouched, exactly
 as the brief specified (no overlap with WP-C's asset-runtime work, verified against the actual
-files before editing). `device_bash` was still down this session, so the test suite ran in the
-cloud container instead of on your machine; `tsc --noEmit` couldn't run at all there (no
-`node_modules`, no network to fetch a standalone `typescript`) — every edited file got a manual
-type-correctness pass instead (including confirming `Directory.moveSync`'s real signature
-against the installed package's own `.ts` sources), but a real `tsc --noEmit` run on your
-machine is worth doing before trusting a build:
+files before editing). `device_bash` was down when this WP was executed, so the test suite ran in the cloud
+container and `tsc --noEmit` got a manual type-correctness pass instead of a real run (including
+confirming `Directory.moveSync`'s real signature against the installed package's own `.ts`
+sources). Both were since re-confirmed for real once the device shell came back up — see below:
 
 ```
 cd app
-node --experimental-strip-types tests/run.ts   # expect: 358 tests: 355 pass, 0 fail, 3 skip
-./node_modules/.bin/tsc --noEmit               # not run this session — no node_modules in the cloud container
+node --experimental-strip-types tests/run.ts   # confirmed 2026-09-03: 358 tests, 355 pass, 0 fail, 3 skip
+./node_modules/.bin/tsc --noEmit               # confirmed 2026-09-03 on-device: exit 0, no errors
 grep -n "deleteFile\|delete()" src/storage/expoFsAdapter.ts   # expect only the pre-existing deleteFile
 grep -rn "ForTests()" src/ui/settings.tsx      # expect no output
 ```
@@ -270,3 +268,44 @@ for the route-delete flow), and the "reset…" button's text colour — the brie
 but this repo's own D-013 rule is "no red anywhere" and `PaddockTheme` has no `danger` token, so
 it uses `t.textDim` (matching RidesScreen's own delete button) with the destructive styling
 living entirely in the Alert.alert confirm, same as everywhere else in the app.
+
+## Testing WP-F today (post-stop "new way" offer for any ride — already on your phone's repo)
+
+Files changed: `app/src/store/wayCreation.ts` (`RideFacts.matchedRouteId`,
+`MATCHED_ENDPOINT_SLACK_M`, the matched-way endpoint guard, `WayCreationDraft.matchedRouteId`,
+doc comments), `app/src/ui/RecordScreen.tsx` (dropped the `finalState.track === null` gate,
+`namingDraftFor` takes/forwards `matchedRouteId`, `WayNamingCard` gets `matchedRouteLabel`),
+`app/src/ui/wayNamingCard.tsx` (`matchedRouteLabel` prop + the "Scored as X, but…" copy),
+`app/tests/waycreation_suite.ts` (8 new tests, one per §4 Test-plan item). Nothing else
+touched — `live/engine.ts`, `ui/lastRide.ts`, `store/catalogStore.ts` and
+`buildWayCreationCatalog` are all untouched exactly as the brief specified; verified against
+the real current files first (all four matched the brief's §2 current-state analysis
+byte-for-byte, including after WP-C/WP-Q — no drift, no conflict to reconcile). Shipped every
+§9 open question at its own recommended default (300 m slack, the "scored as X" copy, no
+extra exclusion for a fully-verified lap) since the brief itself said none blocks execution.
+`device_bash` was down when this WP was executed, so the test suite ran in the cloud
+container and `tsc --noEmit` got a careful manual type-correctness pass instead of a real run
+(including checking `TrackId` really is `string` so `finalState.track` and the new
+`matchedRouteId` parameter line up, and that TS narrows `naming.matchedRouteId` correctly
+inside the JSX ternary). A fresh-context inspection then re-verified all of this for real once
+the device shell came back up — both the manual reasoning and the test count held up exactly:
+
+```
+cd app
+node --experimental-strip-types tests/run.ts   # confirmed 2026-09-03: 366 tests, 363 pass, 0 fail, 3 skip
+./node_modules/.bin/tsc --noEmit               # confirmed 2026-09-03 on-device: exit 0, no errors
+```
+
+If that comes back clean, rebuild/reload and check (per WP-F §5, on-device only):
+1. Ride a known way normally (e.g. Home→Work) → no card, unchanged.
+2. Start a known route, deliberately divert, and stop somewhere genuinely new → the card
+   appears with the "Scored as {route}, but no way of yours runs between these two places…"
+   sentence; CREATE WAY still works; RESULT still shows the partial/off-route lap underneath.
+3. Start a known route from ~100 m outside its own start landmark (mimics the
+   `latelock_20260805` regression) → still no spurious card.
+
+The one place I used my own judgment inside the brief's own "recommended" defaults: I added
+`WayCreationDraft.matchedRouteId` (§3.3's "simplest" plumbing) and the card-copy switch, since
+the brief marked both recommended with no reason given to skip them and §9's own answers point
+that way — flagging here rather than silently deciding, per the brief's own preference for
+landing the safety net (§3.1/§3.2) together with the honest copy (§3.3) in one pass.

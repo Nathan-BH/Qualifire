@@ -1,4 +1,23 @@
-**Status: Brief written 2026-09-02, ready to execute. Not yet built. No decision needed from Nathan for the core offer.**
+**Status: DONE — landed on the device 2026-09-03. 366 tests, 363 pass, 0 fail, 3 skip (8 new).
+§3.1–3.3 all shipped, including the recommended-not-required pieces (300 m
+`MATCHED_ENDPOINT_SLACK_M`, `WayCreationDraft.matchedRouteId`, the "Scored as X, but…" card
+copy) — every §9 open question shipped at its own stated default, since the brief said none
+of them blocks execution. Files: `src/store/wayCreation.ts`, `src/ui/RecordScreen.tsx`,
+`src/ui/wayNamingCard.tsx`, `tests/waycreation_suite.ts`. Re-verified §2's current-state
+analysis against the real files before touching anything (post WP-C/WP-D/WP-J/WP-O/WP-Q) —
+no drift, no conflict. `tsc --noEmit` could not run in the execution session's cloud
+container (no `node_modules`); every edited file got a manual type-correctness pass instead.
+**Fresh-context inspection (2026-09-03, device shell back up): re-derived everything on the
+real repo — test count and `tsc --noEmit` (exit 0, zero errors) both reconfirmed for real, the
+guard logic and card copy hand-traced against the seed catalog for all three cases (exact
+repeat / diverging match / no match), the real-fixture regression test confirmed meaningful.
+No blocking defects. 3 minor non-blocking notes: two stale/orphaned doc comments (fixed
+directly — see `wayCreation.ts`/`RecordScreen.tsx`), the pre-existing loop-branch card copy in
+`wayNamingCard.tsx` doesn't yet say "Scored as X" for a Home→Home loop off a locked route (left
+as-is, pre-existing wording made more reachable by this WP, not a regression), and test 6 could
+add a counterfactual assert that `matchedRouteId: null` still drafts (left as-is, non-blocking).**
+On-device visual/UX check (§5, "on device") still outstanding. See the README's "Testing
+WP-F today" section for the full verification writeup.**
 **Review doc item: 6. Size: medium.**
 **Verified against the mirror at commit `447c2ba` (working tree clean at the time).**
 
