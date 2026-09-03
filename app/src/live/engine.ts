@@ -40,7 +40,8 @@
  *    corridor-verified advance it gets a SOFT lock: displayed and scored
  *    like a real lock (LiveEngineState.lockKind='soft'), every candidate
  *    still running underneath. If it goes on to be the unblocked leader it
- *    is promoted to VERIFIED with no second lock event (a `lockChange` event records the promotion — N9). The engine NEVER
+ *    is promoted to VERIFIED with no second lock event (a `lockChange`
+ *    event records the promotion — N9). The engine NEVER
  *    switches to a different candidate, however far ahead one pulls — the
  *    rider leaving the picked road is scored as missed sectors on the pick,
  *    never as a silent reassignment to another named route. finalize()

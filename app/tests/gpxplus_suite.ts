@@ -850,7 +850,7 @@ test('gpx+: N9 — decoder rejects malformed pick/lockChange lines, keeps well-f
     JSON.stringify({
       kind: 'lockChange', tUnixMs: 1000, track: 'Morning', from: 'none', to: 'soft',
       atChainageM: NaN, atT: 1, reason: 'pickAdvance',
-    }), // non-finite atChainageM
+    }), // JSON.stringify(NaN) -> null, so this exercises a non-number atChainageM
     // well-formed control lines: must survive
     JSON.stringify({
       kind: 'pick', tUnixMs: 1000, mode: 'route', from: 'lm:a', to: 'lm:b',
