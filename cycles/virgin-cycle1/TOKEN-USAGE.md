@@ -80,3 +80,38 @@ stale `index.lock`/`HEAD.lock` that git itself cannot unlink (delete is blocked 
 folder), so every git invocation needs the lock renamed out of the way first (`mv .git/index.lock
 _to_delete/...` — a same-filesystem rename works even though delete doesn't) or the next git
 command fails with "Unable to create index.lock: File exists".
+
+## WP-B + WP-L stretch (2026-09-03, same-session continuation)
+
+Both dispatched in the same session as WP-F's inspection, on Nathan's explicit "continue with
+WP-B and WP-L in one pass." Since both briefs touch `RecordScreen.tsx`, they were run
+**sequentially, not in parallel**, to avoid a same-file collision — Execute+Inspect WP-B fully
+landed and committed before WP-L's Execute even started. `device_bash` dropped in a full
+bridge disconnect (not just the tool — `get_device_info` failed too) right as WP-B's first
+Execute attempt began; it reconnected within a couple minutes and every dispatch after that
+ran cleanly on-device, tests and `tsc --noEmit` both verified for real throughout (no cloud
+container manual-pass fallback needed this stretch).
+
+| Dispatch | Tier | Model | Tokens (reported) | Tool calls | Outcome |
+|---|---|---|---|---|---|
+| Execute — WP-B, attempt 1 | Execute | Sonnet | ~57.3k | 5 | Blocked, no work done — full remote-device bridge disconnect before any file was touched; reported cleanly and stopped rather than guessing around it |
+| Execute — WP-B (GPX+ pick + lock-change logging, N9), attempt 2 | Execute | Sonnet | ~276.1k | 69 | Landed fully: 374 tests/371 pass/0 fail/3 skip (+8); tsc clean. No structural conflict with WP-D/J/O/C/Q/F despite heavy prior traffic on `RecordScreen.tsx`/`location/index.ts` |
+| Inspect — WP-B fresh inspection | Inspect | Fable (fresh context) | ~108.7k | 16 | PASS — hand-traced all 6 lock-transition paths against `engine.ts`, independently verified the L2/L4 test self-correction was sound (not just "it passed"), confirmed test count and tsc for real; 2 cosmetic-only notes |
+| Coordinator direct fixes (overlong comment wrap in engine.ts; test-comment accuracy in gpxplus_suite.ts re: `JSON.stringify(NaN)` → `null`) | Chore | — (coordinator, no subagent, <10 lines) | — | — | Fixed and committed directly, no dispatch |
+| Execute — WP-L (start auto-detect as a suggestion, not an override, N5) | Execute | Sonnet | ~109.6k | 53 | Landed fully: 380 tests/377 pass/0 fail/3 skip (+6); tsc clean. Explicitly reasoned through whether WP-B's new `pickSource` and this WP's new `fromExplicit` were the same idea under different names — concluded genuinely independent, different state/axis |
+| Inspect — WP-L fresh inspection | Inspect | Fable (fresh context) | ~83.6k | 14 | PASS — independently re-verified the WP-B/WP-L independence claim by tracing the actual render's data flow by hand (same-render synchronous computation, `pickFrom` batches its setState calls, no stale-`fromId` hazard) rather than accepting the executor's reasoning at face value; confirmed no cross-ride `fromExplicit` leak; 4 minor non-blocking notes |
+| Coordinator direct fixes (stale `RecordScreen.tsx` comment describing pre-WP-L 'new'-pill behavior; README `pickSource` union-shape wording) | Chore | — (coordinator, no subagent, <10 lines) | — | — | Fixed and committed directly, no dispatch |
+
+**Subtotal this stretch: ~0.64M tokens across 5 subagent dispatches** (2 fixes were direct
+coordinator edits, not dispatches; one dispatch was a blocked no-op due to a transient bridge
+outage). **Running cycle total: roughly 5.24M tokens across 34 subagent dispatches.**
+
+**This closes out every fully-briefed, ready-to-execute work package from this cycle.**
+WP-A through WP-D, WP-J, WP-N, WP-O, WP-C, WP-Q, WP-F, WP-B, WP-L are all landed, independently
+inspected, and committed to git on the `virgin` branch (HEAD `b44318d` as of this update,
+working tree clean). What remains: **WP-E, WP-G, WP-H, WP-I, WP-K, WP-M** — all still only
+short stub files, not execution-ready briefs, needing a Digest+Plan pass (incorporating
+Nathan's Q1/Q2/Q4/Q5/Q6/Q7 answers) before any can be executed. Also outstanding across nearly
+every landed WP: the actual on-phone visual/UX walkthrough — this session had a device shell
+for running tests/tsc/git, but no way to drive the running app's UI, so every "on-device
+check" line in the README is still Nathan's to do.
