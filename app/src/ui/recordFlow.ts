@@ -55,6 +55,21 @@ export function isFullscreen(phase: RecordPhase): boolean {
   return phase === 'armed' || phase === 'running' || phase === 'ending';
 }
 
+/** STARTING FROM in the setup/armed phases (notes5 N5): in 'auto' start mode
+ * the detected landmark is a SUGGESTION — it stands in for `from` only while
+ * the rider has not tapped a START pill this ride. An explicit tap
+ * (`fromExplicit`) wins and sticks, even if detection later changes or goes
+ * null; 'pick' mode never consults detection at all. */
+export function effectiveFromId(input: {
+  startMode: 'auto' | 'pick';
+  detectedId: string | null;
+  from: string;
+  fromExplicit: boolean;
+}): string {
+  if (input.startMode !== 'auto' || input.fromExplicit) return input.from;
+  return input.detectedId ?? input.from;
+}
+
 /** The rotating status-line items (IDEAS §24) while running — WITHOUT any
  * fixes count ("I don't know what 'fixes' are" — Nathan 2026-08-19; the raw
  * count stays in the GPX+ sidecar for diagnostics, never a user-facing

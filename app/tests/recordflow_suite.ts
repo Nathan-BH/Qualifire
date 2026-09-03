@@ -5,7 +5,7 @@
  */
 import { assert, test } from './lib.ts';
 import {
-  canTransition, isFullscreen, statusItemsFor, type RecordPhase,
+  canTransition, effectiveFromId, isFullscreen, statusItemsFor, type RecordPhase,
 } from '../src/ui/recordFlow.ts';
 
 const PHASES: RecordPhase[] = ['setup', 'armed', 'running', 'ending'];
@@ -73,4 +73,60 @@ test('recordFlow: statusItemsFor never mentions a raw fixes COUNT and orders tro
   assert(trouble.length > 0, 'statusItemsFor must return non-empty items under trouble too');
   assert(!trouble.some((s) => fixesCountPattern.test(s)), `no trouble item may carry a raw fixes count: ${JSON.stringify(trouble)}`);
   assert(trouble[0] === troubleLine, 'trouble must jump the queue — GPS line leads');
+});
+
+test('effectiveFromId: pick mode always ignores detection, tapped or not', () => {
+  assert(
+    effectiveFromId({ startMode: 'pick', detectedId: 'work', from: 'home', fromExplicit: false }) === 'home',
+    'pick mode + untapped must read `from`, never detection',
+  );
+  assert(
+    effectiveFromId({ startMode: 'pick', detectedId: 'work', from: 'home', fromExplicit: true }) === 'home',
+    'pick mode + tapped must still read `from` — detection is never consulted in pick mode',
+  );
+});
+
+test('effectiveFromId: auto + untapped seeds from detection, falls back to `from` when nothing detected', () => {
+  assert(
+    effectiveFromId({ startMode: 'auto', detectedId: 'work', from: 'home', fromExplicit: false }) === 'work',
+    'auto + untapped must seed from the detected landmark (untapped-case behaviour, byte-identical to pre-N5)',
+  );
+  assert(
+    effectiveFromId({ startMode: 'auto', detectedId: null, from: 'home', fromExplicit: false }) === 'home',
+    'auto + untapped + nothing detected must fall back to `from`',
+  );
+});
+
+test('effectiveFromId: auto + tapped — the tap wins over a differing detection (the core N5 regression)', () => {
+  assert(
+    effectiveFromId({ startMode: 'auto', detectedId: 'work', from: 'home', fromExplicit: true }) === 'home',
+    'a rider who tapped home while work was detected must get home, not have the tap silently ignored',
+  );
+});
+
+test('effectiveFromId: a tap sticks after detection later changes or goes null', () => {
+  const tapped = { startMode: 'auto' as const, from: 'home', fromExplicit: true };
+  assert(effectiveFromId({ ...tapped, detectedId: 'depot' }) === 'home', 'tap must survive detection changing to a third landmark');
+  assert(effectiveFromId({ ...tapped, detectedId: null }) === 'home', 'tap must survive detection going null entirely');
+});
+
+test('effectiveFromId: tapping the detected pill itself is a no-op that still "sticks"', () => {
+  // Tapping the already-detected landmark sets fromExplicit=true with
+  // from === detectedId — result is unchanged, but it must now be locked in
+  // (a later detection change must not silently override it).
+  assert(
+    effectiveFromId({ startMode: 'auto', detectedId: 'work', from: 'work', fromExplicit: true }) === 'work',
+    'tapping the detected pill must still read as work immediately after',
+  );
+  assert(
+    effectiveFromId({ startMode: 'auto', detectedId: 'depot', from: 'work', fromExplicit: true }) === 'work',
+    'and must stay work once detection moves on — the earlier tap-of-the-suggestion still sticks',
+  );
+});
+
+test('effectiveFromId: tapping `new` in auto mode now takes hold (was previously silently ignored)', () => {
+  assert(
+    effectiveFromId({ startMode: 'auto', detectedId: 'work', from: '~new', fromExplicit: true }) === '~new',
+    'tapping new while a landmark is detected must win, exactly like any other explicit tap',
+  );
 });

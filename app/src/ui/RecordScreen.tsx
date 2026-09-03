@@ -36,7 +36,7 @@ import { liveEngine, type LiveEngineState } from '../live/engine';
 import { getLiveTowerPosition } from '../live/towerSource';
 import { LiveSectorPane, realTimebase, viewModelFromEngine } from './liveView';
 import { LaunchAnimation } from './launchAnimation';
-import { isFullscreen, statusItemsFor, type RecordPhase } from './recordFlow';
+import { effectiveFromId, isFullscreen, statusItemsFor, type RecordPhase } from './recordFlow';
 import { useTabNav } from './tabNav';
 import RouteMapView from './routeMapView';
 import { metresBetween } from './routeMapGeo';
@@ -236,6 +236,11 @@ export default function RecordScreen({
   // ride, which needs no catalog at all.
   const [from, setFrom] = useState(() => defaultEndpoints(currentCatalog()).from ?? NEW_ID);
   const [to, setTo] = useState(() => defaultEndpoints(currentCatalog()).to ?? NEW_ID);
+  // notes5 N5: true once the rider has tapped a START pill this ride. Reset
+  // when a ride ends or is discarded — never on armed→setup cancel, which
+  // must keep the rider's choice.
+  const [fromExplicit, setFromExplicit] = useState(false);
+  const pickFrom = (id: string) => { setFrom(id); setFromExplicit(true); };
   // §8a route pick (Nathan 2026-08-16, re-confirmed 2026-08-18): only asked
   // when the way has >1 ratified route. Stored WITH its wayId so a pick can
   // never leak onto a different way when START / GOING TO change — a stale
@@ -245,7 +250,8 @@ export default function RecordScreen({
   const [routePick, setRoutePick] = useState<{ wayId: string; routeId: string } | null>(null);
   // The pick frozen at START — the pre-lock candidate for the LIVE map. Frozen
   // because `fromId` can drift mid-ride in auto mode (detected landmark goes
-  // null once you leave the disc), which would silently change `way`.
+  // null once you leave the disc) while nothing has been tapped (N5), which
+  // would silently change `way`.
   const [rideRouteHint, setRideRouteHint] = useState<string | null>(null);
   // WP-B: the directional route-id filter (coordinator addendum) frozen at
   // START, same reason rideRouteHint is frozen — the gates-only map during
@@ -534,6 +540,9 @@ export default function RecordScreen({
       // armed maps (which don't draw a trail anyway, but the state should
       // read empty the moment this ride is over).
       setTrail([]);
+      // notes5 N5: a finished ride's explicit FROM tap must not carry into
+      // the next ride's setup — the next setup gets a fresh suggestion.
+      setFromExplicit(false);
       setPhase('ending');
       setNaming(draft);
       // The reversed mark waits for the naming card (its close handlers
@@ -693,6 +702,9 @@ export default function RecordScreen({
             // WP-J: discard folds straight back to setup — the trail dies
             // with the ride, same as everything else nothing was kept.
             setTrail([]);
+            // notes5 N5: same reset as onEnd — a discarded ride's explicit
+            // FROM tap must not carry into the next ride's setup.
+            setFromExplicit(false);
             setPhase('setup');
             try {
               await deleteRide(s.rideId);
@@ -830,7 +842,12 @@ export default function RecordScreen({
   const detected = status.lastLat !== null && status.lastLon !== null
     ? landmarkAt(CATALOG, { lat: status.lastLat, lon: status.lastLon }, Date.now())
     : null;
-  const fromId = settings.startMode === 'auto' ? (detected?.id ?? from) : from;
+  // notes5 N5: the detected landmark is a SUGGESTION — it stands in for
+  // `from` only while nothing has been tapped this ride (fromExplicit false).
+  // A tap sticks even if detection later changes or goes null.
+  // recordFlow.ts's effectiveFromId owns the pure rule so it is tested
+  // without RN.
+  const fromId = effectiveFromId({ startMode: settings.startMode, detectedId: detected?.id ?? null, from, fromExplicit });
 
   // WP-B: 'new' at either end means free ride — auto start-mode still lets a
   // real DETECTED landmark win for FROM (unchanged pill mechanics); tapping
@@ -1203,12 +1220,16 @@ export default function RecordScreen({
         <View style={styles.startFlow}>
           <Text style={styles.flowLabel}>
             {settings.startMode === 'auto'
-              ? (detected ? 'DETECTED START' : 'START NOT DETECTED — PICK ONE')
+              ? (fromId === detected?.id
+                  ? 'DETECTED START'
+                  : detected
+                    ? 'STARTING FROM'
+                    : 'START NOT DETECTED — PICK ONE')
               : 'STARTING FROM'}
           </Text>
           <View style={styles.pillRow}>
             {startable.map((l) => (
-              <Pressable key={l.id} onPress={() => setFrom(l.id)}
+              <Pressable key={l.id} onPress={() => pickFrom(l.id)}
                 style={[styles.pill, fromId === l.id && styles.pillOn]}>
                 <Text style={[styles.pillText, fromId === l.id && styles.pillTextOn]}>
                   {l.label}{detected?.id === l.id ? ' ✓' : ''}
@@ -1218,7 +1239,7 @@ export default function RecordScreen({
             {/* WP-B: 'new' — free ride, unknown origin (Nathan: "go from
                 work>>new"). Not a catalog landmark, so it is added here
                 rather than to `startable`. */}
-            <Pressable key={NEW_ID} onPress={() => setFrom(NEW_ID)}
+            <Pressable key={NEW_ID} onPress={() => pickFrom(NEW_ID)}
               style={[styles.pill, fromId === NEW_ID && styles.pillOn]}>
               <Text style={[styles.pillText, fromId === NEW_ID && styles.pillTextOn]}>new</Text>
             </Pressable>
