@@ -849,9 +849,10 @@ export default function RecordScreen({
   // without RN.
   const fromId = effectiveFromId({ startMode: settings.startMode, detectedId: detected?.id ?? null, from, fromExplicit });
 
-  // WP-B: 'new' at either end means free ride — auto start-mode still lets a
-  // real DETECTED landmark win for FROM (unchanged pill mechanics); tapping
-  // 'new' only takes hold when start mode is manual, or nothing is detected.
+  // WP-B: 'new' at either end means free ride. Since WP-L, an explicit tap
+  // of 'new' for FROM sticks the same as any other explicit pick (via
+  // fromExplicit/pickFrom below) — auto start-mode only lets a real
+  // DETECTED landmark override FROM when nothing was explicitly tapped.
   const freeRide = fromId === NEW_ID || to === NEW_ID;
   // Coordinator addendum (2026-08-24): with exactly one end known, restrict
   // to the ways that actually run that direction; both ends unknown (or, in
