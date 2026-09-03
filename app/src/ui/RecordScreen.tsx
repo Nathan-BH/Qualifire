@@ -30,6 +30,7 @@ import {
   startTracking,
   stopTracking,
   subscribe,
+  type StartContext,
 } from '../location';
 import { liveEngine, type LiveEngineState } from '../live/engine';
 import { getLiveTowerPosition } from '../live/towerSource';
@@ -464,11 +465,17 @@ export default function RecordScreen({
         // filter (coordinator addendum) frozen for the whole ride.
         setRideRouteHint(null);
         setRideFreeRouteIds(freeRouteIdsRef.current);
-        s = await startTracking({ routePick: null, mode: 'free', routeIds: freeRouteIdsRef.current });
+        s = await startTracking({
+          routePick: null, mode: 'free', routeIds: freeRouteIdsRef.current,
+          startContext: startContextRef.current ?? undefined,
+        });
       } else {
         setRideRouteHint(pickedRouteRef.current?.refLineId ?? null);
         setRideFreeRouteIds(null);
-        s = await startTracking({ routePick: pickedRouteRef.current?.id ?? null });
+        s = await startTracking({
+          routePick: pickedRouteRef.current?.id ?? null,
+          startContext: startContextRef.current ?? undefined,
+        });
       }
       setRecovered(false);
       setSession(s);
@@ -849,6 +856,15 @@ export default function RecordScreen({
         ? (wayRoutes.find((r) => r.id === routePick.routeId) ?? defaultRouteFor(wayRoutes))
         : defaultRouteFor(wayRoutes))
     : null;
+  // N9 (2026-09-02, GPX+ pick/lock-change logging): was the pick rendered
+  // above an explicit RECORD-tab tap, or the silent §8a default? A free ride
+  // (no `way`) or a way with no pickable route both say 'none' — there is
+  // nothing a rider could have tapped.
+  const pickSource: StartContext['pickSource'] = freeRide || !pickedRoute
+    ? 'none'
+    : routePick !== null && routePick.wayId === way?.id && wayRoutes.some((r) => r.id === routePick.routeId)
+      ? 'picked'
+      : 'default';
   // Mirror for onStart's [] useCallback closure (it must read the CURRENT pick).
   const pickedRouteRef = useRef<Route | null>(null);
   pickedRouteRef.current = pickedRoute;
@@ -864,6 +880,13 @@ export default function RecordScreen({
   // 'new' rather than falling through to the raw '~new' id.
   const landmarkLabel = (id: string): string =>
     id === NEW_ID ? 'new' : (CATALOG.landmarks.find((l) => l.id === id)?.label ?? id);
+  // N9: mirror for onStart's [] useCallback closure (it must read the
+  // CURRENT RECORD-tab state at the instant START is pressed) — same reason
+  // pickedRouteRef/freeRideRef/freeRouteIdsRef mirror above.
+  const startContextRef = useRef<StartContext | null>(null);
+  startContextRef.current = {
+    from: fromId, to, fromLabel: landmarkLabel(fromId), toLabel: landmarkLabel(to), pickSource,
+  };
 
   // Shared between both branches below — unchanged position/behaviour, just
   // no longer duplicated between an idle ScrollView and a recording column.

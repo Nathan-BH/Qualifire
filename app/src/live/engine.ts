@@ -40,7 +40,7 @@
  *    corridor-verified advance it gets a SOFT lock: displayed and scored
  *    like a real lock (LiveEngineState.lockKind='soft'), every candidate
  *    still running underneath. If it goes on to be the unblocked leader it
- *    is promoted to VERIFIED with no second lock event. The engine NEVER
+ *    is promoted to VERIFIED with no second lock event (a `lockChange` event records the promotion — N9). The engine NEVER
  *    switches to a different candidate, however far ahead one pulls — the
  *    rider leaving the picked road is scored as missed sectors on the pick,
  *    never as a silent reassignment to another named route. finalize()
@@ -195,6 +195,11 @@ export interface LiveLap {
  * fresh from whichever candidate(s) reached their own FINISH gate). */
 export type LockKind = 'none' | 'soft' | 'verified' | 'finalized';
 
+/** N9 (2026-09-02, GPX+ pick/lock-change logging): every mechanism that can
+ * drive a `LockKind` transition — see EngineEvent's 'lockChange' member and
+ * gpxPlusExport.ts's rendering of it. */
+export type LockChangeReason = 'pickAdvance' | 'unblockedLeader' | 'routeCompleted' | 'rideEndPromotion';
+
 /** One live candidate's route: id + reference polyline + gate chainages.
  * catalogTrackSpecs() (tracks.ts) builds one per ratified catalog route;
  * tests inject a smaller legacy set (tests/lib.ts's fixtureSpecs()). */
@@ -236,7 +241,20 @@ export type EngineEvent =
       /** the RECORD-tab pick in effect when this lock fired, or null */
       pick: string | null;
     }
-  | { type: 'gate'; track: TrackId; gateIndex: number; t: number; estimated: boolean };
+  | { type: 'gate'; track: TrackId; gateIndex: number; t: number; estimated: boolean }
+  | {
+      /** N9: emitted once per `LockKind` transition (see LockChangeReason and
+       * the file header's HARD PICK section) — includes the soft->verified
+       * promotion that a `lock` event never reports a second time. */
+      type: 'lockChange';
+      track: TrackId;
+      from: LockKind;
+      to: Exclude<LockKind, 'none'>;
+      atChainageM: number;
+      atT: number;
+      reason: LockChangeReason;
+      pick: string | null;
+    };
 
 /** Route-match diagnostics (cycle 023 fix 5a) — a DISTINCT channel from both
  * the live-state feed (subscribe) and the ride-record events (subscribeEvents):
@@ -583,6 +601,10 @@ export class LiveEngine {
   finalize(): void {
     if (this.mode === 'free') return; // nothing to do — see the file header
     if (this.lockKind === 'verified') return; // nothing to do
+    // N9: captured up front (before either branch below reassigns
+    // this.lockKind) so both can report the transition they actually made.
+    const prevKind = this.lockKind;
+    const atT = this.tBuf.length > 0 ? this.tBuf[this.tBuf.length - 1] : 0;
     // "Completed its own route" needs BOTH every gate accounted for AND
     // >= LOCK_MIN_ADVANCE_M of corridor-verified advance BEFORE its FINISH
     // gate — the same 400 m evidence rule every live lock obeys, measured up
@@ -613,7 +635,13 @@ export class LiveEngine {
       // Nothing completed its own route. A still-soft lock's display already
       // stood — just relabel it as settled. No pick/never-anchored-anywhere
       // means the ride stays genuinely unmatched, exactly as today.
-      if (this.lockKind === 'soft') this.lockKind = 'finalized';
+      if (this.lockKind === 'soft') {
+        this.lockKind = 'finalized';
+        // N9: the ride-end settle was completely invisible before this WP —
+        // no lock event (finalize()'s relabel never emitted one) and no
+        // other trace either.
+        this.noteLockChange('soft', this.locked!, atT, 'rideEndPromotion');
+      }
       this.emit();
       return;
     }
@@ -644,7 +672,6 @@ export class LiveEngine {
       // reaches here with a different candidate displayed, so this is a
       // no-op guard — cheap, and the invariant it protects is worth stating.
       this.lap = null;
-      const atT = this.tBuf.length > 0 ? this.tBuf[this.tBuf.length - 1] : 0;
       this.emitEvent({
         type: 'lock', track: winner.track, atChainageM: winner.proj.chainage, atT, kind: 'finalized', pick: this.pick,
       });
@@ -661,6 +688,10 @@ export class LiveEngine {
     // else: already the displayed candidate (soft, its own FINISH already
     // fired mid-ride, phase already 'finished') — relabelling as finalized
     // changes nothing on screen, so no new event, no re-replay, no recompute.
+    // N9: either way (already displayed or not) this settles a transition —
+    // soft->finalized (the pick's own route completed) or none->finalized
+    // (no live lock ever formed) — both named routeCompleted per the design.
+    this.noteLockChange(prevKind, winner, atT, 'routeCompleted');
     this.emit();
   }
 
@@ -730,6 +761,18 @@ export class LiveEngine {
 
   private emitEvent(e: EngineEvent): void {
     this.evListeners.forEach((fn) => { try { fn(e); } catch { /* diagnostics only */ } });
+  }
+
+  /** N9: emits a `lockChange` for the transition just committed by
+   * commitLock()/finalize() — a no-op when the kind didn't actually change
+   * (idempotent finalize()) or when it settled back to 'none' (never
+   * happens today, but the guard states the invariant). */
+  private noteLockChange(prev: LockKind, cand: Candidate, atT: number, reason: LockChangeReason): void {
+    if (prev === this.lockKind || this.lockKind === 'none') return;
+    this.emitEvent({
+      type: 'lockChange', track: cand.track, from: prev, to: this.lockKind,
+      atChainageM: cand.proj.chainage, atT, reason, pick: this.pick,
+    });
   }
 
   private emitDiagnostic(e: DiagnosticEvent): void {
@@ -817,6 +860,7 @@ export class LiveEngine {
     accuracyM: number | undefined, poorNow: boolean,
   ): void {
     const isNewTarget = this.locked !== cand;
+    const prevKind = this.lockKind; // N9: captured before reassignment, for noteLockChange below
     this.locked = cand;
     this.lockKind = kind;
     this.phase = 'locked';
@@ -847,6 +891,10 @@ export class LiveEngine {
       }
       this.recompute();
     }
+    // N9: emits the lockChange for this transition — the none->soft/verified
+    // first lock (kind's own 'lock' event fires above) AND the soft->verified
+    // promotion (which emits no second 'lock' event, only this).
+    this.noteLockChange(prevKind, cand, tSec, kind === 'soft' ? 'pickAdvance' : 'unblockedLeader');
   }
 
   private feedCandidate(c: Candidate, lat: number, lon: number, tSec: number): GateEvent[] {

@@ -117,6 +117,43 @@ export interface LockEvent {
   /** the RECORD-tab route pick in effect when this lock fired, or null/absent */
   pick?: string | null;
 }
+/** N9 (2026-09-02, GPX+ pick/lock-change logging): a START-time fact — what
+ * the RECORD tab was set to when START was pressed. Exactly one per ride,
+ * logged by src/location/index.ts's startTracking(). Every field beyond
+ * `mode` is optional so an older sidecar (or a minimal test fixture) still
+ * decodes; `pickSource` is always present when the event was logged by real
+ * RecordScreen code — 'picked'/'default'/'none' says out loud whether the
+ * pick was an explicit tap, the §8a default, or no pick at all, rather than
+ * leaving "no pick" to the absence of `routeId`. */
+export interface PickEvent {
+  kind: 'pick';
+  tUnixMs: number;
+  mode: 'route' | 'free';
+  from?: string;
+  to?: string;
+  fromLabel?: string;
+  toLabel?: string;
+  routeId?: string | null;
+  pickSource?: 'picked' | 'default' | 'none';
+  routeIds?: string[] | null;
+}
+/** N9: one per `live/engine.ts` LockKind transition (LiveEngine.noteLockChange) —
+ * closes the two transitions (soft->verified promotion, soft/none->finalized
+ * ride-end settle) that used to leave no trace in the sidecar at all. `reason`
+ * names the mechanism (engine.ts's LockChangeReason, mirrored here as the
+ * persisted/replayable string union — same pattern as LockEvent.lockKind
+ * above). */
+export interface LockChangeEvent {
+  kind: 'lockChange';
+  tUnixMs: number;
+  track: string;
+  from: 'none' | 'soft' | 'verified' | 'finalized';
+  to: 'soft' | 'verified' | 'finalized';
+  atChainageM: number;
+  atT: number;
+  reason: 'pickAdvance' | 'unblockedLeader' | 'routeCompleted' | 'rideEndPromotion';
+  pick?: string | null;
+}
 export interface GateFireEvent {
   kind: 'gate';
   tUnixMs: number;
@@ -191,7 +228,8 @@ export interface ElevationOutlierEvent {
 export type RideEvent =
   | MetaEvent | ButtonEvent | LockEvent | GateFireEvent | StorageErrorEvent | RelaunchEvent
   | RemountEvent
-  | RouteMatchDiagnosticEvent | ElevationOutlierEvent;
+  | RouteMatchDiagnosticEvent | ElevationOutlierEvent
+  | PickEvent | LockChangeEvent;
 
 export interface DecodedEvents {
   events: RideEvent[];

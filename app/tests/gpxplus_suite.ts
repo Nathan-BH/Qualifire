@@ -58,6 +58,16 @@ test('gpx+: events JSONL encode->decode identity — one of each kind, garbage/u
     { kind: 'meta', tUnixMs: 1000, schemaVersion: 1, appVersion: '0.1.0' },
     { kind: 'button', tUnixMs: 2000, button: 'start' },
     { kind: 'lock', tUnixMs: 3000, track: 'Morning', atChainageM: 450.5, atT: 3 },
+    // N9 (2026-09-02, GPX+ pick/lock-change logging):
+    {
+      kind: 'pick', tUnixMs: 3200, mode: 'route', from: 'lm:a', to: 'lm:b',
+      fromLabel: 'Home', toLabel: 'Work', routeId: 'route:x', pickSource: 'picked',
+      routeIds: ['route:x', 'route:y'],
+    },
+    {
+      kind: 'lockChange', tUnixMs: 3500, track: 'Morning', from: 'soft', to: 'verified',
+      atChainageM: 500, atT: 3.5, reason: 'unblockedLeader', pick: 'Morning',
+    },
     { kind: 'gate', tUnixMs: 4000, track: 'Morning', gateIndex: 0, t: 4, estimated: false },
     { kind: 'storageError', tUnixMs: 5000, message: 'boom' },
     { kind: 'relaunch', tUnixMs: 6000 },
@@ -157,6 +167,16 @@ test('gpx+: standard exportGpx stays byte-identical — stripped exportGpxPlus e
   });
   await storage.appendEvent(rideId, {
     kind: 'gate', tUnixMs: 1755167000600, track: 'Morning', gateIndex: 0, t: 1755167000.6, estimated: false,
+  });
+  // N9: a pick and a lockChange must strip out exactly like every other qf:
+  // element — this is the byte-identity test's whole point.
+  await storage.appendEvent(rideId, {
+    kind: 'pick', tUnixMs: 1755166999600, mode: 'route', from: 'lm:a', to: 'lm:b',
+    fromLabel: 'Home', toLabel: 'Work', routeId: 'Morning', pickSource: 'picked',
+  });
+  await storage.appendEvent(rideId, {
+    kind: 'lockChange', tUnixMs: 1755167000700, track: 'Morning', from: 'soft', to: 'verified',
+    atChainageM: 20, atT: 1755167000.7, reason: 'unblockedLeader', pick: 'Morning',
   });
   await storage.appendEvent(rideId, { kind: 'storageError', tUnixMs: 1755167001500, message: 'boom' });
   await storage.appendEvent(rideId, { kind: 'relaunch', tUnixMs: 1755167001600 });
@@ -261,6 +281,8 @@ test('gpx+: no-sidecar ride (pre-feature) — exportGpxPlus still succeeds, only
   assert(gpx.includes('<qf:firstFixAt>'), 'firstFixAt missing');
   assert(gpx.includes('<qf:outages>'), 'outages missing');
   assert(!gpx.includes('<qf:routeLock'), 'routeLock present with no events file on disk');
+  assert(!gpx.includes('<qf:pick'), 'N9: qf:pick present with no events file on disk');
+  assert(!gpx.includes('<qf:lockChanges'), 'N9: qf:lockChanges present with no events file on disk');
   assert(!gpx.includes('<qf:storageErrors'), 'storageErrors present with no events file on disk');
   assert(!gpx.includes('<qf:relaunches'), 'relaunches present with no events file on disk');
   assert(!gpx.includes('<qf:buttons'), 'buttons present with no events file on disk');
@@ -654,4 +676,198 @@ test('gpx+: cycle025 P3 — maxSpeedKmh is omitted (never a fabricated 0) when n
   await storage.endRide(rideId);
   const gpx = await storage.exportGpxPlus(rideId);
   assert(!gpx.includes('<qf:maxSpeedKmh>'), 'maxSpeedKmh emitted although every sample endpoint is poor-accuracy');
+});
+
+// ---------------------------------------------------------------- (p) N9: <qf:pick>
+
+test('gpx+: N9 — <qf:pick> renders right after startPressedAt, every recorded field escaped, omitted fields dropped', async () => {
+  // (a) route ride, explicit pick, full fields incl. label escaping
+  {
+    const { storage, clock } = makeEnv();
+    const rideId = await storage.startRide();
+    await storage.appendFix(rideId, { tUnixMs: clock.t, lat: 50.8, lon: 4.6 });
+    await storage.appendEvent(rideId, { kind: 'button', tUnixMs: clock.t, button: 'start' });
+    await storage.appendEvent(rideId, {
+      kind: 'pick', tUnixMs: clock.t, mode: 'route',
+      from: 'lm:a', to: 'lm:b', fromLabel: 'Home & <Away>', toLabel: 'Work',
+      routeId: 'route:x', pickSource: 'picked',
+    });
+    await storage.endRide(rideId);
+    const gpx = await storage.exportGpxPlus(rideId);
+    assert(/<qf:startPressedAt>[^<]*<\/qf:startPressedAt>\n\s*<qf:pick /.test(gpx),
+      'qf:pick is not immediately after qf:startPressedAt');
+    assert(
+      gpx.includes(
+        '<qf:pick mode="route" from="lm:a" fromLabel="Home &amp; &lt;Away&gt;" to="lm:b" toLabel="Work" routeId="route:x" pickSource="picked" t="',
+      ),
+      'route/picked qf:pick attributes wrong/missing/mis-escaped',
+    );
+  }
+
+  // (b) free ride, one known end — the directional routeIds filter recorded
+  {
+    const { storage, clock } = makeEnv();
+    const rideId = await storage.startRide();
+    await storage.appendFix(rideId, { tUnixMs: clock.t, lat: 50.8, lon: 4.6 });
+    await storage.appendEvent(rideId, { kind: 'button', tUnixMs: clock.t, button: 'start' });
+    await storage.appendEvent(rideId, {
+      kind: 'pick', tUnixMs: clock.t, mode: 'free',
+      from: 'lm:a', to: '~new', fromLabel: 'Home', toLabel: 'new',
+      pickSource: 'none', routeIds: ['route:a', 'route:b'],
+    });
+    await storage.endRide(rideId);
+    const gpx = await storage.exportGpxPlus(rideId);
+    assert(
+      gpx.includes(
+        '<qf:pick mode="free" from="lm:a" fromLabel="Home" to="~new" toLabel="new" pickSource="none" routeIds="route:a route:b" t="',
+      ),
+      'free-with-routeIds qf:pick attributes wrong/missing',
+    );
+    assert(!gpx.includes('routeId="'), 'a free ride with no chosen route must not render a routeId attribute');
+  }
+
+  // (c) free ride, both ends unknown — unfiltered, no routeIds attribute
+  {
+    const { storage, clock } = makeEnv();
+    const rideId = await storage.startRide();
+    await storage.appendFix(rideId, { tUnixMs: clock.t, lat: 50.8, lon: 4.6 });
+    await storage.appendEvent(rideId, { kind: 'button', tUnixMs: clock.t, button: 'start' });
+    await storage.appendEvent(rideId, {
+      kind: 'pick', tUnixMs: clock.t, mode: 'free',
+      from: '~new', to: '~new', fromLabel: 'new', toLabel: 'new', pickSource: 'none',
+    });
+    await storage.endRide(rideId);
+    const gpx = await storage.exportGpxPlus(rideId);
+    assert(
+      gpx.includes('<qf:pick mode="free" from="~new" fromLabel="new" to="~new" toLabel="new" pickSource="none" t="'),
+      'free/none qf:pick attributes wrong/missing',
+    );
+    assert(!gpx.includes('routeIds="'), 'both-ends-unknown free ride must not render a routeIds attribute');
+  }
+
+  // (d) minimal pick — mode only, nothing else recorded (an old/degenerate sidecar)
+  {
+    const { storage, clock } = makeEnv();
+    const rideId = await storage.startRide();
+    await storage.appendFix(rideId, { tUnixMs: clock.t, lat: 50.8, lon: 4.6 });
+    await storage.appendEvent(rideId, { kind: 'button', tUnixMs: clock.t, button: 'start' });
+    await storage.appendEvent(rideId, { kind: 'pick', tUnixMs: clock.t, mode: 'route' });
+    await storage.endRide(rideId);
+    const gpx = await storage.exportGpxPlus(rideId);
+    assert(/<qf:pick mode="route" t="[^"]+"\/>/.test(gpx), 'minimal qf:pick must omit every unset attribute');
+    assert(!gpx.includes('pickSource='), 'pickSource fabricated when not recorded');
+  }
+
+  // (e) no pick event at all — omitted entirely, never fabricated
+  {
+    const { storage, clock } = makeEnv();
+    const rideId = await storage.startRide();
+    await storage.appendFix(rideId, { tUnixMs: clock.t, lat: 50.8, lon: 4.6 });
+    await storage.appendEvent(rideId, { kind: 'button', tUnixMs: clock.t, button: 'start' });
+    await storage.endRide(rideId);
+    const gpx = await storage.exportGpxPlus(rideId);
+    assert(!gpx.includes('<qf:pick'), 'qf:pick fabricated when no pick event was recorded');
+  }
+});
+
+// ---------------------------------------------------------------- (q) N9: <qf:lockChange>
+
+test('gpx+: N9 — <qf:lockChanges> lists every transition in sidecar order with reason+pick, omitted when none; <qf:routeLock> renders the persisted pick', async () => {
+  // (a) two transitions, in sidecar order, pick carried on both the lock and each lockChange
+  {
+    const t0 = 1755167000000;
+    const { storage } = makeEnv(t0);
+    const rideId = await storage.startRide();
+    await storage.appendFix(rideId, { tUnixMs: t0, lat: 50.8, lon: 4.6 });
+    await storage.appendEvent(rideId, {
+      kind: 'lock', tUnixMs: t0 + 1000, track: 'Morning', atChainageM: 400, atT: (t0 + 1000) / 1000,
+      lockKind: 'soft', pick: 'Morning',
+    });
+    await storage.appendEvent(rideId, {
+      kind: 'lockChange', tUnixMs: t0 + 1000, track: 'Morning', from: 'none', to: 'soft',
+      atChainageM: 400, atT: (t0 + 1000) / 1000, reason: 'pickAdvance', pick: 'Morning',
+    });
+    await storage.appendEvent(rideId, {
+      kind: 'lockChange', tUnixMs: t0 + 5000, track: 'Morning', from: 'soft', to: 'verified',
+      atChainageM: 900, atT: (t0 + 5000) / 1000, reason: 'unblockedLeader', pick: 'Morning',
+    });
+    await storage.endRide(rideId);
+    const gpx = await storage.exportGpxPlus(rideId);
+    assert(
+      /<qf:routeLock track="Morning" atChainageM="400"[^>]*lockKind="soft"[^>]*pick="Morning"\/>/.test(gpx),
+      'routeLock did not carry the persisted pick',
+    );
+    const changes = gpx.match(/<qf:lockChange [^\/]+\/>/g) ?? [];
+    assert(changes.length === 2, `${changes.length} qf:lockChange elements, want 2`);
+    assert(
+      changes[0].includes('from="none" to="soft"') && changes[0].includes('reason="pickAdvance"') && changes[0].includes('pick="Morning"'),
+      `first lockChange wrong: ${changes[0]}`,
+    );
+    assert(
+      changes[1].includes('from="soft" to="verified"') && changes[1].includes('reason="unblockedLeader"') && changes[1].includes('pick="Morning"'),
+      `second lockChange wrong: ${changes[1]}`,
+    );
+    assert(gpx.includes('<qf:lockChanges>') && gpx.includes('</qf:lockChanges>'), 'lockChanges wrapper missing');
+  }
+
+  // (b) no transitions at all — the wrapper must be omitted entirely even
+  // though the ride carries a routeLock with no persisted pick.
+  {
+    const { storage, clock } = makeEnv();
+    const rideId = await storage.startRide();
+    await storage.appendFix(rideId, { tUnixMs: clock.t, lat: 50.8, lon: 4.6 });
+    await storage.appendEvent(rideId, {
+      kind: 'lock', tUnixMs: clock.t, track: 'Morning', atChainageM: 10, atT: clock.t / 1000, lockKind: 'verified',
+    });
+    await storage.endRide(rideId);
+    const gpx = await storage.exportGpxPlus(rideId);
+    assert(!gpx.includes('<qf:lockChanges'), 'lockChanges wrapper rendered with no lockChange events on the sidecar');
+    const rl = (gpx.match(/<qf:routeLock[^>]*\/>/) ?? [''])[0];
+    assert(!rl.includes('pick='), 'routeLock rendered a pick attribute although the lock event carried none');
+  }
+});
+
+// ---------------------------------------------------------------- (r) N9: decoder validation
+
+test('gpx+: N9 — decoder rejects malformed pick/lockChange lines, keeps well-formed ones', () => {
+  const lines = [
+    JSON.stringify({ kind: 'pick', tUnixMs: 1000, mode: 'bogus' }), // mode not route|free
+    JSON.stringify({ kind: 'pick', tUnixMs: 1000, mode: 'route', pickSource: 'bogus' }), // bad pickSource literal
+    JSON.stringify({ kind: 'pick', tUnixMs: 1000, mode: 'route', routeIds: ['a', 2] }), // non-string in routeIds
+    JSON.stringify({ kind: 'pick', tUnixMs: 1000, mode: 'route', from: 5 }), // from not a string
+    JSON.stringify({
+      kind: 'lockChange', tUnixMs: 1000, track: 'Morning', from: 'bogus', to: 'soft',
+      atChainageM: 10, atT: 1, reason: 'pickAdvance',
+    }), // bad from literal
+    JSON.stringify({
+      kind: 'lockChange', tUnixMs: 1000, track: 'Morning', from: 'none', to: 'none',
+      atChainageM: 10, atT: 1, reason: 'pickAdvance',
+    }), // 'none' is not a valid `to`
+    JSON.stringify({
+      kind: 'lockChange', tUnixMs: 1000, track: 'Morning', from: 'none', to: 'soft',
+      atChainageM: 10, atT: 1, reason: 'bogus',
+    }), // bad reason literal
+    JSON.stringify({
+      kind: 'lockChange', tUnixMs: 1000, track: 'Morning', from: 'none', to: 'soft',
+      atChainageM: NaN, atT: 1, reason: 'pickAdvance',
+    }), // non-finite atChainageM
+    // well-formed control lines: must survive
+    JSON.stringify({
+      kind: 'pick', tUnixMs: 1000, mode: 'route', from: 'lm:a', to: 'lm:b',
+      fromLabel: 'Home', toLabel: 'Work', routeId: 'route:x', pickSource: 'picked', routeIds: ['route:x'],
+    }),
+    JSON.stringify({ kind: 'pick', tUnixMs: 1000, mode: 'free' }),
+    JSON.stringify({
+      kind: 'lockChange', tUnixMs: 1000, track: 'Morning', from: 'none', to: 'soft',
+      atChainageM: 10, atT: 1, reason: 'pickAdvance', pick: 'Morning',
+    }),
+    JSON.stringify({
+      kind: 'lockChange', tUnixMs: 1000, track: 'Morning', from: 'soft', to: 'finalized',
+      atChainageM: 10, atT: 1, reason: 'rideEndPromotion', pick: null,
+    }),
+  ];
+  const dec = decodeEventsFile(lines.join('\n') + '\n');
+  assert(dec.events.length === 4, `${dec.events.length} events survived, want exactly 4 (the four well-formed lines)`);
+  assert(dec.nDropped === 8, `nDropped ${dec.nDropped}, want 8 (the eight malformed lines)`);
+  assert(dec.events.every((e) => e.kind === 'pick' || e.kind === 'lockChange'), 'wrong events survived validation');
 });

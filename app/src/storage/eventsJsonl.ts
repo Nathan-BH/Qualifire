@@ -4,6 +4,8 @@ import type { DecodedEvents, RideEvent } from './types.ts';
 const KINDS = new Set([
   'meta', 'button', 'lock', 'gate', 'storageError', 'relaunch', 'remount',
   'routeMatchDiagnostic', 'elevationOutlier',
+  // N9 (2026-09-02, GPX+ pick/lock-change logging):
+  'pick', 'lockChange',
 ]);
 
 /** kind first, tUnixMs second, then the kind's own fields — verbatim values. */
@@ -85,6 +87,31 @@ function isValidEvent(rec: unknown): rec is RideEvent {
       );
     case 'elevationOutlier':
       return Number.isFinite(r.deltaM) && Number.isFinite(r.dtS) && Number.isFinite(r.thresholdMps);
+    // N9: pick/lockChange are new closed-union-bearing kinds, same doctrine
+    // as lockKind above — gpxPlusExport.ts interpolates their literal fields
+    // unescaped, so this decoder is the only enforcement point.
+    case 'pick': {
+      const optStr = (v: unknown): boolean => v === undefined || typeof v === 'string';
+      return (
+        (r.mode === 'route' || r.mode === 'free') &&
+        optStr(r.from) && optStr(r.to) && optStr(r.fromLabel) && optStr(r.toLabel) &&
+        (r.routeId === undefined || r.routeId === null || typeof r.routeId === 'string') &&
+        (r.pickSource === undefined || r.pickSource === 'picked' || r.pickSource === 'default' || r.pickSource === 'none') &&
+        (r.routeIds === undefined || r.routeIds === null ||
+          (Array.isArray(r.routeIds) && r.routeIds.every((x) => typeof x === 'string')))
+      );
+    }
+    case 'lockChange':
+      return (
+        typeof r.track === 'string' &&
+        (r.from === 'none' || r.from === 'soft' || r.from === 'verified' || r.from === 'finalized') &&
+        (r.to === 'soft' || r.to === 'verified' || r.to === 'finalized') &&
+        Number.isFinite(r.atChainageM) &&
+        typeof r.atT === 'number' && isFiniteMsTime(r.atT * 1000) &&
+        (r.reason === 'pickAdvance' || r.reason === 'unblockedLeader' ||
+          r.reason === 'routeCompleted' || r.reason === 'rideEndPromotion') &&
+        (r.pick === undefined || r.pick === null || typeof r.pick === 'string')
+      );
     default:
       return false;
   }

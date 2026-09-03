@@ -17,6 +17,13 @@
  *
  * Only what was actually observed is ever emitted — no field is fabricated
  * when its source event/data is absent.
+ *
+ * N9 (2026-09-02): the session block also carries, when recorded, a single
+ * <qf:pick> (the RECORD-tab pick/mode/labels in effect at START, right after
+ * <qf:startPressedAt>) and a <qf:lockChanges> wrapper (one <qf:lockChange>
+ * per live/engine.ts LockKind transition, in sidecar order) — plus the
+ * <qf:routeLock pick="…"/> attribute, which was persisted since cycle 024
+ * but never rendered before this pass.
  */
 import type {
   ButtonEvent,
@@ -25,8 +32,10 @@ import type {
   ElevationOutlierEvent,
   FixRecord,
   GateFireEvent,
+  LockChangeEvent,
   LockEvent,
   MetaEvent,
+  PickEvent,
   RelaunchEvent,
   RouteMatchDiagnosticEvent,
   StorageErrorEvent,
@@ -203,6 +212,24 @@ function buildSessionBlock(
   const startEv = evs.find((e): e is ButtonEvent => e.kind === 'button' && e.button === 'start');
   if (startEv) lines.push(`   <qf:startPressedAt>${isoTime(startEv.tUnixMs)}</qf:startPressedAt>`);
 
+  // N9 (2026-09-02, GPX+ pick/lock-change logging): a START-time fact,
+  // rendered once, right after startPressedAt — attributes only for what was
+  // actually recorded (PickEvent's own fields are all optional beyond mode).
+  const pickEv = evs.find((e): e is PickEvent => e.kind === 'pick');
+  if (pickEv) {
+    const a = (k: string, v: string | null | undefined): string =>
+      v === undefined || v === null ? '' : ` ${k}="${escapeXml(v)}"`;
+    lines.push(
+      `   <qf:pick mode="${pickEv.mode}"` +
+        a('from', pickEv.from) + a('fromLabel', pickEv.fromLabel) +
+        a('to', pickEv.to) + a('toLabel', pickEv.toLabel) +
+        a('routeId', pickEv.routeId) +
+        (pickEv.pickSource === undefined ? '' : ` pickSource="${pickEv.pickSource}"`) +
+        (pickEv.routeIds ? ` routeIds="${escapeXml(pickEv.routeIds.join(' '))}"` : '') +
+        ` t="${isoTime(pickEv.tUnixMs)}"/>`,
+    );
+  }
+
   // Cycle 025 (WP-stale-first-fix P1/P2, Nathan 2026-08-26 record-but-flag):
   // every fix-DERIVED stat in this block (firstFixAt/firstFixDelayS, outages,
   // stops, routeFidelity, maxSpeedKmh) excludes flagged fixes — the recorded
@@ -248,8 +275,11 @@ function buildSessionBlock(
       // needed.
       for (const l of lockEvs) {
         const lk = l.lockKind === undefined ? '' : ` lockKind="${l.lockKind}"`;
+        // N9: render the pick that was in effect when this lock fired —
+        // persisted since cycle 024 (LockEvent.pick), never shown before.
+        const pk = l.pick === undefined || l.pick === null ? '' : ` pick="${escapeXml(l.pick)}"`;
         lines.push(
-          `   <qf:routeLock track="${escapeXml(l.track)}" atChainageM="${num(l.atChainageM)}" atT="${isoTime(l.atT * 1000)}"${lk}/>`,
+          `   <qf:routeLock track="${escapeXml(l.track)}" atChainageM="${num(l.atChainageM)}" atT="${isoTime(l.atT * 1000)}"${lk}${pk}/>`,
         );
       }
       // Cycle 023 fix 4 (semantics unchanged by P3): distance keyed to the
@@ -311,6 +341,24 @@ function buildSessionBlock(
     } else {
       lines.push(`   <qf:routeLock>none</qf:routeLock>`);
     }
+  }
+
+  // N9: one <qf:lockChange> per LockKind transition (engine.ts's
+  // noteLockChange), in sidecar order — omitted entirely when there are none
+  // (a ride that never transitioned must never fabricate one). Closes the
+  // two transitions (soft->verified promotion, soft/none->finalized ride-end
+  // settle) that left no trace in the sidecar before this WP.
+  const lockChangeEvs = evs.filter((e): e is LockChangeEvent => e.kind === 'lockChange');
+  if (lockChangeEvs.length > 0) {
+    lines.push(`   <qf:lockChanges>`);
+    for (const c of lockChangeEvs) {
+      const pk = c.pick === undefined || c.pick === null ? '' : ` pick="${escapeXml(c.pick)}"`;
+      lines.push(
+        `    <qf:lockChange from="${c.from}" to="${c.to}" track="${escapeXml(c.track)}"` +
+          ` atChainageM="${num(c.atChainageM)}" reason="${c.reason}"${pk} t="${isoTime(c.atT * 1000)}"/>`,
+      );
+    }
+    lines.push(`   </qf:lockChanges>`);
   }
 
   const gateEvs = evs.filter((e): e is GateFireEvent => e.kind === 'gate');

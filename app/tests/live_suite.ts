@@ -1122,6 +1122,205 @@ test('live: tail ride — advance earned AFTER a route\'s FINISH gate is not com
   assert(evts.length === 0, `${evts.length} engine events, want 0 (no lock, no gate)`);
 });
 
+// ================================================================ N9 (2026-09-02)
+// GPX+ pick + lock-change logging: LiveEngine.noteLockChange emits one
+// EngineEvent (type 'lockChange') per LockKind transition — including the
+// two that a 'lock' event alone never reported (soft->verified promotion,
+// soft/none->finalized ride-end settle; see engine.ts's file header dry-run
+// table). L1-L5 below pin the reason table (design brief §3.2) directly
+// against the synthetic corridor-subset fixtures already established above.
+
+/** Filters an EngineEvent[] down to just the 'lockChange' members. */
+function changes(evts: EngineEvent[]): Extract<EngineEvent, { type: 'lockChange' }>[] {
+  return evts.filter((e): e is Extract<EngineEvent, { type: 'lockChange' }> => e.type === 'lockChange');
+}
+
+test('live N9 L1: pick=L soft->verified promotion emits one lock event and two lockChanges (pickAdvance, then unblockedLeader)', () => {
+  const engine = new LiveEngine([SYN_S, SYN_L]);
+  const evts: EngineEvent[] = [];
+  const unsub = engine.subscribeEvents((e) => evts.push(e));
+  engine.start({ pickId: 'SyntheticL' });
+  let t = 1755167000;
+  for (let s = 0; s <= 3000; s += 5) {
+    const [lat, lon] = xyToLatLon(s, 0, 0, 0);
+    engine.feed(lat, lon, t * 1000);
+    t += 1;
+  }
+  unsub();
+  const final = engine.getState();
+  assert(final.track === 'SyntheticL' && final.lockKind === 'verified',
+    `track ${final.track}, lockKind ${final.lockKind}`);
+  const locks = evts.filter((e): e is Extract<EngineEvent, { type: 'lock' }> => e.type === 'lock');
+  assert(locks.length === 1 && locks[0].kind === 'soft' && locks[0].track === 'SyntheticL' && locks[0].pick === 'SyntheticL',
+    `${locks.length} lock events / ${JSON.stringify(locks)} — want exactly 1 soft lock (the promotion emits no second lock event)`);
+  const cs = changes(evts);
+  assert(cs.length === 2, `${cs.length} lockChange events, want exactly 2 — got ${JSON.stringify(cs)}`);
+  assert(
+    cs[0].from === 'none' && cs[0].to === 'soft' && cs[0].reason === 'pickAdvance' &&
+      cs[0].track === 'SyntheticL' && cs[0].pick === 'SyntheticL',
+    `first lockChange wrong: ${JSON.stringify(cs[0])}`,
+  );
+  assert(
+    cs[1].from === 'soft' && cs[1].to === 'verified' && cs[1].reason === 'unblockedLeader' &&
+      cs[1].track === 'SyntheticL' && cs[1].pick === 'SyntheticL',
+    `second lockChange wrong: ${JSON.stringify(cs[1])}`,
+  );
+  // Ordering (design §3.2): within one transition the 'lock' event comes
+  // before its 'lockChange' — here that's the whole first transition (the
+  // only 'lock' event fired at all, on the none->soft commit).
+  const lockIdx = evts.indexOf(locks[0]);
+  const firstChangeIdx = evts.indexOf(cs[0]);
+  assert(lockIdx !== -1 && firstChangeIdx !== -1 && lockIdx < firstChangeIdx,
+    'the lock event must be emitted before its own lockChange');
+});
+
+test('live N9 L2: pick=L stalled on the shared corridor — soft finalizes via rideEndPromotion, idempotent on a second finalize()', () => {
+  const engine = new LiveEngine([SYN_S, SYN_L]);
+  const evts: EngineEvent[] = [];
+  const unsub = engine.subscribeEvents((e) => evts.push(e));
+  engine.start({ pickId: 'SyntheticL' });
+  let t = 1755167000;
+  for (let s = 0; s <= 1000; s += 5) {
+    const [lat, lon] = xyToLatLon(s, 0, 0, 0);
+    engine.feed(lat, lon, t * 1000);
+    t += 1;
+  }
+  const mid = engine.getState();
+  assert(mid.track === 'SyntheticL' && mid.lockKind === 'soft',
+    `pre-finalize: track ${mid.track}, lockKind ${mid.lockKind} — want soft (tied with S on the shared corridor, never enough margin)`);
+  engine.finalize();
+  const afterFirst = changes(evts);
+  // Two transitions by now: the live none->soft commit (~400 m in, long
+  // before the ride stops at 1000 m) AND finalize()'s own soft->finalized
+  // rideEndPromotion — the ride-end settle this WP makes visible.
+  assert(afterFirst.length === 2, `${afterFirst.length} lockChange events after the first finalize(), want exactly 2 — got ${JSON.stringify(afterFirst)}`);
+  assert(afterFirst[0].from === 'none' && afterFirst[0].to === 'soft' && afterFirst[0].reason === 'pickAdvance',
+    `first lockChange wrong: ${JSON.stringify(afterFirst[0])}`);
+  assert(
+    afterFirst[1].from === 'soft' && afterFirst[1].to === 'finalized' &&
+      afterFirst[1].reason === 'rideEndPromotion' && afterFirst[1].pick === 'SyntheticL',
+    `second lockChange wrong: ${JSON.stringify(afterFirst[1])}`,
+  );
+  const final1 = engine.getState();
+  assert(final1.lockKind === 'finalized' && final1.track === 'SyntheticL',
+    `after first finalize: track ${final1.track}, lockKind ${final1.lockKind}`);
+  engine.finalize(); // idempotent — must emit nothing new
+  unsub();
+  assert(changes(evts).length === 2, `${changes(evts).length} lockChange events after a second finalize(), want still exactly 2 (idempotent)`);
+  const locks = evts.filter((e) => e.type === 'lock');
+  assert(locks.length === 1 && locks[0].kind === 'soft', `${locks.length} lock events / ${JSON.stringify(locks)} — want exactly 1 (the original soft lock)`);
+});
+
+test('live N9 L3: no pick — none->verified lockChange with pick:null', () => {
+  const engine = new LiveEngine([SYN_S, SYN_L]);
+  const evts: EngineEvent[] = [];
+  const unsub = engine.subscribeEvents((e) => evts.push(e));
+  let t = 1755167000;
+  for (let s = 0; s <= 3000; s += 5) {
+    const [lat, lon] = xyToLatLon(s, 0, 0, 0);
+    engine.feed(lat, lon, t * 1000);
+    t += 1;
+  }
+  unsub();
+  const final = engine.getState();
+  assert(final.track === 'SyntheticL' && final.lockKind === 'verified', `track ${final.track}, lockKind ${final.lockKind}`);
+  const cs = changes(evts);
+  assert(cs.length === 1, `${cs.length} lockChange events, want exactly 1`);
+  assert(cs[0].from === 'none' && cs[0].to === 'verified' && cs[0].reason === 'unblockedLeader' && cs[0].pick === null,
+    `lockChange wrong: ${JSON.stringify(cs[0])}`);
+  const locks = evts.filter((e): e is Extract<EngineEvent, { type: 'lock' }> => e.type === 'lock');
+  assert(locks.length === 1 && locks[0].pick === null, `${locks.length} lock events / ${JSON.stringify(locks)} — want exactly 1 with pick null`);
+});
+
+test('live N9 L4: routeCompleted lockChange — picked-prefix (soft->finalized, already displayed) and no-pick-late-anchor (none->finalized, never displayed)', () => {
+  // (a) hard pick at finalize (SYN_P picked) — soft display already stood at
+  // its own FINISH; finalize() relabels only (no new lock event) but DOES
+  // emit a routeCompleted lockChange (soft -> finalized).
+  {
+    const engine = new LiveEngine([SYN_P, SYN_L]);
+    const evts: EngineEvent[] = [];
+    const unsubEv = engine.subscribeEvents((e) => evts.push(e));
+    engine.start({ pickId: 'SyntheticP' });
+    let t = 1755167000;
+    for (let s = 0; s <= 2905; s += 5) {
+      const [lat, lon] = xyToLatLon(s, 0, 0, 0);
+      engine.feed(lat, lon, t * 1000);
+      t += 1;
+    }
+    const mid = engine.getState();
+    assert(mid.track === 'SyntheticP' && mid.lockKind === 'soft', `pre-finalize: track ${mid.track}, lockKind ${mid.lockKind}`);
+    engine.finalize();
+    unsubEv();
+    const locks = evts.filter((e) => e.type === 'lock');
+    assert(locks.length === 1 && locks[0].kind === 'soft', `${locks.length} lock events, want exactly 1 soft (finalize() relabels only, no new lock event)`);
+    const cs = changes(evts);
+    // Two transitions: the live none->soft commit (~400 m in) AND
+    // finalize()'s own soft->finalized routeCompleted (P's own route
+    // completed while it was the already-displayed candidate).
+    assert(cs.length === 2, `${cs.length} lockChange events, want exactly 2 — got ${JSON.stringify(cs)}`);
+    assert(cs[0].from === 'none' && cs[0].to === 'soft' && cs[0].reason === 'pickAdvance',
+      `first lockChange wrong: ${JSON.stringify(cs[0])}`);
+    assert(
+      cs[1].from === 'soft' && cs[1].to === 'finalized' && cs[1].reason === 'routeCompleted' && cs[1].pick === 'SyntheticP',
+      `second lockChange wrong: ${JSON.stringify(cs[1])}`,
+    );
+  }
+  // (b) no-pick late anchor (SYN_P vs SYN_L, tied — never live-locked) — a
+  // routeCompleted lockChange straight from none to finalized.
+  {
+    const engine = new LiveEngine([SYN_P, SYN_L]);
+    const evts: EngineEvent[] = [];
+    const unsubEv = engine.subscribeEvents((e) => evts.push(e));
+    let t = 1755167000;
+    for (let s = 0; s <= 905; s += 5) {
+      const [lat, lon] = xyToLatLon(s, 0, 0, 0);
+      engine.feed(lat, lon, t * 1000, s < 400 ? 60 : 10);
+      t += 1;
+    }
+    const mid = engine.getState();
+    assert(mid.track === null && mid.lockKind === 'none', `pre-finalize: track ${mid.track}, lockKind ${mid.lockKind}`);
+    engine.finalize();
+    unsubEv();
+    const cs = changes(evts);
+    assert(
+      cs.length === 1 && cs[0].from === 'none' && cs[0].to === 'finalized' && cs[0].reason === 'routeCompleted' && cs[0].pick === null,
+      `lockChange wrong: ${JSON.stringify(cs)}`,
+    );
+    const locks = evts.filter((e) => e.type === 'lock');
+    assert(locks.length === 1 && locks[0].kind === 'finalized', `${locks.length} lock events, want exactly 1 finalized`);
+  }
+});
+
+test('live N9 L5: a ride that never locks, and a free ride, both emit zero lockChanges', () => {
+  // never-locked (the tail-ride fixture: T/L tie, neither had 400 m before its own FINISH)
+  {
+    const engine = new LiveEngine([SYN_T, SYN_L]);
+    const evts: EngineEvent[] = [];
+    const unsub = engine.subscribeEvents((e) => evts.push(e));
+    let t = 1755167000;
+    for (let s = 2550; s <= 3000; s += 5) {
+      const [lat, lon] = xyToLatLon(s, 0, 0, 0);
+      engine.feed(lat, lon, t * 1000);
+      t += 1;
+    }
+    engine.finalize();
+    unsub();
+    assert(changes(evts).length === 0, `never-locked ride emitted a lockChange, want 0 — got ${JSON.stringify(changes(evts))}`);
+  }
+  // free ride (clean_morning fixture, mode: 'free')
+  {
+    const f = loadFixture('clean_morning');
+    const engine = new LiveEngine(catalogTrackSpecs());
+    const evts: EngineEvent[] = [];
+    const unsub = engine.subscribeEvents((e) => evts.push(e));
+    engine.start({ mode: 'free' });
+    for (let i = 0; i < f.fixes.t.length; i++) engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
+    engine.finalize(); // no-op in free mode
+    unsub();
+    assert(changes(evts).length === 0, `free ride emitted a lockChange, want 0 — got ${JSON.stringify(changes(evts))}`);
+  }
+});
+
 // --------------------------------------------------------------------------
 // cycle 025 (WP-stale-first-fix P1): flagged fixes are inert to the matcher
 // --------------------------------------------------------------------------

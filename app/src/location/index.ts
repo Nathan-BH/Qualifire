@@ -296,6 +296,17 @@ export async function ensurePermissions(): Promise<PermissionOutcome> {
 // Start / stop / recovery
 // ---------------------------------------------------------------------------
 
+/** N9 (2026-09-02, GPX+ pick/lock-change logging): what RecordScreen's
+ * RECORD tab was actually showing at START — threaded through so
+ * startTracking can log the sidecar's one `pick` event. */
+export interface StartContext {
+  from: string;
+  to: string;
+  fromLabel: string;
+  toLabel: string;
+  pickSource: 'picked' | 'default' | 'none';
+}
+
 export async function startTracking(opts?: {
   routePick?: string | null;
   /** WP-B: 'route' (default) or 'free' — threaded straight to
@@ -305,6 +316,10 @@ export async function startTracking(opts?: {
    * builds candidates for this ride — see live/engine.ts's file header and
    * store/catalog.ts's freeRideRouteIds(). */
   routeIds?: string[] | null;
+  /** N9: the RECORD tab's from/to/labels/pickSource at the moment START was
+   * pressed — logged as the sidecar's one `pick` event. Omitted (no pick
+   * event at all) for a caller that doesn't supply it. */
+  startContext?: StartContext;
 }): Promise<ActiveSession> {
   const pressedAtMs = Date.now();
   const existing = await ensureSession();
@@ -373,6 +388,18 @@ export async function startTracking(opts?: {
     ...(Constants.expoConfig?.version ? { appVersion: Constants.expoConfig.version } : {}),
   });
   logEvent(rideId, { kind: 'button', tUnixMs: pressedAtMs, button: 'start' });
+  // N9: one START-time pick fact per ride — see StartContext's doc comment.
+  // Omitted fields (no startContext supplied) are left off the event rather
+  // than fabricated; RecordScreen always supplies one, so this only bites a
+  // hypothetical bare caller of startTracking().
+  const ctx = opts?.startContext;
+  logEvent(rideId, {
+    kind: 'pick', tUnixMs: pressedAtMs,
+    mode: opts?.mode ?? 'route',
+    routeId: opts?.routePick ?? null,
+    ...(ctx ? { from: ctx.from, to: ctx.to, fromLabel: ctx.fromLabel, toLabel: ctx.toLabel, pickSource: ctx.pickSource } : {}),
+    ...(opts?.routeIds ? { routeIds: opts.routeIds } : {}),
+  });
   emit();
   return s;
 }
@@ -491,7 +518,16 @@ liveEngine.subscribeEvents((ev) => {
       // doc comment in storage/types.ts.
       lockKind: ev.kind, pick: ev.pick,
     });
+  } else if (ev.type === 'lockChange') {
+    // N9: one per LockKind transition — see engine.ts's noteLockChange and
+    // LockChangeEvent's doc comment in storage/types.ts.
+    logEvent(session.rideId, {
+      kind: 'lockChange', tUnixMs: Math.round(ev.atT * 1000),
+      track: ev.track, from: ev.from, to: ev.to, atChainageM: ev.atChainageM, atT: ev.atT,
+      reason: ev.reason, pick: ev.pick,
+    });
   } else {
+    // ev.type === 'gate'
     logEvent(session.rideId, {
       kind: 'gate', tUnixMs: Math.round(ev.t * 1000),
       track: ev.track, gateIndex: ev.gateIndex, t: ev.t, estimated: ev.estimated,
