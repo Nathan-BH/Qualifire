@@ -1,4 +1,4 @@
-**Status: Brief written 2026-09-02, ready to execute. Not yet built. No decision needed from Nathan.**
+**Status: DONE — landed on the device 2026-09-03 (commit `f7d96f7`). 374 tests, 371 pass, 0 fail, 3 skip (baseline 366/363/0/3 + 8 new); `tsc --noEmit` confirmed clean on-device. §2's current-state description (verified against the mirror at `ec46906`) still matched the real repo despite five later WPs (D/J/O/C/Q/F) having touched `RecordScreen.tsx`/`location/index.ts` since — re-read confirmed no structural conflict before editing, so §4 applied as written. No ambiguity required stopping for Nathan.**
 **Review doc item: 2 (notes5 N9). Size: small.**
 **Verified against the mirror at commit `ec46906` (after WP-A's third round landed) — re-grep `engine.ts`/`live_suite.ts` anchors before executing if more work has landed on them since.**
 

@@ -19,7 +19,7 @@ or ready to hand to an Execute pass, without losing a day to re-planning.
 | WP | What | Status | Brief |
 |---|---|---|---|
 | A | Ride-2 engine bug (reverse-ride false "matched"), RECORD-tab pick made a hard lock, "writing history" status line | **DONE — landed on your phone's repo just now.** 305 tests, 302 pass, 0 fail, 3 skip. | `WP-A-ride2-hardpick-writinghistory.md` (record of what shipped) |
-| B | GPX+ pick + lock-change logging | Brief written, ready to execute | `WP-B-gpxplus-pick-lock-logging.md` |
+| B | GPX+ pick + lock-change logging | **DONE — landed on the device 2026-09-03.** 374 tests, 371 pass, 0 fail, 3 skip (8 new: baseline 366/363/0/3 + 3 gpxplus_suite.ts + 5 live_suite.ts L1-L5); `tsc --noEmit` confirmed clean on-device. §2's "current state" and its exact edit targets (engine.ts commitLock/finalize, the module-scope subscribeEvents branches in location/index.ts, RecordScreen.tsx's onStart/pickedRoute shape) all still matched the real repo despite WP-D/J/O/C/Q/F having landed on RecordScreen.tsx and location/index.ts since the brief's §2 mirror snapshot — re-read confirmed no structural conflict, so §4's prescribed edits applied cleanly with no redesign. `<qf:pick>` (one per ride, at START) and `<qf:lockChanges>` (one `<qf:lockChange>` per LockKind transition, closing the two — soft->verified promotion, ride-end settle — that left zero trace before) both landed exactly per §3/§4; `<qf:routeLock>` now also renders its persisted `pick` attribute. No blocking ambiguity hit. On-device visual check N/A (diagnostics-only feature, verified by export content, not the UI). | `WP-B-gpxplus-pick-lock-logging.md` |
 | C | Drawable user-created routes (the biggest lever — unblocks D, H, I, K) | **DONE — landed on the device 2026-09-02, independently inspected.** 345 tests, 342 pass, 0 fail, 3 skip (12 new). The proof that matters: a drawn gate, pushed back through the engine's own scoring math, rescores to within 7e-7 m of where it was requested — gates draw exactly where they score, verified on a real ride-derived ref, not just synthetic fixtures. (Matching the bundled manifest's exact scale/offset only holds for Morning — EveningA/B's Python-rendered manifest was fit to a different source and differs 1.9–2.9%; harmless, since the runtime transform only needs to agree with itself, but not a "matches the manifest" claim in general.) On-device visual check still outstanding (no device shell this session). | `WP-C-drawable-user-routes.md` |
 | D | Rider-only map before START / on unmatched rides | **DONE — landed on the device 2026-09-02.** 312 tests, 309 pass, 0 fail, 3 skip (7 new). Pieces A + B taken; WP-N bundled in. On-device visual check still outstanding (no device shell this session). | `WP-D-rider-only-map.md` |
 | F | Post-stop "save as new way" offer for any ride, not just unmatched ones | **DONE — landed on the device 2026-09-03, inspected same day.** 366 tests, 363 pass, 0 fail, 3 skip (8 new); `tsc --noEmit` confirmed clean on-device. §3.1–3.3 all landed, including the recommended (not just required) pieces: the 300 m `MATCHED_ENDPOINT_SLACK_M` default, `WayCreationDraft.matchedRouteId`, and the "Scored as X, but…" card copy. Real-fixture regression pinned directly (`latelock_20260805` against the shipped seed catalog) and confirmed meaningful by fresh inspection. No blocking defects; 3 minor non-blocking notes (stale doc comments fixed, pre-existing loop-branch copy left as-is, one test could gain a counterfactual assert). On-device visual check still outstanding. | `WP-F-post-stop-reference-offer.md` |
@@ -309,3 +309,45 @@ The one place I used my own judgment inside the brief's own "recommended" defaul
 the brief marked both recommended with no reason given to skip them and §9's own answers point
 that way — flagging here rather than silently deciding, per the brief's own preference for
 landing the safety net (§3.1/§3.2) together with the honest copy (§3.3) in one pass.
+
+## Testing WP-B today (GPX+ pick + lock-change logging — already on your phone's repo)
+
+Files changed: `app/src/live/engine.ts` (`LockChangeReason`, `EngineEvent`'s new
+`'lockChange'` member, `LiveEngine.noteLockChange`, called from `commitLock()` and
+`finalize()`), `app/src/storage/types.ts` (`PickEvent`, `LockChangeEvent`),
+`app/src/storage/eventsJsonl.ts` (KINDS + `isValidEvent` cases for both),
+`app/src/storage/gpxPlusExport.ts` (`<qf:pick>`, `<qf:lockChanges>`, and the `pick`
+attribute on `<qf:routeLock>`), `app/src/location/index.ts` (`StartContext`,
+`startTracking` logs the one `pick` event, `subscribeEvents` gets an explicit
+`lockChange` branch instead of falling into the gate `else`), `app/src/ui/RecordScreen.tsx`
+(`pickSource` derivation, `startContextRef`, both `startTracking` calls in `onStart`
+now pass `startContext`), `app/tests/gpxplus_suite.ts` (3 new tests + pick/lockChange
+coverage folded into the identity/byte-identical/no-sidecar tests), `app/tests/live_suite.ts`
+(5 new tests, L1-L5). Nothing else touched — `gpxExport.ts`, `core.ts`, `session.ts`,
+`jsonl.ts`, ride data, `STATE.md`/`OPEN-ITEMS.md` all untouched exactly as the brief
+specified.
+
+The brief's §2 "current state" was verified against an earlier mirror (commit `ec46906`),
+and five WPs (D/J/O/C/Q/F) had touched `RecordScreen.tsx`/`location/index.ts` since — so
+every touched file was re-read against the real repo before editing. All of them still
+matched the brief's description closely enough that §4's prescribed edits applied cleanly:
+`engine.ts`'s `commitLock`/`finalize` were untouched by any later WP; `RecordScreen.tsx`'s
+`onStart`/`pickedRoute`/`fromId`/`freeRide` shape (including the `[]`-useCallback +
+ref-mirror pattern `startContextRef` now follows) was exactly as described. No structural
+conflict, no redesign, no ambiguity that needed stopping for Nathan.
+
+```
+cd app
+node --experimental-strip-types tests/run.ts   # confirmed 2026-09-03: 374 tests, 371 pass, 0 fail, 3 skip (366/363/0/3 baseline + 8 new)
+./node_modules/.bin/tsc --noEmit               # confirmed 2026-09-03 on-device: exit 0, no errors
+```
+
+This WP is diagnostics-only (D-023: the raw ride JSONL and the standard `exportGpx` are both
+byte-identical to before — pinned directly by the byte-identical test). There's no on-device
+UI check for it; the way to see it land is to ride (or replay) a route with a RECORD-tab pick,
+export GPX+, and look for a `<qf:pick mode="route" ... pickSource="picked|default|none" .../>`
+line right after `<qf:startPressedAt>`, and — on any ride whose lock state actually changed —
+a `<qf:lockChanges>` block listing each transition with its `reason`. A soft-locked ride that
+gets promoted to verified, or one that only ever soft-locks and settles at ride end, are the
+two shapes that were previously invisible and are worth checking first.
+
