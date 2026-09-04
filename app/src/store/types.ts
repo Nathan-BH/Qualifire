@@ -53,6 +53,16 @@ export interface Route {
    * promoting a later clean lap rewrites this field. Optional: seed routes
    * predate it (their reference is the archive-built refLine, not one ride). */
   referenceRideId?: string;
+  /** WP-G (Nathan 2026-09-02, Q2): the rider's own ordered free-text segments
+   * AFTER the way's From/To — "Home → Work → Dry → Fast" stores ['Dry','Fast'].
+   * Order matters (it is a path, not a tag set): RECORD groups a way's routes
+   * by shared prefix and forks the pill row only where the lists diverge
+   * (store/routeSpecs.ts). Absent or [] = the way's "plain" route. Trimmed,
+   * non-empty strings; validateCatalog rejects two routes on one way with the
+   * same NON-empty list (two plain routes stay legal — the seed's shape).
+   * Seed routes never carry this; their variant names remain the
+   * ROUTE_DISPLAY_ID overlay (defaultRoute.ts). Ids are untouched (D-023). */
+  specs?: string[];
 }
 
 export interface GateSet {

@@ -92,10 +92,28 @@ export function validateCatalog(c: Catalog): string[] {
     if (!gateSetFor(c, r.id, r.gateSetVersion)) {
       errs.push(`route ${r.id}: no gate set at version ${r.gateSetVersion}`);
     }
+    // WP-G: specs are trimmed non-empty strings; identical NON-empty lists on
+    // one way would be two names for one thing (two plain routes stay legal —
+    // that is the seed's own shape).
+    if (r.specs !== undefined) {
+      if (!Array.isArray(r.specs) || r.specs.some((s) => typeof s !== 'string' || s.trim() !== s || s.length === 0)) {
+        errs.push(`route ${r.id}: specs must be trimmed non-empty strings`);
+      }
+    }
   }
   for (const w of c.ways) {
     for (const rid of w.routeIds) {
       if (!routeIds.has(rid)) errs.push(`way ${w.id}: unknown route ${rid}`);
+    }
+  }
+  for (const w of c.ways) {
+    const seen = new Map<string, string>(); // lowercase joined specs -> route id
+    for (const r of c.routes) {
+      if (r.wayId !== w.id || !Array.isArray(r.specs) || r.specs.length === 0) continue; // non-array shapes were reported above; never throw here
+      const key = r.specs.map((s) => s.toLowerCase()).join(' ');
+      const dup = seen.get(key);
+      if (dup) errs.push(`way ${w.id}: routes ${dup} and ${r.id} share specs ${JSON.stringify(r.specs)}`);
+      else seen.set(key, r.id);
     }
   }
 

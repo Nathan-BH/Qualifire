@@ -9,13 +9,14 @@
  *  5. the VIRGIN install (empty seed, nothing added): zero everything, no
  *     live candidates, the engine survives a ride start-to-finalize without
  *     a lock, every data-driven fallback answers null — nothing invented.
+ *  6. WP-G: Route.specs round-trips through encodeCatalog/decodeCatalog.
  */
 import { registerHooks } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import * as nodeFs from 'node:fs';
 import { assert, test, loadFixture } from './lib.ts';
 import { createMemoryFsAdapter } from '../src/storage/fsAdapter.ts';
-import { emptyCatalog, validateCatalog } from '../src/store/catalog.ts';
+import { decodeCatalog, emptyCatalog, encodeCatalog, validateCatalog } from '../src/store/catalog.ts';
 import { defaultEndpoints, defaultMapRouteId, fallbackRouteId } from '../src/store/defaultRoute.ts';
 import type { Catalog } from '../src/store/types.ts';
 
@@ -266,4 +267,13 @@ test('item-2 seam: a virgin ride drafts, gets named, and saveUserCatalog lands i
   } finally {
     store.resetCatalogStoreForTests();
   }
+});
+
+test('WP-G: Route.specs round-trips through encodeCatalog/decodeCatalog', () => {
+  const c = userAddition();
+  c.routes[0] = { ...c.routes[0], specs: ['Dry', 'Fast'] };
+  const decoded = decodeCatalog(encodeCatalog(c));
+  assert(decoded !== null, 'a catalog carrying specs still decodes');
+  assert(JSON.stringify(decoded!.routes[0].specs) === JSON.stringify(['Dry', 'Fast']),
+    'specs survive the encode/decode round-trip unchanged');
 });

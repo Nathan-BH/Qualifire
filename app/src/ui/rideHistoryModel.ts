@@ -78,11 +78,18 @@ export interface RideRowModel {
  * `laps(routeId, excl)` must exclude the ride's own rideId from its history
  * (mockup's `rankInTower` in-place semantics, colourModel's own contract) —
  * the caller passes lapValues(routeId, rideId), which already does this.
+ *
+ * WP-G: `labelFor` defaults to the plain `routeLabel` re-export (unchanged
+ * for every existing caller/test); RIDES passes
+ * `(id) => routeLabelIn(currentCatalog(), id)` so a user-minted route shows
+ * its way + specs instead of the raw `route:<rideId>` id. This module stays
+ * catalog-less on purpose — the caller supplies the lookup.
  */
 export function buildRideRows(
   metas: RideMeta[],
   resultFor: (rideId: string) => RideResult | null,
   laps: (routeId: string, excl: string) => number[],
+  labelFor: (id: string) => string = routeLabel,
 ): RideRowModel[] {
   return [...metas]
     .sort((a, b) => b.startMs - a.startMs)
@@ -124,7 +131,7 @@ export function buildRideRows(
         startMs: m.startMs,
         dateLabel,
         routeId,
-        routeName: routeLabel(routeId),
+        routeName: labelFor(routeId),
         lapS,
         lapLabel,
         quality,
@@ -184,18 +191,22 @@ export interface PbRowModel {
 }
 
 /** One row per route that actually has rankable history (`count(r) > 0`),
- * in the order `routeIds` was given — the caller owns ordering. */
+ * in the order `routeIds` was given — the caller owns ordering. WP-G:
+ * `labelFor` defaults to the plain `routeLabel` re-export (unchanged for
+ * every existing caller/test); RESULT passes
+ * `(id) => routeLabelIn(currentCatalog(), id)`. */
 export function buildPbRows(
   routeIds: string[],
   pb: (r: string) => number | null,
   count: (r: string) => number,
+  labelFor: (id: string) => string = routeLabel,
 ): PbRowModel[] {
   return routeIds
     .map((routeId): PbRowModel => {
       const best = pb(routeId);
       return {
         routeId,
-        routeName: routeLabel(routeId),
+        routeName: labelFor(routeId),
         pbLabel: best !== null ? fmt(best, 1) : '–',
         nOnFile: count(routeId),
       };

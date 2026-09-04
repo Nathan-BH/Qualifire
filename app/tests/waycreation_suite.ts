@@ -1,13 +1,15 @@
 /**
- * QA — retroactive way creation (OPEN-ITEMS item 2; COLD-START §3 steps 5–9).
+ * QA — retroactive way creation (OPEN-ITEMS item 2; COLD-START §3 steps 5–9;
+ * WP-G route specifications/variants).
  * Pure half: draftWayCreation / buildWayCreationCatalog. Locks:
  *  1. an unmatched ride on an empty catalog drafts two new landmarks;
  *  2. degenerate rides (too short, <2 fixes) draft nothing;
  *  3. endpoints inside an existing disc reuse the landmark; near-misses get
  *     a shrunk radius; sub-MIN slivers reuse the squeezing place instead;
  *  4. a ride ending back at its own new start landmark drafts a loop;
- *  5. an existing (start,end) way means NO offer (matching is a later
- *     package), while an existing landmark pair with no way still offers;
+ *  5. an existing (start,end) way drafts a VARIANT (WP-G: existingWayId set,
+ *     no longer a refusal), while an existing landmark pair with no way
+ *     still offers a brand-new way;
  *  6. the built catalog VALIDATES when merged, carries referenceRideId =
  *     the ride, refLineId = the route's own id, and the provisional 1%/99%
  *     start/finish gate pair.
@@ -16,17 +18,21 @@
  */
 import * as path from 'node:path';
 import { assert, loadFixture, loadJson, test, TESTS_DIR } from './lib.ts';
-import { emptyCatalog, mergeCatalogs, metresBetween, validateCatalog } from '../src/store/catalog.ts';
+import { emptyCatalog, mergeCatalogs, metresBetween, routesForWay, validateCatalog } from '../src/store/catalog.ts';
 import {
   MATCHED_ENDPOINT_SLACK_M,
   MIN_LANDMARK_RADIUS_M,
   MIN_TRACK_LENGTH_M,
   NEW_LANDMARK_RADIUS_M,
   buildWayCreationCatalog,
+  cleanSpecs,
   draftWayCreation,
+  findRouteWithSpecs,
+  sameSpecs,
   trackLengthM,
+  type WayCreationDraft,
 } from '../src/store/wayCreation.ts';
-import type { Catalog, Landmark, Route, Way } from '../src/store/types.ts';
+import type { Catalog, GateSet, Landmark, Route, Way } from '../src/store/types.ts';
 
 const LAT0 = 50.87;
 const LON0 = 4.70;
@@ -101,20 +107,24 @@ test('wayCreation: a ride ending back at its own new start landmark drafts a loo
   assert(d!.start.kind === 'new' && d!.end.landmarkId === d!.start.landmarkId, 'one landmark, both ends');
 });
 
-test('wayCreation: an existing way in this direction means no offer; an unlinked landmark pair still offers', () => {
+test('WP-G 0: an existing directed way drafts a VARIANT', () => {
   const a = lm('a', LAT0, LON0, 150);
   const b = lm('b', LAT0 + 0.019, LON0, 150);
-  const linked = catWith([a, b], [{ id: 'a>b', startLandmarkId: 'a', endLandmarkId: 'b', routeIds: ['r1'] }]);
-  assert(draftWayCreation(linked, { ...RIDE, fixes: northRide(20) }) === null,
-    'way exists in this direction: matching, not creation — no offer');
+  const linked = catWith([a, b], [{ id: 'w1', startLandmarkId: 'a', endLandmarkId: 'b', routeIds: ['r1'] }]);
+  const d = draftWayCreation(linked, { ...RIDE, fixes: northRide(20) });
+  assert(d !== null, 'way exists in this direction: a variant offer now, never null');
+  assert(d!.existingWayId === 'w1', 'existingWayId names the way that already links a->b');
+  assert(d!.start.kind === 'existing' && d!.end.kind === 'existing', 'both endpoints resolve to existing places');
+  assert(d!.loop === false, 'not a loop');
   const unlinked = catWith([a, b]);
-  const d = draftWayCreation(unlinked, { ...RIDE, fixes: northRide(20) });
-  assert(d !== null && d!.start.kind === 'existing' && d!.end.kind === 'existing',
-    'both places known but no way yet: offer creates just the way');
+  const d2 = draftWayCreation(unlinked, { ...RIDE, fixes: northRide(20) });
+  assert(d2 !== null && d2!.existingWayId === null && d2!.start.kind === 'existing' && d2!.end.kind === 'existing',
+    'both places known but no way yet: brand-new-way offer, existingWayId null');
   // The REVERSE direction of an existing way is a different way (ways are
-  // strictly directional) — it must still offer.
+  // strictly directional) — it drafts a brand-new-way offer too.
   const reverse = catWith([a, b], [{ id: 'b>a', startLandmarkId: 'b', endLandmarkId: 'a', routeIds: ['r1'] }]);
-  assert(draftWayCreation(reverse, { ...RIDE, fixes: northRide(20) }) !== null, 'reverse direction still offers');
+  const d3 = draftWayCreation(reverse, { ...RIDE, fixes: northRide(20) });
+  assert(d3 !== null && d3!.existingWayId === null, 'reverse direction still a different way: existingWayId null');
 });
 
 test('wayCreation: the built catalog validates when merged and carries the reference ride', () => {
@@ -212,34 +222,46 @@ test('WP-F 1: the gap case — a matched-but-different-endpoint ride still offer
   }
 });
 
-test('WP-F 2: an existing pair refuses regardless of the engine verdict (matching vs mismatching vs null)', () => {
+test('WP-F 2 (WP-G): an existing pair drafts a variant regardless of the engine verdict (matching vs mismatching vs null)', () => {
   const cat = catWith([a, b], [wayAB], [routeAB]);
   const fixes = [A0, B0]; // a -> b, exactly the way that already exists
   for (const matchedRouteId of ['r-ab', 'some-other-route', null] as (string | null)[]) {
     const d = draftWayCreation(cat, { ...RIDE, fixes, matchedRouteId });
-    assert(d === null, `matchedRouteId=${matchedRouteId}: existing (a,b) pair must refuse regardless`);
+    assert(d !== null && d!.existingWayId === wayAB.id,
+      `matchedRouteId=${matchedRouteId}: existing (a,b) pair drafts a variant on wayAB regardless`);
+    assert(d!.matchedRouteId === matchedRouteId, `matchedRouteId=${matchedRouteId}: still round-trips onto the draft`);
   }
 });
 
-test('WP-F 3: slack snap — the latelock regression guard, start side', () => {
+test('WP-F 3 (WP-G): slack snap — the latelock regression guard, start side', () => {
   // 225 m from a's centre (150 m radius): 75 m past the edge, same margin
   // §2.5 measured on latelock_20260805's real first fix.
   const startFix = northOf(A0, 225);
   const cat = catWith([a, b], [wayAB], [routeAB]);
   const fixes = [startFix, B0]; // end lands exactly inside b
   const matched = draftWayCreation(cat, { ...RIDE, fixes, matchedRouteId: 'r-ab' });
-  assert(matched === null, 'matched: the 75 m-past-edge start snaps to a, pair (a,b) already exists -> null');
+  // WP-G: the pair (a,b) already existing is no longer a refusal — the snap
+  // still happens (start resolves to the existing landmark a, not a phantom
+  // new place 75 m past its edge), but the result is now a variant offer on
+  // wayAB rather than null.
+  assert(matched !== null && matched!.existingWayId === wayAB.id
+      && matched!.start.kind === 'existing' && matched!.start.landmarkId === 'a'
+      && matched!.end.kind === 'existing' && matched!.end.landmarkId === 'b',
+    'matched: the 75 m-past-edge start still snaps to a; pair (a,b) already exists -> variant offer on wayAB');
   const unmatched = draftWayCreation(cat, { ...RIDE, fixes, matchedRouteId: null });
   assert(unmatched !== null && unmatched!.start.kind === 'new' && unmatched!.end.kind === 'existing',
     'unmatched: today\'s behaviour preserved — new start, existing end');
 });
 
-test('WP-F 3b: slack snap mirrored on the end side', () => {
+test('WP-F 3b (WP-G): slack snap mirrored on the end side', () => {
   const endFix = northOf(B0, 225); // 75 m past b's edge
   const cat = catWith([a, b], [wayAB], [routeAB]);
   const fixes = [A0, endFix]; // start lands exactly inside a
   const matched = draftWayCreation(cat, { ...RIDE, fixes, matchedRouteId: 'r-ab' });
-  assert(matched === null, 'matched: the 75 m-past-edge end snaps to b, pair (a,b) already exists -> null');
+  assert(matched !== null && matched!.existingWayId === wayAB.id
+      && matched!.start.kind === 'existing' && matched!.start.landmarkId === 'a'
+      && matched!.end.kind === 'existing' && matched!.end.landmarkId === 'b',
+    'matched: the 75 m-past-edge end still snaps to b; pair (a,b) already exists -> variant offer on wayAB');
   const unmatched = draftWayCreation(cat, { ...RIDE, fixes, matchedRouteId: null });
   assert(unmatched !== null && unmatched!.start.kind === 'existing' && unmatched!.end.kind === 'new',
     'unmatched: today\'s behaviour preserved — existing start, new end');
@@ -284,13 +306,15 @@ test('WP-F 5: an unknown or stale matchedRouteId behaves exactly like null', () 
     'a route whose way id is missing must also degrade like null, never throw');
 });
 
-test('WP-F 6: real fixtures against the shipped seed catalog — matched but genuinely no other way, stays suppressed', () => {
+test('WP-F 6 (WP-G): real fixtures against the shipped seed catalog — matched, no other way ⇒ variant offer on that seed way', () => {
   // Same read-only-JSON pattern as store_suite.ts: this file's own module
   // graph must not statically import store/seed.ts (it pulls in the bare
   // catalog.seed.json import, which plain Node ESM cannot load without the
   // registerHooks dance other suites use for it — unneeded here since we only
   // need the shipped catalog's DATA, not the seed-mode selection logic).
   const seed = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
+  const homeWorkWayId = seed.routes.find((r) => r.id === 'Morning')?.wayId;
+  assert(typeof homeWorkWayId === 'string', 'fixture sanity: the seed has a Morning route with a wayId');
   for (const name of ['latelock_20260805', 'clean_morning']) {
     const f = loadFixture(name);
     assert(f.track === 'Morning', `fixture sanity: ${name} expected track Morning, got ${f.track}`);
@@ -301,7 +325,8 @@ test('WP-F 6: real fixtures against the shipped seed catalog — matched but gen
       fixes,
       matchedRouteId: 'Morning',
     });
-    assert(d === null, `${name}: home->work already exists as a way — matched-and-suppressed, got ${JSON.stringify(d)}`);
+    assert(d !== null && d!.existingWayId === homeWorkWayId,
+      `${name}: home->work already exists as a way — variant offer on it, got ${JSON.stringify(d)}`);
   }
 });
 
@@ -315,4 +340,185 @@ test('WP-F 7: WayCreationDraft.matchedRouteId round-trips and buildWayCreationCa
   const errs = validateCatalog(mergeCatalogs(emptyCatalog(), built));
   assert(errs.length === 0, `build must still validate, got: ${errs.join('; ')}`);
   assert(!JSON.stringify(built).includes('some-route'), 'matchedRouteId must never leak into the built catalog');
+});
+
+// ------------------------------------------------------------ WP-G: route
+// specifications/variants — a second Route on an existing Way, named by
+// free-text spec segments, instead of today's silent no-offer.
+
+/** Helper: a variant draft on an existing way, both endpoints already known. */
+function variantDraft(rideId: string, wayId: string, startId: string, endId: string): WayCreationDraft {
+  return {
+    rideId,
+    startedAtMs: RIDE.startedAtMs,
+    start: { kind: 'existing', landmarkId: startId },
+    end: { kind: 'existing', landmarkId: endId },
+    loop: startId === endId,
+    trackLengthM: 2000,
+    matchedRouteId: null,
+    existingWayId: wayId,
+  };
+}
+
+test('WP-G 1: variant build on a user way', () => {
+  const wa = lm('a', LAT0, LON0, 150);
+  const wb = lm('b', LAT0 + 0.019, LON0, 150);
+  const w1: Way = { id: 'w1', startLandmarkId: 'a', endLandmarkId: 'b', routeIds: ['r1'] };
+  const r1: Route = { id: 'r1', wayId: 'w1', refLineId: 'r1', gateSetVersion: 1, seeded: false };
+  const userCat = catWith([wa, wb], [w1], [r1]);
+  userCat.gateSets = [{ routeId: 'r1', version: 1, chainageM: [10, 990], createdAtMs: 0 }];
+  const draft = variantDraft('ride-t1', 'w1', 'a', 'b');
+  const built = buildWayCreationCatalog(userCat, draft, { start: '', end: '', specs: [' Dry ', '', 'Fast'] });
+  assert(built.landmarks.length === userCat.landmarks.length, 'no new landmark');
+  assert(built.ways.length === userCat.ways.length, 'ways.length unchanged');
+  assert(JSON.stringify(built.ways[0].routeIds) === JSON.stringify(['r1', 'route:ride-t1']),
+    'w1.routeIds deep-equals [r1, route:ride-t1]');
+  const route = built.routes[built.routes.length - 1];
+  assert(route.wayId === 'w1' && route.refLineId === 'route:ride-t1' && route.referenceRideId === 'ride-t1',
+    'new route on w1, self-refLineId, referenceRideId set');
+  assert(JSON.stringify(route.specs) === JSON.stringify(['Dry', 'Fast']), 'specs trimmed, empty dropped, order kept');
+  assert(built.gateSets.length === userCat.gateSets.length + 1, 'one new gate set');
+  const errs = validateCatalog(mergeCatalogs(emptyCatalog(), built));
+  assert(errs.length === 0, `merged result must validate, got: ${errs.join('; ')}`);
+});
+
+test('WP-G 2: variant on a SEED-owned way', () => {
+  const wa = lm('a', LAT0, LON0, 150);
+  const wb = lm('b', LAT0 + 0.019, LON0, 150);
+  const w1: Way = { id: 'w1', startLandmarkId: 'a', endLandmarkId: 'b', routeIds: ['r1'] };
+  const r1: Route = { id: 'r1', wayId: 'w1', refLineId: 'r1', gateSetVersion: 1, seeded: true };
+  const seed = catWith([wa, wb], [w1], [r1]);
+  seed.gateSets = [{ routeId: 'r1', version: 1, chainageM: [10, 990], createdAtMs: 0 }];
+  const userCat = emptyCatalog(); // the way is seed-owned — NOT in userCat
+  const draft = variantDraft('ride-t2', 'w1', 'a', 'b');
+  const built = buildWayCreationCatalog(userCat, draft, { start: '', end: '', specs: ['Wet'] });
+  assert(JSON.stringify(built.ways) === JSON.stringify(userCat.ways), 'userCat.ways untouched — a seed way is not ours to edit');
+  const route = built.routes.find((r) => r.id === 'route:ride-t2');
+  assert(route !== undefined && route.wayId === 'w1', 'the new route points at the seed way by id');
+  const merged = mergeCatalogs(seed, built);
+  const errs = validateCatalog(merged);
+  assert(errs.length === 0, `merged result must validate, got: ${errs.join('; ')}`);
+  assert(routesForWay(merged, 'w1').some((r) => r.id === 'route:ride-t2'),
+    'routesForWay resolves the variant by wayId, not way.routeIds (validateCatalog never requires the inverse link)');
+});
+
+test('WP-G 3: no specs given, or all-whitespace specs, => no specs field on the route (byte-identical)', () => {
+  const fixes = northRide(20);
+  const d = draftWayCreation(emptyCatalog(), { ...RIDE, fixes })!;
+  const builtNoSpecs = buildWayCreationCatalog(emptyCatalog(), d, { start: 'Home', end: 'Work' });
+  assert(!('specs' in builtNoSpecs.routes[0]), 'no names.specs at all: route carries no specs property');
+  const builtBlankSpecs = buildWayCreationCatalog(emptyCatalog(), d, { start: 'Home', end: 'Work', specs: ['', '  '] });
+  assert(!('specs' in builtBlankSpecs.routes[0]), 'all-whitespace specs: still no specs property, never []');
+  assert(JSON.stringify(builtNoSpecs) === JSON.stringify(builtBlankSpecs), 'the two builds are byte-identical');
+});
+
+test('WP-G 4: specs on a brand-new way land trimmed on its first route; way/landmarks unaffected', () => {
+  const fixes = northRide(20);
+  const d = draftWayCreation(emptyCatalog(), { ...RIDE, fixes })!;
+  const builtPlain = buildWayCreationCatalog(emptyCatalog(), d, { start: 'Home', end: 'Work' });
+  const builtSpecs = buildWayCreationCatalog(emptyCatalog(), d, { start: 'Home', end: 'Work', specs: [' Dry ', 'Fast'] });
+  assert(JSON.stringify(builtSpecs.landmarks) === JSON.stringify(builtPlain.landmarks), 'landmarks unaffected by specs');
+  assert(JSON.stringify(builtSpecs.ways) === JSON.stringify(builtPlain.ways), 'the way itself unaffected by specs');
+  assert(JSON.stringify(builtSpecs.routes[0].specs) === JSON.stringify(['Dry', 'Fast']), 'specs trimmed onto the new route');
+  const errs = validateCatalog(mergeCatalogs(emptyCatalog(), builtSpecs));
+  assert(errs.length === 0, `must validate, got: ${errs.join('; ')}`);
+});
+
+test('WP-G 5: cleanSpecs / sameSpecs', () => {
+  assert(JSON.stringify(cleanSpecs([' Dry ', '', '  Fast  '])) === JSON.stringify(['Dry', 'Fast']), 'trims and drops empties');
+  assert(JSON.stringify(cleanSpecs(undefined)) === JSON.stringify([]), 'undefined => []');
+  assert(sameSpecs(['Dry', 'Fast'], ['dry', 'fast']) === true, 'case-insensitive positional equality');
+  assert(sameSpecs(['Dry', 'Fast'], ['Fast', 'Dry']) === false, 'order matters — reversed is a different spec path');
+  assert(sameSpecs([], []) === true, 'both empty: equal (the plain route)');
+});
+
+test('WP-G 6: findRouteWithSpecs', () => {
+  const rDry: Route = { id: 'r-dry', wayId: 'w1', refLineId: 'r-dry', gateSetVersion: 1, seeded: false, specs: ['Dry'] };
+  const rDryFast: Route = { id: 'r-dry-fast', wayId: 'w1', refLineId: 'r-dry-fast', gateSetVersion: 1, seeded: false, specs: ['Dry', 'Fast'] };
+  const rPlain: Route = { id: 'r-plain', wayId: 'w1', refLineId: 'r-plain', gateSetVersion: 1, seeded: false };
+  const c = catWith([], [], [rDry, rDryFast, rPlain]);
+  assert(findRouteWithSpecs(c, 'w1', ['dry'])?.id === 'r-dry', 'case-insensitive hit');
+  assert(findRouteWithSpecs(c, 'w2', ['Dry']) === null, 'a matching list on a DIFFERENT way is a miss');
+  assert(findRouteWithSpecs(c, 'w1', ['Dry', 'Fast'])?.id === 'r-dry-fast', 'the longer list finds the OTHER route — prefix is not equality');
+  assert(findRouteWithSpecs(c, 'w1', [])?.id === 'r-plain', '[] finds the plain route');
+});
+
+test('WP-G 7: validateCatalog — spec shape and per-way duplicate specs', () => {
+  const wa = lm('a', LAT0, LON0, 150);
+  const wb = lm('b', LAT0 + 0.019, LON0, 150);
+  const gs = (routeId: string): GateSet => ({ routeId, version: 1, chainageM: [10, 990], createdAtMs: 0 });
+
+  // Two routes on one way with case-different-but-equal specs => one error naming both.
+  const w1: Way = { id: 'w1', startLandmarkId: 'a', endLandmarkId: 'b', routeIds: ['r1', 'r2'] };
+  const r1: Route = { id: 'r1', wayId: 'w1', refLineId: 'r1', gateSetVersion: 1, seeded: false, specs: ['Dry'] };
+  const r2: Route = { id: 'r2', wayId: 'w1', refLineId: 'r2', gateSetVersion: 1, seeded: false, specs: ['dry'] };
+  const c1 = catWith([wa, wb], [w1], [r1, r2]);
+  c1.gateSets = [gs('r1'), gs('r2')];
+  const errs1 = validateCatalog(c1);
+  assert(errs1.some((e) => e.includes('r1') && e.includes('r2')), `expected one error naming both routes, got ${JSON.stringify(errs1)}`);
+
+  // Two PLAIN routes (no specs at all) on one way stay legal — the seed's own shape.
+  const r1p: Route = { id: 'r1', wayId: 'w1', refLineId: 'r1', gateSetVersion: 1, seeded: false };
+  const r2p: Route = { id: 'r2', wayId: 'w1', refLineId: 'r2', gateSetVersion: 1, seeded: false };
+  const c2 = catWith([wa, wb], [w1], [r1p, r2p]);
+  c2.gateSets = [gs('r1'), gs('r2')];
+  const errs2 = validateCatalog(c2);
+  assert(!errs2.some((e) => e.includes('share specs')), `two plain routes must not be flagged, got ${JSON.stringify(errs2)}`);
+
+  // Malformed specs: not trimmed / empty string.
+  const w1b: Way = { id: 'w1', startLandmarkId: 'a', endLandmarkId: 'b', routeIds: ['r3', 'r4'] };
+  const r3: Route = { id: 'r3', wayId: 'w1', refLineId: 'r3', gateSetVersion: 1, seeded: false, specs: [''] };
+  const r4: Route = { id: 'r4', wayId: 'w1', refLineId: 'r4', gateSetVersion: 1, seeded: false, specs: [' Dry'] };
+  const c3 = catWith([wa, wb], [w1b], [r3, r4]);
+  c3.gateSets = [gs('r3'), gs('r4')];
+  const errs3 = validateCatalog(c3);
+  assert(errs3.filter((e) => e.includes('trimmed non-empty')).length === 2, `both malformed routes flagged, got ${JSON.stringify(errs3)}`);
+
+  // The same list on a route of ANOTHER way: no error.
+  const wb2 = lm('b2', LAT0 + 0.038, LON0, 150);
+  const w1only: Way = { id: 'w1', startLandmarkId: 'a', endLandmarkId: 'b', routeIds: ['r1'] };
+  const w2: Way = { id: 'w2', startLandmarkId: 'a', endLandmarkId: 'b2', routeIds: ['r5'] };
+  const r1only: Route = { id: 'r1', wayId: 'w1', refLineId: 'r1', gateSetVersion: 1, seeded: false, specs: ['Dry'] };
+  const r5: Route = { id: 'r5', wayId: 'w2', refLineId: 'r5', gateSetVersion: 1, seeded: false, specs: ['Dry'] };
+  const c4 = catWith([wa, wb, wb2], [w1only, w2], [r1only, r5]);
+  c4.gateSets = [gs('r1'), gs('r5')];
+  const errs4 = validateCatalog(c4);
+  assert(!errs4.some((e) => e.includes('share specs')), `same specs on different ways must not be flagged, got ${JSON.stringify(errs4)}`);
+
+  // Inspect (WP-G): a non-array `specs` (hand-edited file) is REPORTED, never
+  // thrown — the per-way duplicate loop must not call .map on it.
+  const r6 = { id: 'r6', wayId: 'w1', refLineId: 'r6', gateSetVersion: 1, seeded: false, specs: 'Dry' as unknown as string[] } as Route;
+  const c5 = catWith([wa, wb], [w1only], [r6]);
+  c5.gateSets = [gs('r6')];
+  let errs5: string[] = [];
+  let threw = false;
+  try { errs5 = validateCatalog(c5); } catch { threw = true; }
+  assert(!threw, 'validateCatalog must not throw on a non-array specs');
+  assert(errs5.some((e) => e.includes('trimmed non-empty')), `non-array specs reported as a shape error, got ${JSON.stringify(errs5)}`);
+});
+
+test('WP-G 8: an existing loop way drafts a variant, not a second loop way', () => {
+  const home = lm('loopplace', LAT0, LON0, 150);
+  const loopWay: Way = {
+    id: 'loop:existing', startLandmarkId: 'loopplace', endLandmarkId: 'loopplace',
+    loopDiscriminator: 'loop:existing', routeIds: ['r-loop'],
+  };
+  const rLoop: Route = { id: 'r-loop', wayId: 'loop:existing', refLineId: 'r-loop', gateSetVersion: 1, seeded: false };
+  const cat = catWith([home], [loopWay], [rLoop]);
+  cat.gateSets = [{ routeId: 'r-loop', version: 1, chainageM: [10, 990], createdAtMs: 0 }];
+  // A ride that starts and ends exactly at the existing loop place.
+  const out = northRide(6, 0.001);
+  const back = [...out].reverse();
+  const fixes = [...out, ...back];
+  const d = draftWayCreation(cat, { ...RIDE, fixes });
+  assert(d !== null, 'a real loop ride on an existing loop place drafts');
+  assert(d!.loop === true, 'recognised as a loop');
+  assert(d!.start.kind === 'existing' && d!.end.kind === 'existing' && d!.start.landmarkId === 'loopplace',
+    'both ends resolve to the existing loop place');
+  assert(d!.existingWayId === 'loop:existing', 'the existing loop way is offered as a variant, not a new way');
+  const built = buildWayCreationCatalog(cat, d!, { start: '', end: '', specs: ['Alt'] });
+  assert(built.ways.length === cat.ways.length, 'no second loop way minted');
+  assert(built.routes.length === cat.routes.length + 1, 'one new route on the existing loop way');
+  const errs = validateCatalog(mergeCatalogs(emptyCatalog(), built));
+  assert(errs.length === 0, `merged loop-variant catalog must validate, got: ${errs.join('; ')}`);
 });

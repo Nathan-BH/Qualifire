@@ -12,6 +12,8 @@ import { deleteRide, exportGpxPlus, listRides } from '../storage';
 import type { RideMeta } from '../storage/types';
 import { decodeIndex } from '../storage/rideIndex';
 import { backfillMissingResults, getStoredResult, removeStoredResult } from '../store/resultsStore';
+import { currentCatalog } from '../store/catalogStore';
+import { routeLabelIn } from '../store/defaultRoute';
 import { createExpoFsAdapter } from '../storage/expoFsAdapter';
 import { dropRecorded } from './lastRide';
 import { buildRideRows, buildSectorRows } from './rideHistoryModel';
@@ -106,7 +108,9 @@ export default function RidesScreen() {
   }, [rides]);
 
   const rows = useMemo(
-    () => buildRideRows(rides ?? [], getStoredResult, (routeId, excl) => lapValues(routeId, excl)),
+    // WP-G: labelFor is routeLabelIn so a user-minted route shows its way + specs, not the raw route:<rideId> id.
+    () => buildRideRows(rides ?? [], getStoredResult, (routeId, excl) => lapValues(routeId, excl),
+      (id) => routeLabelIn(currentCatalog(), id)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rides, resultsTick],
   );

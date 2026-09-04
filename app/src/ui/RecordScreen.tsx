@@ -46,7 +46,14 @@ import { chipColors, type Tier } from './chips';
 import { fmt, ghostsFor, lapValues, sectorValues, tierFor } from './colourModel';
 import { dropRecorded, rememberRide } from './lastRide';
 import { rememberFreeRide } from '../store/freeRides';
-import { buildWayCreationCatalog, draftWayCreation, type WayCreationDraft } from '../store/wayCreation';
+import {
+  buildWayCreationCatalog,
+  draftWayCreation,
+  findRouteWithSpecs,
+  type WayCreationDraft,
+  type WayNames,
+} from '../store/wayCreation';
+import { hasSpecs, specPickRows, specVocabulary } from '../store/routeSpecs';
 import { createExpoFsAdapter } from '../storage/expoFsAdapter';
 import { decodeRideFile } from '../storage/jsonl';
 import { buildRefFromRideFixes, saveUserRef } from '../live/userRefs';
@@ -56,8 +63,8 @@ import { WayNamingCard } from './wayNamingCard';
 import { deleteRide } from '../storage';
 import { removeStoredResult } from '../store/resultsStore';
 import { currentCatalog, saveUserCatalog, userCatalog } from '../store/catalogStore';
-import { addGateSet, freeRideRouteIds, landmarkAt } from '../store/catalog';
-import { defaultEndpoints, routeLabel, routeVariantLabel, sortRoutesForDisplay } from '../store/defaultRoute';
+import { addGateSet, freeRideRouteIds, landmarkAt, routesForWay } from '../store/catalog';
+import { defaultEndpoints, routeLabelIn, routeVariantLabel, sortRoutesForDisplay } from '../store/defaultRoute';
 import type { Route } from '../store/types';
 import { PaddockTheme, colors, radius } from './theme';
 import { useTheme } from './themeContext';
@@ -111,6 +118,15 @@ async function namingDraftFor(
 function existingLandmarkLabel(r: WayCreationDraft['start']): string | null {
   if (r.kind !== 'existing') return null;
   return currentCatalog().landmarks.find((l) => l.id === r.landmarkId)?.label ?? r.landmarkId;
+}
+
+/** WP-G: the card's view of the way a variant is being added to. */
+function existingWayProps(wayId: string): { label: string; knownSpecLists: string[][] } | null {
+  const c = currentCatalog();
+  const w = c.ways.find((x) => x.id === wayId);
+  if (!w) return null;
+  const lab = (id: string) => c.landmarks.find((l) => l.id === id)?.label ?? id;
+  return { label: `${lab(w.startLandmarkId)} → ${lab(w.endLandmarkId)}`, knownSpecLists: routesForWay(c, wayId).map((r) => r.specs ?? []) };
 }
 
 /** What the gate-adjust step carries between CREATE WAY and its own save. */
@@ -522,9 +538,10 @@ export default function RecordScreen({
       // somewhere no way of yours goes. finalState.track is handed over only
       // so draftWayCreation can refuse to mint a "new place" a few tens of
       // metres outside the matched way's own landmark (latelock_20260805:
-      // 75 m past home's disc). Null (no offer) now covers: an existing way
-      // in this direction, short rides, read failures — NOT "the engine
-      // locked".
+      // 75 m past home's disc). WP-G: an existing way in this direction is no
+      // longer a null-offer either — it comes back with existingWayId set (a
+      // second Route on that Way). Null (no offer) now covers: short rides,
+      // read failures.
       const draft = s ? await namingDraftFor(s.rideId, s.startedAtMs, finalState.track) : null;
       // Cycle 024 (WP-A2, Nathan 2026-08-19): "at the end when you press
       // stop it would be nice to show the animation again — but reversed."
@@ -568,9 +585,16 @@ export default function RecordScreen({
     setShowAnim('rev');
   }, []);
 
-  const onNamingSave = useCallback(async (names: { start: string; end: string }) => {
+  const onNamingSave = useCallback(async (names: WayNames) => {
     const draft = namingRef.current;
     if (!draft) return;
+    // WP-G: belt to the card's own braces — the card already disables ADD
+    // ROUTE on a duplicate, but the pick could have gone stale between
+    // renders (another ride landed the same specs in the meantime).
+    if (draft.existingWayId && findRouteWithSpecs(currentCatalog(), draft.existingWayId, names.specs ?? [])) {
+      Alert.alert('That route already exists', 'Pick it on RECORD next time instead of adding it again.');
+      return;
+    }
     setBusy(true);
     try {
       // OPEN-ITEMS item 3 (Part A): build the route's real reference line
@@ -769,11 +793,11 @@ export default function RecordScreen({
     ? 'free ride · gates only'
     : routeLocked
       ? live.lockKind === 'soft'
-        ? `${live.track ? routeLabel(live.track) : ''} · route locked (your pick) · verifying${live.onRoute ? '' : ' · off route'}`
-        : `${live.track ? routeLabel(live.track) : ''} · route locked${live.onRoute ? '' : ' · off route'}`
+        ? `${live.track ? routeLabelIn(CATALOG, live.track) : ''} · route locked (your pick) · verifying${live.onRoute ? '' : ' · off route'}`
+        : `${live.track ? routeLabelIn(CATALOG, live.track) : ''} · route locked${live.onRoute ? '' : ' · off route'}`
       : writingHistory
-        ? (rideRouteHint ? `writing history · not on ${routeLabel(rideRouteHint)} yet` : 'writing history · no known route here')
-        : rideRouteHint ? `${routeLabel(rideRouteHint)} · your pick · confirming…` : 'detecting route…';
+        ? (rideRouteHint ? `writing history · not on ${routeLabelIn(CATALOG, rideRouteHint)} yet` : 'writing history · no known route here')
+        : rideRouteHint ? `${routeLabelIn(CATALOG, rideRouteHint)} · your pick · confirming…` : 'detecting route…';
   // Cycle 024 (WP-A2, Nathan 2026-08-19): "I don't know what 'fixes' are" —
   // the raw count is gone from every user-facing status line; it still lives
   // in the GPX+ sidecar for diagnostics. recordFlow.ts owns the pure rule so
@@ -950,7 +974,7 @@ export default function RecordScreen({
       <View style={styles.raceColumn}>
         <Text style={styles.trackLine}>
           {landmarkLabel(fromId)} → {landmarkLabel(to)}
-          {way && pickedRoute ? ` · ${routeVariantLabel(pickedRoute.id, way)}` : ''} · ready — not started
+          {way && pickedRoute ? ` · ${routeVariantLabel(pickedRoute.id, way, pickedRoute.specs)}` : ''} · ready — not started
         </Text>
         {problemStates}
         {settings.liveMap ? (
@@ -1007,7 +1031,9 @@ export default function RecordScreen({
             endExistingLabel={existingLandmarkLabel(naming.end)}
             loop={naming.loop}
             busy={busy}
-            matchedRouteLabel={naming.matchedRouteId ? routeLabel(naming.matchedRouteId) : null}
+            matchedRouteLabel={naming.matchedRouteId ? routeLabelIn(currentCatalog(), naming.matchedRouteId) : null}
+            existingWay={naming.existingWayId ? existingWayProps(naming.existingWayId) : null}
+            vocabulary={specVocabulary(currentCatalog().routes)}
             onSave={onNamingSave}
             onSkip={onNamingSkip}
           />
@@ -1097,7 +1123,7 @@ export default function RecordScreen({
             <ScrollView style={{ maxHeight: 120 }}>
               {[...live.freeSectors].reverse().map((sec, i) => (
                 <Text key={i} style={styles.freeSectorRow}>
-                  {routeLabel(sec.routeId)} S{sec.index} — {fmt(sec.rawS, 1)}
+                  {routeLabelIn(CATALOG, sec.routeId)} S{sec.index} — {fmt(sec.rawS, 1)}
                 </Text>
               ))}
             </ScrollView>
@@ -1265,16 +1291,29 @@ export default function RecordScreen({
           {!freeRide && way && wayRoutes.length > 1 ? (
             <>
               <Text style={styles.flowLabel}>WHICH ROUTE TODAY?</Text>
-              <View style={styles.pillRow}>
-                {wayRoutes.map((r) => (
-                  <Pressable key={r.id} onPress={() => setRoutePick({ wayId: way.id, routeId: r.id })}
-                    style={[styles.pill, pickedRoute?.id === r.id && styles.pillOn]}>
-                    <Text style={[styles.pillText, pickedRoute?.id === r.id && styles.pillTextOn]}>
-                      {routeVariantLabel(r.id, way)}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
+              {hasSpecs(wayRoutes)
+                ? specPickRows(wayRoutes, pickedRoute?.id ?? null, defaultRouteFor).map((row) => (
+                    <View key={row.depth} style={styles.pillRow}>
+                      {row.options.map((o) => (
+                        <Pressable key={`${row.depth}:${o.label}`} onPress={() => setRoutePick({ wayId: way.id, routeId: o.route.id })}
+                          style={[styles.pill, o.on && styles.pillOn]}>
+                          <Text style={[styles.pillText, o.on && styles.pillTextOn]}>{o.label}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  ))
+                : (
+                  <View style={styles.pillRow}>
+                    {wayRoutes.map((r) => (
+                      <Pressable key={r.id} onPress={() => setRoutePick({ wayId: way.id, routeId: r.id })}
+                        style={[styles.pill, pickedRoute?.id === r.id && styles.pillOn]}>
+                        <Text style={[styles.pillText, pickedRoute?.id === r.id && styles.pillTextOn]}>
+                          {routeVariantLabel(r.id, way, r.specs)}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                )}
               <Text style={styles.sub}>
                 what you pick stays locked until the end — ride a different road and this ride will not be scored as that road (§8a)
               </Text>

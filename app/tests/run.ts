@@ -20,6 +20,7 @@ import './resultsstore_suite.ts';
 import './catalogstore_suite.ts';
 import './catalogdelete_suite.ts';
 import './waycreation_suite.ts';
+import './routespec_suite.ts';
 import './userrefs_suite.ts';
 import './gateseeding_suite.ts';
 import './launch_anim_suite.ts';

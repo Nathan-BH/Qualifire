@@ -27,7 +27,7 @@ import { removeUserRef } from '../live/userRefs.ts';
 import { removeStoredResult, storedResultsForRoute } from '../store/resultsStore.ts';
 import { clearLastRide, dropRecorded, getLastRide } from './lastRide.ts';
 import { rankedCountFor } from './colourModel.ts';
-import { routeLabel, routeVariantLabel, sortRoutesForDisplay } from '../store/defaultRoute.ts';
+import { routeLabelIn, routeVariantLabel, sortRoutesForDisplay } from '../store/defaultRoute.ts';
 import RouteMapView from './routeMapView.tsx';
 import { radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
@@ -86,7 +86,7 @@ function onDeleteRoute(
     const verb = deletion.removedLandmarkIds.length === 1 ? 'is' : 'are';
     body += `\n${landmarkLabels(CATALOG, deletion.removedLandmarkIds)} ${verb} no longer used by any way and will be removed as places.`;
   }
-  confirmDelete(`Delete "${routeVariantLabel(r.id, w)}" on ${from?.label} → ${to?.label}?`, body, deletion, bump);
+  confirmDelete(`Delete "${routeLabelIn(CATALOG, r.id)}" on ${from?.label} → ${to?.label}?`, body, deletion, bump);
 }
 
 function onDeleteWay(CATALOG: Catalog, SEED: Catalog, w: Way, bump: () => void): void {
@@ -201,7 +201,7 @@ export default function RoutesScreen() {
                   const routeDeletable = !isSeedOwned(SEED, 'route', r.id);
                   return (
                     <View key={r.id} style={{ marginTop: 10 }}>
-                      <Text style={{ color: t.text, fontSize: 13.5 }}>{routeLabel(r.id)}</Text>
+                      <Text style={{ color: t.text, fontSize: 13.5 }}>{routeVariantLabel(r.id, w, r.specs)}</Text>
                       <Text style={{ color: t.textDim, fontSize: 11.5, marginBottom: 6 }}>
                         {n} ghost lap{n === 1 ? '' : 's'} seeded · 4 sectors · START ~160 m in
                       </Text>

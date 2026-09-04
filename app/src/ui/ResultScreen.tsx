@@ -29,7 +29,9 @@ import { MIN_HISTORY, allTimeBestLapS, fmt, lapValues, ownLapBarredFromRanking, 
   rankedCountFor, rankingPoolFor, sectorValues, tierFor, type UiTier } from './colourModel.ts';
 import { getLastRideOrStored, type FinishedRide } from './lastRide.ts';
 import { lastFreeRide } from '../store/freeRides.ts';
-import { buildPbDetail, buildPbRows, dateTimeLabel, lapCellLabel, routeLabel } from './rideHistoryModel.ts';
+import { buildPbDetail, buildPbRows, dateTimeLabel, lapCellLabel } from './rideHistoryModel.ts';
+import { currentCatalog } from '../store/catalogStore.ts';
+import { routeLabelIn } from '../store/defaultRoute.ts';
 import RouteMapView from './routeMapView.tsx';
 import { tierLineColour } from './chips.tsx';
 import { useTabNav } from './tabNav.tsx';
@@ -194,7 +196,10 @@ export default function ResultScreen() {
   // rankedCountFor, not the window length: "N rides on file" must count what
   // is actually on file, never the window cap (cycle 025 — the old "10 rides
   // on file" caption was the window size and contradicted the header).
-  const pbRows = buildPbRows(routeIdsInHistory(), allTimeBestLapS, rankedCountFor);
+  // WP-G: labelFor swapped to routeLabelIn so a user-minted route's PB row
+  // shows its way + specs ("Home → Work · Dry") instead of the raw id.
+  const pbRows = buildPbRows(routeIdsInHistory(), allTimeBestLapS, rankedCountFor,
+    (id) => routeLabelIn(currentCatalog(), id));
   const [openRoute, setOpenRoute] = useState<string | null>(() => {
     if (ride && pbRows.some((r) => r.routeId === ride.routeId)) return ride.routeId;
     return pbRows[0]?.routeId ?? null;
@@ -215,7 +220,7 @@ export default function ResultScreen() {
             <View style={{ alignSelf: 'stretch', marginTop: 8 }}>
               {free.sectors.map((sec, i) => (
                 <Text key={i} style={[st.freeSectorRow, { color: t.text }]}>
-                  {routeLabel(sec.routeId)} S{sec.index} — {fmt(sec.rawS, 1)} raw
+                  {routeLabelIn(currentCatalog(), sec.routeId)} S{sec.index} — {fmt(sec.rawS, 1)} raw
                 </Text>
               ))}
             </View>
@@ -234,7 +239,7 @@ export default function ResultScreen() {
         </View>
       ) : (
         <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder, alignItems: 'center' }]}>
-          <Text style={{ color: t.textDim }}>{routeLabel(ride.routeId)}</Text>
+          <Text style={{ color: t.textDim }}>{routeLabelIn(currentCatalog(), ride.routeId)}</Text>
           <Text style={[st.big, { color: tierColour(lapTier, t) }]}>{lapLabel}</Text>
           <Text style={{ color: t.textDim, fontSize: 12.5 }}>{rankLine}</Text>
 

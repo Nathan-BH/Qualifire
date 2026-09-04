@@ -2,6 +2,7 @@
  * Pure — headless-testable. */
 import type { Catalog, RideResult } from './types.ts';
 import { ranks } from './results.ts';
+import { PLAIN_SPEC_LABEL } from './routeSpecs.ts';
 
 /** Display-name overlay (Nathan, 2026-08-26 — WP-route-naming-migration):
  * the four legacy time-of-day ids plus StationHomePreferred render under
@@ -31,6 +32,12 @@ export function routeLabel(id: string): string {
   return (ROUTE_DISPLAY_ID[id] ?? id).replace(/([a-z0-9])([A-Z])/g, '$1 $2');
 }
 
+/** WP-G: every route wayCreation.ts mints — the ids the FromToVariant
+ * convention (and ROUTE_DISPLAY_ID) can never describe. */
+export function isUserMintedRouteId(id: string): boolean {
+  return id.startsWith('route:');
+}
+
 /** Variant-only label for a route shown inside its way's context (Nathan,
  * 2026-08-27): where "starting from" and "going to" are already their own
  * choices on the RECORD tab, the third choice names ONLY the variant —
@@ -38,11 +45,18 @@ export function routeLabel(id: string): string {
  * concatenation. Derived: the display id (overlay applied) minus the way's
  * capitalized landmark-id pair, split on capitals. Any id that does not
  * follow the convention (or would strip to nothing) falls back to the full
- * routeLabel(), so no pill ever renders blank. */
+ * routeLabel(), so no pill ever renders blank.
+ *
+ * WP-G: `specs` (pass route.specs; seed callers omit it) takes priority —
+ * a user-minted route's variant name is its own spec segments, joined,
+ * never the raw id; with no specs it is PLAIN_SPEC_LABEL ('plain'). */
 export function routeVariantLabel(
   id: string,
   way: { startLandmarkId: string; endLandmarkId: string },
+  specs?: readonly string[],
 ): string {
+  if (specs && specs.length > 0) return specs.join(' · ');
+  if (isUserMintedRouteId(id)) return PLAIN_SPEC_LABEL;
   const display = ROUTE_DISPLAY_ID[id] ?? id;
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   const prefix = cap(way.startLandmarkId) + cap(way.endLandmarkId);
@@ -50,6 +64,19 @@ export function routeVariantLabel(
     return display.slice(prefix.length).replace(/([a-z0-9])([A-Z])/g, '$1 $2');
   }
   return routeLabel(id);
+}
+
+/** WP-G: full name of a route as the rider knows it — "Home → Work · Dry ·
+ * Fast" from the way's landmark labels plus specs — for any user-minted
+ * route in `c`. Seed ids (and ids not in `c`) return routeLabel(id)
+ * byte-for-byte, so nothing Nathan's shipped build prints today moves. */
+export function routeLabelIn(c: Catalog, id: string): string {
+  const r = c.routes.find((x) => x.id === id);
+  if (!r || !isUserMintedRouteId(id)) return routeLabel(id);
+  const w = c.ways.find((x) => x.id === r.wayId);
+  const lab = (lid: string) => c.landmarks.find((l) => l.id === lid)?.label ?? lid;
+  const base = w ? `${lab(w.startLandmarkId)} → ${lab(w.endLandmarkId)}` : id;
+  return r.specs?.length ? `${base} · ${r.specs.join(' · ')}` : base;
 }
 
 /** Display order for a way's routes (Nathan, 2026-08-27): "Std" always

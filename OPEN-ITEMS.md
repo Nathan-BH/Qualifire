@@ -78,6 +78,11 @@ add new ones as they surface, don't let it grow back into what it replaced.
 - **`expo-sharing` native module.** The debug-export share buttons work today via the existing
   SAF/share-text mechanism; a real native share sheet needs an APK rebuild to add the
   dependency. Cosmetic/convenience upgrade only.
+- **WP-G route-specs on the shipped seed build.** Not built or tested on `main`/shipped
+  (only on `virgin`) — if a shipped seed way ever gains a spec'd variant, several plain seed
+  routes sharing that way would collapse into one grouped pill, hiding all but
+  `defaultRouteFor`'s pick. Only matters if specs are ever added to a shipped way; no action
+  needed on `virgin`.
 
 ## Needs Nathan, whenever he gets to it — not blocking
 

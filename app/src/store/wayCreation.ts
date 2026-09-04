@@ -75,6 +75,12 @@ export interface WayCreationDraft {
   /** WP-F: RideFacts.matchedRouteId, carried through so the naming card can
    * say "scored as X, but…" — display only, ignored by buildWayCreationCatalog. */
   matchedRouteId?: string | null;
+  /** WP-G: the way that ALREADY links start→end in this direction, when one
+   * does — the offer is then "new route on this way", not "new way". Both
+   * endpoints are 'existing' whenever this is set; buildWayCreationCatalog
+   * adds no landmark and no way, only a Route (+ gate set) under it. Null =
+   * today's brand-new-way offer. */
+  existingWayId?: string | null;
 }
 
 /** Ridden length: fix-to-fix sum, same flat-earth metric the catalog uses. */
@@ -138,13 +144,15 @@ function newLandmark(
  * Should STOP offer to name this ride's endpoints, and as what?
  *
  * null (no offer) when: fewer than 2 fixes; the ridden track is shorter than
- * MIN_TRACK_LENGTH_M; or both endpoints resolve to existing landmarks that a
- * way already links in this direction (a repeat ride — way MATCHING is
- * COLD-START §3 step 7, a later package, not creation). This is a function of
- * the ride's own endpoints ONLY — `ride.matchedRouteId` (WP-F) never creates
- * or vetoes an offer by itself; it only feeds the matched-way endpoint guard
- * below, so a ride the live engine locked onto route X can still offer when
- * it demonstrably continued past X to somewhere no way of ours goes.
+ * MIN_TRACK_LENGTH_M; or read failures upstream (the caller's own null). An
+ * existing directed way no longer refuses (WP-G): both endpoints resolving to
+ * existing landmarks that a way already links in this direction now yields a
+ * draft with `existingWayId` set — a second Route on that Way — rather than
+ * null. This is a function of the ride's own endpoints ONLY — `ride.matchedRouteId`
+ * (WP-F) never creates or vetoes an offer by itself; it only feeds the
+ * matched-way endpoint guard below, so a ride the live engine locked onto
+ * route X can still offer when it demonstrably continued past X to somewhere
+ * no way of ours goes.
  *
  * Endpoint resolution, per end:
  *  1. inside an existing landmark's disc (landmarkAt, active-time filter OFF —
@@ -237,12 +245,16 @@ export function draftWayCreation(c: Catalog, ride: RideFacts): WayCreationDraft 
 
   const loop = start.landmarkId === end.landmarkId;
 
-  if (start.kind === 'existing' && end.kind === 'existing') {
-    const already = c.ways.some(
-      (w) => w.startLandmarkId === start.landmarkId && w.endLandmarkId === end.landmarkId,
-    );
-    if (already) return null;
-  }
+  // WP-G: an existing directed way is no longer a refusal — it is the
+  // variant case (a second Route on the same Way). First match wins; only
+  // loops can have several ways on one pair (loopDiscriminator) and then
+  // any of them is an equally good home for the new route.
+  const existingWay =
+    start.kind === 'existing' && end.kind === 'existing'
+      ? c.ways.find(
+          (w) => w.startLandmarkId === start.landmarkId && w.endLandmarkId === end.landmarkId,
+        ) ?? null
+      : null;
 
   return {
     rideId: ride.rideId,
@@ -252,29 +264,101 @@ export function draftWayCreation(c: Catalog, ride: RideFacts): WayCreationDraft 
     loop,
     trackLengthM: len,
     matchedRouteId: ride.matchedRouteId ?? null,
+    existingWayId: existingWay?.id ?? null,
   };
 }
 
+/** WP-G: what the naming card hands back. `specs` in the rider's order; the
+ * builder trims and drops empties, so ['', ' Dry '] stores ['Dry']. */
+export interface WayNames { start: string; end: string; specs?: readonly string[] }
+
+/** WP-G: trimmed, non-empty, order-preserving; [] when nothing survives. */
+export function cleanSpecs(specs: readonly string[] | undefined): string[] {
+  return (specs ?? []).map((s) => s.trim()).filter((s) => s.length > 0);
+}
+
+/** WP-G: case-insensitive positional equality — 'Dry' and 'dry' are the same
+ * spec, ['Dry','Fast'] and ['Fast','Dry'] are not. */
+export function sameSpecs(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((s, i) => s.toLowerCase() === b[i].toLowerCase());
+}
+
+/** WP-G: the route on `wayId` already carrying exactly these specs (after
+ * cleanSpecs), or null. The card disables ADD ROUTE on a hit and RecordScreen
+ * refuses to build one — "same specs" means "that route", never a twin. */
+export function findRouteWithSpecs(c: Catalog, wayId: string, specs: readonly string[]): Route | null {
+  const want = cleanSpecs(specs);
+  return c.routes.find((r) => r.wayId === wayId && sameSpecs(r.specs ?? [], want)) ?? null;
+}
+
 /**
- * The user catalog with the named way merged in: userCat (this phone's
- * additions, catalogStore.userCatalog()) plus the draft's new landmark(s)
- * carrying the rider's names, one Way, one Route (referenceRideId = the ride
- * just finished), and its v1 gate set — `seed.chainageM` (the 5-gate
- * gateSeeding.ts proposal on the built reference line) when given, else the
- * provisional 1%/99% start/finish pair on the ridden length. Both carry
- * origin:'geometric' (R&S §3 honesty clause: a starting grid, not measured
- * placement). Feed the result to saveUserCatalog(), which validates the
- * MERGE before accepting. Names are trimmed here; the caller enforces
- * non-empty.
+ * The user catalog with the named way merged in — one Route always, and
+ * (unless `draft.existingWayId`) one Way and its new landmark(s): userCat
+ * (this phone's additions, catalogStore.userCatalog()) plus the draft's new
+ * landmark(s) carrying the rider's names, one Way, one Route (referenceRideId
+ * = the ride just finished), and its v1 gate set — `seed.chainageM` (the
+ * 5-gate gateSeeding.ts proposal on the built reference line) when given,
+ * else the provisional 1%/99% start/finish pair on the ridden length. Both
+ * carry origin:'geometric' (R&S §3 honesty clause: a starting grid, not
+ * measured placement). Feed the result to saveUserCatalog(), which validates
+ * the MERGE before accepting. Names are trimmed here; the caller enforces
+ * non-empty. WP-G: `names.specs` (cleaned) lands on the new route when
+ * non-empty; absent when empty, so pre-WP-G output is byte-identical.
  */
 export function buildWayCreationCatalog(
   userCat: Catalog,
   draft: WayCreationDraft,
-  names: { start: string; end: string },
+  names: WayNames,
   seed?: { chainageM: number[] },
 ): Catalog {
-  const wayId = `way:${draft.rideId}`;
   const routeId = `route:${draft.rideId}`;
+  const specs = cleanSpecs(names.specs);
+  const specField = specs.length > 0 ? { specs } : {}; // absent, not [], so pre-WP-G output is byte-identical
+  const gateSet: GateSet = seed
+    ? {
+        routeId,
+        version: 1,
+        chainageM: seed.chainageM,
+        createdAtMs: draft.startedAtMs,
+        origin: 'geometric',
+        note:
+          'seeded: start/finish at 1%/99%, sectors at 25/50/75% of the reference line, ' +
+          "nudged clear of the reference ride's own stops — a proposal, not measured placement",
+      }
+    : {
+        routeId,
+        version: 1,
+        chainageM: [0.01 * draft.trackLengthM, 0.99 * draft.trackLengthM],
+        createdAtMs: draft.startedAtMs,
+        origin: 'geometric',
+        note: 'provisional: start/finish gates only — no reference line could be built from this ride',
+      };
+  if (draft.existingWayId) {
+    // WP-G variant path: no landmark, no way. The way is appended to in place
+    // when it is ours (userCat); a SEED way (shipped build only — the virgin
+    // seed is empty) cannot be edited through the seed-wins merge, so the new
+    // route simply points at it: every consumer resolves "routes of a way" by
+    // wayId (routesForWay, RecordScreen, RoutesScreen) and validateCatalog
+    // never requires the inverse link; catalogDelete already tolerates it.
+    const wayId = draft.existingWayId;
+    const route: Route = {
+      id: routeId,
+      wayId,
+      refLineId: routeId,
+      gateSetVersion: 1,
+      seeded: false,
+      referenceRideId: draft.rideId,
+      ...specField,
+    };
+    return {
+      schemaVersion: userCat.schemaVersion,
+      landmarks: userCat.landmarks,
+      ways: userCat.ways.map((w) => (w.id === wayId ? { ...w, routeIds: [...w.routeIds, routeId] } : w)),
+      routes: [...userCat.routes, route],
+      gateSets: [...userCat.gateSets, gateSet],
+    };
+  }
+  const wayId = `way:${draft.rideId}`;
   const landmarks = [...userCat.landmarks];
   if (draft.start.kind === 'new' && draft.start.draft) {
     landmarks.push({ ...draft.start.draft, label: names.start.trim() });
@@ -297,26 +381,8 @@ export function buildWayCreationCatalog(
     gateSetVersion: 1,
     seeded: false,
     referenceRideId: draft.rideId,
+    ...specField,
   };
-  const gateSet: GateSet = seed
-    ? {
-        routeId,
-        version: 1,
-        chainageM: seed.chainageM,
-        createdAtMs: draft.startedAtMs,
-        origin: 'geometric',
-        note:
-          'seeded: start/finish at 1%/99%, sectors at 25/50/75% of the reference line, ' +
-          "nudged clear of the reference ride's own stops — a proposal, not measured placement",
-      }
-    : {
-        routeId,
-        version: 1,
-        chainageM: [0.01 * draft.trackLengthM, 0.99 * draft.trackLengthM],
-        createdAtMs: draft.startedAtMs,
-        origin: 'geometric',
-        note: 'provisional: start/finish gates only — no reference line could be built from this ride',
-      };
   return {
     schemaVersion: userCat.schemaVersion,
     landmarks,
