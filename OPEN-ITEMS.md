@@ -52,10 +52,16 @@ add new ones as they surface, don't let it grow back into what it replaced.
 
 ## Parked (scoped, not urgent)
 
-- **Sector-coloured trail, phase 2** — extend the already-shipped Result-screen coloured
-  spans to the live/racing screen and the demo ride. Fully scoped, needs a mandatory
-  on-device both-themes check (the route-line rendering has produced one real device-only
-  bug before). Nathan's call to unpause.
+- **`rideDetailModel.ts`'s `lineColourFor` duplicates `chips.tsx`'s `tierLineColour`
+  by hand** (WP-K inspection, 2026-09-04) — the live map injects the real `tierLineColour`
+  as `paint`, but the ride-detail screen still goes through a hand-synced copy since
+  `chips.tsx` can't load headlessly (JSX). Verified byte-equivalent today. Clean fix: move
+  `tierLineColour`/`YELLOW_TIER` into a pure `.ts` module, re-export from `chips.tsx`, pass
+  as `paint` everywhere. Small follow-up WP.
+- **Live gate ticks still recolour by tier (`gateColours`)** — now that sector-coloured
+  spans exist everywhere (WP-K), Nathan's own "gates should not change colour" rule points
+  at retiring that memo too (a one-line `gateColours={undefined}` on the live map). Not
+  done as part of WP-K since it wasn't in that brief's scope; worth a decision.
 - **Free-ride "new>>new" design** — picking an unknown place at *both* ends of a ride has
   no ratified layout yet. Small-to-medium design pass.
 - **A real contrast bug** — pale purple text on a bare background in the Rides screen's

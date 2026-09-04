@@ -42,7 +42,8 @@ import RouteMapView from './routeMapView';
 import { metresBetween } from './routeMapGeo';
 import { appendTrailPoint, type TrailPoint } from './trailModel';
 import { useSettings } from './settings';
-import { chipColors, type Tier } from './chips';
+import { chipColors, tierLineColour, type Tier } from './chips';
+import { ALL_YELLOW, liveSectorColours } from './sectorTrailModel.ts';
 import { fmt, ghostsFor, lapValues, sectorValues, tierFor } from './colourModel';
 import { dropRecorded, rememberRide } from './lastRide';
 import { rememberFreeRide } from '../store/freeRides';
@@ -784,6 +785,26 @@ export default function RecordScreen({
     return out;
   }, [live.sectors, live.track, t]);
 
+  // WP-K (phase 2): sector spans on the live map — the segment BETWEEN gates,
+  // never the tick (Nathan: "they are gates"). Same comparison window tierOf()
+  // uses (sectorValues on the LOCKED track, [] before the lock — D-025), the
+  // same clean-only predicate the stored ride will carry as quality 'clean',
+  // painted through tierLineColour (the map-line source of truth, never
+  // chipColors().text). OFF passes ALL_YELLOW, not undefined: the sector-spans
+  // source has to be mounted from the same render as the route line whatever
+  // the setting, or a mid-ride flip would mount it above the rider dot
+  // (routeMapView.tsx mount-order rule). No leadColour here (brief §3.7).
+  const sectorColours = useMemo(
+    () => (settings.sectorColours
+      ? liveSectorColours(
+        live.sectors,
+        (i) => (live.track === null ? [] : sectorValues(live.track, i)),
+        tierLineColour,
+      )
+      : ALL_YELLOW),
+    [live.sectors, live.track, settings.sectorColours],
+  );
+
   const startable = CATALOG.landmarks.filter((l) => l.offerAtStart);
 
   // DETECTED start: the real one, from the last fix through the catalog. Null
@@ -1018,6 +1039,7 @@ export default function RecordScreen({
               lon={status.lastLon}
               zoom={4}
               gateColours={gateColours}
+              sectorColours={sectorColours}
               gatesOnly={live.mode === 'free'}
               crossedGates={live.freeCrossings}
               gateRouteIds={rideFreeRouteIds}

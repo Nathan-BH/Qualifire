@@ -39,10 +39,10 @@ besides Nathan can use this app" is a top-priority goal, not just a design lens.
   (`currentCatalog()`/`shippedResults()`), not import time, so a stranger's blank install
   no longer leaks Nathan's home/work/Morning-route data.
 - **Maps:** MapLibre + OpenFreeMap live on every screen including the live ride.
-- **Sector-coloured trail (Result screen only) is built.** A finished ride's "VIEW TRACE"
-  map paints each sector's line span in the colour that sector earned; gate ticks stay
-  neutral markers. Extending this to the live/racing screen and the demo ride is scoped
-  but **parked** — see Open items.
+- **Sector-coloured trail is built everywhere (WP-K, 2026-09-04): live map, ride-detail
+  screen, gated by one settings toggle (`sectorColours`, default on).** One shared pure
+  module (`sectorTrailModel.ts`) feeds all surfaces; gate ticks stay neutral markers,
+  untouched by this feature per Nathan's own rule.
 - **Retroactive way creation + ride-1-as-reference is built.** Record a ride whose start/end
   don't match any known landmark, and a naming card offers to name them at STOP; on save it
   creates the landmark(s) (reusing/shrinking around existing ones, handling loops), a `Way`,

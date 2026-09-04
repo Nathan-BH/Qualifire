@@ -27,6 +27,9 @@ export interface Settings {
   tower: boolean;
   liveMap: boolean;
   earcons: boolean;
+  /** WP-K: paint each sector of the route line in the tier it earned (live
+   * map, ride-detail trace, RIDES row) — off keeps the line all yellow. */
+  sectorColours: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -35,6 +38,7 @@ const DEFAULTS: Settings = {
   tower: true,
   liveMap: true,
   earcons: true,
+  sectorColours: true,
 };
 
 interface Ctx { s: Settings; set: <K extends keyof Settings>(k: K, v: Settings[K]) => void }
@@ -279,6 +283,10 @@ export default function SettingsScreen() {
         </Row>
         <Row label="Live map" hint="moving dot on the route while riding" t={t}>
           <Switch on={s.liveMap} onToggle={() => set('liveMap', !s.liveMap)} t={t} />
+        </Row>
+        <Row label="Sector colours" t={t}
+          hint="paint each stretch of the route line in the tier its sector earned (live map, ride detail, RIDES) — off keeps the ride all yellow">
+          <Switch on={s.sectorColours} onToggle={() => set('sectorColours', !s.sectorColours)} t={t} />
         </Row>
         <Row label="Earcons" hint="one buzz + tier sound at each gate (D-019)" t={t}>
           <Switch on={s.earcons} onToggle={() => set('earcons', !s.earcons)} t={t} />

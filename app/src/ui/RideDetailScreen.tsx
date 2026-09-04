@@ -33,6 +33,7 @@ import {
   fmt, lapValues, ownLapBarredFromRanking, rankingPoolFor, sectorValues, type UiTier,
 } from './colourModel.ts';
 import { rideDetailFor } from './rideDetailModel.ts';
+import { ALL_YELLOW } from './sectorTrailModel.ts';
 import { currentCatalog, userCatalog } from '../store/catalogStore.ts';
 import { routeLabelIn } from '../store/defaultRoute.ts';
 import {
@@ -386,8 +387,12 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
               zoom={1}
               height={300}
               showRider={false}
-              sectorColours={model.sectorColours}
-              leadColour={colors.grey}
+              // WP-K: gated by the settings toggle, same two-line pattern as
+              // RecordScreen and the RIDES row — ALL_YELLOW (truthy, all-null)
+              // when off, no leadColour when off (pixel-identical to a map
+              // with no sectorColours prop at all — sectorTrailModel.ts).
+              sectorColours={s.sectorColours ? model.sectorColours : ALL_YELLOW}
+              leadColour={s.sectorColours ? colors.grey : undefined}
               trail={fixes ?? undefined}
             />
           </View>

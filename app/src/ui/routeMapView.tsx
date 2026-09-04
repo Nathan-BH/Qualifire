@@ -198,10 +198,12 @@ type RouteMapProps = {
   /** WP-sector-coloured-trail P1 (ruled 2026-08-26): GATE-indexed sector
    * verdict colours — index i colours the SECTOR ending at gate i (the line
    * span between gates i-1 and i); index 0 (START) is ignored. When present
-   * (the Result "view trace" map only, for now — the live map is Phase 2)
    * the MapLibre rung overlays one coloured span per earned sector on top of
    * the base line. The PNG rung cannot honour it (the line is baked into the
-   * image) — accepted rung degradation, same as WP-E's dotted-ahead. */
+   * image) — accepted rung degradation, same as WP-E's dotted-ahead.
+   * WP-K: also passed by the live rung (RecordScreen) and the ride-detail
+   * screen; see sectorTrailModel.ts for the builders and the ALL_YELLOW
+   * convention. */
   sectorColours?: (string | null)[];
   /** Colour for the untimed lead-in (start -> first gate) and lead-out
    * (last gate -> end) stretches. Only honoured when `sectorColours` is also
@@ -553,31 +555,6 @@ function MapLibreRouteMap(props: RouteMapProps & {
               layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
           </M.GeoJSONSource>
         ) : null}
-        {/* WP-sector-coloured-trail P1 (ruled 2026-08-26): each sector's
-            stretch of the line painted in the colour that sector earned,
-            drawn OVER the base core — width 6 inside the width-7 casing,
-            deliberately bolder than the width-4 core for the same reason
-            WP-E's earned ticks are bolder: an earned-yellow sector
-            (colors.neutral) must never be pixel-identical to an unscored
-            stretch (D-013/D-030). Unearned sectors paint transparent, so the
-            base yellow core shows through. Solid lines + the same
-            data-driven ['has','colour'] expression family as the gate-ticks
-            layer below — NO line-dasharray (the 2026-08-24 device-only
-            dasharray bug class) and no line-gradient. Key === id per the
-            cycle-025 frozen-id rule in the comment below.
-            The lead-in/lead-out features (properties.lead) always carry a
-            colour, so they never fall through to the base line — they are
-            grey by design, not "not yet run". */}
-        {sectorSpansFC ? (
-          <M.GeoJSONSource key="sector-spans" id="sector-spans" data={sectorSpansFC}>
-            <M.Layer id="sector-spans-core" type="line"
-              paint={{
-                'line-color': ['case', ['has', 'colour'], ['get', 'colour'], 'rgba(0,0,0,0)'],
-                'line-width': 6,
-              }}
-              layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
-          </M.GeoJSONSource>
-        ) : null}
         {/* WP-J (breadcrumb trail): the rider's own ridden line, casing+core
             styled exactly like the route line above (same CASING/colors.neutral,
             same widths). Always mounted (see trailFC comment above for why —
@@ -592,6 +569,46 @@ function MapLibreRouteMap(props: RouteMapProps & {
             paint={{ 'line-color': colors.neutral, 'line-width': 4 }}
             layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
         </M.GeoJSONSource>
+        {/* WP-sector-coloured-trail P1 (ruled 2026-08-26), moved below the trail
+            source by WP-K phase 2: the WP-J trail's width-7 casing + width-4 core
+            fully covered a width-6 span wherever the rider's breadcrumb coincided
+            with the route line (always, near enough, on the live map), so live
+            sector colours were invisible; spans now paint over the trail — once a
+            sector is scored its verdict outranks the breadcrumb on that stretch,
+            and the trail still shows beside the line wherever the rider actually
+            deviated. This also matters off the live map: WP-H's ride-detail
+            screen passes the ride's own recorded fixes as `trail` into a
+            variant="browse" map, so the same casing-hides-span problem existed
+            there too whenever the breadcrumb tracked the route line. Still
+            conditional (NOT always-mounted like the
+            trail): it must mount in the SAME render as the conditional route
+            source above, otherwise a late-resolving asset would put the yellow
+            route core on top of the spans. Live callers therefore pass a truthy
+            sectorColours (sectorTrailModel's ALL_YELLOW when the setting is off)
+            from their first render, never a toggled undefined.
+            Each sector's stretch of the line painted in the colour that sector
+            earned, drawn OVER the base core — width 6 inside the width-7 casing,
+            deliberately bolder than the width-4 core for the same reason WP-E's
+            earned ticks are bolder: an earned-yellow sector (colors.neutral) must
+            never be pixel-identical to an unscored stretch (D-013/D-030).
+            Unearned sectors paint transparent, so the base yellow core shows
+            through. Solid lines + the same data-driven ['has','colour']
+            expression family as the gate-ticks layer below — NO line-dasharray
+            (the 2026-08-24 device-only dasharray bug class) and no line-gradient.
+            Key === id per the cycle-025 frozen-id rule in the comment below.
+            The lead-in/lead-out features (properties.lead) always carry a
+            colour, so they never fall through to the base line — they are
+            grey by design, not "not yet run". */}
+        {sectorSpansFC ? (
+          <M.GeoJSONSource key="sector-spans" id="sector-spans" data={sectorSpansFC}>
+            <M.Layer id="sector-spans-core" type="line"
+              paint={{
+                'line-color': ['case', ['has', 'colour'], ['get', 'colour'], 'rgba(0,0,0,0)'],
+                'line-width': 6,
+              }}
+              layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
+          </M.GeoJSONSource>
+        ) : null}
         {/* Cycle 025: every source carries key === id. MapLibre freezes a child's
             `id` on first render (useFrozenId) and throws "`id` cannot be changed"
             if the same mounted element later gets a different id. The ternary

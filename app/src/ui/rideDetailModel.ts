@@ -10,6 +10,7 @@ import type { FreeRideRecord } from '../store/freeRides.ts';
 import { ranks } from '../store/results.ts';
 import { MIN_HISTORY, positionAmong, tierFor, type UiTier } from './colourModel.ts';
 import { lapCellLabel, buildSectorRows, type SectorRowModel } from './rideHistoryModel.ts';
+import { storedSectorColours } from './sectorTrailModel.ts';
 import { colors } from './theme.ts';
 
 // NOT `import { tierLineColour } from './chips.tsx'`: chips.tsx has real JSX
@@ -95,17 +96,19 @@ export function rankLineFor(
   return r.estimated ? 'no time — an estimated lap never ranks' : 'no lap — a missed gate never ranks';
 }
 
-/** ResultScreen.tsx's resultSectorColours, verbatim. Empty history (the
+/** WP-K: thin wrapper over sectorTrailModel.storedSectorColours (the ONE
+ * builder Result-equivalent screens, RIDES and any future ride-detail screen
+ * share — see that module's header) — kept as a named export because
+ * tests/ridedetail_suite.ts exercises it directly. Empty history (the
  * ignored case passes `() => []`) yields all-null: nothing is coloured on too
- * little history. */
+ * little history. One delta from the pre-WP-K inline version: no longer
+ * filters the ride's own value out of `hist(sec.index)` — `hist` here is
+ * always `sectorValues(routeId, i, rideId)`, which already excludes this
+ * ride BY ID (B-44); filtering by value as well could also drop a genuine
+ * tie set by a different ride, and RIDES's buildSectorRows never had that
+ * filter — the two surfaces now agree. */
 export function sectorColoursFor(result: RideResult, hist: (index: number) => number[]): (string | null)[] {
-  return [
-    null,
-    ...[...result.sectors].sort((a, b) => a.index - b.index).map((sec) =>
-      sec.quality === 'clean' && sec.movingS !== null
-        ? lineColourFor(tierFor(sec.movingS, hist(sec.index).filter((v) => v !== sec.movingS)))
-        : null),
-  ];
+  return storedSectorColours(result, hist, lineColourFor);
 }
 
 export function rideDetailFor(rideId: string, startedAtMs: number, d: RideDetailDeps): RideDetailModel {

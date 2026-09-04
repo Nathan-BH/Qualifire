@@ -134,7 +134,7 @@ test('ridedetail: rankLineFor — ignored wins over every other branch', () => {
   assert(line === 'not ranked — you excluded this ride from ranking', `expected the ignored line, got "${line}"`);
 });
 
-test('ridedetail: sectorColoursFor — mirrors ResultScreen (clean+movingS coloured, interrupted/estimated/missed null, own value filtered)', () => {
+test('ridedetail: sectorColoursFor — mirrors ResultScreen (clean+movingS coloured, interrupted/estimated/missed null; own ride excluded by rideId in hist, not by value — WP-K)', () => {
   const res = mkResult({
     rideId: 'r7', startedAtMs: 1_000_000,
     sectors: [
