@@ -24,23 +24,27 @@
  * every sector would render 'neutral'. `demoModel.ts` is self-contained — its
  * own pinned `DEMO_HISTORY`/`DEMO_SECS`, no archive lookups of any kind — so
  * the demo shows real tier colours on every build, virgin included.
+ *
+ * WP-E: SECOND RIDE's line/gates come from `demoRouteFixture.ts` via the
+ * map's `asset` prop, not from the bundled manifest.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, Vibration, View } from 'react-native';
-import manifest from '../../assets/routes/routes.json';
 import { tierLineColour, type Tier } from './chips';
 import { buildDemoScript, demoSectorColours, demoTier, type DemoMode } from './demoModel.ts';
+import { DEMO_ROUTE_ASSET, DEMO_ROUTE_ID } from './demoRouteFixture.ts';
 import { LiveSectorPane, type LiveViewModel } from './liveView';
 import RouteMapView from './routeMapView';
-import { positionAtTime, type RouteAsset } from './routeMapMath';
+import { positionAtTime } from './routeMapMath';
 import { useSettings } from './settings';
 import { colors, PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
 import { appendTrailPoint, type TrailPoint } from './trailModel.ts';
-import { routeLabel } from '../store/defaultRoute';
 
-// Intentional literal (B-39): a scripted replay of an archived Morning lap by design, not a hardcode bug.
-const ROUTE = 'Morning';
+// WP-E: the scripted lap is DemoScreen's own frozen fixture
+// (demoRouteFixture.ts), not a manifest or catalog route — it renders
+// identically on every build, virgin included, and never touches the
+// bundled route manifest.
 const RATE = 25;              // a ~14-minute commute plays in ~34 s
 const TICK_MS = 33;           // ~30 fps redraw; sim time is wall-clock anchored so RATE is exact
 
@@ -51,7 +55,7 @@ const TICK_MS = 33;           // ~30 fps redraw; sim time is wall-clock anchored
 const DEMO_FIRST_RIDE_ID = 'demo:first-ride';
 const FIRST_RIDE_STATUS = 'writing history · no known route here';
 
-const ASSET = (manifest as unknown as { routes: Record<string, RouteAsset> }).routes[ROUTE];
+const ASSET = DEMO_ROUTE_ASSET;
 
 export default function DemoScreen() {
   const { t } = useTheme();
@@ -158,7 +162,7 @@ export default function DemoScreen() {
   const sectorColours = demoSectorColours(script, gatesDone, tierLineColour);
 
   const headerCopy = mode === 'second'
-    ? `A real archived ${routeLabel(ROUTE)} lap replayed at ${RATE}x — the reference line and gates are already there; each sector paints its colour as you cross the gate that ends it. Nothing is recorded.`
+    ? `A real archived commute lap replayed at ${RATE}x — the reference line and gates are already there; each sector paints its colour as you cross the gate that ends it. Nothing is recorded.`
     : 'The same lap ridden as if for the first time — no route, no gates, just you and the line you are writing. Nothing is recorded.';
 
   return (
@@ -186,7 +190,7 @@ export default function DemoScreen() {
           {/* browse = pannable/zoomable preview with the zoom bar (Nathan
               2026-08-18); the rider dot still rides the real line. */}
           {mode === 'second' ? (
-            <RouteMapView routeId={ROUTE} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
+            <RouteMapView routeId={DEMO_ROUTE_ID} asset={DEMO_ROUTE_ASSET} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
               zoom={4} sectorColours={sectorColours} leadColour={colors.grey} variant="browse" />
           ) : (
             <RouteMapView routeId={DEMO_FIRST_RIDE_ID} lat={pos?.lat ?? null} lon={pos?.lon ?? null}

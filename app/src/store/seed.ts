@@ -11,7 +11,8 @@
  *    module existed.
  *  - 'empty' (the virgin build — eas.json's `virgin` profile sets
  *    EXPO_PUBLIC_SEED_MODE=empty): NO landmarks, ways, routes, gate sets or
- *    ghosts. Everything the rider will ever race against is created on the
+ *    ghosts, and (WP-E) no bundled route assets or route PNGs — see
+ *    bundledForSeedMode(). Everything the rider will ever race against is created on the
  *    phone (B-36/B-42, unbuilt) and lives in store/catalogStore.ts's user
  *    catalog file.
  *
@@ -50,4 +51,18 @@ export function shippedCatalog(): Catalog {
 /** The archive ghosts this build ships with. */
 export function shippedResults(): RideResult[] {
   return resultsForSeedMode(SEED_MODE);
+}
+
+/** WP-E (Nathan's Q6 ruling, 2026-09-03: "remove everything that's bundled
+ * ... it should only use what is actually made on the phone"): anything ELSE
+ * baked into the JS bundle that an empty-seed (virgin) build must not be
+ * able to reach — today the route asset manifest (assets/routes/routes.json)
+ * and the three pre-rendered route PNGs, both defined in ui/routeMapView.tsx.
+ * Static imports are resolved by Metro before any env logic runs, so the
+ * bytes still ship; this makes them unreachable: every consumer sees `{}`.
+ * 'shipped' hands the very same object back (identity preserved — the
+ * resolver's manifest-wins-by-identity rule and Nathan's builds are
+ * byte-identical). Pure, so the suite can pin both modes. */
+export function bundledForSeedMode<T>(mode: SeedMode, bundled: Record<string, T>): Record<string, T> {
+  return mode === 'empty' ? {} : bundled;
 }

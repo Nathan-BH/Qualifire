@@ -32,6 +32,8 @@ add new ones as they surface, don't let it grow back into what it replaced.
    on-device test produces something inspectable afterward.
 4. **Empty-state pass.** "0 rides found", no route lock on ride 1, and whatever DEMO should
    say when a stranger sees the bundled 'Morning' ride on an otherwise-blank install.
+   (WP-E: DEMO no longer reads the bundled manifest; its copy now says "A real archived
+   commute lap".)
 5. **Whole-app export/import.** ~~Zip the catalog...~~ still parked as described below — but a
    **smaller debug-export now exists (2026-08-31, part of item 3's work)**: Settings can
    share `catalog.user.json` and `refs.user.json` directly, and per-ride GPX+ (already

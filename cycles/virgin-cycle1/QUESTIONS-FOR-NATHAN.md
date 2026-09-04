@@ -101,6 +101,8 @@ scratch" re-test will open with somebody else's gates on the map. That makes thi
 urgent of the open questions for the virgin-test loop. Either option is fine to build; WP-E
 has the plan for both. Full mechanism in `WP-Q-delete-and-reset.md` §2.6.
 
+**Resolved 2026-09-04 (WP-E landed):** answer implemented as "strip bundled assets from the virgin profile" — `store/seed.ts`'s `bundledForSeedMode` empties the manifest/PNGs everywhere `routeMapView.tsx` reads them when `SEED_MODE==='empty'`; DEMO got its own small decoupled fixture (`demoRouteFixture.ts`) per the WP-O addendum above, so it keeps working on every build. 389 tests (386 pass/0 fail/3 skip), `tsc --noEmit` clean, independently inspected.
+
 **Answer:** Lets remove everything that's bundled to make the virgin app more realistic. It should only use what is actually made on the phone.
 
 ### Q7 — `WP-K-sector-coloured-trail-phase2.md` (unpause the live-map sector colouring)

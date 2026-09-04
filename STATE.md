@@ -75,7 +75,7 @@ besides Nathan can use this app" is a top-priority goal, not just a design lens.
   ROUTES tab can delete user-created routes/ways/orphan places (cascading, validated via
   `store/catalogDelete.ts`); SETTINGS → DATA has "Reset to virgin" (moves the storage root
   aside to a timestamped sibling, keeps settings/theme, refuses during an active recording,
-  two-step confirm). Bundled-gate rings on a new>>new free ride are unaffected — WP-E/Q6.
+  two-step confirm). Bundled-gate rings on a new>>new free ride were already closed by WP-C's catalog-only `allRouteAssets()`; WP-E then emptied the bundled manifest/PNGs on virgin builds outright (`store/seed.ts` `bundledForSeedMode`).
 - **On the phone:** the dev client (Fast Refresh) and the rebuildable "Qualifire Preview"
   standalone APK; a `virgin` EAS build profile now exists but hasn't been built yet.
 
@@ -143,10 +143,9 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   copy always says "one new place" even when the loop starts at an existing landmark
   (cosmetic only); two matching-logic branches in `wayCreation.ts` (end-side sliver-reuse,
   both-endpoints-already-loop) are implemented correctly but not directly test-covered yet.
-- `DemoScreen.tsx`'s `'Morning'` literal is still hardcoded — the one deliberate exception
-  to the empty-seed work (it replays a bundled scripted asset, not the catalog). On a
-  virgin build a stranger will see Leuven's Morning ride in DEMO; whether that needs a
-  label or a swap is an open empty-state call.
+- DEMO replays its own frozen fixture (`src/ui/demoRouteFixture.ts`, Morning's geometry, no
+  manifest import) via `RouteMapView`'s `asset` prop — the same on every build (WP-E,
+  Nathan's Q6 ruling).
 - Three empty directory shells survive from the branch cut (`cycles/`,
   `cycles/cycle-024-briefs/`, `cycles/cycle-025-briefs/`) — this mount denies `rmdir` on
   them the way it denies `unlink` on some files. Harmless; git doesn't track empty dirs.

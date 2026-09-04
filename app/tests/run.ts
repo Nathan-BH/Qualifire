@@ -30,6 +30,7 @@ import './ridehistory_suite.ts';
 import './trail_suite.ts';
 import './demo_suite.ts';
 import './routeasset_runtime_suite.ts';
+import './virginmanifest_suite.ts';
 import { runAll } from './lib.ts';
 
 const { fail } = await runAll();
