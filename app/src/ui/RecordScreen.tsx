@@ -46,24 +46,27 @@ import { chipColors, type Tier } from './chips';
 import { fmt, ghostsFor, lapValues, sectorValues, tierFor } from './colourModel';
 import { dropRecorded, rememberRide } from './lastRide';
 import { rememberFreeRide } from '../store/freeRides';
-import {
-  buildWayCreationCatalog,
-  draftWayCreation,
-  findRouteWithSpecs,
-  type WayCreationDraft,
-  type WayNames,
-} from '../store/wayCreation';
+import { findRouteWithSpecs, type WayCreationDraft, type WayNames } from '../store/wayCreation';
 import { hasSpecs, specPickRows, specVocabulary } from '../store/routeSpecs';
 import { createExpoFsAdapter } from '../storage/expoFsAdapter';
-import { decodeRideFile } from '../storage/jsonl';
-import { buildRefFromRideFixes, saveUserRef } from '../live/userRefs';
-import { seedGateChainages } from '../store/gateSeeding';
+// WP-H (§4.9/§4.11): the create-way bodies live in store/wayFromRide.ts now,
+// shared with the ride detail's retroactive offer; this screen keeps only
+// state + Alerts + phase/animation choreography.
+import {
+  createWayFromDraft,
+  draftWayFromRide,
+  existingLandmarkLabel,
+  existingWayProps,
+  readRideFixes,
+  saveAdjustedGates,
+  type GateAdjustDraft,
+} from '../store/wayFromRide';
 import { GateAdjustCard } from './gateAdjustCard';
 import { WayNamingCard } from './wayNamingCard';
 import { deleteRide } from '../storage';
 import { removeStoredResult } from '../store/resultsStore';
-import { currentCatalog, saveUserCatalog, userCatalog } from '../store/catalogStore';
-import { addGateSet, freeRideRouteIds, landmarkAt, routesForWay } from '../store/catalog';
+import { currentCatalog } from '../store/catalogStore';
+import { freeRideRouteIds, landmarkAt } from '../store/catalog';
 import { defaultEndpoints, routeLabelIn, routeVariantLabel, sortRoutesForDisplay } from '../store/defaultRoute';
 import type { Route } from '../store/types';
 import { PaddockTheme, colors, radius } from './theme';
@@ -80,61 +83,6 @@ const PIN_MS = 20000;
  * fix within ANCHOR_M of its start, so a few fixes of grace only avoids a
  * flash on the very first tick. [ASSUMPTION — tune on device.] */
 const WRITING_HISTORY_AFTER_FIXES = 5;
-
-/** The ride's raw recorded fixes (flags included), or null on any failure —
- * the stop flow must never break on a naming convenience. */
-async function readRideFixes(rideId: string) {
-  try {
-    const fs = createExpoFsAdapter();
-    const text = await fs.readText(`rides/${rideId}.jsonl`);
-    if (text === null) return null;
-    return decodeRideFile(text).fixes;
-  } catch {
-    return null;
-  }
-}
-
-async function namingDraftFor(
-  rideId: string,
-  startedAtMs: number,
-  matchedRouteId: string | null,
-): Promise<WayCreationDraft | null> {
-  const fixes = await readRideFixes(rideId);
-  if (fixes === null) return null;
-  try {
-    return draftWayCreation(currentCatalog(), {
-      rideId,
-      startedAtMs,
-      fixes: fixes.map((f) => ({ lat: f.lat, lon: f.lon })),
-      matchedRouteId,
-    });
-  } catch {
-    return null;
-  }
-}
-
-/** The matched existing landmark's label for the naming card, or null when
- * the endpoint is a new place (the card shows an input instead). */
-function existingLandmarkLabel(r: WayCreationDraft['start']): string | null {
-  if (r.kind !== 'existing') return null;
-  return currentCatalog().landmarks.find((l) => l.id === r.landmarkId)?.label ?? r.landmarkId;
-}
-
-/** WP-G: the card's view of the way a variant is being added to. */
-function existingWayProps(wayId: string): { label: string; knownSpecLists: string[][] } | null {
-  const c = currentCatalog();
-  const w = c.ways.find((x) => x.id === wayId);
-  if (!w) return null;
-  const lab = (id: string) => c.landmarks.find((l) => l.id === id)?.label ?? id;
-  return { label: `${lab(w.startLandmarkId)} → ${lab(w.endLandmarkId)}`, knownSpecLists: routesForWay(c, wayId).map((r) => r.specs ?? []) };
-}
-
-/** What the gate-adjust step carries between CREATE WAY and its own save. */
-interface GateAdjustDraft {
-  routeId: string;
-  refLengthM: number;
-  chainageM: number[];
-}
 
 /** Stationary detection (B-51, RecordScreen-owned): the live ribbon dims and
  * releases its zoom-bar lock while genuinely moving is not the same as at a
@@ -231,6 +179,10 @@ export default function RecordScreen({
   const [adjust, setAdjust] = useState<GateAdjustDraft | null>(null);
   const adjustRef = useRef<GateAdjustDraft | null>(null);
   adjustRef.current = adjust;
+  /** WP-H: the finished ride's identity, carried from onEnd to the reversed
+   * mark's onDone (a [] closure) so the handoff can open the ride detail for
+   * THIS ride instead of the retired RESULT tab. */
+  const endedRef = useRef<{ rideId: string; startedAtMs: number } | null>(null);
   const [live, setLive] = useState<LiveEngineState>(liveEngine.getState());
   const [showLap, setShowLap] = useState(false);
   const [held, setHeld] = useState(false); // manual red-light hold (§18)
@@ -364,7 +316,7 @@ export default function RecordScreen({
         // has already accumulated since mount, rather than overwriting it —
         // guards the race between this async read and fixes landing live.
         const rideId = rec.session.rideId;
-        void readRideFixes(rideId).then((fixes) => {
+        void readRideFixes(rideId, createExpoFsAdapter()).then((fixes) => {
           if (fixes === null) return;
           let replayed: readonly TrailPoint[] = [];
           for (const f of fixes) {
@@ -520,6 +472,10 @@ export default function RecordScreen({
       // so the finished ride gets a persistent store entry, not just an
       // in-session session:-id one (B-28's other half).
       const s = sessionRef.current;
+      // WP-H: capture the finished ride's identity for the post-STOP handoff
+      // to the ride detail — set here (still in scope) rather than at the
+      // 'ending' phase flip below, mirroring how `s` itself is read here.
+      endedRef.current = s ? { rideId: s.rideId, startedAtMs: s.startedAtMs } : null;
       const finalState = liveEngine.getState();
       // A free ride has track===null/lap===null, so rememberRide() harmlessly
       // clears `last` — desired: Result must not show a stale route ride as
@@ -542,7 +498,7 @@ export default function RecordScreen({
       // longer a null-offer either — it comes back with existingWayId set (a
       // second Route on that Way). Null (no offer) now covers: short rides,
       // read failures.
-      const draft = s ? await namingDraftFor(s.rideId, s.startedAtMs, finalState.track) : null;
+      const draft = s ? await draftWayFromRide(s.rideId, s.startedAtMs, finalState.track, createExpoFsAdapter()) : null;
       // Cycle 024 (WP-A2, Nathan 2026-08-19): "at the end when you press
       // stop it would be nice to show the animation again — but reversed."
       // session clears and phase flips to 'ending' TOGETHER, after the ride
@@ -598,39 +554,22 @@ export default function RecordScreen({
     setBusy(true);
     try {
       // OPEN-ITEMS item 3 (Part A): build the route's real reference line
-      // from the ride that is becoming its reference. null on ANY failure
-      // => the way saves exactly as before (unresolvable refLineId) —
-      // building a reference must never block creating the way.
-      const fixes = await readRideFixes(draft.rideId);
-      const builtRef = fixes ? buildRefFromRideFixes(fixes) : null;
-      // Part B: with a real reference line, the v1 gate set is born fully
-      // seeded (5 gates, 4 sectors, snapped clear of the ride's own stops).
-      const seed = builtRef
-        ? { chainageM: seedGateChainages(builtRef.ref.length, builtRef.stopChainageM) }
-        : undefined;
-      const built = buildWayCreationCatalog(userCatalog(), draft, names, seed);
-      const errs = await saveUserCatalog(built);
-      if (errs.length > 0) {
+      // from the ride that is becoming its reference — null on ANY failure
+      // => the way saves exactly as before (unresolvable refLineId). Part B:
+      // with a real line the v1 gate set is born fully seeded. Both live in
+      // store/wayFromRide.ts's createWayFromDraft (WP-H §4.9).
+      const out = await createWayFromDraft(draft, names, createExpoFsAdapter());
+      if (!out.ok) {
         // saveUserCatalog refused (the MERGED catalog would not validate)
         // and changed nothing — surface WHY, keep the card up; SKIP remains.
-        Alert.alert('Could not create the way', errs.join('\n'));
+        Alert.alert('Could not create the way', out.errors.join('\n'));
         return;
       }
-      if (builtRef) {
-        // wayCreation.ts sets refLineId = route id = `route:<rideId>` —
-        // persist under that id so refFor() resolves it from now on
-        // (registered in memory at once; the file write is best-effort).
-        await saveUserRef(`route:${draft.rideId}`, builtRef.ref);
-      }
       setNaming(null);
-      if (builtRef && seed) {
+      if (out.adjust) {
         // SETUP-UX §4: offer tap-then-nudge before the reversed mark plays;
         // the card's exits (onAdjustKeep/onAdjustSave) start the animation.
-        setAdjust({
-          routeId: `route:${draft.rideId}`,
-          refLengthM: builtRef.ref.length,
-          chainageM: seed.chainageM,
-        });
+        setAdjust(out.adjust);
       } else {
         setShowAnim('rev');
       }
@@ -653,27 +592,14 @@ export default function RecordScreen({
   const onAdjustSave = useCallback(async (chainageM: number[]) => {
     const a = adjustRef.current;
     if (!a) return;
-    const moved = chainageM.some((v, i) => Math.abs(v - a.chainageM[i]) > 1e-6);
-    if (!moved) {
-      setAdjust(null);
-      setShowAnim('rev');
-      return;
-    }
     setBusy(true);
     try {
-      const errs = await saveUserCatalog(
-        addGateSet(userCatalog(), {
-          routeId: a.routeId,
-          version: 2,
-          chainageM,
-          createdAtMs: Date.now(),
-          origin: 'geometric',
-          note: 'adjusted at save (tap-then-nudge) from the seeded proposal',
-        }),
-      );
-      if (errs.length > 0) {
+      // unmoved gates come back { ok:true, moved:false } with no write —
+      // the same exit as before (store/wayFromRide.ts, WP-H §4.9).
+      const out = await saveAdjustedGates(a, chainageM);
+      if (!out.ok) {
         // refused — surface WHY, keep the card up; KEEP remains available.
-        Alert.alert('Could not save the gates', errs.join('\n'));
+        Alert.alert('Could not save the gates', out.errors.join('\n'));
         return;
       }
       setAdjust(null);
@@ -1045,7 +971,14 @@ export default function RecordScreen({
             onDone={() => {
               setShowAnim(null);
               setPhase('setup');
-              tabNav.go('result');
+              // WP-H: post-STOP now opens the ride detail overlay instead of
+              // the retired RESULT tab. No session id (should not happen for
+              // a real ride) simply leaves the screen on RECORD setup.
+              const ended = endedRef.current;
+              endedRef.current = null;
+              if (ended) {
+                tabNav.openRide({ rideId: ended.rideId, source: 'post-stop', startedAtMs: ended.startedAtMs });
+              }
             }}
           />
         )}

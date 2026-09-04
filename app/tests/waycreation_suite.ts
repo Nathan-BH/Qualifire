@@ -522,3 +522,361 @@ test('WP-G 8: an existing loop way drafts a variant, not a second loop way', () 
   const errs = validateCatalog(mergeCatalogs(emptyCatalog(), built));
   assert(errs.length === 0, `merged loop-variant catalog must validate, got: ${errs.join('; ')}`);
 });
+
+// ============================================================ WP-H §3.3b:
+// promoteRideToReference ("make this ride the reference of an EXISTING
+// route" — reset, not remap; Nathan's 2026-09-04 ruling). This needs the
+// full catalog/results/user-ref store stack, unlike this file's pure
+// functions above, so it gets its own registerHooks + dynamic-import
+// section — same shim as resultsstore_suite.ts/catalogstore_suite.ts.
+// §5.4's draftWayFromRide/createWayFromDraft/saveAdjustedGates cases (16-18,
+// plus the WP-G variant case the 2026-09-04 Fable ruling added) follow the
+// promote cases below, on the same harness.
+import { registerHooks } from 'node:module';
+import { fileURLToPath } from 'node:url';
+import * as nodeFs from 'node:fs';
+import { encodeEnd, encodeFix, encodeHeader } from '../src/storage/jsonl.ts';
+import { createMemoryFsAdapter, type FsAdapter } from '../src/storage/fsAdapter.ts';
+import { RESULT_SCHEMA_VERSION as WPH_RESULT_SCHEMA_VERSION } from '../src/store/types.ts';
+import type { RideResult as WphRideResult } from '../src/store/types.ts';
+
+registerHooks({
+  load(url, context, nextLoad) {
+    if (url.endsWith('.json')) {
+      const source = nodeFs.readFileSync(fileURLToPath(url), 'utf8');
+      return { format: 'module', source: `export default ${source};`, shortCircuit: true };
+    }
+    return nextLoad(url, context);
+  },
+});
+const wphCatalogStore = await import('../src/store/catalogStore.ts');
+const wphResultsStore = await import('../src/store/resultsStore.ts');
+const wphUserRefs = await import('../src/live/userRefs.ts');
+const wphWayFromRide = await import('../src/store/wayFromRide.ts');
+
+const WPH_LAT0 = 51.30;
+const WPH_LON0 = 4.50;
+
+/** A straight synthetic ride with real timestamps (2 s apart), long enough
+ * (with nFixes>=200-ish at stepDeg 0.0002 ~ 22 m/fix) to clear
+ * MIN_TRACK_LENGTH_M when nFixes is large, and deliberately too short when
+ * nFixes is small. */
+function wphFixes(nFixes: number, stepDeg: number, startS: number) {
+  const t: number[] = []; const lat: number[] = []; const lon: number[] = [];
+  for (let i = 0; i < nFixes; i++) {
+    t.push(startS + i * 2);
+    lat.push(WPH_LAT0 + i * stepDeg);
+    lon.push(WPH_LON0);
+  }
+  return { t, lat, lon };
+}
+
+async function wphWriteRideFile(
+  fs: FsAdapter, rideId: string, fixes: { t: number[]; lat: number[]; lon: number[] },
+): Promise<void> {
+  const { t, lat, lon } = fixes;
+  let text = encodeHeader(rideId, t[0] * 1000);
+  for (let i = 0; i < t.length; i++) text += encodeFix({ tUnixMs: t[i] * 1000, lat: lat[i], lon: lon[i] });
+  text += encodeEnd(t[t.length - 1] * 1000, t.length);
+  await fs.ensureDir('rides');
+  await fs.writeText(`rides/${rideId}.jsonl`, text);
+}
+
+function wphGhost(rideId: string, movingS: number): WphRideResult {
+  return {
+    kind: 'rideResult',
+    schemaVersion: WPH_RESULT_SCHEMA_VERSION,
+    rideId,
+    startedAtMs: 1_700_000_000_000,
+    routeId: 'WphRoute',
+    source: 'app',
+    lap: { rawS: movingS, movingS, quality: 'clean' },
+    sectors: [{ index: 1, fromChainageM: 0, toChainageM: 1900, rawS: movingS, movingS, quality: 'clean' }],
+    derivedBy: { engineVersion: 'e1', gateSetVersion: 1, resultSchemaVersion: WPH_RESULT_SCHEMA_VERSION },
+  };
+}
+
+/** A user catalog with one non-seed route already referenced by 'oldref1',
+ * gate-set v1. Fresh landmark/way ids on every call so tests never collide. */
+function wphUserCatalog() {
+  const c = emptyCatalog();
+  c.landmarks = [
+    lm('wph-a', WPH_LAT0, WPH_LON0, 150),
+    lm('wph-b', WPH_LAT0 + 0.02, WPH_LON0, 150),
+  ];
+  c.ways = [{ id: 'wph-a>wph-b', startLandmarkId: 'wph-a', endLandmarkId: 'wph-b', routeIds: ['WphRoute'] }];
+  c.routes = [{
+    id: 'WphRoute', wayId: 'wph-a>wph-b', refLineId: 'WphRoute',
+    gateSetVersion: 1, seeded: false, referenceRideId: 'oldref1',
+  }];
+  c.gateSets = [{ routeId: 'WphRoute', version: 1, chainageM: [50, 500, 1000, 1500, 1950], createdAtMs: 0 }];
+  return c;
+}
+
+/** Boots the catalog/results/refs stack fresh with a memory fs and the
+ * WphRoute user catalog seeded, plus 3 pre-existing "ghost" results on it. */
+async function wphSetup(): Promise<{ fs: ReturnType<typeof createMemoryFsAdapter> }> {
+  wphCatalogStore.resetCatalogStoreForTests();
+  wphResultsStore.resetResultsStoreForTests();
+  wphUserRefs.resetUserRefsForTests();
+  const fs = createMemoryFsAdapter();
+  await wphCatalogStore.initCatalogStore(fs);
+  const errs = await wphCatalogStore.saveUserCatalog(wphUserCatalog());
+  await wphCatalogStore.flushCatalogWrites();
+  assert(errs.length === 0, `wphSetup: user catalog must save clean, got ${errs.join('; ')}`);
+  await wphResultsStore.initResultsStore(fs);
+  await wphUserRefs.initUserRefs(fs);
+  for (const [id, s] of [['ghost1', 800], ['ghost2', 810], ['ghost3', 790]] as const) {
+    await wphResultsStore.saveResult(wphGhost(id, s));
+  }
+  await wphResultsStore.flushResultWrites();
+  return { fs };
+}
+
+test('WP-H 22 (promoteRideToReference): happy path rewrites the catalog — referenceRideId, new gate-set version, geometry changes', async () => {
+  const { fs } = await wphSetup();
+  const newRideId = 'promoted1';
+  await wphWriteRideFile(fs, newRideId, wphFixes(200, 0.0002, 1_700_100_000));
+
+  const out = await wphWayFromRide.promoteRideToReference('WphRoute', newRideId, fs);
+  assert(out.ok, `expected success, got ${JSON.stringify(out)}`);
+  if (!out.ok) return;
+  assert(out.gateSetVersion === 2, `expected the new gate set to be version 2, got ${out.gateSetVersion}`);
+
+  const route = wphCatalogStore.userCatalog().routes.find((r) => r.id === 'WphRoute')!;
+  assert(route.referenceRideId === newRideId, `route.referenceRideId must be rewritten to ${newRideId}, got ${route.referenceRideId}`);
+  assert(route.gateSetVersion === 2, `route.gateSetVersion must be bumped to 2, got ${route.gateSetVersion}`);
+  assert(route.refLineId === 'WphRoute', 'refLineId must stay the route\'s own id — a reset, not a remap');
+});
+
+test('WP-H 23 (promoteRideToReference): overwrites the reference line in place — the OLD v1 gate set survives, a NEW v2 one appears with different chainages', async () => {
+  const { fs } = await wphSetup();
+  const newRideId = 'promoted2';
+  await wphWriteRideFile(fs, newRideId, wphFixes(200, 0.0002, 1_700_100_000));
+  await wphWayFromRide.promoteRideToReference('WphRoute', newRideId, fs);
+
+  const cat = wphCatalogStore.userCatalog();
+  const v1 = cat.gateSets.find((g) => g.routeId === 'WphRoute' && g.version === 1);
+  const v2 = cat.gateSets.find((g) => g.routeId === 'WphRoute' && g.version === 2);
+  assert(v1 !== undefined, 'the old v1 gate set must survive (history is never deleted)');
+  assert(v2 !== undefined, 'a new v2 gate set must exist');
+  assert(v2!.chainageM.length === 5, `expected 5 re-seeded gates, got ${v2!.chainageM.length}`);
+  assert(JSON.stringify(v1!.chainageM) !== JSON.stringify(v2!.chainageM), 'the new geometry must re-seed different chainages, not copy v1');
+  for (let i = 1; i < v2!.chainageM.length; i++) {
+    assert(v2!.chainageM[i] > v2!.chainageM[i - 1], `v2 chainages must be strictly ascending, got ${v2!.chainageM}`);
+  }
+});
+
+test('WP-H 24 (promoteRideToReference): the reset — every stored result on the route is removed, ghostsCleared counts them, clearedRideIds names them', async () => {
+  const { fs } = await wphSetup();
+  assert(wphResultsStore.storedResultsForRoute('WphRoute').length === 3, 'sanity: 3 ghosts pre-promotion');
+  // Inspect pass 2026-09-04 (brief §5.4b case 24's "R2 on another route is
+  // untouched"): a result on a DIFFERENT route must survive the reset, in
+  // memory and on disk — the reset is scoped to the promoted route only.
+  await wphResultsStore.saveResult({ ...wphGhost('otherRouteGhost', 700), routeId: 'SomeOtherRoute' });
+  await wphResultsStore.flushResultWrites();
+  const newRideId = 'promoted3';
+  await wphWriteRideFile(fs, newRideId, wphFixes(200, 0.0002, 1_700_100_000));
+
+  const out = await wphWayFromRide.promoteRideToReference('WphRoute', newRideId, fs);
+  assert(out.ok, `expected success, got ${JSON.stringify(out)}`);
+  if (!out.ok) return;
+  assert(out.ghostsCleared === 3, `expected 3 ghosts cleared, got ${out.ghostsCleared}`);
+  assert(!out.clearedRideIds.includes('otherRouteGhost'), 'a result on another route must not be in clearedRideIds');
+  assert(wphResultsStore.getStoredResult('otherRouteGhost')?.routeId === 'SomeOtherRoute',
+    'a result on another route must survive the reset in memory');
+  await wphResultsStore.flushResultWrites();
+  assert(fs.files.has('results/otherRouteGhost.json'), 'a result on another route must survive the reset on disk');
+  assert(
+    JSON.stringify([...out.clearedRideIds].sort()) === JSON.stringify(['ghost1', 'ghost2', 'ghost3']),
+    `expected clearedRideIds to name the 3 ghosts, got ${JSON.stringify(out.clearedRideIds)}`,
+  );
+  for (const id of ['ghost1', 'ghost2', 'ghost3']) {
+    assert(wphResultsStore.getStoredResult(id) === null, `${id}'s old stored result must be gone after the reset`);
+  }
+});
+
+test('WP-H 25 (promoteRideToReference): the immediate re-time — the promoted ride itself re-derives a clean lap against its own new reference', async () => {
+  const { fs } = await wphSetup();
+  const newRideId = 'promoted4';
+  await wphWriteRideFile(fs, newRideId, wphFixes(200, 0.0002, 1_700_100_000));
+
+  const out = await wphWayFromRide.promoteRideToReference('WphRoute', newRideId, fs);
+  assert(out.ok, `expected success, got ${JSON.stringify(out)}`);
+  if (!out.ok) return;
+  assert(out.retimed.includes(newRideId), `expected ${newRideId} among retimed, got ${JSON.stringify(out.retimed)}`);
+  const stored = wphResultsStore.getStoredResult(newRideId);
+  assert(stored !== null, 'the promoted ride must have a fresh stored result — the reset must not leave it re-derived on the next boot only');
+  assert(stored!.routeId === 'WphRoute', `expected routeId WphRoute, got ${stored!.routeId}`);
+  assert(stored!.lap.quality === 'clean' || stored!.lap.quality === 'interrupted',
+    `a ride re-timed against the reference IT JUST BUILT should score clean/interrupted, got ${stored!.lap.quality}`);
+});
+
+test('WP-H 26 (promoteRideToReference): four refusals write nothing at all', async () => {
+  // (a) too-short ride: readable but under MIN_TRACK_LENGTH_M.
+  {
+    const { fs } = await wphSetup();
+    await wphWriteRideFile(fs, 'tooshort', wphFixes(2, 0.0001, 1_700_100_000)); // ~22 m
+    const beforeCat = JSON.stringify(wphCatalogStore.userCatalog());
+    const beforeFiles = [...fs.files.keys()].sort();
+    const out = await wphWayFromRide.promoteRideToReference('WphRoute', 'tooshort', fs);
+    assert(!out.ok, 'a too-short ride must refuse');
+    assert(JSON.stringify(wphCatalogStore.userCatalog()) === beforeCat, 'too-short: catalog must be untouched');
+    assert(JSON.stringify([...fs.files.keys()].sort()) === JSON.stringify(beforeFiles), 'too-short: no new file must be written');
+  }
+  // (b) already the reference.
+  {
+    const { fs } = await wphSetup();
+    const beforeCat = JSON.stringify(wphCatalogStore.userCatalog());
+    const out = await wphWayFromRide.promoteRideToReference('WphRoute', 'oldref1', fs);
+    assert(!out.ok, 'a ride already the reference must refuse');
+    assert(JSON.stringify(wphCatalogStore.userCatalog()) === beforeCat, 'already-reference: catalog must be untouched');
+  }
+  // (c) seed-owned route (Morning is shipped, absent from userCatalog()).
+  {
+    const { fs } = await wphSetup();
+    const beforeCat = JSON.stringify(wphCatalogStore.userCatalog());
+    const out = await wphWayFromRide.promoteRideToReference('Morning', 'whatever', fs);
+    assert(!out.ok, 'a seed-owned route must refuse');
+    assert(JSON.stringify(wphCatalogStore.userCatalog()) === beforeCat, 'seed-owned: catalog must be untouched');
+  }
+  // (d) unknown route id.
+  {
+    const { fs } = await wphSetup();
+    const beforeCat = JSON.stringify(wphCatalogStore.userCatalog());
+    const out = await wphWayFromRide.promoteRideToReference('NoSuchRoute', 'whatever', fs);
+    assert(!out.ok, 'an unknown route id must refuse');
+    assert(JSON.stringify(wphCatalogStore.userCatalog()) === beforeCat, 'unknown route: catalog must be untouched');
+  }
+});
+
+test('WP-H 27 (promoteRideToReference): the live seam sees the new geometry — catalogTrackSpecs() resolves the new ref and the new gate set', async () => {
+  const { fs } = await wphSetup();
+  const newRideId = 'promoted5';
+  await wphWriteRideFile(fs, newRideId, wphFixes(200, 0.0002, 1_700_100_000));
+  const out = await wphWayFromRide.promoteRideToReference('WphRoute', newRideId, fs);
+  assert(out.ok, `expected success, got ${JSON.stringify(out)}`);
+  if (!out.ok) return;
+
+  const { catalogTrackSpecs } = await import('../src/live/tracks.ts');
+  const spec = catalogTrackSpecs().find((s) => s.id === 'WphRoute');
+  assert(spec !== undefined, 'WphRoute must resolve as a live candidate after promotion');
+  const savedRef = wphUserRefs.userRefFor('WphRoute');
+  assert(savedRef !== null, 'the promoted ref must be in the userRefs registry');
+  assert(spec!.ref.length === savedRef!.length, `catalogTrackSpecs' ref must be the freshly-saved one (length ${spec!.ref.length} vs ${savedRef!.length})`);
+  const v2 = wphCatalogStore.userCatalog().gateSets.find((g) => g.routeId === 'WphRoute' && g.version === 2)!;
+  assert(JSON.stringify(spec!.gates) === JSON.stringify(v2.chainageM), 'catalogTrackSpecs must resolve the NEW (v2) gate set, not the stale v1 one');
+});
+
+// ============================================================ WP-H §5.4:
+// the WP-F §8 extraction (draftWayFromRide / createWayFromDraft /
+// saveAdjustedGates), shared by RecordScreen and the ride detail. Cases
+// 16-18 of the brief plus 16b: the WP-G variant draft that the ruling of
+// 2026-09-04 made the detail's offer follow (existingWayId set).
+const { draftWayCreation: wphDraftWayCreation } = await import('../src/store/wayCreation.ts');
+
+test('WP-H 16 (draftWayFromRide): null when the ride file is missing; equals draftWayCreation(currentCatalog(), …) when present', async () => {
+  const { fs } = await wphSetup();
+  const missing = await wphWayFromRide.draftWayFromRide('nofile', 1_700_100_000_000, null, fs);
+  assert(missing === null, 'a missing recording must yield no offer');
+
+  // wph-a (disc 150 m at LAT0) → a place 0.04° north of it: start existing, end new.
+  const fixes = wphFixes(200, 0.0002, 1_700_100_000);
+  await wphWriteRideFile(fs, 'draft1', fixes);
+  const d = await wphWayFromRide.draftWayFromRide('draft1', 1_700_100_000_000, null, fs);
+  assert(d !== null, 'a readable ≥200 m ride must draft');
+  const expected = wphDraftWayCreation(wphCatalogStore.currentCatalog(), {
+    rideId: 'draft1', startedAtMs: 1_700_100_000_000,
+    fixes: fixes.lat.map((lat, i) => ({ lat, lon: fixes.lon[i] })), matchedRouteId: null,
+  });
+  assert(JSON.stringify(d) === JSON.stringify(expected), 'draftWayFromRide must be draftWayCreation over the decoded file');
+  assert(d!.start.kind === 'existing' && d!.start.landmarkId === 'wph-a', `start must resolve to wph-a, got ${JSON.stringify(d!.start)}`);
+  assert(d!.end.kind === 'new', 'end must be a new place');
+  assert(d!.existingWayId === null, 'no way links wph-a to a new place — a NEW-way draft');
+});
+
+test('WP-H 16b (draftWayFromRide, WP-G): a repeat over the known way drafts a VARIANT (existingWayId set), not null', async () => {
+  const { fs } = await wphSetup();
+  // wph-a → wph-b exactly (0.02° north at 0.0002°/fix = 101 fixes ≈ 2.2 km).
+  await wphWriteRideFile(fs, 'repeat1', wphFixes(101, 0.0002, 1_700_100_000));
+  const d = await wphWayFromRide.draftWayFromRide('repeat1', 1_700_100_000_000, 'WphRoute', fs);
+  assert(d !== null, 'WP-G: a repeat ride is an offer, not a refusal');
+  assert(d!.existingWayId === 'wph-a>wph-b', `expected the variant draft on wph-a>wph-b, got ${d!.existingWayId}`);
+  assert(d!.start.kind === 'existing' && d!.end.kind === 'existing', 'both endpoints exist in variant mode');
+  assert(d!.matchedRouteId === 'WphRoute', 'matchedRouteId round-trips for the card copy');
+  const props = wphWayFromRide.existingWayProps('wph-a>wph-b');
+  assert(props !== null, 'existingWayProps must resolve the way');
+  assert(props!.knownSpecLists.length === 1 && props!.knownSpecLists[0].length === 0, `the plain route's spec list is [], got ${JSON.stringify(props!.knownSpecLists)}`);
+  assert(wphWayFromRide.existingWayProps('no-such-way') === null, 'unknown way → null');
+  assert(wphWayFromRide.existingLandmarkLabel(d!.start) !== null, 'an existing endpoint has a label');
+  assert(wphWayFromRide.existingLandmarkLabel({ kind: 'new', landmarkId: 'x' }) === null, 'a new endpoint has none');
+});
+
+test('WP-H 17 (createWayFromDraft): happy path — route:<rideId> with referenceRideId, a registered ref, adjust with 5 seeded chainages', async () => {
+  const { fs } = await wphSetup();
+  await wphWriteRideFile(fs, 'create1', wphFixes(200, 0.0002, 1_700_100_000));
+  const d = await wphWayFromRide.draftWayFromRide('create1', 1_700_100_000_000, null, fs);
+  assert(d !== null && d.existingWayId === null, 'precondition: a new-way draft');
+  const waysBefore = wphCatalogStore.userCatalog().ways.length;
+
+  const out = await wphWayFromRide.createWayFromDraft(d!, { start: '', end: 'Far North' }, fs);
+  assert(out.ok, `expected success, got ${JSON.stringify(out)}`);
+  if (!out.ok) return;
+  assert(out.routeId === 'route:create1', `expected route:create1, got ${out.routeId}`);
+  assert(out.adjust !== null, 'a ≥200 m ride builds a ref, so adjust must be offered');
+  assert(out.adjust!.chainageM.length === 5, `expected 5 seeded gates, got ${out.adjust!.chainageM.length}`);
+  assert(out.adjust!.routeId === out.routeId && out.adjust!.refLengthM > 0, 'adjust names the route and the ref length');
+
+  const cat = wphCatalogStore.userCatalog();
+  const route = cat.routes.find((r) => r.id === 'route:create1');
+  assert(route !== undefined, 'the route must be in userCatalog()');
+  assert(route!.referenceRideId === 'create1', 'this ride is the new route\'s reference');
+  assert(route!.refLineId === 'route:create1', 'refLineId is the route\'s own id');
+  assert(cat.ways.length === waysBefore + 1, 'one new way');
+  assert(cat.landmarks.some((l) => l.label === 'Far North'), 'the new end landmark carries its name');
+  assert(wphUserRefs.userRefFor('route:create1') !== null, 'the built reference line is registered under the route id');
+  const v1 = cat.gateSets.find((g) => g.routeId === 'route:create1' && g.version === 1);
+  assert(v1 !== undefined && JSON.stringify(v1.chainageM) === JSON.stringify(out.adjust!.chainageM), 'the v1 gate set is the seeded proposal');
+});
+
+test('WP-H 17b (createWayFromDraft, WP-G variant): adds a Route with specs under the existing way — no new landmark, no new way', async () => {
+  const { fs } = await wphSetup();
+  await wphWriteRideFile(fs, 'variant1', wphFixes(101, 0.0002, 1_700_100_000));
+  const d = await wphWayFromRide.draftWayFromRide('variant1', 1_700_100_000_000, 'WphRoute', fs);
+  assert(d !== null && d.existingWayId === 'wph-a>wph-b', 'precondition: a variant draft');
+  const before = wphCatalogStore.userCatalog();
+  const out = await wphWayFromRide.createWayFromDraft(d!, { start: '', end: '', specs: [' Wet ', ''] }, fs);
+  assert(out.ok, `expected success, got ${JSON.stringify(out)}`);
+  if (!out.ok) return;
+  const cat = wphCatalogStore.userCatalog();
+  assert(cat.ways.length === before.ways.length, 'no second way');
+  assert(cat.landmarks.length === before.landmarks.length, 'no new landmark');
+  const route = cat.routes.find((r) => r.id === 'route:variant1');
+  assert(route !== undefined && route.wayId === 'wph-a>wph-b', 'the new route hangs under the existing way');
+  assert(JSON.stringify(route!.specs) === JSON.stringify(['Wet']), `specs must be cleaned to ['Wet'], got ${JSON.stringify(route!.specs)}`);
+  assert(route!.referenceRideId === 'variant1', 'the variant\'s reference is this ride');
+  assert(cat.ways.find((w) => w.id === 'wph-a>wph-b')!.routeIds.includes('route:variant1'), 'the way lists its new route');
+  assert(wphUserRefs.userRefFor('route:variant1') !== null, 'the variant has its own reference line');
+});
+
+test('WP-H 18 (saveAdjustedGates): unmoved → { ok, moved:false } and no v2; moved → a v2 gate set with the new chainages', async () => {
+  const { fs } = await wphSetup();
+  await wphWriteRideFile(fs, 'adjust1', wphFixes(200, 0.0002, 1_700_100_000));
+  const d = await wphWayFromRide.draftWayFromRide('adjust1', 1_700_100_000_000, null, fs);
+  const out = await wphWayFromRide.createWayFromDraft(d!, { start: '', end: 'Far' }, fs);
+  assert(out.ok && out.adjust !== null, 'precondition: a created route with an adjust draft');
+  if (!out.ok || out.adjust === null) return;
+
+  const same = await wphWayFromRide.saveAdjustedGates(out.adjust, [...out.adjust.chainageM]);
+  assert(same.ok && same.moved === false, `unmoved gates must be a no-op, got ${JSON.stringify(same)}`);
+  assert(wphCatalogStore.userCatalog().gateSets.every((g) => !(g.routeId === out.routeId && g.version === 2)), 'unmoved: no v2 minted');
+
+  const nudged = out.adjust.chainageM.map((c, i) => (i === 2 ? c + 25 : c));
+  const moved = await wphWayFromRide.saveAdjustedGates(out.adjust, nudged);
+  assert(moved.ok && moved.moved === true, `moved gates must save, got ${JSON.stringify(moved)}`);
+  const cat = wphCatalogStore.userCatalog();
+  const v2 = cat.gateSets.find((g) => g.routeId === out.routeId && g.version === 2);
+  assert(v2 !== undefined && JSON.stringify(v2.chainageM) === JSON.stringify(nudged), 'v2 carries the nudged chainages');
+  assert(cat.gateSets.some((g) => g.routeId === out.routeId && g.version === 1), 'v1 survives (history is never deleted)');
+  assert(cat.routes.find((r) => r.id === out.routeId)!.gateSetVersion === 2, 'the route points at v2');
+});

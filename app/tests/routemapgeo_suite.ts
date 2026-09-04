@@ -10,7 +10,7 @@ import { assert, loadJson, test, TESTS_DIR } from './lib.ts';
 import {
   allGatesBounds, allGatesFeatureCollection, bearingBetween, cameraTargetFor, gatesFeatureCollection,
   gateTicksFeatureCollection, metresBetween, riderFeature, routeBounds, routeLineFeature,
-  routeSplitFeatures, sectorSpansFeatureCollection,
+  routeSplitFeatures, sectorSpansFeatureCollection, trailBounds,
 } from '../src/ui/routeMapGeo.ts';
 import type { RouteAsset } from '../src/ui/routeMapMath.ts';
 
@@ -501,6 +501,22 @@ test('routemapgeo: cameraTargetFor — follow with no fix but bounds centres on 
 test('routemapgeo: cameraTargetFor — no fix, no bounds, not free/fit -> {} (no hardcoded real-world fallback)', () => {
   const got = cameraTargetFor({ mode: 'follow', here: null, bounds: null, zoom: 16, bearing: 0 });
   assert(Object.keys(got).length === 0, `expected {}, got ${JSON.stringify(got)}`);
+});
+
+// ============================================================ WP-H (ride-detail trace bounds)
+
+test('routemapgeo: trailBounds — null for <2 points; min/max over a 3-point trail', () => {
+  assert(trailBounds([]) === null, 'empty trail -> null');
+  assert(trailBounds([{ lat: 50.85, lon: 4.65 }]) === null, 'a single point -> null (no bounds from one point)');
+  const pts = [
+    { lat: 50.85, lon: 4.65 },
+    { lat: 50.86, lon: 4.60 },
+    { lat: 50.80, lon: 4.70 },
+  ];
+  const b = trailBounds(pts);
+  assert(b !== null, 'a 3-point trail must produce bounds');
+  assert(b!.minLat === 50.80 && b!.maxLat === 50.86, `expected lat [50.80,50.86], got [${b!.minLat},${b!.maxLat}]`);
+  assert(b!.minLon === 4.60 && b!.maxLon === 4.70, `expected lon [4.60,4.70], got [${b!.minLon},${b!.maxLon}]`);
 });
 
 test('routemapgeo/routeMapView: no hardcoded Leuven literal (4.68/50.85) survives anywhere in the camera path', () => {

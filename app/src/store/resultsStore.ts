@@ -256,6 +256,22 @@ export async function removeStoredResult(rideId: string): Promise<void> {
   });
 }
 
+/** WP-H: flip the rider's ranking exclusion on a stored result. Goes through
+ * saveResult (same validate + memory + file + index upsert path), so the
+ * sidecar on disk always agrees with memory. Returns the updated result, or
+ * null when no result is stored for the id (the caller then has nothing to
+ * toggle — e.g. a free ride or an unmatched ride with no sidecar). `false`
+ * is stored as an ABSENT field, so an un-ignored file is byte-identical in
+ * meaning to one that was never ignored. */
+export async function setIgnoredFromRanking(rideId: string, ignored: boolean): Promise<RideResult | null> {
+  const cur = store.get(rideId);
+  if (!cur) return null;
+  const { ignoredFromRanking: _drop, ...rest } = cur;
+  const next: RideResult = ignored ? { ...rest, ignoredFromRanking: true } : rest;
+  await saveResult(next);
+  return next;
+}
+
 /** Test seam: resolves once every write scheduled so far has settled. */
 export function flushResultWrites(): Promise<void> {
   return writeTail;

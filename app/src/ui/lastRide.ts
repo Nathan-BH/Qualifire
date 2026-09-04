@@ -287,6 +287,18 @@ export function dropRecorded(rideId: string): void {
   if (i !== -1) recorded.splice(i, 1);
 }
 
+/** WP-H: mirror a stored result's change into this session's comparison
+ * window. `recorded` holds its OWN objects (pushRecorded builds one at STOP;
+ * initRideHistory pushes only ranks()-passing store objects at boot), so a
+ * flag flip in the store is invisible here unless replayed. Drops any entry
+ * for the id, then re-adds the new object iff ranks(r) — an un-ignored ride
+ * that was absent since boot re-enters; an ignored one leaves. Order is
+ * irrelevant (colourModel's rankedFor sorts by startedAtMs). */
+export function replaceRecorded(r: RideResult): void {
+  dropRecorded(r.rideId);
+  if (ranks(r)) recorded.push(r);
+}
+
 /** Empties `recorded` and clears `last`. Originally test-only (start each
  * headless case from a clean slate without leaking state between tests) —
  * WP-Q's "Reset to virgin" (settings.tsx) is now a real production caller

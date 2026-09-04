@@ -28,6 +28,7 @@ import './recordflow_suite.ts';
 import './elevation_suite.ts';
 import './fixflags_suite.ts';
 import './ridehistory_suite.ts';
+import './ridedetail_suite.ts';
 import './trail_suite.ts';
 import './demo_suite.ts';
 import './routeasset_runtime_suite.ts';

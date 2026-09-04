@@ -153,6 +153,28 @@ export function lastFreeRide(): FreeRideRecord | null {
   return rides.reduce((a, b) => (b.startedAtMs > a.startedAtMs ? b : a));
 }
 
+/** WP-H: the free-ride record for a raw ride, by start time. The record's own
+ * id is `free:${sessionStartedAtMs}`, and the session's start (location/
+ * index.ts:329) is taken AFTER `await startRide()` stamped the raw index's
+ * startMs (storage/core.ts:142) — a few ms apart, never equal. Exact id hit
+ * first (post-stop passes the session's own value); else the nearest record
+ * within `tolMs`, so RIDES (raw startMs) resolves the same ride. Pure. */
+export const FREE_RIDE_MATCH_TOL_MS = 10_000;
+export function freeRideNear(
+  records: readonly FreeRideRecord[],
+  startedAtMs: number,
+  tolMs: number = FREE_RIDE_MATCH_TOL_MS,
+): FreeRideRecord | null {
+  const exact = records.find((r) => r.startedAtMs === startedAtMs);
+  if (exact) return exact;
+  let best: FreeRideRecord | null = null;
+  for (const r of records) {
+    const d = Math.abs(r.startedAtMs - startedAtMs);
+    if (d <= tolMs && (best === null || d < Math.abs(best.startedAtMs - startedAtMs))) best = r;
+  }
+  return best;
+}
+
 /** Rehydrates from disk once at boot. Never throws (D-023: a missing/corrupt
  * cache degrades to whatever was already in memory, never fatal). Idempotent
  * — a repeated call (or a call after some free rides are already in memory)

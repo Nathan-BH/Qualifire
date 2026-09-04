@@ -38,6 +38,8 @@ want sooner?
 
 **Answer:** Lets add the feature to set any ride as a new reference for a known route. But instead of recomputing the gates for previous ride, for know lets have it reset this ride's progress. So there should be a warning like "This route will be overwritten and past ghosts will be lost". And then you just start again from there.
 
+**Landed 2026-09-04 (WP-H):** `promoteRideToReference` in `app/src/store/wayFromRide.ts` — re-seeds the route's gates from the new line as a new version, clears its stored results, immediately re-derives so nothing reappears re-timed at next boot. One-step `Alert.alert` warning quoting your wording. Independently inspected, clean.
+
 ### Q2 — `WP-I-gate-card-map-scrub.md` §3.5 (finger-scrub gesture)
 
 Your Q1 answer in the first questions file settled that the ± nudge pad stays, and made clear

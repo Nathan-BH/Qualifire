@@ -464,3 +464,89 @@ test('resultsstore: saveResult for an existing rideId replaces, never duplicates
   assert(index.entries.filter((e) => e.rideId === 'rideZ').length === 1, 'the index must not duplicate the entry');
 });
 
+// ============================================================ WP-H: setIgnoredFromRanking
+
+test('resultsstore (WP-H): setIgnoredFromRanking(id, true) sets the flag in memory and rewrites the sidecar file', async () => {
+  const fs = createMemoryFsAdapter();
+  await resultsStore.initResultsStore(fs);
+  await resultsStore.saveResult(makeResult('ig1', 'Morning', 1000, 800));
+  await resultsStore.flushResultWrites();
+
+  const updated = await resultsStore.setIgnoredFromRanking('ig1', true);
+  await resultsStore.flushResultWrites();
+  assert(updated !== null && updated.ignoredFromRanking === true, 'expected the returned result to carry the flag');
+  assert(resultsStore.getStoredResult('ig1')!.ignoredFromRanking === true, 'the in-memory store must carry the flag too');
+  const onDisk = JSON.parse(fs.files.get('results/ig1.json')!) as RideResult;
+  assert(onDisk.ignoredFromRanking === true, 'the sidecar file must be rewritten with the flag');
+});
+
+test('resultsstore (WP-H): setIgnoredFromRanking(id, false) leaves the field ABSENT, never false', async () => {
+  const fs = createMemoryFsAdapter();
+  await resultsStore.initResultsStore(fs);
+  await resultsStore.saveResult(makeResult('ig2', 'Morning', 1000, 800));
+  await resultsStore.flushResultWrites();
+  await resultsStore.setIgnoredFromRanking('ig2', true);
+  await resultsStore.flushResultWrites();
+
+  await resultsStore.setIgnoredFromRanking('ig2', false);
+  await resultsStore.flushResultWrites();
+  assert(!('ignoredFromRanking' in resultsStore.getStoredResult('ig2')!),
+    'un-ignoring must delete the field, not set it to false');
+  const onDisk = JSON.parse(fs.files.get('results/ig2.json')!) as RideResult;
+  assert(!('ignoredFromRanking' in onDisk), 'the sidecar file must not carry ignoredFromRanking: false either');
+});
+
+test('resultsstore (WP-H): setIgnoredFromRanking on an unknown rideId returns null and writes nothing', async () => {
+  const fs = createMemoryFsAdapter();
+  await resultsStore.initResultsStore(fs);
+  // A virgin store self-heals a missing index.json on init (fire-and-forget,
+  // enqueued on the same writeTail setIgnoredFromRanking would use) — flush
+  // THAT settled before snapshotting `before`, so this test isolates what
+  // setIgnoredFromRanking itself writes, not initResultsStore's own recovery
+  // write racing the assertion below.
+  await resultsStore.flushResultWrites();
+  const before = [...fs.files.keys()];
+  const result = await resultsStore.setIgnoredFromRanking('no-such-ride', true);
+  await resultsStore.flushResultWrites();
+  assert(result === null, 'an unknown rideId must return null');
+  assert(JSON.stringify([...fs.files.keys()]) === JSON.stringify(before), 'no write must happen for an unknown id');
+});
+
+test('lastRide (WP-H): replaceRecorded drops an ignored ride from the comparison window, and re-adds it when un-ignored', async () => {
+  lastRide.resetRecordedForTests();
+  const fs = createMemoryFsAdapter();
+  await resultsStore.initResultsStore(fs);
+  const r = makeResult('ig3', 'Morning', 1000, 800);
+  await resultsStore.saveResult(r);
+  await resultsStore.flushResultWrites();
+  lastRide.replaceRecorded(r); // simulate the ride having entered the window (as initRideHistory would)
+  assert(lastRide.recordedResults().some((x) => x.rideId === 'ig3'), 'expected the ride in the window before ignoring');
+
+  const ignored = await resultsStore.setIgnoredFromRanking('ig3', true);
+  lastRide.replaceRecorded(ignored!);
+  assert(!lastRide.recordedResults().some((x) => x.rideId === 'ig3'), 'an ignored ride must leave the comparison window');
+
+  const unignored = await resultsStore.setIgnoredFromRanking('ig3', false);
+  lastRide.replaceRecorded(unignored!);
+  assert(lastRide.recordedResults().some((x) => x.rideId === 'ig3'), 'un-ignoring must re-enter the window');
+  lastRide.resetRecordedForTests();
+});
+
+test('lastRide (WP-H): initRideHistory never hydrates an ignored stored result into the comparison window', async () => {
+  lastRide.resetRecordedForTests();
+  resultsStore.resetResultsStoreForTests();
+  const fs = createMemoryFsAdapter();
+  await resultsStore.initResultsStore(fs);
+  await resultsStore.saveResult(makeResult('ig4', 'Morning', 1000, 800));
+  await resultsStore.setIgnoredFromRanking('ig4', true);
+  await resultsStore.flushResultWrites();
+
+  resultsStore.resetResultsStoreForTests();
+  lastRide.resetRecordedForTests();
+  await lastRide.initRideHistory(fs);
+  assert(!lastRide.recordedResults().some((x) => x.rideId === 'ig4'),
+    'a ride flagged ignoredFromRanking on disk must never enter the window at boot');
+  lastRide.resetRecordedForTests();
+  resultsStore.resetResultsStoreForTests();
+});
+

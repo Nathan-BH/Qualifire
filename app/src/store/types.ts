@@ -111,6 +111,12 @@ export interface RideResult {
   sectors: SectorResult[];
   /** D-024 cruise-σ tripwire fired on a seed ⇒ demoted out of the ranking */
   tripwireDemoted?: boolean;
+  /** WP-H: the RIDER excluded this ride from ranking (detail screen's "Ignore
+   * in ranking"). Distinct from tripwireDemoted (automatic, D-024) and from
+   * deletion (the ride, trace and sector times all stay on file and visible).
+   * Enforced at the ONE gate every consumer already uses — results.ts ranks()
+   * — so no reader needs to know this field exists. Absent = counts. */
+  ignoredFromRanking?: boolean;
   derivedBy: {
     engineVersion: string;
     gateSetVersion: number;

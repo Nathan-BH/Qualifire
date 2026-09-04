@@ -294,6 +294,26 @@ test('store: tower ranking honours D-028 (estimated never ranks, ghosts marked)'
   assert(positionLabel(rows, 'nope') === null, 'unknown ride ⇒ no chip');
 });
 
+test('store (WP-H): ranks() honours ignoredFromRanking as an independent veto over every quality/tripwire case', () => {
+  const cases: { name: string; extra: Partial<RideResult> }[] = [
+    { name: 'clean', extra: { lap: { rawS: 900, movingS: 880, quality: 'clean' } } },
+    { name: 'interrupted', extra: { lap: { rawS: 900, movingS: 880, quality: 'interrupted' } } },
+    { name: 'estimated', extra: { lap: { rawS: 900, movingS: null, quality: 'estimated' } } },
+    { name: 'missed', extra: { lap: { rawS: 0, movingS: null, quality: 'missed' } } },
+    { name: 'tripwire-demoted clean', extra: { lap: { rawS: 900, movingS: 880, quality: 'clean' }, tripwireDemoted: true } },
+  ];
+  for (const c of cases) {
+    const base = mkResult({ rideId: `wph-${c.name}`, startedAtMs: 1, ...c.extra });
+    const baseline = ranks(base);
+    const ignoredTrue = ranks({ ...base, ignoredFromRanking: true });
+    const ignoredFalse = ranks({ ...base, ignoredFromRanking: false });
+    const ignoredUndef = ranks({ ...base, ignoredFromRanking: undefined });
+    assert(ignoredTrue === false, `${c.name}: ignoredFromRanking:true must never rank`);
+    assert(ignoredFalse === baseline, `${c.name}: ignoredFromRanking:false must behave exactly as unset (baseline ${baseline})`);
+    assert(ignoredUndef === baseline, `${c.name}: ignoredFromRanking:undefined must behave exactly as unset (baseline ${baseline})`);
+  }
+});
+
 // ------------------------------------------------------- derive + real seed
 
 test('store: the seeded catalog (ratified landmarks + D-016 gates) validates', () => {

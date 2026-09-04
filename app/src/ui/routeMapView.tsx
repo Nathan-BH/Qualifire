@@ -81,7 +81,7 @@ import { allRouteAssets, resolveRouteAsset, type RouteAssetDeps } from './routeA
 import {
   allGatesBounds, allGatesFeatureCollection, bearingBetween, cameraTargetFor,
   gateTicksFeatureCollection, metresBetween, nearestOnPath, riderFeature, routeBounds, routeLineFeature,
-  sectorSpansFeatureCollection,
+  sectorSpansFeatureCollection, trailBounds,
 } from './routeMapGeo.ts';
 import { trailLineFeature, type TrailPoint } from './trailModel.ts';
 import { patchMapStyle } from './routeMapStyle.ts';
@@ -440,8 +440,11 @@ function MapLibreRouteMap(props: RouteMapProps & {
   // live surface (showRider) with no asset is now "rider-only" — real tiles
   // + the dot, no route line/ticks — instead of blank; a browse surface (no
   // rider) with no asset still has nothing useful to show and stays null.
+  // WP-H: a browse surface with a ridden TRAIL but no asset (the ride-detail
+  // trace view for an unmatched/free ride) is not "nothing to show" either.
+  const hasTrail = !!props.trail && props.trail.length > 1;
   const riderOnly = !gatesOnly && !asset;
-  if (riderOnly && !showRider) return null;
+  if (riderOnly && !showRider && !hasTrail) return null;
 
   const here = props.lat !== null && props.lon !== null;
   // D-025: off-route reads from the TRUE fix, same call the PNG rung makes.
@@ -477,7 +480,8 @@ function MapLibreRouteMap(props: RouteMapProps & {
     : null;
   const bounds = gatesOnly && drawable
     ? allGatesBounds(drawable, props.gateRouteIds)
-    : asset ? routeBounds(asset) : null;
+    : asset ? routeBounds(asset)
+    : hasTrail ? trailBounds(props.trail!) : null;
 
   // WP-D §3.1c: the camera-target rule itself lives in routeMapGeo.ts
   // (headlessly testable) — this is just wiring the live inputs through.

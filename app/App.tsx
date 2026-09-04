@@ -28,7 +28,7 @@ import { LaunchAnimation } from './src/ui/launchAnimation';
 import RecordScreen from './src/ui/RecordScreen';
 import RidesScreen from './src/ui/RidesScreen';
 import RoutesScreen from './src/ui/RoutesScreen';
-import ResultScreen from './src/ui/ResultScreen';
+import RideDetailScreen from './src/ui/RideDetailScreen';
 import SettingsScreen, { SettingsProvider } from './src/ui/settings';
 import DemoScreen from './src/ui/DemoScreen';
 import { PaddockTheme } from './src/ui/theme';
@@ -38,7 +38,7 @@ import { initFreeRidePersistence } from './src/store/freeRides';
 import { initCatalogStore } from './src/store/catalogStore';
 import { initUserRefs } from './src/live/userRefs';
 import { createExpoFsAdapter } from './src/storage/expoFsAdapter';
-import { TabNavProvider, type Tab } from './src/ui/tabNav';
+import { TabNavProvider, type RideDetailRequest, type Tab, type TabNav } from './src/ui/tabNav';
 
 /**
  * Android 15 forces edge-to-edge: the app draws under the system navigation
@@ -57,6 +57,10 @@ function Shell() {
   // hidden (armed/running/ending, or an in-flight launch mark) — Shell owns
   // the bar, RecordScreen owns whether it should be visible right now.
   const [recFullscreen, setRecFullscreen] = useState(false);
+  // WP-H: the full-screen ride detail, mount-swapped in place of the active
+  // tab's screen while non-null. Second instance of WP-A2's "screen owns
+  // intent, Shell owns chrome" split (recFullscreen above).
+  const [rideDetail, setRideDetail] = useState<RideDetailRequest | null>(null);
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomPad = Math.max(insets.bottom, NAV_BAR_MIN_PAD);
@@ -64,11 +68,16 @@ function Shell() {
   // like every other tab, rather than being forced into night mode.
   const chrome: PaddockTheme = t;
 
-  // System back: other tabs → Record; from Record, default behaviour (app
-  // backgrounds). PreviewScreen registers its own handler (runs first) to walk
-  // its internal screens back to its home before this one fires.
+  // System back: ride detail → close it; other tabs → Record; from Record,
+  // default behaviour (app backgrounds). PreviewScreen registers its own
+  // handler (runs first) to walk its internal screens back to its home
+  // before this one fires.
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (rideDetail !== null) {
+        setRideDetail(null);
+        return true;
+      }
       if (tab !== 'record') {
         setTab('record');
         return true;
@@ -76,7 +85,7 @@ function Shell() {
       return false;
     });
     return () => sub.remove();
-  }, [tab]);
+  }, [tab, rideDetail]);
 
   // Rehydrate the comparison window once per launch, from the persistent
   // results/ store (cycle 024, WP-A1 — replaced B-40's results-cache.json;
@@ -108,8 +117,9 @@ function Shell() {
   // Cycle 024 (WP-A2, Nathan 2026-08-19): "when you press record but are on
   // the race screen, the other tabs in the footer disappear — full screen,
   // no tab browsing." The bar is hidden ENTIRELY (not just dimmed) while on
-  // the record tab and RecordScreen reports itself fullscreen.
-  const tabBarHidden = tab === 'record' && recFullscreen;
+  // the record tab and RecordScreen reports itself fullscreen. WP-H: the
+  // ride detail hides the bar the same way, from any tab.
+  const tabBarHidden = (tab === 'record' && recFullscreen) || rideDetail !== null;
   // WP-A2 hides the tab bar entirely while fullscreen, which also removes
   // the only thing padding the screen for the device's bottom gesture-nav
   // inset (the bar's own paddingBottom, via bottomPad above) — so content
@@ -121,19 +131,24 @@ function Shell() {
     [chrome, bottomPad, tabBarHidden],
   );
 
+  const nav = useMemo<TabNav>(
+    () => ({ go: setTab, openRide: setRideDetail, closeRide: () => setRideDetail(null) }),
+    [],
+  );
+
   return (
-    <TabNavProvider go={setTab}>
+    <TabNavProvider nav={nav}>
       <View style={styles.root}>
         <View style={styles.content}>
-          {tab === 'record' ? <RecordScreen onFullscreenChange={setRecFullscreen} />
+          {rideDetail !== null ? <RideDetailScreen request={rideDetail} />
+            : tab === 'record' ? <RecordScreen onFullscreenChange={setRecFullscreen} />
             : tab === 'rides' ? <RidesScreen />
             : tab === 'routes' ? <RoutesScreen />
-            : tab === 'result' ? <ResultScreen />
             : tab === 'settings' ? <SettingsScreen />
             : <DemoScreen />}
         </View>
-        {/* Six tabs do not fit at a readable size, so the bar SCROLLS sideways
-            rather than wrapping or shrinking the text (Nathan, 2026-08-16). */}
+        {/* Five tabs (WP-H dropped RESULT) still scroll sideways rather than
+            shrinking — Nathan, 2026-08-16, on the original six. */}
         {!tabBarHidden && (
           <ScrollView
             horizontal
@@ -141,7 +156,7 @@ function Shell() {
             style={styles.tabBar}
             contentContainerStyle={styles.tabBarContent}
           >
-            {(['record', 'rides', 'routes', 'result', 'settings', 'demo'] as const).map((tb) => (
+            {(['record', 'rides', 'routes', 'settings', 'demo'] as const).map((tb) => (
               <Pressable
                 key={tb}
                 style={[styles.tab, tab === tb && styles.tabActiveBar]}

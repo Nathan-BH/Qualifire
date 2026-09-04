@@ -85,10 +85,13 @@ export function isStale(
 }
 
 /** A lap that may take a position (D-028): clean or interrupted, with a real
- * moving time. Estimated laps never rank; nor do tripwire-demoted seeds. */
+ * moving time. Estimated laps never rank; nor do tripwire-demoted seeds; nor
+ * does a ride the RIDER excluded from ranking (WP-H "Ignore in ranking" —
+ * ignoredFromRanking === true). */
 export function ranks(r: RideResult): boolean {
   if (r.lap.quality === 'estimated' || r.lap.quality === 'missed') return false;
   if (r.tripwireDemoted) return false;
+  if (r.ignoredFromRanking === true) return false; // WP-H: rider-set exclusion
   return r.lap.movingS !== null;
 }
 

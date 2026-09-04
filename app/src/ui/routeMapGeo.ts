@@ -179,6 +179,20 @@ export function routeBounds(a: RouteAsset): LonLatBoundsBox | null {
   return { minLon, minLat, maxLon, maxLat };
 }
 
+/** WP-H: bounds of a ridden trail, for a browse map with no route asset
+ * (unmatched or free ride). null for < 2 points. */
+export function trailBounds(pts: readonly { lat: number; lon: number }[]): LonLatBoundsBox | null {
+  if (pts.length < 2) return null;
+  let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity;
+  for (const p of pts) {
+    if (p.lon < minLon) minLon = p.lon;
+    if (p.lon > maxLon) maxLon = p.lon;
+    if (p.lat < minLat) minLat = p.lat;
+    if (p.lat > maxLat) maxLat = p.lat;
+  }
+  return { minLon, minLat, maxLon, maxLat };
+}
+
 /** Cheap equirectangular distance estimate (metres), good enough at
  * bike-ride scale to decide "did the fix actually move" — not a substitute
  * for a real geodesic when correctness at range matters (see bearingBetween
