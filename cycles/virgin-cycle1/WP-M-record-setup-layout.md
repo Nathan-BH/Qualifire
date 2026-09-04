@@ -1,4 +1,4 @@
-**Status: Brief written 2026-09-03 (Digest+Plan pass). Ready to execute — Nathan's Q5 answer is fully incorporated; the map-restoration half is confirmed already satisfied by WP-D (live map renders in setup, `liveMap` defaults `true`). Core design: the setup ScrollView's `content` container drops its vertical centring (`justifyContent: 'center'` → `'flex-start'`); the pills are already flush-left + wrapping, so `pillRow` and `alignItems` need no change.**
+**Status: DONE — landed on the device 2026-09-04, independently inspected (fresh Fable pass, clean). 468 tests, 465 pass, 0 fail, 3 skip (unchanged — style-only, no behaviour to test headlessly); `tsc --noEmit` exit 0. The setup screen's `content` container's `justifyContent` is now `'flex-start'`; pills confirmed flush-left independent of the parent's `alignItems`. Live map default (`liveMap: true`) re-confirmed already satisfied by WP-D. On-device visual check (both with and without the live map) still outstanding.**
 **Review doc item: 14. Size: small.**
 **Verified against the mount as read 2026-09-03 (`a03b84e`, branch `virgin`).**
 

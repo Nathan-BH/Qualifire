@@ -1319,10 +1319,14 @@ export default function RecordScreen({
 
 const makeStyles = (t: PaddockTheme) => StyleSheet.create({
   scroll: { flex: 1 },
-  // flexGrow + centre: short content still sits centred as before; tall
-  // content (map on) scrolls instead of shoving START under the tab bar.
+  // WP-M (Nathan Q5, 2026-09-03: "tight and grows"): the setup form starts at
+  // the top and grows downward as the catalog fills — no vertical centring,
+  // no blank band above the logo. Pills are already flush-left + wrapping
+  // (startFlow stretches; pillRow's default justifyContent is flex-start).
+  // alignItems stays 'center': it governs only the problem-state texts here
+  // (readout and RECORD both alignSelf: 'stretch'). Tall content still scrolls.
   content: {
-    flexGrow: 1, alignItems: 'center', justifyContent: 'center',
+    flexGrow: 1, alignItems: 'center', justifyContent: 'flex-start',
     padding: 20, paddingBottom: 36, gap: 22,
   },
   modePill: {
