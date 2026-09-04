@@ -1,6 +1,7 @@
 **Status: Brief written 2026-09-03 (Digest+Plan pass). Ready to execute — Nathan's Q4 answer is incorporated (RESULTS tab drops entirely); the navigation-model question is resolved by this brief: no navigation library is added — a lifted `App.tsx` overlay state (`rideDetail`) mirrors the existing `recFullscreen` pattern, delivered to screens through the existing `tabNav` context (`openRide`/`closeRide`). Core design: ONE new full-screen `RideDetailScreen` is both the post-STOP landing (replacing `ResultScreen.tsx`, which moves to `safe_to_delete/`) and what a tap on a RIDES row opens (the in-list accordion goes away); it absorbs everything Result showed for the judged ride, adds the true ridden trace on the map, an honest "set as reference" (= the WP-F create-way seam, extracted into a shared module), and a rider-controlled "ignore in ranking" flag that is enforced at the ONE `ranks()` gate.**
 **Review doc item: 8. Size: medium-large (≈ 9 files edited, 3 new, 1 retired; ~600 lines of app code, ~200 of tests). No new dependency.**
 **Verified against the mount as read 2026-09-03 (HEAD `a03b84e`, branch `virgin`).**
+**Addendum 2026-09-04 (coordinator-directed Digest+Plan follow-up — an addendum to the brief above, NOT a re-plan of it): Nathan answered §8.1. Promoting a later ride to replace an EXISTING route's reference IS wanted, as a reset ("This route will be overwritten and past ghosts will be lost"), not as a chainage remap — so it no longer depends on WP-I in any way. Designed in §3.3b (mechanics + dialog), §4.8 (`promoteTarget`), §4.9b (`promoteRideToReference`), §4.10 item 5, §5.1 case 21 + §5.4b cases 22-27; §8.1 marked resolved; §8.8 added (one consequence Nathan should know about); §9's WP-I coupling removed. Addendum anchors re-verified against the mount at `ba2be60` (2026-09-04); where they differ from the 2026-09-03 numbers above (resultsStore.ts, userRefs.ts, catalog.ts), the addendum's numbers are the current ones.**
 
 ---
 
@@ -13,11 +14,11 @@ One full-screen ride view, opened two ways:
 1. **Post-STOP** — after the reversed launch mark, instead of `tabNav.go('result')` (RecordScreen.tsx:1022). It shows the ride the rider just finished.
 2. **From RIDES** — tapping a row. The row's in-list accordion (sector rows + Export/Delete pills) is removed; those live in the detail now.
 
-It shows, for one ride: route + date, the headline GATED lap (same definition as today, ResultScreen.tsx:161-165), the rank line, the per-sector split table (tier-coloured, with window averages), the ridden trace on a real map (route line with sector-coloured spans where the ride matched a route, PLUS the ride's own decimated GPS line — the "true ridden trace" ResultScreen.tsx:247-248 called future work), the "last N on this route" ranking list with this ride highlighted + PB sectors (Result's per-route PbDetail, now scoped to the ride's own route), and four actions: **Export GPX+**, **Delete**, **Ignore in ranking / Count in ranking** (new), **Set as reference** (new — see §3.3 for exactly what it does and when it appears).
+It shows, for one ride: route + date, the headline GATED lap (same definition as today, ResultScreen.tsx:161-165), the rank line, the per-sector split table (tier-coloured, with window averages), the ridden trace on a real map (route line with sector-coloured spans where the ride matched a route, PLUS the ride's own decimated GPS line — the "true ridden trace" ResultScreen.tsx:247-248 called future work), the "last N on this route" ranking list with this ride highlighted + PB sectors (Result's per-route PbDetail, now scoped to the ride's own route), and four actions: **Export GPX+**, **Delete**, **Ignore in ranking / Count in ranking** (new), **Set as reference** (new — see §3.3 for exactly what it does and when it appears) and, since the 2026-09-04 addendum, a fifth: **Make this the reference of this route** (§3.3b — replaces an existing route's reference, resetting its history).
 
 The RESULTS tab leaves the tab bar (Q4, Nathan: "Lets drop the results tab entirely"). No navigation library is added (§3.1).
 
-Not in scope (§3.6): re-referencing an EXISTING route from a later ride (the `Route.referenceRideId` "promote" case), the gate-adjust card's map/scrub upgrade (WP-I), a cross-route Personal Bests overview (dropped with the tab; flagged §8.3).
+Not in scope (§3.6): the gate-adjust card's map/scrub upgrade (WP-I), a cross-route Personal Bests overview (dropped with the tab; flagged §8.3). (Re-referencing an EXISTING route from a later ride was out of scope in the 2026-09-03 text; it is IN scope since the 2026-09-04 addendum — §3.3b.)
 
 ## 2. Current state (verified against the mount at `a03b84e`)
 
@@ -114,7 +115,7 @@ Shape: **screen-owned intent, Shell-owned chrome.** The overlay follows the same
 
 ### 2.9 The create-way seam — `app/src/store/wayCreation.ts`
 
-`draftWayCreation(c, ride: RideFacts): WayCreationDraft | null` (162-257). Returns null when: `< 2` fixes; track `< MIN_TRACK_LENGTH_M` (200 m); **both endpoints resolve to existing landmarks that a way already links in this direction (244)** — i.e. a repeat ride of a known way. `matchedRouteId` only feeds the WP-F endpoint guard; it never creates or vetoes an offer by itself (docblock 137-160). `buildWayCreationCatalog(userCat, draft, names, seed?)` (270) sets `referenceRideId: draft.rideId` (299). `Route.referenceRideId?` (types.ts:55) exists; its docblock says "promoting a later clean lap rewrites this field" — but no code does that today, and doing it would also mean replacing the route's `refLineId` geometry under existing gate chainages (WP-I territory). See §3.3.
+`draftWayCreation(c, ride: RideFacts): WayCreationDraft | null` (162-257). Returns null when: `< 2` fixes; track `< MIN_TRACK_LENGTH_M` (200 m); **both endpoints resolve to existing landmarks that a way already links in this direction (244)** — i.e. a repeat ride of a known way. `matchedRouteId` only feeds the WP-F endpoint guard; it never creates or vetoes an offer by itself (docblock 137-160). `buildWayCreationCatalog(userCat, draft, names, seed?)` (270) sets `referenceRideId: draft.rideId` (299). `Route.referenceRideId?` (types.ts:55) exists; its docblock says "promoting a later clean lap rewrites this field" — but no code does that today. (2026-09-03 text continued: "doing it would also mean replacing the route's `refLineId` geometry under existing gate chainages (WP-I territory)" — superseded 2026-09-04: the gates are RE-SEEDED from the new reference, not carried; see §3.3b.)
 
 ### 2.10 Map — `app/src/ui/routeMapView.tsx`
 
@@ -164,9 +165,53 @@ The seam WP-F left (`draftWayCreation(... matchedRouteId ...)` + `WayNamingCard`
 
 - Button label: **"MAKE THIS THE REFERENCE OF A NEW WAY"** — shown only when the draft is non-null; tapping it opens the same `WayNamingCard` inline (card copy already says "New way — name where you rode", wayNamingCard.tsx:49), then the same `GateAdjustCard` step when a reference line + seed were built. Post-save the detail re-reads its model (the ride now has a `referenceOf` route) and the button disappears.
 - When the ride already IS a route's reference (`catalog.routes.some(r => r.referenceRideId === rideId)`), a passive line: **"reference ride of <route label>"** — no button.
-- When the draft is null and the ride is not a reference (a repeat ride of a known way): nothing shown. **Promoting a later ride to REPLACE an existing route's reference** (types.ts:56 "promoting a later clean lap rewrites this field") is NOT built here: it requires swapping the route's `refLineId` geometry underneath existing gate chainages and re-projecting every stored result on that route — that is the chainage-override problem WP-I owns, and Nathan has not ruled that promotion is wanted at all. Flagged §8.1 with a default of "out of WP-H".
+- When the draft is null and the ride is not a reference (a repeat ride of a known way): no create-way button. **Promoting a later ride to REPLACE an existing route's reference** (types.ts:51-55 "promoting a later clean lap rewrites this field") was out of scope in the 2026-09-03 text (it was read as a chainage-remap problem coupled to WP-I, and Nathan had not ruled on it). **Nathan ruled 2026-09-04: wanted, as a reset.** It is built as a sibling operation on the same seam — §3.3b — and shows, independently of the create-way button, whenever the ride is matched to a user route it is not already the reference of.
 
 The three helper bodies (§2.4 lines 76-114, 571-618, 624-663) are extracted VERBATIM into `src/store/wayFromRide.ts` (§4.9) and RecordScreen becomes a thin caller — WP-F's "worth extracting into a small shared module then" is this WP.
+
+### 3.3b Promoting a ride to REPLACE an existing route's reference (added 2026-09-04)
+
+**Nathan's answer to §8.1** (2026-09-04, verbatim): "Lets add the feature to set any ride as a new reference for a known route. But instead of recomputing the gates for previous ride, for know lets have it reset this ride's progress. So there should be a warning like 'This route will be overwritten and past ghosts will be lost'. And then you just start again from there."
+
+**What that rules out.** The remap the 2026-09-03 text feared — carrying the old gate chainages onto new geometry and re-projecting every stored `fromChainageM/toChainageM` — is NOT built. Gates are re-seeded from the new reference; history is reset. Nothing here touches or waits for WP-I; the two WPs land in either order (§9 updated).
+
+**Mechanics — every anchor re-verified against the mount at `ba2be60`, 2026-09-04:**
+
+1. **The ref slot is a stable key; promotion overwrites its content.** A user route's `refLineId` equals its own `route.id` (`buildWayCreationCatalog`, wayCreation.ts:295-299; `createWayFromDraft` saves the ref under `route:${rideId}`, §4.9). Re-referencing changes neither `route.id` nor `refLineId`. `saveUserRef(id, ref)` (userRefs.ts:170-181) is `registry.set(id, ref)` + re-encode of the whole file — an idempotent overwrite, no remove-first step. Nothing downstream needs invalidating: `refFor()` does not cache user refs (refs.ts:40-43 "userRefs keeps its own registry"), `catalogTrackSpecs()` resolves ref + gate set at CALL time (tracks.ts:9-10, B-39 — the next `LiveEngine.start()` and the next backfill see the new line), and the runtime map-asset cache keys on `hit.ref === ref` object identity plus gate version (routeAssetRuntime.ts:104-121), so a new `RefLine` object misses and rebuilds by itself.
+2. **Gates: re-seeded, new version, old versions kept.** Same function creation uses — `seedGateChainages(built.ref.length, built.stopChainageM)` (gateSeeding.ts:43-76: five strictly increasing chainages, snapped clear of the new reference ride's own ≥ 20 s stops) — minted through `addGateSet` (catalog.ts:202-208, "history is never deleted"; the CALLER supplies `version`, computed as `(gateSetFor(userCatalog(), routeId)?.version ?? 0) + 1`, catalog.ts:193-200). Old gate sets stay in the file; only `route.gateSetVersion` moves. `origin: 'geometric'` and a `note` naming the ride, as `saveAdjustedGates` does.
+3. **One catalog write, first.** `route.referenceRideId` is rewritten in the SAME derived catalog that `addGateSet` returns (spread + override), so there is exactly one `saveUserCatalog` call. It is the only step that can refuse (validation), so it goes first and nothing else is touched until it succeeds — WP-Q's rule (RoutesScreen.tsx:46-49 `applyDeletion`). `saveUserCatalog` swaps the in-memory user catalog synchronously before its await (catalogStore.ts:118-121), and `saveUserRef`'s `registry.set` is synchronous too, so between the two calls there is a sub-millisecond window with new gates on old geometry — no ride can be running while the detail is up (§3.1 point 4), so nothing observes it.
+4. **The reset.** Every stored result on the route — `storedResultsForRoute(routeId)` (resultsStore.ts:218-223, WP-Q) — is removed one by one with `removeStoredResult` (resultsStore.ts:249-258; "deleting an on-device derived cache entry is allowed"), exactly WP-Q's loop (RoutesScreen.tsx:57-62). No bulk helper is invented. The promoted ride's OWN old result is included: it was timed on the old gates and means nothing on the new ones. `wayFromRide.ts` stays free of `ui/` imports: it returns `clearedRideIds`, and the SCREEN mirrors them into `lastRide.recorded` (`dropRecorded` per id, `clearLastRide()` if the post-stop `last` is on this route, then `replaceRecorded` for whatever came back — RoutesScreen.tsx:57-62 plus §4.6).
+5. **What "lost" honestly means — the backfill interaction (read this one).** A ride whose sidecar is deleted and that carries no unmatched marker is a backfill candidate again: `backfillMissingResults` (resultsStore.ts:412-462) re-derives it from its raw JSONL against the CURRENT catalog — the new reference and the new gates — the next time it runs, which is every boot (lastRide.ts:270) and every RIDES refresh (RidesScreen.tsx:95). WP-Q depends on exactly this ("will be re-matched against your other routes"). So a bare delete is NOT a reset that sticks: the ghosts would reappear re-timed at the next boot, unannounced, contradicting the warning. Two coherent designs: **(i)** block re-derivation with a new "cleared" marker kind in the unmatched index — new machinery, and it would also stop those rides matching any OTHER route (an "unmatched" that is a lie); **(ii)** run the re-derivation IMMEDIATELY, awaited, as the last step of the promotion, so what the rider sees on confirm is the final state. **This brief does (ii)** — `backfillMissingResults(fs, [rideId, ...clearedRideIds])`, one call to an existing, idempotent function. Consequences, stated plainly: the old TIMES, ranks and old-gate scoring are gone (what "past ghosts will be lost" promises); the rides are re-timed from their recordings against the new reference, and the promoted ride becomes ride 1 of the fresh history, scored on its own line (the pre-existing founding-ride behaviour for any sidecar-less ride — no new machinery, and no guard against it exists anywhere in `app/src`: checked 2026-09-04, `grep referenceRideId` finds only types.ts, userRefs.ts's comment, wayCreation.ts:299 and routeAssetRuntime.ts:117). A ride whose recording is missing, or that no longer yields a clean/interrupted lap with corridor coverage on the new gates (resultsStore.ts:403-410), gets the ordinary unmatched marker and simply stays gone. The dialog copy says all of this. Flagged §8.8 with this default; flipping to a hard reset later is the marker in (i), not a redesign.
+6. **Seed routes are not promotable.** Their reference is the archive-built bundled line, and `refFor()` gives bundled tracks priority on any id collision (refs.ts:40-43), so a user ref saved under a seed id would be ignored by scoring while the catalog claimed otherwise. Rule = WP-Q's delete rule: only routes present in `userCatalog()` (catalogDelete.ts:51-53 — "a seed id is simply never found there"). No `isSeedOwned` call; the lookup runs over `userCatalog().routes`.
+7. **Too-short / unreadable ride.** `buildRefFromRideFixes` (userRefs.ts:65-97) returns null under `MIN_TRACK_LENGTH_M` (200 m), for < 2 usable fixes or < 2 vertices. `createWayFromDraft` proceeds without a ref in that case (a way may exist without a line); promotion cannot — a null ref is `{ ok: false }` BEFORE any write. No pre-check on the button: a ride that was matched and scored on the route rode a whole lap and is never under 200 m in practice; the failure Alert covers the theoretical case, exactly as the create-way path relies on its own.
+8. **Free-ride cache**: untouched. `FreeRideRecord.sectors[].routeId` are raw strings (freeRides.ts:33-39), never `RideResult`s — the same cosmetic staleness WP-Q accepted for delete-route.
+
+**Visibility (ACTIONS card, §4.10 item 5).** Button **"MAKE THIS THE REFERENCE OF THIS ROUTE"**, shown iff `model.promoteTarget !== null`, where `rideDetailFor` (§4.8) computes
+
+```ts
+promoteTarget: d.userRoutes.find((r) => r.id === routeId && r.referenceRideId !== rideId) ?? null
+```
+
+— the ride has a stored result matched to a route, that route is user-owned, and the ride is not already its reference. Independent of the create-way offer (§3.3): both can show when a ride was matched to route X but its endpoints do not resolve to X's own landmarks in this direction (`draftWayCreation`'s guard, wayCreation.ts:244) — then they are two honest, different offers ("become a NEW way" vs "become route X's reference"). After a successful promotion the model re-reads (`tick`): `referenceOf` is now this route (the passive "reference ride of …" line appears) and `promoteTarget` is null — the button is gone for THIS ride; from any OTHER ride's detail on the same route it remains available, per ride, exactly like the create-way button's rule.
+
+**The warning — one step, destructive confirm.** One `Alert.alert`, not settings.tsx's two-step reset-to-virgin: the scope is one route, the copy names the loss in Nathan's own words, and nothing leaves the device (raw recordings are untouched — reset-to-virgin, by contrast, moves files out of the app). `n` counts this route's OTHER results (this ride's own old result is not one of its "past ghosts"):
+
+```ts
+const n = storedResultsForRoute(routeId).filter((r) => r.rideId !== request.rideId).length;
+const ghosts = n === 0
+  ? 'There are no past results on this route yet.'
+  : `Its ${n} past result${n === 1 ? ' is' : 's are'} discarded and re-timed from the recordings against the new reference — old times and ranks do not survive.`;
+Alert.alert(
+  `Overwrite the reference of "${routeLabel(routeId)}"?`,
+  `This route will be overwritten and past ghosts will be lost.\n\nIts reference line and gates are rebuilt from this ride (${dateTimeLabel(request.startedAtMs)}). ${ghosts} Ride recordings are kept.`,
+  [
+    { text: 'Cancel', style: 'cancel' },
+    { text: 'Overwrite', style: 'destructive', onPress: () => void onPromote() },
+  ],
+);
+```
+
+**Partial failure — what is acceptable and why no rollback.** After the catalog write succeeds, `saveUserRef` cannot reject (userRefs.ts:170-181 swallows its own write error) and the in-memory registry is already swapped; each `removeStoredResult` mutates memory + index synchronously and only its enqueued file ops can throw. If one does, the caller's `catch` shows the Alert and the state is: catalog, ref and gates consistent and correct for every ride from now on; some old sidecars still on disk as stale ghosts timed on the old gates, visible in RIDES and deletable there one by one. That is an untidy list, not a scoring bug, and it needs a real filesystem failure to happen — no rollback is built. The re-derive step never throws (resultsStore.ts:462 swallows per ride).
 
 ### 3.4 What happens to Result's Personal Bests section
 
@@ -364,6 +409,12 @@ export interface RideDetailModel {
   canToggleIgnore: boolean;
   /** the route this ride is the reference of, or null */
   referenceOf: Route | null;
+  /** WP-H addendum 2026-09-04 (§3.3b): the USER route this ride is matched
+   * to and could become the reference of — null when the ride is already
+   * its reference, when the route is seed-owned (absent from userRoutes), or
+   * when the ride has no route result. Drives the "make this the reference
+   * of this route" button. */
+  promoteTarget: Route | null;
   sectorRows: SectorRowModel[];
   /** gate-indexed, index 0 null — RouteMapView's sectorColours contract */
   sectorColours: (string | null)[];
@@ -374,6 +425,8 @@ export interface RideDetailDeps {
   result: RideResult | null;
   free: FreeRideRecord | null;
   routes: readonly Route[];
+  /** userCatalog().routes — seed routes are never in it (catalogDelete.ts:51-53's rule) */
+  userRoutes: readonly Route[];
   /** lapValues(routeId, rideId) — history EXCLUDING this ride */
   laps: (routeId: string) => number[];
   /** sectorValues(routeId, index, rideId) — history EXCLUDING this ride */
@@ -421,7 +474,7 @@ export function rideDetailFor(rideId: string, startedAtMs: number, d: RideDetail
     // WP-B precedence: a free-ride record wins over "nothing on file".
     const kind: RideDetailKind = d.free ? 'free' : 'none';
     return { ...base, kind, routeId: null, lapLabel: '–', lapTier: 'neutral', rankLine: '',
-      ignored: false, canToggleIgnore: false, sectorRows: [], sectorColours: [] };
+      ignored: false, canToggleIgnore: false, promoteTarget: null, sectorRows: [], sectorColours: [] };
   }
   const routeId = res.routeId;
   const ignored = res.ignoredFromRanking === true;
@@ -439,6 +492,8 @@ export function rideDetailFor(rideId: string, startedAtMs: number, d: RideDetail
     rankLine: rankLineFor({ lapMovingS: res.lap.movingS, estimated, ignored }, hist, d.barred(routeId)),
     ignored,
     canToggleIgnore: ranks({ ...res, ignoredFromRanking: false }),
+    // §3.3b: promotable iff matched to a user-owned route it is not already the reference of.
+    promoteTarget: d.userRoutes.find((r) => r.id === routeId && r.referenceRideId !== rideId) ?? null,
     sectorRows: buildSectorRows(res, secHist),
     sectorColours: sectorColoursFor(res, secHist),
   };
@@ -466,8 +521,10 @@ import { createExpoFsAdapter } from '../storage/expoFsAdapter.ts';
 import { decodeRideFile } from '../storage/jsonl.ts';
 import { buildRefFromRideFixes, saveUserRef } from '../live/userRefs.ts';
 import { seedGateChainages } from '../store/gateSeeding.ts';
-import { addGateSet } from './catalog.ts';
+import { addGateSet, gateSetFor } from './catalog.ts';
 import { currentCatalog, saveUserCatalog, userCatalog } from './catalogStore.ts';
+import { backfillMissingResults, getStoredResult, removeStoredResult, storedResultsForRoute } from './resultsStore.ts';
+import type { Catalog } from './types.ts';
 import { buildWayCreationCatalog, draftWayCreation, type WayCreationDraft } from './wayCreation.ts';
 
 export type RideFix = { lat: number; lon: number; [k: string]: unknown };
@@ -550,6 +607,99 @@ export async function saveAdjustedGates(a: GateAdjustDraft, chainageM: number[])
 
 The `try/catch → Alert` wrappers stay in the callers (RecordScreen already has them; the detail gets equivalents). The `.ts` import-extension style follows the file it sits next to (`store/*.ts` use bare or `.ts` — match `wayCreation.ts`'s own imports when writing it).
 
+### 4.9b `app/src/store/wayFromRide.ts` — `promoteRideToReference` (added 2026-09-04, §3.3b)
+
+Same module, same seam, appended after `saveAdjustedGates`. The `gateSetFor` / `resultsStore` / `Catalog` imports above are added for it. `resultsStore.ts` imports nothing from `wayFromRide.ts`, so no cycle.
+
+```ts
+export type PromoteReferenceOutcome =
+  | {
+      ok: true;
+      /** the gate-set version minted for the new reference */
+      gateSetVersion: number;
+      /** stored results removed OTHER than the promoted ride's own old one */
+      ghostsCleared: number;
+      /** every rideId whose stored result was removed (the promoted ride's own included when it had one) */
+      clearedRideIds: string[];
+      /** of [rideId, ...clearedRideIds], the ones the immediate re-derive scored on THIS route again */
+      retimed: string[];
+    }
+  | { ok: false; errors: string[] };
+
+/** WP-H addendum (2026-09-04, §3.3b): make `rideId` the reference of the
+ * EXISTING user route `routeId`. Reset, not remap: the reference line is
+ * rebuilt from this ride and stored under the route's UNCHANGED refLineId
+ * (an idempotent overwrite, userRefs.ts:170), the gates are re-seeded from
+ * it as a new gate-set version (old versions stay — catalog.ts:202), the
+ * route's referenceRideId is rewritten, every stored result on the route is
+ * removed, and the affected rides (this one included) are re-derived against
+ * the new geometry through the ordinary backfill so the state on return is
+ * final — a bare delete would come back re-timed at the next boot anyway
+ * (resultsStore.ts:412; lastRide.ts:270). Order: the one refusable write
+ * (catalog) first; nothing else is touched until it succeeds. Refuses, with
+ * no writes at all, for a route not in userCatalog() (seed routes — refs.ts
+ * would ignore a user ref under their id), for a ride that already is the
+ * reference, and for a ride no reference line can be built from
+ * (userRefs.ts:65: unreadable, or under MIN_TRACK_LENGTH_M). No React, no
+ * Alerts, no ui/ imports: the caller mirrors `clearedRideIds` into
+ * lastRide.recorded (dropRecorded / clearLastRide / replaceRecorded), as
+ * RoutesScreen.tsx:57-62 does for delete-route. */
+export async function promoteRideToReference(
+  routeId: string, rideId: string, fs: FsAdapter = createExpoFsAdapter(),
+): Promise<PromoteReferenceOutcome> {
+  const user = userCatalog();
+  const route = user.routes.find((r) => r.id === routeId);
+  if (!route) {
+    return { ok: false, errors: [`"${routeId}" is not one of your own routes — a shipped route cannot be re-referenced`] };
+  }
+  if (route.referenceRideId === rideId) {
+    return { ok: false, errors: ['this ride is already the reference of that route'] };
+  }
+  const fixes = await readRideFixes(rideId, fs);
+  const built = fixes ? buildRefFromRideFixes(fixes) : null;
+  if (!built) {
+    return { ok: false, errors: ['no reference line can be built from this ride (recording unreadable, or under 200 m)'] };
+  }
+
+  // Everything below is decided; the catalog write is the only step that can refuse.
+  const version = (gateSetFor(user, routeId)?.version ?? 0) + 1;
+  const withGates = addGateSet(user, {
+    routeId,
+    version,
+    chainageM: seedGateChainages(built.ref.length, built.stopChainageM),
+    createdAtMs: Date.now(),
+    origin: 'geometric',
+    note: `re-seeded when ride ${rideId} became the reference (WP-H §3.3b)`,
+  });
+  const next: Catalog = {
+    ...withGates,
+    routes: withGates.routes.map((r) => (r.id === routeId ? { ...r, referenceRideId: rideId } : r)),
+  };
+  const errs = await saveUserCatalog(next);
+  if (errs.length > 0) return { ok: false, errors: errs };
+
+  await saveUserRef(route.refLineId, built.ref);
+
+  // The reset (WP-Q's loop, RoutesScreen.tsx:57-62), then the immediate
+  // re-derive so the ghosts do not come back unannounced at the next boot.
+  const clearedRideIds = storedResultsForRoute(routeId).map((r) => r.rideId);
+  for (const id of clearedRideIds) await removeStoredResult(id);
+  const candidates = clearedRideIds.includes(rideId) ? clearedRideIds : [rideId, ...clearedRideIds];
+  await backfillMissingResults(fs, candidates);
+  const retimed = candidates.filter((id) => getStoredResult(id)?.routeId === routeId);
+
+  return {
+    ok: true,
+    gateSetVersion: version,
+    ghostsCleared: clearedRideIds.filter((id) => id !== rideId).length,
+    clearedRideIds,
+    retimed,
+  };
+}
+```
+
+Notes for the execution session: `userCatalog()` (not `currentCatalog()`) throughout — the user catalog is what `saveUserCatalog` writes and is where a user route's gate sets live (`saveAdjustedGates` above already does the same); `gateSetFor(user, …)` therefore sees every version this route ever had. `backfillMissingResults` skips a candidate that has an unmatched marker at the current engine version — none of `candidates` can have one (each had a stored result a moment ago). `retimed` is informational (the screen does not branch on it; tests do).
+
 ### 4.10 NEW screen — `app/src/ui/RideDetailScreen.tsx`
 
 Props: `{ request: RideDetailRequest }`. Reads `useTheme`, `useSettings` (for `s.tower`), `useTabNav`. Header docblock: `/** WP-H: … */` summarising §1 and citing the ResultScreen/RidesScreen lines it absorbs.
@@ -571,6 +721,7 @@ const model = rideDetailFor(request.rideId, request.startedAtMs, {
   result: getStoredResult(request.rideId),
   free: freeRideNear(freeRideResults(), request.startedAtMs),
   routes: currentCatalog().routes,
+  userRoutes: userCatalog().routes, // §3.3b: seed routes are never promotable
   laps: (routeId) => lapValues(routeId, request.rideId),
   sectors: (routeId, i) => sectorValues(routeId, i, request.rideId),
   barred: (routeId) => ownLapBarredFromRanking(routeId, request.rideId),
@@ -597,6 +748,31 @@ const model = rideDetailFor(request.rideId, request.startedAtMs, {
    - `Delete` — RidesScreen.tsx:115-141 body verbatim, then `closeRide()` instead of `refresh()` (RidesScreen remounts and refreshes itself; from `'post-stop'` the rider lands back on RECORD setup — same as discard-after-the-fact). The Alert text stays.
    - `Ignore in ranking` / `Count in ranking` — shown iff `model.canToggleIgnore`; `onPress`: `setBusy; const upd = await setIgnoredFromRanking(rideId, !model.ignored); if (upd) replaceRecorded(upd); setTick(t => t + 1)`. Style: outlined like `deleteBtn`; while `model.ignored` the header rank line already states the exclusion.
    - `Make this the reference of a new way` — shown iff `draft` is a `WayCreationDraft` and `model.referenceOf === null`; sets `naming = true`.
+   - `Make this the reference of this route` (added 2026-09-04, §3.3b) — shown iff `model.promoteTarget !== null`; outlined like `deleteBtn` (it is destructive to the route's history), disabled while `busy`. `onPress` shows the one-step `Alert.alert` of §3.3b (title `Overwrite the reference of "<routeLabel>"?`, body from Nathan's sentence + the conditional ghost count, `Cancel` / destructive `Overwrite`), whose confirm runs:
+     ```ts
+     async function onPromote() {
+       const routeId = model.routeId;
+       if (routeId === null || model.promoteTarget === null) return;
+       setBusy(true);
+       try {
+         const out = await promoteRideToReference(routeId, request.rideId);
+         if (!out.ok) { Alert.alert('Could not set the reference', out.errors.join('\n')); return; }
+         // lastRide coherence — RoutesScreen.tsx:57-62's delete-route steps, plus §4.6 for what came back.
+         for (const id of out.clearedRideIds) dropRecorded(id);
+         if (getLastRide()?.routeId === routeId) clearLastRide();
+         for (const id of [request.rideId, ...out.clearedRideIds]) {
+           const r = getStoredResult(id);
+           if (r) replaceRecorded(r);
+         }
+         setTick((t) => t + 1); // model re-reads: referenceOf = this route, promoteTarget = null, ranks reset
+       } catch (e) {
+         Alert.alert('Could not set the reference', e instanceof Error ? e.message : String(e));
+       } finally {
+         setBusy(false);
+       }
+     }
+     ```
+     Imports this adds to the screen: `promoteRideToReference` (wayFromRide), `storedResultsForRoute` + `getStoredResult` (resultsStore — the latter is already imported for the model), `dropRecorded`, `clearLastRide`, `getLastRide`, `replaceRecorded` (lastRide), `userCatalog` (catalogStore). No success Alert: the screen itself changes (rank line, "reference ride of …", the button gone) and that is the confirmation; the ON THIS ROUTE list now shows only re-timed rides.
 6. **Inline create-way flow** (below ACTIONS, mirrors RecordScreen.tsx:1000-1015):
    - `naming` → `<WayNamingCard startExistingLabel={existingLandmarkLabel(draft.start)} endExistingLabel={existingLandmarkLabel(draft.end)} loop={draft.loop} busy={busy} matchedRouteLabel={draft.matchedRouteId ? routeLabel(draft.matchedRouteId) : null} onSave={onNamingSave} onSkip={() => setNaming(false)} />`.
    - `onNamingSave(names)`: `setBusy; try { const out = await createWayFromDraft(draft, names); if (!out.ok) { Alert.alert('Could not create the way', out.errors.join('\n')); return; } setNaming(false); setDraft(null); setTick(t => t+1); if (out.adjust) setAdjust(out.adjust); } catch (e) { Alert.alert('Could not create the way', …) } finally { setBusy(false) }`.
@@ -660,6 +836,7 @@ Build `RideResult` fixtures inline (as `ridehistory_suite.ts` does).
 7. `ridedetail: rideDetailFor — referenceOf resolves the route whose referenceRideId === rideId; null otherwise`.
 8. `ridedetail: rankLineFor — ignored wins over every other branch (ignored + barred + ≥MIN_HISTORY → the "you excluded" line)`.
 9. `ridedetail: sectorColoursFor — mirrors ResultScreen (clean+movingS coloured via tierLineColour, interrupted/estimated/missed null, own value filtered from its history)`.
+21. (added 2026-09-04, §3.3b) `ridedetail: rideDetailFor — promoteTarget: the matched route when it is in userRoutes and its referenceRideId !== rideId; null when referenceRideId === rideId; null when the matched route is absent from userRoutes (seed-owned) even though it is in routes; null for kind 'free' and 'none'` (four fixtures, one assert each; `routes` and `userRoutes` passed separately so the seed case is the SAME route object present in one list and not the other).
 
 ### 5.2 Additions to `app/tests/resultsstore_suite.ts` (store + lastRide coherence)
 
@@ -679,6 +856,17 @@ Build `RideResult` fixtures inline (as `ridehistory_suite.ts` does).
 17. `wayFromRide: createWayFromDraft — happy path against a memory-fs catalog store: returns ok, routeId 'route:<rideId>', adjust non-null with 5 chainages, and userCatalog() contains the route with referenceRideId === rideId` (requires `initCatalogStore(memoryFs)` + `initUserRefs(memoryFs)` first — same seams `catalogstore_suite.ts` uses; if the seed-JSON loader hook is needed, copy the `registerHooks` shim).
 18. `wayFromRide: saveAdjustedGates — unmoved → {ok:true, moved:false} and no new gate set; moved → version 2 gate set present`.
 
+### 5.4b Additions to `app/tests/waycreation_suite.ts` — `promoteRideToReference` (added 2026-09-04, §3.3b / §4.9b)
+
+Harness = case 17's plus the results store: `initCatalogStore(memoryFs)`, `initUserRefs(memoryFs)`, `initResultsStore(memoryFs)`, `resetRecordedForTests()`; write ride `R0`'s JSONL (`encodeHeader/encodeFix/encodeEnd`, a ≥ 200 m track with one ≥ 20 s stop so `stopChainageM` is non-empty) and create the user route from it with `createWayFromDraft` (→ `routeId`, `refLineId === routeId`, gate-set version 1, `referenceRideId === 'R0'`). Then `saveResult` three fixtures: `R0` and `R1` with `routeId` = the new route (`R1` later by `startedAtMs`), `R2` with `routeId` = some other id; write `R1`'s JSONL (the same track, offset a few metres — a clean lap of the route) but NOT `R0`'s beyond what createWayFromDraft already read (delete `rides/R0.jsonl` from the memory fs before promoting, so case 24 can show "recording gone → stays gone"). Capture `before = JSON.stringify(userCatalog())`, `refBefore = userRefFor(refLineId)`.
+
+22. `wayFromRide: promoteRideToReference — happy path rewrites the catalog: ok; userCatalog() route has referenceRideId 'R1' and gateSetVersion === 2 === out.gateSetVersion; gateSetFor(userCatalog(), routeId) is version 2 with 5 strictly increasing chainages, all ≤ userRefFor(refLineId).length; gateSetFor(userCatalog(), routeId, 1) is STILL present (history never deleted); route.id and refLineId unchanged`.
+23. `wayFromRide: promoteRideToReference — overwrites the ref in place: userRefFor(refLineId) !== refBefore (new object), length ≥ MIN_TRACK_LENGTH_M; after flushUserRefWrites() a fresh initUserRefs(memoryFs) round-trips the NEW line (same length, same vertex count)`.
+24. `wayFromRide: promoteRideToReference — the reset: clearedRideIds deep-equals ['R0','R1'] (storedResultsForRoute's ascending order), ghostsCleared === 1; after flushResultWrites() the memory fs has no results/R0.json; R2 (other route) is untouched in memory and on disk; R0 has no recording on the fs → getStoredResult('R0') === null afterwards (a ride whose recording is gone is simply gone)`.
+25. `wayFromRide: promoteRideToReference — the immediate re-time: getStoredResult('R1') is non-null with routeId === routeId and derivedBy.gateSetVersion === out.gateSetVersion; out.retimed includes 'R1' and not 'R0'; lap.quality is 'clean' or 'interrupted'` (the promoted ride scores on its own line; if the seeded gates put the fixture's stop inside a sector it is 'interrupted' — both are accepted, assert the disjunction).
+26. `wayFromRide: promoteRideToReference — refusals write NOTHING: (a) a 3-fix 30 m ride 'RS' matched to the route → {ok:false}; (b) rideId === route.referenceRideId → {ok:false}; (c) shippedCatalog().routes[0].id (seed-owned, present in currentCatalog() but not userCatalog()) → {ok:false}; (d) 'route:nope' → {ok:false}. After each: JSON.stringify(userCatalog()) === before, userRefFor(refLineId) === refBefore (same object), storedResultsForRoute(routeId).length unchanged` (run (a)-(d) BEFORE case 22's successful call, or on a fresh harness).
+27. `wayFromRide: promoteRideToReference — the live seam sees the new geometry with no invalidation: after a successful promotion, catalogTrackSpecs().find(s => s.id === routeId) has ref === userRefFor(refLineId) (object identity) and gates deep-equal to gateSetFor(userCatalog(), routeId).chainageM` (tracks.ts:21-44 resolves at call time — the regression this guards is someone adding a cache there).
+
 ### 5.5 Free-ride match
 
 19. `freerides: freeRideNear — exact id hit wins; nearest-within-tolerance otherwise; null beyond tolerance; null on empty` (pure; goes in `store_suite.ts` next to any existing freeRides cases, else `ridedetail_suite`).
@@ -689,13 +877,13 @@ Build `RideResult` fixtures inline (as `ridehistory_suite.ts` does).
 
 ### 5.7 Not headlessly testable (say so)
 
-The screen's layout, the mount-swap/overlay behaviour in Shell, hardware-back ordering, the post-STOP handoff timing, and the map rendering (MapLibre rung) are device checks. Manual checklist for the execution session's device pass: (a) STOP a route ride → reversed mark → detail opens with the big lap, trace on the map, sector rows; BACK → RECORD setup; (b) STOP a free ride → free board with the trail-only map; (c) RIDES → tap a row → detail; Delete → back on RIDES with the row gone; (d) Ignore → rank line changes, RIDES row rank becomes `–`, another ride on the same route shows a different "of N"; un-ignore restores; (e) a ride that never got the naming card → "Make this the reference…" → name → gate card → KEEP → button gone, "reference ride of …" shown, ROUTES lists the new way; (f) tab bar hidden while the detail is up, back on close; five tabs, no RESULT.
+The screen's layout, the mount-swap/overlay behaviour in Shell, hardware-back ordering, the post-STOP handoff timing, and the map rendering (MapLibre rung) are device checks. Manual checklist for the execution session's device pass: (a) STOP a route ride → reversed mark → detail opens with the big lap, trace on the map, sector rows; BACK → RECORD setup; (b) STOP a free ride → free board with the trail-only map; (c) RIDES → tap a row → detail; Delete → back on RIDES with the row gone; (d) Ignore → rank line changes, RIDES row rank becomes `–`, another ride on the same route shows a different "of N"; un-ignore restores; (e) a ride that never got the naming card → "Make this the reference…" → name → gate card → KEEP → button gone, "reference ride of …" shown, ROUTES lists the new way; (f) tab bar hidden while the detail is up, back on close; five tabs, no RESULT; (g) (2026-09-04, §3.3b) on a user route with ≥ 2 scored rides, open the newest → "Make this the reference of this route" → the Alert names the route and the N past results → Cancel does nothing → Overwrite → busy, then the screen shows "reference ride of …", the button is gone, the rank line reads as ride 1 of the history (or "too few to rank"), ON THIS ROUTE lists only re-timed rides, RIDES shows those rides with their re-timed laps; kill and relaunch the app → the same rides, same times (nothing comes back from the old gates); open an OLDER ride on that route → the button is offered again.
 
 ## 6. Verification commands
 
 ```bash
 cd app
-node --experimental-strip-types tests/run.ts      # expect: previous count + 20 new, 0 fail, 3 skip
+node --experimental-strip-types tests/run.ts      # expect: previous count + 27 new (20 + the 2026-09-04 addendum's 7), 0 fail, 3 skip
 ./node_modules/.bin/tsc --noEmit                   # exit 0
 grep -rn "'result'" src --include=*.ts --include=*.tsx   # expect: no hits
 grep -rn "ResultScreen" src App.tsx                       # expect: no hits
@@ -706,35 +894,36 @@ grep -n "tabNav.go('result')" src/ui/RecordScreen.tsx     # expect: no hits
 
 **New**
 - `app/src/ui/RideDetailScreen.tsx` (§4.10)
-- `app/src/ui/rideDetailModel.ts` (§4.8)
-- `app/src/store/wayFromRide.ts` (§4.9)
-- `app/tests/ridedetail_suite.ts` (§5.1)
+- `app/src/ui/rideDetailModel.ts` (§4.8, incl. `promoteTarget` / `userRoutes`)
+- `app/src/store/wayFromRide.ts` (§4.9 extraction + §4.9b `promoteRideToReference`, added 2026-09-04)
+- `app/tests/ridedetail_suite.ts` (§5.1, incl. case 21)
 
 **Edited**
 - `app/App.tsx` (§4.2), `app/src/ui/tabNav.tsx` (§4.1)
 - `app/src/store/types.ts` (§4.3), `app/src/store/results.ts` (§4.4), `app/src/store/resultsStore.ts` (§4.5), `app/src/store/freeRides.ts` (§4.7)
 - `app/src/ui/lastRide.ts` (§4.6), `app/src/ui/RecordScreen.tsx` (§4.11), `app/src/ui/RidesScreen.tsx` (§4.12)
 - `app/src/ui/routeMapView.tsx`, `app/src/ui/routeMapGeo.ts` (§4.13)
-- `app/tests/run.ts`, `app/tests/resultsstore_suite.ts`, `app/tests/waycreation_suite.ts`, `app/tests/store_suite.ts`, `app/tests/routemapgeo_suite.ts` (§5)
+- `app/tests/run.ts`, `app/tests/resultsstore_suite.ts`, `app/tests/waycreation_suite.ts` (§5.4 + §5.4b), `app/tests/store_suite.ts`, `app/tests/routemapgeo_suite.ts` (§5)
 
 **Moved** — `app/src/ui/ResultScreen.tsx` → `safe_to_delete/ResultScreen.tsx` (§4.14)
 
-**Not touched** — `wayCreation.ts` (seam already complete since WP-F), `rideHistoryModel.ts`, `colourModel.ts`, `derive.ts`, `gateAdjustCard.tsx`, `wayNamingCard.tsx`, `settings.tsx`, `package.json` (no new dependency), `core/`.
+**Not touched** — `wayCreation.ts` (seam already complete since WP-F), `resultsStore.ts` beyond §4.5 (promotion only CALLS `storedResultsForRoute` / `removeStoredResult` / `backfillMissingResults`), `userRefs.ts`, `gateSeeding.ts`, `catalog.ts`, `catalogDelete.ts`, `freeRides.ts` beyond §4.7, `rideHistoryModel.ts`, `colourModel.ts`, `derive.ts`, `gateAdjustCard.tsx`, `wayNamingCard.tsx`, `settings.tsx`, `package.json` (no new dependency), `core/`.
 
 Docs after landing (not app source): `cycles/virgin-cycle1/QUESTIONS-FOR-NATHAN.md` (mark the nav-model item resolved by this brief), `README.md` status table; STATE.md/IDEAS.md mentions of the RESULT tab are left to the usual post-landing doc pass.
 
 ## 8. Open questions / risks
 
-1. **Promote-to-reference for an EXISTING route.** `Route.referenceRideId`'s own docblock anticipates "promoting a later clean lap". WP-H ships only the create-a-new-way seam (§3.3). Is replacing an existing user route's reference with a later ride wanted? **Default: out of WP-H** — it is coupled to WP-I's chainage handling (a new reference line invalidates gate chainages and every stored result's fromChainageM/toChainageM on that route). If Nathan wants it, it is its own WP after WP-I. Genuinely his call; the button label in §3.3 is written so the shipped behaviour is not mistaken for promotion.
+1. **Promote-to-reference for an EXISTING route.** **RESOLVED 2026-09-04** — Nathan confirmed the feature is wanted, using a reset (not remap) design: "set any ride as a new reference for a known route … instead of recomputing the gates for previous ride … reset this ride's progress … 'This route will be overwritten and past ghosts will be lost' … start again from there." Designed in §3.3b / §4.9b; in scope for WP-H; no dependency on WP-I. (Original text: WP-H ships only the create-a-new-way seam; default out of WP-H because it was read as coupled to WP-I's chainage handling — that coupling only existed for the remap approach, which is not what is built.)
 2. **Ignore semantics for the ride's OWN colours.** This brief makes an ignored ride's own sector tiers/spans neutral as well (§3.5). The alternative — keep colouring it against the others while it no longer counts for them — is defensible ("I still want to see how it did") but asymmetric. **Default: neutral**; one-line change in `rideDetailFor` (`secHist`) if reversed.
 3. **Cross-route Personal Bests overview.** Dropped with the RESULT tab (§3.4). **Default: not rebuilt in WP-H**; candidate follow-on: one `pbLabel · nOnFile` line per route on ROUTES (`buildPbRows` is already there and tested).
 4. **Free-ride tolerance match** (§4.7, 10 s). Two free rides started within 10 s of each other cannot happen (a session must end before another starts), so nearest-within-tolerance is unambiguous in practice; the constant exists only to bound clock skew. Low risk.
 5. **RIDES scroll position resets on close** (mount-swap, §3.1 point 4). Accepted; if it annoys on a long history, RidesScreen can persist its FlatList offset in a module-level variable later — not now.
 6. **Refactor risk in RecordScreen** (§4.11): behaviour must be identical (WP-F landed and device-verified two days ago). The extraction is line-for-line; the execution session should diff the old bodies against `wayFromRide.ts` before deleting them and re-run the §5.7(e) device check on RECORD's own STOP-step path as well.
 7. **`useTabNav` inside RideDetailScreen while mounted by Shell** — fine (Shell provides it); but RideDetailScreen must NOT be rendered outside `TabNavProvider` (e.g. in a future Demo tab preview) without a provider, or `useTabNav` throws by design (tabNav.tsx:27-33).
+8. **(added 2026-09-04) Reset vs re-time — one consequence Nathan should know about.** His answer asks for a reset. The existing boot/refresh backfill (resultsStore.ts:412, lastRide.ts:270, RidesScreen.tsx:95) re-derives any ride whose sidecar is missing against the CURRENT catalog, so a plain delete of the route's results would silently come back re-timed on the new reference at the next launch — WP-Q's delete-route already leans on exactly that. This brief therefore runs that re-derive immediately inside the promotion (§3.3b point 5, §4.9b) so the state on confirm is final and the dialog can describe it truthfully: old times, ranks and old-gate scoring are gone; the rides are re-timed from their recordings on the new gates; the promoted ride is ride 1. **Default: as designed (re-time).** If Nathan wants a HARD reset (old rides never re-scored on this route), the change is small and local: a "cleared" marker kind in the unmatched index that `backfillMissingResults` skips, written for `clearedRideIds` instead of the re-derive call (~15 lines in resultsStore.ts + one test) — with the honest downside that those rides can then never match any other route either until the marker is lifted. One-line question for him, not a blocker.
 
 ## 9. Follow-on hooks (not in scope)
 
 - **WP-I**: upgrades `GateAdjustCard` in place; the detail's inline create-way flow (§4.10 item 6) picks it up automatically. If WP-I wants a chainage override on the detail's OWN trace map, add it as a prop to `RouteMapView` then — the detail passes none today.
-- **Promotion** (§8.1) would slot into the ACTIONS card next to the create-way button, reusing `readRideFixes` + `buildRefFromRideFixes` + `saveUserRef(route.refLineId, …)` plus whatever chainage migration WP-I settles.
+- **Promotion** (§8.1) — no longer a follow-on: in scope since 2026-09-04 (§3.3b / §4.9b), sitting in the ACTIONS card next to the create-way button and reusing `readRideFixes` + `buildRefFromRideFixes` + `saveUserRef(route.refLineId, …)` + `seedGateChainages` + `addGateSet`. **It is independent of WP-I**: the gates are re-seeded from the new reference rather than migrated, so nothing waits on WP-I's chainage-override work, and WP-I's later card upgrade does not change it. Only §8.8 (hard reset vs re-time) remains as a possible small follow-on.
 - **ROUTES PB line** (§8.3): `buildPbRows(routeIds, allTimeBestLapS, rankedCountFor)` is ready to call.

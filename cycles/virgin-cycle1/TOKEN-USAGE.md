@@ -139,3 +139,22 @@ Nathan explicitly asked for this as a scheduled off-peak run: turn all six remai
 **This closes out the Digest+Plan backlog for the entire cycle.** All 13 work packages with a brief (A-M, excluding N which was a chore and O/P which share A/D's briefs) now have execution-ready briefs; A/B/C/D/F/J/L/N/O/P/Q are landed and 11 briefed-but-not-yet-executed items remain: from the pre-existing backlog none (B/F/L/Q are landed), and newly from this pass: E, G, K, M are unconditionally ready; H and I are ready for their unblocked halves, each with one genuine product question sent back to Nathan before their flagged section can be executed. Item 16 (on-device visual re-check) and item 17 (audio/TTS, parked) remain outside this pipeline's scope as before.
 
 **Note on project memory:** this scheduled run's session was not associated with a project on this device (`project_memory_read`/`project_memory_write` both returned "this session is not associated with a project on this device"), so the two project-memory files (`qualifire-model-tier-protocol.md`, `qualifire-virgin-cycle1-wp-o-p.md`) named in this run's instructions could not be read or updated — the pipeline's protocol was instead followed from this repo's own in-tree copies (`CLAUDE.md`, `process/CONVENTIONS.md`, `cycles/virgin-cycle1/CONTEXT.md`), which carry the identical rules. Nathan may want to check why this session lacked its usual project-memory association before the next scheduled run.
+
+## WP-H/WP-I follow-up amendments after Nathan's answers (2026-09-04)
+
+Nathan answered both flagged questions in `QUESTIONS-FOR-NATHAN2.md`. WP-I's answer (no
+finger-scrub; percentage-based nudge pad) was a small, mechanical extension of the
+already-approved map-half design — handled directly by the coordinator as a chore (no fresh
+subagent dispatch, per the pipeline's own size threshold). WP-H's answer (add reference
+promotion, using a reset rather than a chainage-remap design) was genuinely new scope, so it
+got a real Digest+Plan pass to amend the brief in place.
+
+| Dispatch | Tier | Model | Tokens (reported) | Tool calls | Outcome |
+|---|---|---|---|---|---|
+| Coordinator direct edit — WP-I nudge pad becomes percentage-of-route-length (§3.3b) | Chore | — (coordinator, no subagent; mechanical extension of an already-approved design) | — | — | Brief amended in place (535 → 612 lines); no re-brief needed |
+| Digest — WP-H promotion mechanics (gateSeeding.ts, addGateSet/gateSetFor versioning, saveUserRef overwrite semantics, resultsStore per-route deletion, referenceRideId mutation path, destructive-dialog precedents) | Digest | Haiku | ~78.5k | 22 | Factual digest feeding the Plan amendment |
+| Plan — WP-H reference-promotion amendment (§3.3b, §4.9b `promoteRideToReference`, test cases, §8.1 resolved) | Plan | Fable | ~151.7k | 19 | Brief amended in place (740 → 929 lines). Caught a real design bug the digest didn't surface: a bare result-delete isn't a reset that sticks, since the existing boot/refresh backfill would silently re-derive and re-time the "cleared" rides against the new reference at next launch — the promotion now runs that re-derive immediately so the confirmed state is final. Flagged one non-blocking taste call for Nathan (§8.8: reset vs. re-time old rides). |
+
+**Subtotal this stretch: ~230.2k tokens across 1 subagent dispatch** (the WP-I edit was a direct coordinator chore, not a dispatch). **Running cycle total: roughly 6.70M tokens across 46 subagent dispatches.**
+
+**Both WP-H and WP-I are now fully execution-ready with no blocking open questions.** Combined with E/G/K/M (ready since 2026-09-03), all six of this pass's work packages are execution-ready as of 2026-09-04.

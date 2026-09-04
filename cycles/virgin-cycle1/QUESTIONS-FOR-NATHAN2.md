@@ -36,7 +36,7 @@ Do you want "promote this ride to replace an existing route's reference line" as
 all, and if so, is landing it after WP-I an acceptable order — or is this something you'd
 want sooner?
 
-**Answer:**
+**Answer:** Lets add the feature to set any ride as a new reference for a known route. But instead of recomputing the gates for previous ride, for know lets have it reset this ride's progress. So there should be a warning like "This route will be overwritten and past ghosts will be lost". And then you just start again from there.
 
 ### Q2 — `WP-I-gate-card-map-scrub.md` §3.5 (finger-scrub gesture)
 
@@ -58,7 +58,7 @@ half, ready either way). Separately: do you also want the finger-scrub — tap a
 slide left/right anywhere on the card to move it coarsely along the ride, with the ± pad kept
 for fine adjustments? Yes / no / not now.
 
-**Answer:**
+**Answer:** Lets keep just the +-pad for now and not implement the finger dragging. To make it easier lets have two + and two -buttons. Two buttons are big and move the gate +-1% of the ride. The smaller ones move it 0.1% of the ride. This way you can make both small and big changes easily.
 
 ## Not yet answerable — carried over from the first questions file, unrelated to this batch
 

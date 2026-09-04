@@ -1,6 +1,6 @@
 **Status: Brief written 2026-09-03 (Digest+Plan pass). Map half READY TO EXECUTE — Nathan's Q1 answer clearly wants the gates moving on the real ride line, not today's straight render ("it should still move the gates on a real ride line. Not the straight render I have now"). Scrub half is DESIGNED but NOT AUTHORIZED — Nathan's Q1 answer settled keeping the ± pad but did not clearly confirm adding a new finger-scrub gesture; see Open Question 1 (§7) — do not execute §3.5 until he answers it. Map-half core design: the card keeps its own bespoke widget (as it is today) but upgrades it from a flat bar to the ride's real decimated path — `buildRuntimeRouteAsset(refLine, …)` re-fitted into the card's own box, path drawn as rotated `View` segments exactly like `routeMapView.tsx`'s existing `imgFailed` rung, each gate placed with `pointAtChainage()` on every nudge — zero new dependencies, zero changes to `RouteMapView`/`routeAssetRuntime.ts`, all geometry in a new pure module with a headless suite.**
 **Review doc item: 9. Size: medium.**
-**Verified against the mount as read 2026-09-03.**
+**Verified against the mount as read 2026-09-03. Addendum 2026-09-04: Nathan answered Q2 in `QUESTIONS-FOR-NATHAN2.md` — no finger-scrub; instead the existing ±10/±50 m pad becomes a ±0.1%/±1%-of-route-length pad (§3.3b). Coordinator-authored addendum (mechanical extension of the already-approved map-half design, under the pipeline's own chore threshold — no fresh Digest+Plan pass needed).**
 
 ---
 
@@ -361,6 +361,81 @@ Header comment (lines 1-14): replace the last sentence ("No map yet — … `bui
 
 Behaviour to preserve (and check by reading): tap-to-select toggles exactly as before (`setSelected(sel ? null : i)`); START/FINISH still do not select; `busy` disables the hit areas; `dirty`/SAVE/KEEP logic untouched; the readout `fmtChainage(chainageM[selected])` still shows the number that moved.
 
+### 3.3b — Nudge pad becomes percentage-of-route-length (Q2 answered 2026-09-04)
+
+`QUESTIONS-FOR-NATHAN2.md` Q2 answer, verbatim: *"Lets keep just the +-pad for now and not
+implement the finger dragging. To make it easier lets have two + and two -buttons. Two
+buttons are big and move the gate +-1% of the ride. The smaller ones move it 0.1% of the
+ride. This way you can make both small and big changes easily."*
+
+Good news: the card already has exactly four buttons today (`−50 −10 | 1 842 m | +10 +50`,
+`gateAdjustCard.tsx:94-100`) — two minus, two plus. Nathan is not asking for a new button, he
+is asking for the two magnitudes to scale with the route instead of being fixed at 10 m/50 m
+(sensible: 50 m is a large step on a 600 m loop and a small one on a 12 km commute).
+`clampNudge` itself needs **no change** — it already takes a raw `deltaM` regardless of how
+the caller computed it, so `app/tests/gateseeding_suite.ts:45-58`'s existing fixed-delta
+assertions (`clampNudge(base, 2, 50, 4000) === 2050`, etc.) stay valid unmodified.
+
+**`app/src/ui/gateAdjustModel.ts`** — replace the two fixed constants:
+
+```ts
+// WP-I (Q2, 2026-09-04): nudge size scales with the route's own length, so a
+// short loop and a long commute both get a usable step — "±1% of the ride"
+// (large) and "±0.1%" (small), per Nathan's own framing. Replaces the prior
+// fixed 10 m / 50 m steps (kept as literal deltas in clampNudge's own tests,
+// which are agnostic to how the caller derives deltaM).
+export const NUDGE_SMALL_PCT = 0.001; // 0.1%
+export const NUDGE_LARGE_PCT = 0.01;  // 1%
+
+/** The nudge step in metres for a route of this length. Passed straight into
+ * clampNudge as `deltaM` — clampNudge is unchanged by this. */
+export function nudgeDeltaM(pct: number, refLengthM: number): number {
+  return pct * refLengthM;
+}
+```
+
+**`app/src/ui/gateAdjustCard.tsx`** — swap the import and the four `pad(...)` calls:
+
+```ts
+import {
+  NUDGE_LARGE_PCT, NUDGE_SMALL_PCT, clampNudge, fmtChainage, gateName, isAdjustable, nudgeDeltaM,
+} from './gateAdjustModel';
+```
+
+Inside the component, beside the existing `dirty` line:
+
+```ts
+const smallM = nudgeDeltaM(NUDGE_SMALL_PCT, props.refLengthM);
+const largeM = nudgeDeltaM(NUDGE_LARGE_PCT, props.refLengthM);
+```
+
+The pad row (labels are fixed percentages — always meaningful regardless of route length;
+the chainage readout between them already shows the concrete resulting metre position):
+
+```tsx
+{pad('−1%', -largeM)}
+{pad('−0.1%', -smallM)}
+<Text style={[st.chainage, { color: t.text }]}>{fmtChainage(chainageM[selected])}</Text>
+{pad('+0.1%', smallM)}
+{pad('+1%', largeM)}
+```
+
+`pad()`'s own body (`gateAdjustCard.tsx:52-59`) is untouched — it already takes `(label,
+deltaM)` generically.
+
+**Edge case, not blocking:** `MIN_GATE_GAP_M = 50` (`gateAdjustModel.ts`) still floors how
+close two gates can sit. On a very short route (say 600 m), 0.1% = 0.6 m and 1% = 6 m — both
+well under the 50 m gap floor, so `clampNudge` will often clamp a nudge to the neighbour-gap
+limit rather than the requested percentage on short routes; this is existing, correct
+behaviour (the floor exists precisely to stop gates colliding) and needs no change, just
+worth knowing if a short-route on-device check looks like the pad "does nothing" near a
+neighbour.
+
+**New tests**, appended to `app/tests/gateseeding_suite.ts` (beside the existing
+`clampNudge` block, same file/import, 2 lines):
+- `numEq(nudgeDeltaM(0.01, 4000), 40)` — 1% of a 4000 m route is 40 m.
+- `numEq(nudgeDeltaM(0.001, 4000), 4)` — 0.1% of a 4000 m route is 4 m.
+
 ### 3.4 `app/tests/run.ts` — register the new suite
 
 Add `import './gateadjustmap_suite.ts';` after the `routeasset_runtime_suite.ts` line.
@@ -521,15 +596,17 @@ Manual reads before declaring done: `grep -n "barLine\|tickHit\|tickSelected" ap
 - EDIT `app/tests/run.ts` — one import line (§3.4).
 - EDIT `app/src/ui/gateAdjustCard.tsx` — new `refLine` prop, map area replaces the bar (lines 67-92), styles, header comment (§3.3).
 - EDIT `app/src/ui/RecordScreen.tsx` — `RefLine` type import, `GateAdjustDraft.ref`, `setAdjust` gains `ref`, `refLine` prop on the card (§3.2).
+- EDIT `app/src/ui/gateAdjustModel.ts` — `NUDGE_SMALL_PCT`/`NUDGE_LARGE_PCT`/`nudgeDeltaM` replace the fixed `NUDGE_SMALL_M`/`NUDGE_LARGE_M` (§3.3b, Q2 answer).
+- EDIT `app/tests/gateseeding_suite.ts` — 2 new `nudgeDeltaM` assertions (§3.3b).
 - EDIT `cycles/virgin-cycle1/README.md` — the usual "Testing WP-I today" entry (coordinator).
 
-**Deliberately NOT touched:** `app/src/ui/routeMapView.tsx`, `app/src/ui/routeAssetRuntime.ts`, `app/src/ui/routeMapMath.ts`, `app/src/ui/gateAdjustModel.ts`, `app/package.json`, `STATE.md`, `app/src/store/*` (persistence path unchanged).
+**Deliberately NOT touched:** `app/src/ui/routeMapView.tsx`, `app/src/ui/routeAssetRuntime.ts`, `app/src/ui/routeMapMath.ts`, `app/package.json`, `STATE.md`, `app/src/store/*` (persistence path unchanged).
 
 **Only if §3.5 is later authorized:** `gateAdjustMapModel.ts` (+§3.5.2), `gateAdjustCard.tsx` (+§3.5.3), `gateadjustmap_suite.ts` (+S1-S4), `STATE.md:103-104` and the SETUP-UX §4 citation (§3.5.5), `QUESTIONS-FOR-NATHAN.md` (answer appended).
 
 ## 7. Open questions
 
-1. **Finger-scrub authorization — a genuine product decision for Nathan, not defaulted here (blocks §3.5 only; the map half does not wait on it).** Q1 asked two things at once: keep the pad or replace it, and whether to add the scrub at all. The answer — "alright lets keep the +- pad, but it should still move the gates on a real ride line. Not the straight render I have now." — clearly settles the first (pad stays) and is emphatic about the map (built by this WP), but never says "yes, add the scrub." It could equally mean "just make the pad move gates on the real line" (i.e. the scrub is not wanted, or not wanted yet). Because `STATE.md:103-104` is binding and currently says "never finger-dragging", building the scrub on this wording would be an unlogged amendment of a settled rule; dropping it silently would be discarding Nathan's own earlier ask. So the question goes back, plainly: *"The gate card now draws your real ride line and the ± pad moves the gates along it (WP-I map half). Separately: do you also want the finger-scrub — tap a gate, then slide left/right anywhere on the card to move it coarsely along the ride, with the ± pad kept for fine steps? Yes / no / not now. If yes, STATE.md's 'never finger-dragging' line gets amended to 'select-then-move; never dragging the marker under the thumb'."* Until answered: §3.5 is not executed, STATE.md is not edited, and the card's hint copy stays as today.
+1. **RESOLVED 2026-09-04 — no finger-scrub.** Nathan's answer in `QUESTIONS-FOR-NATHAN2.md` Q2: "Lets keep just the +-pad for now and not implement the finger dragging." §3.5 (the fully-designed scrub gesture) is NOT to be executed — leave it as a ready-to-go design for if he ever changes his mind, do not edit `STATE.md:103-104` (its "never finger-dragging" rule stands, unamended, exactly as written). The pad itself gets a small upgrade instead — see §3.3b (percentage-of-route-length nudge steps), which IS in scope for this Execute pass.
 2. **Map height (not blocking; a taste call the executor may make).** §3.3 uses `MAP_H = 200`. The `'ending'` column has a flex spacer below the card, so 200 px fits on every phone the app targets; a very tall N-S route in a 320×200 box will be small (height-constrained), but every route stays whole, north-up, with 22 px insets. If it looks cramped on device, 240 is the next stop — nothing else changes.
 3. **Loop label overlap (not blocking).** §3.3's 12 px FINISH drop is the minimum that keeps both end labels legible; a proper "loop" treatment (one combined "START/FINISH" label) is a one-line follow-up if Nathan rides loops often.
 4. **Tiles under the gates (not this WP's question, noted for the record).** If Nathan, on seeing the real line, asks for the basemap too, the path is §3.0 option (b): an `assetOverride` prop on `RouteMapView` fed by `buildRuntimeRouteAsset(refLine, chainageM)` from the card — the pure module built here already produces that asset. Not proposed now: the complaint was the shape, not the tiles, and (b) forfeits headless-testable gate selection.
