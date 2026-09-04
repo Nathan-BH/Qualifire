@@ -1,0 +1,91 @@
+{
+ "schemaVersion": 1,
+ "landmarks": [
+  {
+   "id": "lm:20260901-091752-f6ca:start",
+   "label": "Home",
+   "lat": 50.8366472,
+   "lon": 4.6382618,
+   "radiusM": 120,
+   "activeFromMs": 1788247072264,
+   "activeUntilMs": null,
+   "offerAtStart": true
+  },
+  {
+   "id": "lm:20260901-091752-f6ca:end",
+   "label": "Work",
+   "lat": 50.8633583,
+   "lon": 4.6879247,
+   "radiusM": 120,
+   "activeFromMs": 1788247072264,
+   "activeUntilMs": null,
+   "offerAtStart": true
+  }
+ ],
+ "ways": [
+  {
+   "id": "way:20260901-091752-f6ca",
+   "startLandmarkId": "lm:20260901-091752-f6ca:start",
+   "endLandmarkId": "lm:20260901-091752-f6ca:end",
+   "routeIds": [
+    "route:20260901-091752-f6ca"
+   ]
+  },
+  {
+   "id": "way:20260903-182911-3c34",
+   "startLandmarkId": "lm:20260901-091752-f6ca:end",
+   "endLandmarkId": "lm:20260901-091752-f6ca:start",
+   "routeIds": [
+    "route:20260903-182911-3c34"
+   ]
+  }
+ ],
+ "routes": [
+  {
+   "id": "route:20260901-091752-f6ca",
+   "wayId": "way:20260901-091752-f6ca",
+   "refLineId": "route:20260901-091752-f6ca",
+   "gateSetVersion": 1,
+   "seeded": false,
+   "referenceRideId": "20260901-091752-f6ca"
+  },
+  {
+   "id": "route:20260903-182911-3c34",
+   "wayId": "way:20260903-182911-3c34",
+   "refLineId": "route:20260903-182911-3c34",
+   "gateSetVersion": 1,
+   "seeded": false,
+   "referenceRideId": "20260903-182911-3c34"
+  }
+ ],
+ "gateSets": [
+  {
+   "routeId": "route:20260901-091752-f6ca",
+   "version": 1,
+   "chainageM": [
+    56.616302669999996,
+    1415.40756675,
+    2830.8151335,
+    4246.222700249999,
+    5605.01396433
+   ],
+   "createdAtMs": 1788247072264,
+   "origin": "geometric",
+   "note": "seeded: start/finish at 1%/99%, sectors at 25/50/75% of the reference line, nudged clear of the reference ride's own stops — a proposal, not measured placement"
+  },
+  {
+   "routeId": "route:20260903-182911-3c34",
+   "version": 1,
+   "chainageM": [
+    139.57856241,
+    3489.46406025,
+    6978.9281205,
+    10468.39218075,
+    13818.277678589999
+   ],
+   "createdAtMs": 1788452951028,
+   "origin": "geometric",
+   "note": "seeded: start/finish at 1%/99%, sectors at 25/50/75% of the reference line, nudged clear of the reference ride's own stops — a proposal, not measured placement"
+  }
+ ]
+}
