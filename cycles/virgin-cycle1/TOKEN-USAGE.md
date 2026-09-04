@@ -158,3 +158,37 @@ got a real Digest+Plan pass to amend the brief in place.
 **Subtotal this stretch: ~230.2k tokens across 1 subagent dispatch** (the WP-I edit was a direct coordinator chore, not a dispatch). **Running cycle total: roughly 6.70M tokens across 46 subagent dispatches.**
 
 **Both WP-H and WP-I are now fully execution-ready with no blocking open questions.** Combined with E/G/K/M (ready since 2026-09-03), all six of this pass's work packages are execution-ready as of 2026-09-04.
+
+## Execute + Inspect pass for all six (2026-09-04) — E, G, H, I, K, M all landed
+
+Nathan asked to execute all six remaining briefed work packages, in order, same session.
+Each WP got a Sonnet Execute dispatch against its execution-ready brief, then a fresh-context
+Fable Inspect dispatch (adversarial, independently reran every check). Two WPs (G, H) hit a
+real conflict introduced by an earlier WP in this same batch landing first (WP-G's variant
+offer broke an assumption in WP-H's brief) or a brief-vs-code gap the executor correctly
+would not decide itself (WP-G's RidesScreen.tsx label switch) — in both cases the Sonnet
+executor stopped and escalated rather than guessing, and the escalation was forwarded
+verbatim to a fresh Fable ruling dispatch rather than decided by the coordinator (Sonnet
+chat). All bookkeeping (README/STATE/OPEN-ITEMS/QUESTIONS-FOR-NATHAN* updates, git commits,
+git-lock workaround) was done directly by the coordinator as chores.
+
+| Dispatch | Tier | Model | Tokens (reported) | Tool calls | Outcome |
+|---|---|---|---|---|---|
+| Execute — WP-E (virgin manifest gate-leak) | Execute | Sonnet | ~178.8k | 72 | Landed: `bundledForSeedMode` guard + DEMO fixture. 389/386/0/3, tsc clean. No ambiguity. |
+| Inspect — WP-E | Inspect | Fable | ~99.4k | 20 | Clean. One trivial test-guard tightening applied. |
+| Execute — WP-G (specifications / route variants) | Execute | Sonnet | ~361.3k | 139 | Landed core design; correctly flagged `RidesScreen.tsx` as outside the brief's file list rather than deciding to touch it. |
+| Ruling — WP-G RidesScreen.tsx scope gap | Plan (ruling) | Fable | ~67.2k | 7 | Ruled: land now (brief prose named it, file list omitted it by error). Built the 2-line fix, verified. |
+| Inspect — WP-G | Inspect | Fable | ~128.7k | 37 | Clean after 2 real bugs found+fixed (non-array `specs` crash; false duplicate hint before typing). 409/406/0/3. |
+| Execute — WP-H (ride detail screen) | Execute | Sonnet | ~365.4k | 263 | Landed RESULT retirement, new `RideDetailScreen.tsx`, promote-to-reference reset flow. Correctly stopped on a real WP-G conflict (the "new way" button's condition) rather than guessing. |
+| Ruling — WP-H new-way-button conflict | Plan (ruling) | Fable | ~139.6k | 30 | Ruled: dynamic label/flow keyed on `draft.existingWayId` (option a). Built and verified: 438/435/0/3. |
+| Inspect — WP-H | Inspect | Fable | ~156.5k | 43 | Clean. One test-coverage addition (other-route result untouched by a promotion). |
+| Execute — WP-I (gate card map + adjustment pad) | Execute | Sonnet | ~200.7k | 61 | Landed real ride-line rendering + 4-button %-of-route pad. Reconciled WP-H's shared `wayFromRide.ts` module drift without a stop. No ambiguity. |
+| Inspect — WP-I | Inspect | Fable | ~121.5k | 27 | Clean. 5 non-blocking notes (pad-label overflow risk; overlapping gate hit-areas on an out-and-back) filed to OPEN-ITEMS.md. |
+| Execute — WP-K (sector-coloured trail phase 2) | Execute | Sonnet | ~204.4k | 86 | Landed shared `sectorTrailModel.ts` + z-order fix for the WP-J casing bug. Reconciled WP-H's ResultScreen retirement without a stop. No ambiguity. |
+| Inspect — WP-K | Inspect | Fable | ~101.3k | 25 | Clean. 2 doc/comment fixes; confirmed z-order fix matters even more than the brief assumed (ride-detail trace, not just live map). 2 follow-ups filed to OPEN-ITEMS.md. |
+| Execute — WP-M (RECORD setup layout) | Execute | Sonnet | ~67.7k | 13 | Landed the one-line style fix. No ambiguity. |
+| Inspect — WP-M | Inspect | Fable | ~64.3k | 8 | Clean. |
+
+**Subtotal this pass: ~2.257M tokens across 14 subagent dispatches** (6 Execute + 2 Plan/ruling + 6 Inspect). Two genuine escalations, both forwarded to Fable rather than ruled on as Sonnet chat, per the pipeline's own rule. Zero blocking defects survived to commit — every real bug found by Inspect was fixed before landing. **Running cycle total: roughly 8.96M tokens across 60 subagent dispatches.**
+
+**All six work packages (E, G, H, I, K, M) are now landed, independently inspected, and committed** (`83b558b` E, `ad929c5` G, `0bb025d` H, `b8cf233` I, `163fded` K, `1a09c6e` M — all on branch `virgin`). Every WP in this cycle (A-Q) is now DONE. On-device visual checks are the only thing left, cycle-wide.
