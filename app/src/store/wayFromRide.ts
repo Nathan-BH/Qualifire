@@ -14,6 +14,7 @@
  * retroactive offer follows the live one, WP-G §9 Q1: "always"); only the
  * button label and the card's own mode differ, both keyed on that field.
  */
+import type { RefLine } from '../../core/src/index.ts';
 import type { FsAdapter } from '../storage/fsAdapter.ts';
 import { decodeRideFile } from '../storage/jsonl.ts';
 import { buildRefFromRideFixes, saveUserRef } from '../live/userRefs.ts';
@@ -178,6 +179,8 @@ export function existingWayProps(wayId: string): { label: string; knownSpecLists
 /** What the gate-adjust step carries between CREATE WAY and its own save. */
 export interface GateAdjustDraft {
   routeId: string;
+  /** the ride's real reference line — the card draws gates ON it (WP-I) */
+  ref: RefLine;
   refLengthM: number;
   chainageM: number[];
 }
@@ -212,7 +215,7 @@ export async function createWayFromDraft(
   return {
     ok: true,
     routeId,
-    adjust: builtRef && seed ? { routeId, refLengthM: builtRef.ref.length, chainageM: seed.chainageM } : null,
+    adjust: builtRef && seed ? { routeId, ref: builtRef.ref, refLengthM: builtRef.ref.length, chainageM: seed.chainageM } : null,
   };
 }
 

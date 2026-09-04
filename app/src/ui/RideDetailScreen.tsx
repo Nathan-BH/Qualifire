@@ -524,6 +524,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
       {adjust !== null ? (
         <View style={{ marginTop: 12 }}>
           <GateAdjustCard
+            refLine={adjust.ref}
             refLengthM={adjust.refLengthM}
             initialChainageM={adjust.chainageM}
             busy={busy}

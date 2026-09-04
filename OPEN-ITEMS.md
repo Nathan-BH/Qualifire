@@ -78,6 +78,17 @@ add new ones as they surface, don't let it grow back into what it replaced.
 - **`expo-sharing` native module.** The debug-export share buttons work today via the existing
   SAF/share-text mechanism; a real native share sheet needs an APK rebuild to add the
   dependency. Cosmetic/convenience upgrade only.
+- **WP-I gate-adjust pad: button labels may overflow on a narrow phone.** The 4-button pad's
+  labels grew from `−10`/`−50` to `−0.1%`/`−1%`; RN rows don't wrap by default, so the row
+  may spill past the card border on a ~360px-wide phone. Suggested fix: `padBtn: { flex: 1,
+  minWidth: 0 }` or similar. Also worth checking: Nathan's wording ("two buttons are big …
+  the smaller ones") may want the ±1% pair visibly larger, not just labelled differently — all
+  four are currently the same size. Needs an on-device look.
+- **WP-I gate-adjust card: overlapping gate hit-areas on an out-and-back ride.** Two gates at
+  mirrored chainages (e.g. outbound km 3 / return km 3) can render on the same pixel on the
+  small card map; their 44px tap targets overlap and only the later-rendered one is reliably
+  tappable. Doesn't affect what can be saved, only which gate a tap selects on that ride
+  shape. Needs an on-device look on a real out-and-back route.
 - **WP-G route-specs on the shipped seed build.** Not built or tested on `main`/shipped
   (only on `virgin`) — if a shipped seed way ever gains a spec'd variant, several plain seed
   routes sharing that way would collapse into one grouped pill, hiding all but

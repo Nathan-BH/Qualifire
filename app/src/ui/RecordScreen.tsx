@@ -945,6 +945,7 @@ export default function RecordScreen({
         </Text>
         {adjust !== null ? (
           <GateAdjustCard
+            refLine={adjust.ref}
             refLengthM={adjust.refLengthM}
             initialChainageM={adjust.chainageM}
             busy={busy}

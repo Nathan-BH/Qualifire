@@ -4,8 +4,20 @@
  * Headless-testable, same discipline as routeMapMath.ts / towerModel.ts.
  */
 
-export const NUDGE_SMALL_M = 10;
-export const NUDGE_LARGE_M = 50;
+// WP-I (Q2, 2026-09-04): nudge size scales with the route's own length, so a
+// short loop and a long commute both get a usable step — "±1% of the ride"
+// (large) and "±0.1%" (small), per Nathan's own framing. Replaces the prior
+// fixed 10 m / 50 m steps (kept as literal deltas in clampNudge's own tests,
+// which are agnostic to how the caller derives deltaM).
+export const NUDGE_SMALL_PCT = 0.001; // 0.1%
+export const NUDGE_LARGE_PCT = 0.01;  // 1%
+
+/** The nudge step in metres for a route of this length. Passed straight into
+ * clampNudge as `deltaM` — clampNudge is unchanged by this. */
+export function nudgeDeltaM(pct: number, refLengthM: number): number {
+  return pct * refLengthM;
+}
+
 /** Same sanity floor as gateSeeding.ts — a nudge can never push two gates
  * closer than this. */
 export const MIN_GATE_GAP_M = 50;

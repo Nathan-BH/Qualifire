@@ -3,7 +3,7 @@
  * Date.now() — so this suite is plain assertions, no fixtures. */
 import { assert, test } from './lib.ts';
 import { seedGateChainages } from '../src/store/gateSeeding.ts';
-import { clampNudge, gateName, isAdjustable, fmtChainage } from '../src/ui/gateAdjustModel.ts';
+import { clampNudge, gateName, isAdjustable, fmtChainage, nudgeDeltaM } from '../src/ui/gateAdjustModel.ts';
 
 const near = (a: number, b: number) => Math.abs(a - b) < 1e-9;
 
@@ -66,4 +66,9 @@ test('gateAdjust: gateName maps START/G1/G2/G3/FINISH and fmtChainage groups tho
   assert(gateName(4, 5) === 'FINISH', 'index 4 is FINISH');
   assert(fmtChainage(1842) === '1 842 m', `got ${fmtChainage(1842)}`);
   assert(fmtChainage(75) === '75 m', `got ${fmtChainage(75)}`);
+});
+
+test('gateAdjust: nudgeDeltaM turns a route-length percentage into metres (WP-I §3.3b, Q2)', () => {
+  assert(near(nudgeDeltaM(0.01, 4000), 40), '1% of a 4000 m route is 40 m');
+  assert(near(nudgeDeltaM(0.001, 4000), 4), '0.1% of a 4000 m route is 4 m');
 });
