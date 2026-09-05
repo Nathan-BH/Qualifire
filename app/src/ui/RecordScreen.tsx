@@ -1260,7 +1260,7 @@ export default function RecordScreen({
                   </View>
                 )}
               <Text style={styles.sub}>
-                what you pick stays locked until the end — ride a different road and this ride will not be scored as that road (§8a)
+                your pick is locked for this ride
               </Text>
             </>
           ) : null}

@@ -165,14 +165,10 @@ export default function DemoScreen() {
   // array is built or passed here at all.
   const sectorColours = demoSectorColours(script, gatesDone, tierLineColour);
 
-  const headerCopy = mode === 'second'
-    ? `A real archived commute lap replayed at ${RATE}x — the reference line and gates are already there; each sector paints its colour as you cross the gate that ends it. Nothing is recorded.`
-    : 'The same lap ridden as if for the first time — no route, no gates, just you and the line you are writing. Nothing is recorded.';
-
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
       <Text style={styles.h2}>DEMO RIDE</Text>
-      <Text style={styles.sub}>{headerCopy}</Text>
+      <Text style={styles.sub}>Nothing is recorded.</Text>
 
       <View style={styles.pillRow}>
         <Pressable
@@ -215,9 +211,6 @@ export default function DemoScreen() {
         <Text style={styles.btnText}>{running ? 'RUNNING…' : 'RUN DEMO RIDE'}</Text>
       </Pressable>
 
-      <Text style={styles.note}>
-        Sounds are not wired yet — gates buzz only. When the tier tones land they play here first.
-      </Text>
     </ScrollView>
   );
 }
@@ -244,5 +237,4 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
     backgroundColor: t.accent, alignItems: 'center',
   },
   btnText: { color: t.onAccent, fontSize: 16, fontWeight: '800', letterSpacing: 3 },
-  note: { color: t.textDim, fontSize: 11.5, marginTop: 14 },
 });

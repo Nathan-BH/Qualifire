@@ -135,23 +135,42 @@ function Switch({ on, onToggle, t }: { on: boolean; onToggle: () => void; t: Pad
   );
 }
 
+/** WP-L: which row's help is showing (keyed by label); one at a time. */
+interface Help { open: string | null; toggle: (key: string) => void }
+
 function Row(props: {
-  label: string; hint?: string; t: PaddockTheme; children: React.ReactNode;
+  label: string; hint?: string; help: Help; t: PaddockTheme; children: React.ReactNode;
   /** WP-Q: a visual break above this row (top border + extra gap) so it
    * reads as its own group rather than a sibling of the row above — used for
    * DATA's "Reset to virgin" row, one step down from the two share rows. */
   sep?: boolean;
 }) {
+  const { t } = props;
+  const hasHelp = props.hint !== undefined && props.hint !== '';
+  const open = hasHelp && props.help.open === props.label;
   return (
     <View style={[
       st.row,
-      { borderBottomColor: props.t.cardBorder },
-      props.sep ? { borderTopWidth: 1, borderTopColor: props.t.cardBorder, marginTop: 4, paddingTop: 14 } : null,
+      { borderBottomColor: t.cardBorder },
+      props.sep ? { borderTopWidth: 1, borderTopColor: t.cardBorder, marginTop: 4, paddingTop: 14 } : null,
     ]}>
       <View style={{ flex: 1, paddingRight: 10 }}>
-        <Text style={{ color: props.t.text, fontSize: 14 }}>{props.label}</Text>
-        {props.hint ? (
-          <Text style={{ color: props.t.textDim, fontSize: 11.5, marginTop: 2 }}>{props.hint}</Text>
+        <View style={st.labelRow}>
+          <Text style={{ color: t.text, fontSize: 14 }}>{props.label}</Text>
+          {hasHelp ? (
+            <Pressable
+              onPress={() => props.help.toggle(props.label)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={`About ${props.label}`}
+              style={[st.helpBtn, { borderColor: t.cardBorder }, open && { backgroundColor: t.accent, borderColor: t.accent }]}
+            >
+              <Text style={[st.helpText, { color: open ? t.onAccent : t.textDim }]}>?</Text>
+            </Pressable>
+          ) : null}
+        </View>
+        {open ? (
+          <Text style={{ color: t.textDim, fontSize: 11.5, marginTop: 4 }}>{props.hint}</Text>
         ) : null}
       </View>
       {props.children}
@@ -274,11 +293,16 @@ async function onResetPress(): Promise<void> {
 export default function SettingsScreen() {
   const { t, mode, toggleMode } = useTheme();
   const { s, set } = useSettings();
+  const [helpOpen, setHelpOpen] = useState<string | null>(null);
+  const help: Help = {
+    open: helpOpen,
+    toggle: (k) => setHelpOpen((cur) => (cur === k ? null : k)),
+  };
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
       <Text style={[st.h2, { color: t.textDim }]}>APPEARANCE</Text>
       <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-        <Row label="Theme" hint="the race surface follows it" t={t}>
+        <Row label="Theme" hint="The map and race surface follow it." help={help} t={t}>
           <Seg t={t} value={mode === 'daylight' ? 'day' : 'night'}
             options={[['night', 'night'], ['day', 'day']]}
             onPick={(v) => { if ((v === 'day') !== (mode === 'daylight')) toggleMode(); }} />
@@ -287,27 +311,27 @@ export default function SettingsScreen() {
 
       <Text style={[st.h2, { color: t.textDim }]}>ON THE BIKE</Text>
       <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-        <Row label="Red lights" t={t}
-          hint="auto-pause is measured; a button is yours to press but makes stopped time self-reported (§18, unsettled)">
+        <Row label="Red lights" t={t} help={help}
+          hint="auto: a stop at a light is detected and the clock pauses by itself. button: you press to pause, so stopped time is self-reported. off: the clock never pauses.">
           <Seg t={t} value={s.redLight}
             options={[['auto', 'auto'], ['button', 'button'], ['off', 'off']]}
             onPick={(v) => set('redLight', v)} />
         </Row>
-        <Row label="Live map" hint="moving dot on the route while riding" t={t}>
+        <Row label="Live map" hint="Show the moving dot on the route while riding." help={help} t={t}>
           <Switch on={s.liveMap} onToggle={() => set('liveMap', !s.liveMap)} t={t} />
         </Row>
-        <Row label="Sector colours" t={t}
-          hint="paint each stretch of the route line in the tier its sector earned (live map, ride detail, RIDES) — off keeps the ride all yellow">
+        <Row label="Sector colours" t={t} help={help}
+          hint="Paint each stretch of the route line in the tier its sector earned — on the live map, in the ride view and on the RIDES list. Purple beats your best, green beats your recent average, yellow is an ordinary lap. Off keeps the whole line yellow.">
           <Switch on={s.sectorColours} onToggle={() => set('sectorColours', !s.sectorColours)} t={t} />
         </Row>
-        <Row label="Earcons" hint="one buzz + tier sound at each gate (D-019)" t={t}>
+        <Row label="Earcons" hint="A short buzz at each gate crossing." help={help} t={t}>
           <Switch on={s.earcons} onToggle={() => set('earcons', !s.earcons)} t={t} />
         </Row>
       </View>
 
       <Text style={[st.h2, { color: t.textDim }]}>STARTING A RIDE</Text>
       <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-        <Row label="Start place" hint="detect where you are, or pick it yourself (§21)" t={t}>
+        <Row label="Start place" hint="Detect where you are when a ride starts, or choose the place yourself." help={help} t={t}>
           <Seg t={t} value={s.startMode}
             options={[['auto', 'detect'], ['pick', 'choose']]}
             onPick={(v) => set('startMode', v)} />
@@ -320,21 +344,21 @@ export default function SettingsScreen() {
             Result tab with the RIDES/RESULT redesign; this switch now gates
             the ranking table inside Result's Personal Bests accordion. Still
             a real switch, never decorative (file doctrine, unchanged). */}
-        <Row label="Timing" t={t}
+        <Row label="Timing" t={t} help={help}
           hint="wall clock is the lap as the road gave it — every stop counts, a red light is your luck; moving drops the time you stood still">
           <Seg t={t} value={s.timing}
             options={[['raw', 'wall clock'], ['moving', 'moving']]}
             onPick={(v) => set('timing', v)} />
         </Row>
-        <Row label="Rankings" hint="show where each ride placed against your others on that route" t={t}>
+        <Row label="Rankings" hint="Show where each ride placed against your others on that route." help={help} t={t}>
           <Switch on={s.tower} onToggle={() => set('tower', !s.tower)} t={t} />
         </Row>
       </View>
 
       <Text style={[st.h2, { color: t.textDim }]}>DATA</Text>
       <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-        <Row label="Places & routes" t={t}
-          hint="share catalog.user.json — everything the save flow created on this phone">
+        <Row label="Places & routes" t={t} help={help}
+          hint="Share catalog.user.json — every place, way and route created on this phone.">
           <Pressable
             style={[st.shareBtn, { borderColor: t.cardBorder }]}
             onPress={() => void shareStoreFile(USER_CATALOG_FILE, `qualifire-catalog-${dateStamp(Date.now())}.json`)}
@@ -342,8 +366,8 @@ export default function SettingsScreen() {
             <Text style={[st.shareText, { color: t.text }]}>share</Text>
           </Pressable>
         </Row>
-        <Row label="Reference lines" t={t}
-          hint="share refs.user.json — the reference lines built from your rides (per-ride GPX+ lives on RIDES)">
+        <Row label="Reference lines" t={t} help={help}
+          hint="Share refs.user.json — the reference lines built from your rides. Per-ride GPX+ export lives on RIDES.">
           <Pressable
             style={[st.shareBtn, { borderColor: t.cardBorder }]}
             onPress={() => void shareStoreFile(USER_REFS_FILE, `qualifire-refs-${dateStamp(Date.now())}.json`)}
@@ -358,8 +382,8 @@ export default function SettingsScreen() {
             is the honest reading of the brief's "danger/dim colour"; the
             destructive style lives entirely in the two-step Alert.alert
             confirm, same as RidesScreen's own delete button. */}
-        <Row label="Reset to virgin" t={t} sep
-          hint="move every ride, result, place, way and route aside and start this build over from its first launch — settings and theme are kept">
+        <Row label="Reset to virgin" t={t} sep help={help}
+          hint="Moves every ride, result, place, way and route aside and starts this build over from its first launch. Settings and theme are kept.">
           <Pressable
             style={[st.shareBtn, { borderColor: t.cardBorder }]}
             onPress={() => void onResetPress()}
@@ -369,10 +393,6 @@ export default function SettingsScreen() {
         </Row>
       </View>
 
-      <Text style={{ color: t.textDim, fontSize: 11.5, marginTop: 12 }}>
-        Saved on the phone and restored on launch. A corrupt file falls back to
-        these defaults rather than blocking the app.
-      </Text>
     </ScrollView>
   );
 }
@@ -388,4 +408,7 @@ const st = StyleSheet.create({
   knob: { position: 'absolute', width: 19, height: 19, borderRadius: 19 },
   shareBtn: { borderWidth: 1, borderRadius: 9, paddingHorizontal: 12, paddingVertical: 6 },
   shareText: { fontSize: 11.5, letterSpacing: 1 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  helpBtn: { width: 18, height: 18, borderRadius: 9, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  helpText: { fontSize: 11, fontWeight: '700', lineHeight: 13 },
 });

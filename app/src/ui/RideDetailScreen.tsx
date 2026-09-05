@@ -437,10 +437,6 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
               ))}
             </View>
           ) : null}
-          <Text style={{ color: t.textDim, fontSize: 11.5, marginTop: 10, textAlign: 'center' }}>
-            Free-ride sector times live in their own category — they never mix into a route&apos;s
-            history, so your route comparisons stay clean.
-          </Text>
           <View style={{ alignSelf: 'stretch', marginTop: 10 }}>
             <RouteMapView
               variant="browse"
@@ -545,10 +541,6 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
         <Text style={[st.slimBtnText, { color: t.onAccent }]}>{primaryLabel}</Text>
       </Pressable>
 
-      <Text style={{ color: t.textDim, fontSize: 11.5, marginTop: 12 }}>
-        Position is a fact; colour is a judgement — a mid-pack ride is never dressed as failure.
-        Purple beats your best, green beats your recent average, yellow is an ordinary lap.
-      </Text>
     </ScrollView>
   );
 }

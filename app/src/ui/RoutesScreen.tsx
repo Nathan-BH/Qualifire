@@ -60,11 +60,6 @@ export default function RoutesScreen() {
         {CATALOG.landmarks.length === 0 ? (
           <Text style={{ color: t.textDim, fontSize: 14, paddingVertical: 9 }}>No places yet.</Text>
         ) : null}
-        <Text style={{ color: t.textDim, fontSize: 11.5, paddingVertical: 9 }}>
-          Dormant places keep seeding history but are never offered at START.
-          Radius is measured, not guessed: p90 of the endpoint spread, capped at half
-          the gap to the nearest place.
-        </Text>
       </View>
 
       <Text style={[st.h2, { color: t.textDim }]}>WAYS</Text>
@@ -98,10 +93,6 @@ export default function RoutesScreen() {
         );
       })}
 
-      <Text style={{ color: t.textDim, fontSize: 11.5, marginTop: 4 }}>
-        Route lines are pre-rendered from your own rides, with the measured gates marked.
-        Editing a route's gates resets its history — every past ride is re-timed against the new gates.
-      </Text>
     </ScrollView>
   );
 }
