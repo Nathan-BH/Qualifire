@@ -93,7 +93,9 @@ export function WayNamingCard(props: WayNamingCardProps) {
             ? `Scored as ${props.matchedRouteLabel}. Was this a different route? Add what made it different to save it as a new route on this way â this ride becomes its reference.`
             : `${existingWay.label} is a way you have, but this ride did not follow any of its routes. Name what made it different to save it as a new route â this ride becomes its reference.`
           : props.loop
-            ? 'This ride looped from and back to one new place.'
+            ? props.startExistingLabel !== null
+              ? `This ride looped from and back to ${props.startExistingLabel}.`
+              : 'This ride looped from and back to one new place.'
             : props.matchedRouteLabel
               ? `Scored as ${props.matchedRouteLabel}, but no way of yours runs between these two places. Name them to make this a route of its own â this ride becomes its reference.`
               : 'This ride does not match any way you have. Name its start and end to make it a real route â this ride becomes its reference.'}

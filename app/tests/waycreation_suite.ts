@@ -523,6 +523,55 @@ test('WP-G 8: an existing loop way drafts a variant, not a second loop way', () 
   assert(errs.length === 0, `merged loop-variant catalog must validate, got: ${errs.join('; ')}`);
 });
 
+test('WP-G 9: an END-side sub-MIN sliver reuses the pre-existing landmark (not the start draft) and the build pushes only the start', () => {
+  const tight = lm('tight', LAT0 + 0.019 + 0.0015272, LON0, 150);
+  const cat = catWith([tight]);
+  const d = draftWayCreation(cat, { ...RIDE, fixes: northRide(20) });
+  assert(
+    metresBetween({ lat: LAT0 + 0.019, lon: LON0 }, tight) - tight.radiusM < MIN_LANDMARK_RADIUS_M,
+    'sanity: the fixture end fix sits in the sub-MIN sliver band around tight',
+  );
+  assert(d !== null, 'a real ride drafts');
+  assert(d!.start.kind === 'new' && d!.start.draft!.radiusM === NEW_LANDMARK_RADIUS_M,
+    'the far-away disc does not squeeze the start');
+  assert(d!.end.kind === 'existing' && d!.end.landmarkId === 'tight', 'the end-side sliver reuses the pre-existing landmark');
+  assert(d!.end.draft === undefined, 'no draft on an existing-kind endpoint');
+  assert(d!.loop === false, 'not a loop');
+  assert(d!.existingWayId === null, 'no existing way between a fresh start and tight');
+  const built = buildWayCreationCatalog(cat, d!, { start: 'Home', end: '' });
+  assert(built.landmarks.length === 2, 'the pre-existing tight plus exactly one new landmark');
+  assert(built.landmarks.some((l) => l.id === 'lm:ride-t1:start' && l.label === 'Home'), 'the new start landmark is named Home');
+  assert(!built.landmarks.some((l) => l.id === 'lm:ride-t1:end'), 'no end landmark minted');
+  assert(built.ways[0].startLandmarkId === 'lm:ride-t1:start' && built.ways[0].endLandmarkId === 'tight',
+    'the way runs from the new start landmark to the reused tight landmark');
+  assert(built.ways[0].loopDiscriminator === undefined, 'not a loop way');
+  const errs9 = validateCatalog(mergeCatalogs(emptyCatalog(), built));
+  assert(errs9.length === 0, `merged result must validate, got: ${errs9.join('; ')}`);
+});
+
+test('WP-G 10: a loop from and back to an EXISTING landmark with no loop way yet builds a new loop way and mints no landmark', () => {
+  const home = lm('home', LAT0, LON0, 150);
+  const cat = catWith([home]);
+  const out = northRide(6, 0.001);
+  const fixes = [...out, ...[...out].reverse()];
+  const d = draftWayCreation(cat, { ...RIDE, fixes });
+  assert(d !== null, 'a real loop ride drafts');
+  assert(d!.start.kind === 'existing' && d!.start.landmarkId === 'home', 'start resolves to the existing home landmark');
+  assert(d!.end.kind === 'existing' && d!.end.landmarkId === 'home', 'end resolves to the existing home landmark');
+  assert(d!.loop === true, 'recognised as a loop');
+  assert(d!.existingWayId === null, 'no loop way on home yet');
+  const built = buildWayCreationCatalog(cat, d!, { start: '', end: '' });
+  assert(built.landmarks.length === cat.landmarks.length, 'zero landmarks minted: the loop place already exists');
+  assert(built.ways.length === 1, 'exactly one way built');
+  assert(built.ways[0].startLandmarkId === 'home' && built.ways[0].endLandmarkId === 'home', 'the new way loops on home');
+  assert(typeof built.ways[0].loopDiscriminator === 'string' && built.ways[0].loopDiscriminator!.length > 0,
+    'loops are a real category and need a discriminator');
+  assert(built.routes.length === 1 && built.routes[0].wayId === built.ways[0].id && built.routes[0].referenceRideId === 'ride-t1',
+    'one new route referencing this ride, on the new way');
+  const errs10 = validateCatalog(mergeCatalogs(emptyCatalog(), built));
+  assert(errs10.length === 0, `merged result must validate, got: ${errs10.join('; ')}`);
+});
+
 // ============================================================ WP-H §3.3b:
 // promoteRideToReference ("make this ride the reference of an EXISTING
 // route" — reset, not remap; Nathan's 2026-09-04 ruling). This needs the
