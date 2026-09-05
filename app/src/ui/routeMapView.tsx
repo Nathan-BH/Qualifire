@@ -22,7 +22,8 @@
  *    controls while moving" (relaxed for map GESTURES by Nathan 2026-08-19,
  *    Cycle 020 — see below);
  *  - a free BROWSE map everywhere else (before start, at the finish, and on
- *    the Routes/Result screens): pan/zoom/rotate-off gestures on, zoom bar
+ *    the Routes/Result screens): pan/zoom/rotate gestures on (WP-M: two-finger
+ *    rotation + compass reset everywhere except moving/stopped), zoom bar
  *    visible, labels on, bearing 0 (or held, at the finish).
  * `stopped` (a red light) additionally dims the frame — a light is not a
  * finish, the map must not loosen, but it should look paused rather than
@@ -68,6 +69,17 @@
  * (store/seed.ts `bundledForSeedMode`), so the resolver's "manifest FIRST"
  * step finds nothing and only routes made on the phone are drawable;
  * DemoScreen supplies its own fixture through the `asset` prop.
+ *
+ * WP-M (2026-09-05, Nathan Q3): two-finger rotation is on on every map except
+ * the actual race ribbon (`rotateEnabledFor()`, routeMapGeo.ts — mirrors the
+ * `unlocked` matrix: browse/prestart/finished, not moving/stopped). A held
+ * `userBearing` state, read back from `onRegionDidChange`, composes with the
+ * existing `effectiveBearing`/course-up rule downstream in `cameraTargetFor`
+ * so it is not lost on `+`/`−`/FIT/ME or a mode reset. A compass button in
+ * the MapLibre zoom bar (not MapLibre's own native compass) resets it to
+ * north-up via an imperative `cameraRef.setStop({ bearing: 0 })` (the
+ * declarative push is a no-op once a drag has flipped `mode` to 'free').
+ * PNG rung untouched — a cropped bitmap cannot rotate.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image, LayoutChangeEvent, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -79,14 +91,14 @@ import { refFor } from '../live/refs.ts';
 import { allRouteAssets, resolveRouteAsset, type RouteAssetDeps } from './routeAssetRuntime.ts';
 import {
   allGatesBounds, allGatesFeatureCollection, bearingBetween, cameraTargetFor,
-  gateTicksFeatureCollection, metresBetween, nearestOnPath, riderFeature, routeBounds, routeLineFeature,
-  sectorSpansFeatureCollection, trailBounds,
+  gateTicksFeatureCollection, metresBetween, nearestOnPath, riderFeature, rotateEnabledFor, routeBounds,
+  routeLineFeature, sectorSpansFeatureCollection, trailBounds,
 } from './routeMapGeo.ts';
 import { trailLineFeature, type TrailPoint } from './trailModel.ts';
 import { patchMapStyle } from './routeMapStyle.ts';
 import { colors, radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
-import type { CameraStop } from '@maplibre/maplibre-react-native';
+import type { CameraRef, CameraStop } from '@maplibre/maplibre-react-native';
 
 /** Shape of the MapLibre `onRegionWillChange` event we actually read.
  * Typed structurally rather than importing `ViewStateChangeEvent` (Cycle
@@ -94,6 +106,11 @@ import type { CameraStop } from '@maplibre/maplibre-react-native';
  * resolves; this is the brief's documented fallback — narrow but correct
  * for what we use). */
 type RegionWillChangeEvent = { nativeEvent: { userInteraction: boolean } };
+/** WP-M: `onRegionDidChange` fires once when a gesture/animation ENDS and
+ * carries the full ViewState; we read only `bearing`, guarded by the same
+ * `userInteraction` check (our own camera pushes must not be read back as
+ * rider intent). */
+type RegionDidChangeEvent = { nativeEvent: { userInteraction: boolean; bearing: number } };
 
 // Lazy native-module load, at module scope: the dev client installed before
 // build 4 has no MapLibre native module, so a bare `import` would crash the
@@ -318,6 +335,12 @@ function MapLibreRouteMap(props: RouteMapProps & {
   // finished ribbon (released back to browse). Everything else (moving,
   // stopped) is today's locked, label-free, control-free ribbon — D-006.
   const unlocked = variant === 'browse' || liveState === 'prestart' || liveState === 'finished';
+  // WP-M: deliberately NOT `= unlocked` — the two rules happen to match today
+  // (both are "released back to browse"), but keeping them as separate calls
+  // means the scope of gesture rotation can diverge later (e.g. if the
+  // `finished` judgment call in the brief gets overruled) without a hidden
+  // coupling to the labels/zoom-bar matrix above.
+  const rotateEnabled = rotateEnabledFor(variant, liveState);
   const dimmed = variant === 'live' && liveState === 'stopped';
   const interactiveCredit = !(variant === 'live' && (liveState === 'moving' || liveState === 'stopped'));
 
@@ -363,6 +386,42 @@ function MapLibreRouteMap(props: RouteMapProps & {
   // browse/prestart always face north; finished holds whatever `bearing` last
   // was (bearingLive stopped updating it); moving/stopped read it live.
   const effectiveBearing = variant === 'browse' || liveState === 'prestart' ? 0 : bearing;
+
+  // WP-M: the bearing the rider turned the map to with two fingers, read
+  // back from onRegionDidChange (below). null = no rotation intent yet — the
+  // camera keeps using effectiveBearing as today. A number = hold THIS
+  // bearing on every camera push (+/-/FIT/ME/mode resets) until the compass
+  // button sets it back to 0. Per map instance, never persisted (one mount
+  // of one map; RECORD's prestart and running phases are different mounts,
+  // ROUTES renders one map per card, and an app-restart-persisted rotation
+  // would surprise on the next ride).
+  const [userBearing, setUserBearing] = useState<number | null>(null);
+  const cameraRef = useRef<CameraRef>(null);
+  // Belt-and-braces guard #1: today no mount goes rotate-on -> rotate-off
+  // (prestart and running are different <RouteMapView> mounts in
+  // RecordScreen), but if that ever changes a stale user bearing must not
+  // override the live course-up.
+  useEffect(() => { if (!rotateEnabled) setUserBearing(null); }, [rotateEnabled]);
+  // Belt-and-braces guard #2 (Inspect findings, load-bearing not cosmetic):
+  // RecordScreen's `armed` and `running` branches place <RouteMapView> at the
+  // same child index of an identical <View style={styles.raceColumn}>, so
+  // React REUSES the same component instance across the prestart->moving
+  // transition (pressing START does not remount the map) — the effect above
+  // fires but only on the NEXT render, leaving a one-render window where the
+  // camera could animate back from a held rotation before it does. Passing
+  // `rotateEnabled ? userBearing : null` straight into cameraTargetFor below
+  // closes that window immediately, not on the following render.
+  const resetNorth = () => {
+    setUserBearing(0); // sticky "north-up, and stay there" intent — see
+    // routeMapGeo.ts's cameraTargetFor doc for why 0-not-null on a finished
+    // map (which holds a course-up effectiveBearing, not 0).
+    try {
+      cameraRef.current?.setStop({ bearing: 0, duration: 400, easing: 'ease' });
+    } catch {
+      // map not initialised yet — the declarative push below will apply
+      // userBearing=0 on the next render instead.
+    }
+  };
 
   // Runtime style patch (design contract B): fetch the online style once,
   // memoize BOTH a labels-on and a labels-off copy. A fetch/parse failure
@@ -487,6 +546,10 @@ function MapLibreRouteMap(props: RouteMapProps & {
     bounds,
     zoom: camZoom,
     bearing: effectiveBearing,
+    // WP-M: gated on rotateEnabled here too (not just via the effect above)
+    // so a stale held bearing can never leak into a push on this same
+    // render — see the Inspect-findings guard #2 comment above.
+    userBearing: rotateEnabled ? userBearing : null,
   });
 
   return (
@@ -522,6 +585,18 @@ function MapLibreRouteMap(props: RouteMapProps & {
         onRegionWillChange={(e: RegionWillChangeEvent) => {
           if (e?.nativeEvent?.userInteraction) setMode('free');
         }}
+        // WP-M: read the rider's two-finger rotation back once the gesture
+        // ends. Gated on rotateEnabled — while racing, touchRotate is false
+        // but a one-finger PAN still ends with userInteraction: true and
+        // bearing === the current course-up value; capturing that would
+        // freeze the ribbon's heading (see routeMapGeo.ts's rotateEnabledFor
+        // doc). Gated on userInteraction so our own camera pushes (course-up
+        // updates, +/-, FIT) are never read back as rider intent.
+        onRegionDidChange={(e: RegionDidChangeEvent) => {
+          if (!rotateEnabled) return;
+          if (!e?.nativeEvent?.userInteraction) return;
+          setUserBearing(e.nativeEvent.bearing);
+        }}
         attribution={false}
         logo={false}
         compass={false}
@@ -529,10 +604,13 @@ function MapLibreRouteMap(props: RouteMapProps & {
         touchZoom={true}
         doubleTapZoom={true}
         doubleTapHoldZoom={true}
-        touchRotate={false}
+        // WP-M: was a literal `false` always — see rotateEnabledFor
+        // (routeMapGeo.ts) for the scope rule (browse/prestart/finished on,
+        // moving/stopped off).
+        touchRotate={rotateEnabled}
         touchPitch={false}
       >
-        <M.Camera {...cameraProps} />
+        <M.Camera ref={cameraRef} {...cameraProps} />
         {/* Reverted 2026-08-24: one solid line, casing beneath a yellow
             core, the whole route — see the routeFC comment above for why
             the dotted-ahead split was pulled back out. */}
@@ -684,6 +762,21 @@ function MapLibreRouteMap(props: RouteMapProps & {
           onPress={() => setMode('fit')}>
           <Text style={[st.zoomText, { color: t.textDim, fontSize: 10.5 }]}>FIT</Text>
         </Pressable>
+        {/* WP-M: compass reset — shown whenever rotation is enabled (even
+            north-up already, dim like FIT/ME; a button that only appears
+            after a gesture the rider may not know exists would be
+            undiscoverable). Absent on moving/stopped: it would be a no-op
+            there and D-006's spirit is "no controls while moving". */}
+        {rotateEnabled ? (
+          <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
+            onPress={resetNorth}
+            accessibilityLabel="Reset map to north up">
+            <Text style={[st.zoomText, {
+              color: (userBearing ?? effectiveBearing) === 0 ? t.textDim : t.text,
+              transform: [{ rotate: `${-(userBearing ?? effectiveBearing)}deg` }],
+            }]}>↑</Text>
+          </Pressable>
+        ) : null}
         {showRider ? (
           <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
             onPress={() => setMode('follow')}>

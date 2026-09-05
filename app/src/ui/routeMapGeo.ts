@@ -389,7 +389,16 @@ export function gateTicksFeatureCollection(
  * 'fit' with bounds returns the bounds tuple (bearing pinned to 0, the
  * existing 20px padding); otherwise follow the fix if there is one; else
  * follow the bounds midpoint if there are bounds (fit-with-null-bounds
- * degrades here too — same as 'follow' with no fix, useful); else `{}`. */
+ * degrades here too — same as 'follow' with no fix, useful); else `{}`.
+ *
+ * WP-M: `userBearing` (a bearing the rider set by two-finger rotation) is
+ * `undefined`/`null` for every pre-WP-M caller and every existing test —
+ * byte-identical output. When non-null it overrides `bearing` on EVERY push,
+ * including 'fit' (which otherwise pins 0), so a held rotation survives
+ * +/-/FIT/ME until the compass button explicitly sets it back to 0 (0, not
+ * null — a `finished` map holds a course-up `bearing`, so clearing to null
+ * would let the next push bring that course-up value back and un-reset the
+ * map). */
 export interface CameraTarget {
   center?: [number, number];
   zoom?: number;
@@ -406,13 +415,19 @@ export function cameraTargetFor(input: {
   bounds: LonLatBoundsBox | null;
   zoom: number;
   bearing: number;
+  /** WP-M: a bearing the rider set by two-finger rotation. See the doc
+   * comment above `CameraTarget` for why this overrides `bearing`
+   * everywhere, including the 'fit' pin. */
+  userBearing?: number | null;
 }): CameraTarget {
-  const { mode, here, bounds, zoom, bearing } = input;
+  const { mode, here, bounds, zoom } = input;
+  const userBearing = input.userBearing ?? null;
+  const bearing = userBearing ?? input.bearing;
   if (mode === 'free') return {};
   if (mode === 'fit' && bounds) {
     return {
       bounds: [bounds.minLon, bounds.minLat, bounds.maxLon, bounds.maxLat],
-      bearing: 0,
+      bearing: userBearing ?? 0,
       padding: { top: 20, right: 20, bottom: 20, left: 20 },
     };
   }
@@ -426,6 +441,24 @@ export function cameraTargetFor(input: {
     };
   }
   return {};
+}
+
+/** WP-M (Nathan Q3, 2026-09-05): two-finger rotation is on everywhere except
+ * the actual race ribbon. Mirrors routeMapView's `unlocked` matrix: browse,
+ * prestart and finished are "released to browse"; moving/stopped stay
+ * course-up with the gesture off. Kept as its own function (not just reused
+ * as `unlocked`) so the two rules can diverge later without a hidden
+ * coupling — e.g. if the `finished` clause below ever needs to flip, it is
+ * one edit in one place. Also gates reading a gesture back in
+ * routeMapView.tsx's onRegionDidChange: while racing, touchRotate is false
+ * but a one-finger PAN still ends with userInteraction: true and the current
+ * course-up bearing in the payload — capturing that would freeze the
+ * ribbon's heading, so that read is skipped whenever this returns false. */
+export function rotateEnabledFor(
+  variant: 'live' | 'browse',
+  liveState: 'prestart' | 'moving' | 'stopped' | 'finished',
+): boolean {
+  return variant === 'browse' || liveState === 'prestart' || liveState === 'finished';
 }
 
 // ==================================================== WP-sector-coloured-trail P1 (2026-08-26 ruling)

@@ -9,7 +9,7 @@ import * as path from 'node:path';
 import { assert, loadJson, test, TESTS_DIR } from './lib.ts';
 import {
   allGatesBounds, allGatesFeatureCollection, bearingBetween, cameraTargetFor, gatesFeatureCollection,
-  gateTicksFeatureCollection, metresBetween, riderFeature, routeBounds, routeLineFeature,
+  gateTicksFeatureCollection, metresBetween, riderFeature, rotateEnabledFor, routeBounds, routeLineFeature,
   routeSplitFeatures, sectorSpansFeatureCollection, trailBounds,
 } from '../src/ui/routeMapGeo.ts';
 import type { RouteAsset } from '../src/ui/routeMapMath.ts';
@@ -501,6 +501,45 @@ test('routemapgeo: cameraTargetFor — follow with no fix but bounds centres on 
 test('routemapgeo: cameraTargetFor — no fix, no bounds, not free/fit -> {} (no hardcoded real-world fallback)', () => {
   const got = cameraTargetFor({ mode: 'follow', here: null, bounds: null, zoom: 16, bearing: 0 });
   assert(Object.keys(got).length === 0, `expected {}, got ${JSON.stringify(got)}`);
+});
+
+// ============================================================ WP-M (two-finger rotation + compass)
+
+test('routemapgeo: cameraTargetFor — userBearing overrides bearing in follow mode', () => {
+  const here = { lat: 50.85, lon: 4.65 };
+  const got = cameraTargetFor({ mode: 'follow', here, bounds: null, zoom: 16, bearing: 90, userBearing: 47 });
+  assert(got.bearing === 47, `expected the held userBearing (47) to override bearing (90), got ${got.bearing}`);
+});
+
+test('routemapgeo: cameraTargetFor — userBearing overrides the fit pin', () => {
+  const bounds = { minLon: 4.6, minLat: 50.8, maxLon: 4.8, maxLat: 50.9 };
+  const rotated = cameraTargetFor({ mode: 'fit', here: null, bounds, zoom: 16, bearing: 90, userBearing: 47 });
+  assert(rotated.bearing === 47, `expected fit+userBearing to override the 0 pin, got ${rotated.bearing}`);
+  const northUp = cameraTargetFor({ mode: 'fit', here: null, bounds, zoom: 16, bearing: 90, userBearing: 0 });
+  assert(northUp.bearing === 0, `expected fit+userBearing:0 -> 0 (explicit north-up), got ${northUp.bearing}`);
+  const nullish = cameraTargetFor({ mode: 'fit', here: null, bounds, zoom: 16, bearing: 90, userBearing: null });
+  assert(nullish.bearing === 0, `expected fit+userBearing:null -> the existing 0 pin, got ${nullish.bearing}`);
+  const omitted = cameraTargetFor({ mode: 'fit', here: null, bounds, zoom: 16, bearing: 90 });
+  assert(omitted.bearing === 0, `expected fit with userBearing omitted -> the existing 0 pin (byte-identical), got ${omitted.bearing}`);
+});
+
+test('routemapgeo: cameraTargetFor — free mode is still {} even with userBearing', () => {
+  const here = { lat: 50.85, lon: 4.65 };
+  const bounds = { minLon: 4.6, minLat: 50.8, maxLon: 4.8, maxLat: 50.9 };
+  const got = cameraTargetFor({ mode: 'free', here, bounds, zoom: 16, bearing: 90, userBearing: 47 });
+  assert(Object.keys(got).length === 0, `expected {} regardless of userBearing, got ${JSON.stringify(got)}`);
+});
+
+test('routemapgeo: rotateEnabledFor — the WP-M scope matrix', () => {
+  assert(rotateEnabledFor('browse', 'prestart') === true, 'browse x prestart -> true');
+  assert(rotateEnabledFor('browse', 'moving') === true, 'browse x moving -> true');
+  assert(rotateEnabledFor('browse', 'stopped') === true, 'browse x stopped -> true');
+  assert(rotateEnabledFor('browse', 'finished') === true, 'browse x finished -> true');
+  assert(rotateEnabledFor('live', 'prestart') === true, 'live x prestart -> true');
+  assert(rotateEnabledFor('live', 'moving') === false, 'live x moving -> false (the race ribbon)');
+  assert(rotateEnabledFor('live', 'stopped') === false, 'live x stopped -> false (a red light, still racing)');
+  // The §6.1 judgment call — if Nathan overrules it, this one assertion flips.
+  assert(rotateEnabledFor('live', 'finished') === true, 'live x finished -> true (released back to browse)');
 });
 
 // ============================================================ WP-H (ride-detail trace bounds)

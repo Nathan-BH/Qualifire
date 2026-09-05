@@ -293,3 +293,45 @@ test('routemap: routeId={null} draws NO route — the catalog-wide defaultRouteI
   assert(!src.includes('props.routeId ??'),
     'no rung may fall back off props.routeId with ?? any more');
 });
+
+// ------------------------------------------------------------------- WP-M
+
+test('routemap: <M.Map> carries touchRotate={rotateEnabled} (not a literal false), touchPitch={false}, and an onRegionDidChange handler', () => {
+  // Same static-guard doctrine as the cycle 023 test above (the component
+  // cannot be rendered headlessly).
+  const src = fs.readFileSync(
+    path.join(TESTS_DIR, '..', 'src', 'ui', 'routeMapView.tsx'), 'utf8');
+  const mapStart = src.indexOf('<M.Map');
+  assert(mapStart >= 0, '<M.Map> element not found — has the MapLibre rung moved/been renamed?');
+  const nextChild = src.indexOf('<M.Camera', mapStart);
+  assert(nextChild > mapStart, '<M.Camera> (first child) not found after <M.Map>');
+  const openTag = src.slice(mapStart, nextChild);
+  assert(/touchRotate=\{rotateEnabled\}/.test(openTag),
+    'touchRotate must be wired to rotateEnabled (WP-M) — a literal touchRotate={false} would mean the ' +
+    'rotation gesture is never on anywhere');
+  assert(/touchPitch=\{false\}/.test(openTag), 'touchPitch must stay false — WP-M is rotation only, not tilt');
+  assert(/onRegionDidChange=/.test(openTag),
+    'onRegionDidChange handler not found on <M.Map> — WP-M reads the rider\'s rotation back through it');
+});
+
+test('routemap: the MapLibre zoom bar has exactly one compass reset button; the PNG zoom bar has none', () => {
+  // Same static-guard doctrine as the tests above.
+  const src = fs.readFileSync(
+    path.join(TESTS_DIR, '..', 'src', 'ui', 'routeMapView.tsx'), 'utf8');
+  const firstZoomBar = src.indexOf('st.zoomBar');
+  assert(firstZoomBar >= 0, 'st.zoomBar not found — has the MapLibre zoom bar moved/been renamed?');
+  const creditTag = src.indexOf('<Credit rung="maplibre"', firstZoomBar);
+  assert(creditTag > firstZoomBar, '<Credit rung="maplibre" ...> not found after the first zoomBar');
+  const mapLibreBar = src.slice(firstZoomBar, creditTag);
+  const mapLibreResets = mapLibreBar.match(/onPress=\{resetNorth\}/g) ?? [];
+  assert(mapLibreResets.length === 1,
+    `expected exactly one onPress={resetNorth} in the MapLibre zoom bar, got ${mapLibreResets.length}`);
+
+  const secondZoomBar = src.indexOf('st.zoomBar', creditTag);
+  assert(secondZoomBar > creditTag, 'second st.zoomBar (PNG rung) not found');
+  const failedTag = src.indexOf('MAP IMAGE FAILED', secondZoomBar);
+  assert(failedTag > secondZoomBar, "'MAP IMAGE FAILED' not found after the second zoomBar");
+  const pngBar = src.slice(secondZoomBar, failedTag);
+  assert(!/resetNorth/.test(pngBar),
+    'the PNG zoom bar must have no compass button — the PNG rung is a cropped bitmap and cannot rotate');
+});
