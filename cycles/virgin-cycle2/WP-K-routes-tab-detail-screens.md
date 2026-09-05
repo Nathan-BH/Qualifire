@@ -1,4 +1,4 @@
-**Status: BRIEF WRITTEN, NOT YET EXECUTED.**
+**Status: DONE. Landed on the device (new `app/src/ui/CatalogDetailScreen.tsx`, `catalogDetailModel.ts`, `catalogDeleteActions.ts`, plus `RoutesScreen.tsx`, `App.tsx`, `tabNav.tsx`, `RideDetailScreen.tsx`) on 2026-09-05, commit `1a3e99c`, reconciled against landed WP-J (see "Update 2026-09-05" section below — WP-I's inline gate-adjust code was already gone by the time WP-K executed, so the planned relocation became a one-line `openGateAdjust` wire-up instead). `RoutesScreen.tsx` slimmed 282→113 lines: tap-only rows, no inline expand/delete/edit. `App.tsx` now mount-swaps FOUR overlays in order `gateAdjust` → `rideDetail` → `catalogDetail` → tab. Verified: 506 tests, 503 pass, 0 fail, 3 skip; `tsc --noEmit` exit 0. New screen's navigation feel still needs Nathan's on-device look.**
 **Source:** `data/activities/TEST in virgin-app rides/qualifire-20260904/qualifire-20260904-notes.md`
 ("What i like about the last implementation is that now on the RIDES tab selecting a ride opens
 it properly in a new window and i have the option to go back. It should be the same for the

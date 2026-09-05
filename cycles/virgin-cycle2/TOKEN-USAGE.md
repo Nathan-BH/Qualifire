@@ -1,8 +1,8 @@
 # virgin-cycle2 — token/tool-call reference
 
 Running tally for this cycle's dispatches. Approximate — from each subagent's own reported
-usage. Planning dispatches (Digest/Plan/Inspect) are from the 2026-09-04 session; the four
-Execute dispatches below are from the first execution session, 2026-09-05.
+usage. Planning dispatches (Digest/Plan/Inspect) are from the 2026-09-04 session; Execute dispatches from all three
+execution sessions on 2026-09-05 are included below.
 
 | Dispatch | Tier | Model | Tokens (reported) | Tool calls | Outcome |
 |---|---|---|---|---|---|
@@ -53,7 +53,26 @@ parallel — confirmed disjoint target files first), plus 1 coordinator-direct v
 ruling** (WP-B's test-fixture ambiguity — correctly stopped on by Execute rather than guessed
 past), plus 2 coordinator-direct verify+commit passes.
 
-**Cycle running total so far: ~2.98M tokens across 24 subagent dispatches** (15 planning + 8
-Execute + 1 Plan-tier ruling), plus 10 coordinator-direct chore passes. Eight of thirteen WPs
-(E, F, G, D, A, B, I, M) are now DONE and landed on the device; the remaining five (C, J, K, L
-— H superseded) stay BRIEF WRITTEN for a future Execute session.
+| Plan — WP-J extended scope (real-map redesign applied to ROUTES-tab gate editing, Nathan's follow-up instruction) | Plan | Fable | ~190.6k | — | Brief appended: new `GateAdjustRequest`/full-screen `GateAdjustScreen.tsx` design, Shell wiring as a third overlay |
+| Execute — WP-J (gate-adjust card redesign, extended scope) | Execute | Sonnet | ~246.0k | 78 | Landed `4524122`: real-map card + 5-chip selector + hold-to-repeat pad; new `GateAdjustScreen.tsx`; retired `gateAdjustMapModel.ts` |
+| Coordinator direct — verify + commit WP-J | Chore | — (coordinator, no subagent) | — | ~15 | 484 tests, 481 pass, 0 fail, 3 skip; tsc clean; 1 commit |
+| Execute — WP-C (raw-time scoring default) | Execute | Sonnet | ~288.6k | 113 | Landed `ed0a5fe`: new `timing.ts`, 27 call sites rewired to `scoredS()`, SETTINGS Timing row; adapted to WP-A/WP-E's prior edits to `RecordScreen.tsx` |
+| Coordinator direct — verify + commit WP-C | Chore | — (coordinator, no subagent) | — | ~12 | 494 tests, 491 pass, 0 fail, 3 skip; tsc clean; 1 commit |
+| Plan — WP-K reconciliation against landed WP-J | Plan | Fable | ~158.8k | — | Brief's planned relocation of WP-I's inline code was obsolete (WP-J already replaced it); rewrote Part B as a one-line `openGateAdjust` wire-up, specified the 4-overlay Shell stacking order |
+| Execute — WP-K (ROUTES-tab detail screens) | Execute | Sonnet | ~283.3k | 75 | Landed `1a3e99c`: new `CatalogDetailScreen.tsx`/`catalogDetailModel.ts`/`catalogDeleteActions.ts`; `RoutesScreen.tsx` slimmed 282→113 lines |
+| Coordinator direct — verify + commit WP-K | Chore | — (coordinator, no subagent) | — | ~14 | 506 tests, 503 pass, 0 fail, 3 skip; tsc clean; 1 commit |
+| Coordinator direct — re-anchor WP-L's brief (footer-string drift from WP-J) before Execute | Chore | — (coordinator, no subagent) | — | ~5 | Corrected anchor #2's quoted string to match WP-J's landed copy; all other anchors verified verbatim by grep first |
+| Execute — WP-L (remove AI-clutter text) | Execute | Sonnet | ~107.0k | 30 | Landed `f3b47cd`: 8 string edits across 5 files, SETTINGS "?" disclosure applied to all 11 rows (incl. WP-C's new Timing row, copy untouched) |
+| Coordinator direct — verify + commit WP-L, update briefs/README/TOKEN-USAGE | Chore | — (coordinator, no subagent) | — | ~15 | 506 tests, 503 pass, 0 fail, 3 skip (unchanged); tsc clean; 1 commit |
+
+**Execute subtotal, third session (WP-J extended/C/K/L): ~924.9k tokens across 4 Execute
+dispatches** (fully sequential — WP-J→WP-C→WP-K→WP-L, forced by real file overlaps) **+
+~349.4k for 2 Plan-tier reconciliation passes** (WP-J's extended-scope design, WP-K's
+reconciliation against landed WP-J), plus 4 coordinator-direct verify+commit passes and 1
+coordinator-direct brief re-anchor.
+
+**Cycle running total: ~4.25M tokens across 30 subagent dispatches** (17 planning + 12
+Execute + 1 Plan-tier ruling), plus 15 coordinator-direct chore passes. **All thirteen original
+WPs are now DONE or superseded** (H → J) — the virgin-cycle2 backlog is closed. On-device
+checks (WP-B's GPX+ cross-check; WP-I/M/J/K/L's UI/gesture/navigation/interaction feel) remain
+outstanding and are Nathan's to do on the phone.

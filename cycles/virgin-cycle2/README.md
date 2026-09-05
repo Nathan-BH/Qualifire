@@ -16,22 +16,22 @@ occurrence of WP-B's bug on a route created that same evening. Both are folded i
 WP-I through WP-L are the 2026-09-04 round; WP-B's brief has an update section flagging the
 newer route to use instead of the one that's since been deleted.
 
-## Status at a glance (updated 2026-09-05 — WP-E/F/G/D landed in the first execution session; WP-A/B/I/M landed in the second)
+## Status at a glance (updated 2026-09-05 — all 13 WPs now DONE or superseded; WP-J/C/K/L landed in the third execution session)
 
 | WP | What | Size | Status | Brief |
 |---|---|---|---|---|
 | A | RECORD-screen route-match & yellow-trail visibility (2026-09-03 review issues #1+#2, Nathan's exact 3-state spec) | small-medium | **DONE — landed 2026-09-05, commit `064b6e2`.** `?? defaultRouteId()` fallback removed from both map rungs; new `liveMapOverlayFor()` makes the reference line and live trail mutually exclusive by construction. | `WP-A-record-route-match-trail-visibility.md` |
 | B | Gate placement scale bug on newly-created routes (2026-09-03 review issue #3) | small-medium | **DONE — landed 2026-09-05, commit `495b3f8`.** Fixes/metadata now derive from chronological (`tUnixMs`) order, not on-disk write order. Part C (prevention) deferred. On-device GPX+ check against WorkHomeWet/281e still needed. | `WP-B-gate-placement-scale-bug.md` |
-| C | Raw-time scoring default — implementation half of an already-settled STATE.md rule | medium | **BRIEF WRITTEN, Inspect: PASS WITH FINDINGS.** `rawS` already stored (no schema change); 27 real call sites re-verified across 9 files. Two mechanical tsc-strictness gaps found and documented for Execute to close. Land after WP-E (both touch the same `RecordScreen.tsx` region). | `WP-C-raw-time-scoring-default.md` |
+| C | Raw-time scoring default — implementation half of an already-settled STATE.md rule | medium | **DONE — landed 2026-09-05, commit `ed0a5fe`.** New `store/timing.ts`; `TowerRow.movingS` renamed `timeS`; 27 call sites rewired to `scoredS()`; SETTINGS gains a Timing row; `setTimingMode()` called synchronously in render (not an effect). | `WP-C-raw-time-scoring-default.md` |
 | D | GPS re-acquisition teleport-guard hole (≤245m hops slip through uncounted) | small | **DONE — landed 2026-09-05, commit `2fe0ede`.** Discounts by *cause* (`wasOnRoute`) instead of jump size; `core/src/live.ts` untouched. | `WP-D-gps-teleport-guard-hole.md` |
 | E | Retire per-tier gate-tick colour (`gateColours`) — Nathan's "gates should not change colour" rule | chore | **DONE — landed 2026-09-05, commit `d7e925b`.** `gateColours` useMemo + override removed; gate-buzz NOTE preserved. | `WP-E-gate-tick-colour-retire.md` |
 | F | Dedupe `lineColourFor`/`tierLineColour` (rideDetailModel.ts hand-copies chips.tsx) | chore | **DONE — landed 2026-09-05, commit `644cb04`.** New `app/src/ui/tierColour.ts`; `chips.tsx` re-exports, `rideDetailModel.ts` imports the real function. | `WP-F-linecolour-dedupe.md` |
 | G | Way-creation polish — loop-copy wording + regression tests for two under-covered branches | chore | **DONE — landed 2026-09-05, commit `eaab0a4`.** G1: loop copy names an existing landmark when applicable. G2: two new regression tests (WP-G 9/10). | `WP-G-waycreation-polish.md` |
 | H | ~~Gate-adjust pad button label overflow~~ | — | **SUPERSEDED — folded into WP-J.** Its overflow/sizing analysis was correct but incomplete (missed a 5th row child); WP-J owns the whole card redesign now. Do not execute this brief separately. | `WP-H-gate-adjust-pad-overflow.md` |
-| I | Edit gates on an EXISTING (already-saved) route from ROUTES — today only whole-route delete exists | small-medium | **DONE — landed 2026-09-05, commit `0b45803`.** `editRouteGates()` reuses `promoteRideToReference`'s reset-not-remap convention; reference line untouched, only gates move. Also fixed a nested-Pressable footgun on the way card. Needs Nathan's on-device look for UI acceptance criteria. WP-K (not yet executed) still needs the `RoutesScreen.tsx` ordering table before it lands. | `WP-I-edit-existing-route-gates.md` |
-| J | Gate-adjust card redesign — real zoomable OpenMap, long-press-to-repeat nudge, start/finish gates adjustable (2026-09-04 notes) | medium-large | **BRIEF WRITTEN.** Swaps the card's custom-drawn line for a real `RouteMapView` (browse variant); adds `onLongPress`/repeat-nudge to the pad; unlocks start/finish gates (`chainageM` already holds them, just needed UI selectability); absorbs WP-H's overflow fix by moving the chainage readout above the button row instead of squeezed between two button pairs. | `WP-J-gate-adjust-card-redesign.md` |
-| K | ROUTES tab: tapping a place or way opens a dedicated detail screen (mirrors cycle1's RIDES-tab pattern) | medium | **BRIEF WRITTEN.** New `CatalogDetailScreen.tsx` (one screen, `kind: 'place'|'way'` discriminator) mirrors `RideDetailScreen.tsx`'s mount-swap pattern (no navigation library needed, matches this app's existing approach). Flags and resolves its own collision with WP-I (both touch `RoutesScreen.tsx`) via an explicit ordering table. | `WP-K-routes-tab-detail-screens.md` |
-| L | Remove "AI clutter text" — verbose explanatory strings across ROUTES/RIDES/DEMO; SETTINGS gets a tap-to-reveal "?" instead of always-on grey explanations | medium | **BRIEF WRITTEN.** Part A: 8 specific string edits across 4 files (Nathan's 4 named examples + 4 more from a sweep, each flagged by confidence level). Part B: `settings.tsx`'s shared row component gains a per-row `?` toggle, no new Modal (reuses the app's existing lightweight-disclosure idiom). | `WP-L-remove-ai-clutter-text.md` |
+| I | Edit gates on an EXISTING (already-saved) route from ROUTES — today only whole-route delete exists | small-medium | **DONE — landed 2026-09-05, commit `0b45803`.** `editRouteGates()`/`gateEditDraftFor()` reuse `promoteRideToReference`'s reset-not-remap convention. Its data layer is still in use, but the UI it originally shipped (inline accordion card) was superseded twice in the same session: WP-J moved editing to a full-screen `GateAdjustScreen.tsx`, then WP-K moved the entry point onto `CatalogDetailScreen.tsx`. Needs Nathan's on-device look, now on the way-detail screen. | `WP-I-edit-existing-route-gates.md` |
+| J | Gate-adjust card redesign — real zoomable OpenMap, long-press-to-repeat nudge, start/finish gates adjustable (2026-09-04 notes); **extended scope, Nathan's follow-up:** apply the same real-map redesign to ROUTES-tab gate editing, opening in a dedicated full-screen surface | medium-large → large (extended) | **DONE — landed 2026-09-05, commit `4524122`.** Card now embeds real `RouteMapView` + 5-chip gate selector + hold-to-repeat nudge pad. New full-screen `GateAdjustScreen.tsx` (via `tabNav.openGateAdjust`) replaces WP-I's inline accordion editing. `gateAdjustMapModel.ts`/its test suite retired to `safe_to_delete/`. Map/gesture feel needs Nathan's on-device look. | `WP-J-gate-adjust-card-redesign.md` |
+| K | ROUTES tab: tapping a place or way opens a dedicated detail screen (mirrors cycle1's RIDES-tab pattern) | medium | **DONE — landed 2026-09-05, commit `1a3e99c`.** New `CatalogDetailScreen.tsx`/`catalogDetailModel.ts`/`catalogDeleteActions.ts`; `RoutesScreen.tsx` slimmed 282→113 lines (tap-only); `App.tsx` now mount-swaps 4 overlays (`gateAdjust` → `rideDetail` → `catalogDetail` → tab). Reconciled against landed WP-J before executing (a fresh Plan pass — WP-I's inline code was already gone). Navigation feel needs Nathan's on-device look. | `WP-K-routes-tab-detail-screens.md` |
+| L | Remove "AI clutter text" — verbose explanatory strings across ROUTES/RIDES/DEMO; SETTINGS gets a tap-to-reveal "?" instead of always-on grey explanations | medium | **DONE — landed 2026-09-05, commit `f3b47cd`.** Part A: 8 string edits across 5 files (one anchor re-verified against WP-J's landed copy change before executing). Part B: SETTINGS rows hide their hint behind a `?`, one open at a time — applied to all 11 rows, including "Timing" (added by WP-C, wording untouched). | `WP-L-remove-ai-clutter-text.md` |
 | M | Two-finger map rotation + compass-reset button on every non-race map render (Nathan's own Q3 design spec, 2026-09-05) | small-medium | **DONE — landed 2026-09-05, commit `6c3d6ab`.** `touchRotate` on for browse/prestart/finished; held `userBearing` composes into `cameraTargetFor()`; new compass button resets to north. Needs Nathan's on-device feel-check. | `WP-M-map-two-finger-rotation.md` |
 
 **Read next:** `CONTEXT.md` for the full framing, then `QUESTIONS-FOR-NATHAN.md` — all three
@@ -60,6 +60,25 @@ determined the fixture was wrong, not the new code, and the fix was applied dire
 suite went 483→495 (12 new tests), 0 fail, 3 skip throughout; `tsc --noEmit` clean throughout.
 WP-B (on-device GPX check) and WP-I/WP-M (on-device UI/feel checks) still want Nathan's own
 eyes on the phone — see each brief's status line.
+
+**2026-09-05 — third execution session: WP-J (extended), WP-C, WP-K, WP-L — cycle complete.**
+Nathan asked to execute the remaining backlog and, separately, to extend WP-J's real-map
+redesign to the existing ROUTES-tab gate-edit flow: "since WP-J redesigns the gate adjusting
+feature. Also apply it to the current gates editing via the ROUTES tab. Upon pressing edit,
+open in a new tab wit a proper openmap render so i can adjust the gates more precisely." That
+became WP-J's Part B (a Plan-tier scope extension, appended to the brief before Execute ran).
+Ran fully sequentially (WP-J touches `RoutesScreen.tsx`/`App.tsx`/`tabNav.tsx`, which WP-K also
+touches; WP-C touches `RecordScreen.tsx`, which WP-J also touches via one prop; WP-C and WP-L
+both touch `settings.tsx`): WP-J → WP-C → WP-K → WP-L. Two Plan-tier reconciliation passes ran
+before their Execute dispatches: one to design WP-J's extended scope, one to reconcile WP-K's
+stale plan (which assumed WP-I's inline code still existed) against WP-J's landed changes.
+Landed as four commits: `4524122` (WP-J), `ed0a5fe` (WP-C), `1a3e99c` (WP-K), `f3b47cd` (WP-L).
+Combined: 40 files changed across the four commits, several hundred insertions/deletions each;
+test suite went 483→506 (WP-J net -12+13, WP-C +10, WP-K +12, WP-L +0), 0 fail, 3 skip
+throughout; `tsc --noEmit` clean before and after every commit. This closes the virgin-cycle2
+backlog — all 13 original WPs are now DONE or superseded (H → J). WP-J's map/gesture feel,
+WP-K's new screen navigation flow, and WP-L's `?` tap-to-reveal interaction all still want
+Nathan's own eyes on the phone — see each brief's status line.
 
 ## How to resume this cycle (in this chat or a fresh one)
 
