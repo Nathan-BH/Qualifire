@@ -54,9 +54,11 @@
  *    alone never counts (longest advance wins).
  *    A VERIFIED lock never unlocks or switches (today's invariant, unchanged).
  *
- * Advance is CORRIDOR-VERIFIED travel only: a D-016(a) re-acquisition jump
- * moves a candidate's chainage but earns it no lock evidence (REACQ_JUMP_M,
- * cycle 024 WP-D1 adjudication — see its doc comment below).
+ * Advance is CORRIDOR-VERIFIED travel only: a D-016(a) re-acquisition jump,
+ * or any advance made while the rider was off this candidate's corridor,
+ * moves a candidate's chainage but earns it no lock evidence (REACQ_JUMP_M
+ * and feedCandidate's wasOnRoute — cycle 024 WP-D1 and cycle-2 WP-D; see
+ * REACQ_JUMP_M's doc comment).
  *
  * Honesty rules surfaced to the UI (D-013 / D-016(b) / D-021):
  *  - a sector whose bounding events include an 'estimated' fire shows ~raw
@@ -141,14 +143,20 @@ export const LOCK_MARGIN_M = 200;
  * reference segment past windowFwd (a ~5 m margin at this app's resampling),
  * so jumps above windowFwd+5 are discounted from `adv` (the candidate keeps
  * the new chainage; it simply earns no lock evidence for ground it never
- * showed). Below that margin, a small re-acquisition hop can still slip
- * through uncounted (adversarial review 2026-08-23 measured up to ~138 m in
- * this app's own ride corpus, never enough alone to win a lock) — closing
- * that residual needs `LiveFix` to expose `reacquired: boolean` so every
- * re-acquisition discounts regardless of size. WP-D2 (cycle 024, 2026-08-23)
- * scoped this: touching core/live.ts's parity-proven LiveFix/LiveProjector
- * shape is not a small/natural extension of the anchored-rule + pick-bias
- * work this file does, so it stays DEFERRED — a follow-up, not chased here.
+ * showed). Below that margin a re-acquisition hop is indistinguishable by
+ * size from ordinary windowed advance (cycle 024 measured up to ~138 m
+ * slipping through; WP-D cycle 2 measured 65-90 m hops on four wrong
+ * catalog routes across the fixture corpus), so WP-D (cycle 2) closes the
+ * residual by CAUSE instead of size: the projector only moves chainage on an
+ * on-route fix, and a D-016(a) hit is always preceded by >= 4 off-route
+ * fixes, so any advance landing on the first on-route fix after an
+ * off-route one is ground covered outside this candidate's corridor and is
+ * discounted regardless of size (feedCandidate's `wasOnRoute`). That also
+ * covers the smaller windowed rejoin after 1-4 off-corridor fixes. The size
+ * threshold is kept as belt-and-braces; it is subsumed. A sparse-fix gap
+ * with NO off-route fix in between (one fix, then the next 40 s later 200 m
+ * down the same corridor) is still ordinary windowed advance and still
+ * counts — that is the invariant the >240 m margin test protects.
  * This is a lock-race rule only: gate firing, chainage and every displayed
  * time are untouched. */
 export const REACQ_JUMP_M = DEFAULT_LIVE_OPTIONS.windowFwd + 5;
@@ -903,15 +911,22 @@ export class LiveEngine {
     // the parity pipeline; two tiny arrays per call — negligible at 1 Hz).
     const xy = toXY([lat], [lon], c.ref.lat0, c.ref.lon0);
     const sBefore = c.proj.chainage;
+    // WP-D (cycle 2): the PREVIOUS fix's verdict — c.onRoute is only rewritten
+    // below, but read it here explicitly so the ordering is not load-bearing.
+    const wasOnRoute = c.onRoute;
     const fix = c.proj.update(xy.x[0], xy.y[0], tSec);
     c.lastXtd = fix.xtd; // WP-G Part 2 gap-fill: per-candidate deviation for diagnostics
     if (c.baseS === null) {
       c.baseS = fix.s;
     } else {
-      // REACQ_JUMP_M: discount a D-016(a) re-acquisition teleport from the
-      // lock evidence by carrying baseS forward with it (see the constant).
+      // Discount unobserved ground from the lock evidence by carrying baseS
+      // forward with it (see REACQ_JUMP_M's doc comment): a jump past the
+      // projector's window (WP-D1, cycle 024) OR any advance landing on the
+      // first on-route fix after an off-route one (WP-D, cycle 2) — the
+      // projector only moves chainage on on-route fixes, so such a jump is
+      // ground covered while the rider was outside this candidate's corridor.
       const jump = c.proj.chainage - sBefore;
-      if (jump > REACQ_JUMP_M) c.baseS += jump;
+      if (jump > REACQ_JUMP_M || !wasOnRoute) c.baseS += jump;
     }
     c.adv = c.proj.chainage - c.baseS;
     c.onRoute = fix.onRoute;

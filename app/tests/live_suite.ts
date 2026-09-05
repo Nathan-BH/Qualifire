@@ -81,20 +81,24 @@ function drive(
 
 /** Candidate-advance replica: same LiveProjector + same refs the engine uses,
  * measured from the first fed fix — mirrors Candidate.adv exactly.
- * `discount` mirrors cycle 024's REACQ_JUMP_M rule (a D-016(a) re-acquisition
- * teleport is not lock evidence); pass false to measure the RAW chainage delta
- * the pre-024 engine used, which is what the shadow-lock test below needs. */
+ * `discount` mirrors cycle 024's REACQ_JUMP_M rule plus cycle-2 WP-D's
+ * off-route-rejoin rule (a D-016(a) re-acquisition teleport, or any advance
+ * landing on the first on-route fix after an off-route one, is not lock
+ * evidence); pass false to measure the RAW chainage delta the pre-024 engine
+ * used, which is what the shadow-lock test below needs. */
 function advanceAt(f: Fixture, track: TrackId, nFixes: number, fromIndex = 0, discount = true): number {
   const ref = refFor(track);
   const proj = new LiveProjector(ref);
   let base: number | null = null;
   let adv = 0;
+  let wasOnRoute = false; // Candidate.onRoute starts false (engine.ts :429)
   for (let i = fromIndex; i < fromIndex + nFixes; i++) {
     const before = proj.chainage;
     const xy = toXY([f.fixes.lat[i]], [f.fixes.lon[i]], ref.lat0, ref.lon0);
     const fix = proj.update(xy.x[0], xy.y[0], f.fixes.t[i]);
     if (base === null) base = fix.s;
-    else if (discount && proj.chainage - before > REACQ_JUMP_M) base += proj.chainage - before;
+    else if (discount && (proj.chainage - before > REACQ_JUMP_M || !wasOnRoute)) base += proj.chainage - before;
+    wasOnRoute = fix.onRoute;
     adv = proj.chainage - base;
   }
   return adv;
@@ -823,6 +827,73 @@ function synPos(onS: boolean, s: number): [number, number] {
   if (!onS) return [s, 0]; // L is a straight line the whole way
   return s <= 1200 ? [s, 0] : [1200, s - 1200];
 }
+
+/** WP-D (cycle 2): feed [x, y, dtSec] steps along SYN_L's planar frame into a
+ * single-candidate engine; returns the step's x at the first lock (or null). */
+function lockXOnSynL(steps: [number, number, number][]): number | null {
+  const engine = new LiveEngine([SYN_L]);
+  let lockX: number | null = null;
+  const unsub = engine.subscribe((s) => {
+    if (lockX === null && s.track !== null) lockX = steps[s.fixesFed - 1][0];
+  });
+  let t = 1755167000;
+  for (const [x, y, dt] of steps) {
+    t += dt;
+    const [lat, lon] = xyToLatLon(x, y, 0, 0);
+    engine.feed(lat, lon, t * 1000);
+  }
+  unsub();
+  return lockX;
+}
+
+test('live WP-D: a sub-245 m re-acquisition hop is not lock evidence (the cycle-024 residual)', () => {
+  // Ride SYN_L on-corridor 0..150 m at 5 m/s, leave the corridor (y = 120 m,
+  // 3x CORRIDOR_M) for 8 fixes, then re-acquire at x = 350 — a 200 m hop,
+  // under REACQ_JUMP_M, after lost >= 5 — and ride on. Before WP-D the 200 m
+  // counted and the lock fired at ride-chainage 400 (measured 2026-09-04);
+  // the rider was never seen on the 150..350 m stretch, so the lock must
+  // wait until 400 m of OBSERVED advance: 150 + (x - 350) >= 400 -> x = 600.
+  const steps: [number, number, number][] = [];
+  for (let x = 0; x <= 150; x += 5) steps.push([x, 0, 1]);
+  for (let i = 1; i <= 8; i++) steps.push([150 + 5 * i, 120, 1]);
+  for (let x = 350; x <= 700; x += 5) steps.push([x, 0, 1]);
+  const lockX = lockXOnSynL(steps);
+  assert(lockX !== null, 'never locked after re-acquisition');
+  assert(lockX! >= 600 && lockX! <= 600 + 10,
+    `locked at ride-chainage ${lockX} m: a 200 m re-acquisition hop must earn no lock evidence (want 600, pre-WP-D gave 400)`);
+});
+
+test('live WP-D: ordinary windowed advance across a sparse-fix gap, and fast real riding, still count in full', () => {
+  // Control 1: on-corridor to 150 m, then NO fixes for 40 s, next fix 200 m
+  // down the same corridor (a windowed hit, no off-route fix in between) —
+  // this is the "normal fast/sparse-fix advance" the REACQ_JUMP_M > 240
+  // invariant protects. It must still lock at ride-chainage 400.
+  const gap: [number, number, number][] = [];
+  for (let x = 0; x <= 150; x += 5) gap.push([x, 0, 1]);
+  gap.push([350, 0, 40]);
+  for (let x = 355; x <= 700; x += 5) gap.push([x, 0, 1]);
+  const lockGap = lockXOnSynL(gap);
+  assert(lockGap !== null && lockGap >= 400 && lockGap <= 410,
+    `sparse-gap control locked at ${lockGap} m, want 400 (windowed advance is observed riding, never discounted)`);
+
+  // Control 2: 25 m per 1 Hz fix (90 km/h — a hard descent), all on-corridor.
+  // The rule never looks at speed; lock at the first fix with adv >= 400.
+  const fast: [number, number, number][] = [];
+  for (let x = 0; x <= 700; x += 25) fast.push([x, 0, 1]);
+  const lockFast = lockXOnSynL(fast);
+  assert(lockFast !== null && lockFast >= 400 && lockFast <= 425,
+    `fast-descent control locked at ${lockFast} m, want 400 (speed is not evidence against a rider)`);
+
+  // Control 3: the pre-WP-D rule still holds — a 300 m hop (> REACQ_JUMP_M)
+  // after lost >= 5 was and is discounted: 150 + (x - 450) >= 400 -> x = 700.
+  const big: [number, number, number][] = [];
+  for (let x = 0; x <= 150; x += 5) big.push([x, 0, 1]);
+  for (let i = 1; i <= 8; i++) big.push([150 + 5 * i, 120, 1]);
+  for (let x = 450; x <= 900; x += 5) big.push([x, 0, 1]);
+  const lockBig = lockXOnSynL(big);
+  assert(lockBig !== null && lockBig >= 700 && lockBig <= 710,
+    `>245 m hop control locked at ${lockBig} m, want 700 (unchanged from cycle 024)`);
+});
 
 test('live: prefix stall + finalize — synthetic corridor-subset routes', () => {
   // (a) ride the shared road then S's own branch to 1400 m, then stand still
