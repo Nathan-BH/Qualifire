@@ -30,6 +30,7 @@ import RidesScreen from './src/ui/RidesScreen';
 import RoutesScreen from './src/ui/RoutesScreen';
 import RideDetailScreen from './src/ui/RideDetailScreen';
 import GateAdjustScreen from './src/ui/GateAdjustScreen';
+import CatalogDetailScreen from './src/ui/CatalogDetailScreen';
 import SettingsScreen, { SettingsProvider } from './src/ui/settings';
 import DemoScreen from './src/ui/DemoScreen';
 import { PaddockTheme } from './src/ui/theme';
@@ -39,7 +40,14 @@ import { initFreeRidePersistence } from './src/store/freeRides';
 import { initCatalogStore } from './src/store/catalogStore';
 import { initUserRefs } from './src/live/userRefs';
 import { createExpoFsAdapter } from './src/storage/expoFsAdapter';
-import { TabNavProvider, type GateAdjustRequest, type RideDetailRequest, type Tab, type TabNav } from './src/ui/tabNav';
+import {
+  TabNavProvider,
+  type CatalogDetailRequest,
+  type GateAdjustRequest,
+  type RideDetailRequest,
+  type Tab,
+  type TabNav,
+} from './src/ui/tabNav';
 
 /**
  * Android 15 forces edge-to-edge: the app draws under the system navigation
@@ -66,6 +74,12 @@ function Shell() {
   // rideDetail. Third instance of the "screen owns intent, Shell owns
   // chrome" split.
   const [gateAdjust, setGateAdjust] = useState<GateAdjustRequest | null>(null);
+  // WP-K (cycle 2): the full-screen place/way detail (ROUTES tab), mount-
+  // swapped like rideDetail. Fourth instance of the "screen owns intent,
+  // Shell owns chrome" split. Sits UNDER rideDetail and gateAdjust: the way
+  // detail is what opens both (reference-ride row, edit gates), so their
+  // BACK lands on it.
+  const [catalogDetail, setCatalogDetail] = useState<CatalogDetailRequest | null>(null);
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomPad = Math.max(insets.bottom, NAV_BAR_MIN_PAD);
@@ -73,10 +87,10 @@ function Shell() {
   // like every other tab, rather than being forced into night mode.
   const chrome: PaddockTheme = t;
 
-  // System back: ride detail → close it; other tabs → Record; from Record,
-  // default behaviour (app backgrounds). PreviewScreen registers its own
-  // handler (runs first) to walk its internal screens back to its home
-  // before this one fires.
+  // System back: gate editor → ride detail → catalog detail → other tabs →
+  // Record; from Record, default behaviour (app backgrounds). PreviewScreen
+  // registers its own handler (runs first) to walk its internal screens back
+  // to its home before this one fires.
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       // WP-J: back on the full-screen gate editor is a plain discard, no
@@ -91,6 +105,10 @@ function Shell() {
         setRideDetail(null);
         return true;
       }
+      if (catalogDetail !== null) {
+        setCatalogDetail(null);
+        return true;
+      }
       if (tab !== 'record') {
         setTab('record');
         return true;
@@ -98,7 +116,7 @@ function Shell() {
       return false;
     });
     return () => sub.remove();
-  }, [tab, rideDetail, gateAdjust]);
+  }, [tab, rideDetail, gateAdjust, catalogDetail]);
 
   // Rehydrate the comparison window once per launch, from the persistent
   // results/ store (cycle 024, WP-A1 — replaced B-40's results-cache.json;
@@ -131,8 +149,10 @@ function Shell() {
   // the race screen, the other tabs in the footer disappear — full screen,
   // no tab browsing." The bar is hidden ENTIRELY (not just dimmed) while on
   // the record tab and RecordScreen reports itself fullscreen. WP-H: the
-  // ride detail hides the bar the same way, from any tab.
-  const tabBarHidden = (tab === 'record' && recFullscreen) || rideDetail !== null || gateAdjust !== null;
+  // ride detail hides the bar the same way, from any tab. WP-K (cycle 2): so
+  // does the catalog detail.
+  const tabBarHidden = (tab === 'record' && recFullscreen)
+    || rideDetail !== null || gateAdjust !== null || catalogDetail !== null;
   // WP-A2 hides the tab bar entirely while fullscreen, which also removes
   // the only thing padding the screen for the device's bottom gesture-nav
   // inset (the bar's own paddingBottom, via bottomPad above) — so content
@@ -151,6 +171,8 @@ function Shell() {
       closeRide: () => setRideDetail(null),
       openGateAdjust: setGateAdjust,
       closeGateAdjust: () => setGateAdjust(null),
+      openCatalog: setCatalogDetail,
+      closeCatalog: () => setCatalogDetail(null),
     }),
     [],
   );
@@ -161,6 +183,7 @@ function Shell() {
         <View style={styles.content}>
           {gateAdjust !== null ? <GateAdjustScreen request={gateAdjust} />
             : rideDetail !== null ? <RideDetailScreen request={rideDetail} />
+            : catalogDetail !== null ? <CatalogDetailScreen request={catalogDetail} />
             : tab === 'record' ? <RecordScreen onFullscreenChange={setRecFullscreen} />
             : tab === 'rides' ? <RidesScreen />
             : tab === 'routes' ? <RoutesScreen />

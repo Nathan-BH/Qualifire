@@ -301,7 +301,8 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
               dropRecorded(meta.rideId);
               // RidesScreen remounts on close and refreshes itself; from
               // 'post-stop' the rider lands back on RECORD setup — same as
-              // discard-after-the-fact.
+              // discard-after-the-fact; from 'routes' the way detail
+              // underneath is revealed.
               tabNav.closeRide();
             } catch (e) {
               Alert.alert('Could not delete', e instanceof Error ? e.message : String(e));
@@ -355,7 +356,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
     );
   }
 
-  const primaryLabel = request.source === 'post-stop' ? 'RECORD ANOTHER' : 'BACK TO RIDES';
+  const primaryLabel = request.source === 'post-stop' ? 'RECORD ANOTHER' : request.source === 'routes' ? 'BACK TO ROUTE' : 'BACK TO RIDES';
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>

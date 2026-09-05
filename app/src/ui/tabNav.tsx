@@ -1,10 +1,12 @@
 /**
  * Tab-navigation seam (Cycle 024, WP-A2; WP-H 2026-09-04 — the ride-detail
- * overlay; WP-J 2026-09-05 extended scope — the full-screen gate editor):
- * lets a screen switch tabs or open a full-screen overlay WITHOUT importing
- * App.tsx / Shell — screens depend on this module, App owns the
- * implementation (`go: setTab`, `openRide: setRideDetail`, `closeRide`,
- * `openGateAdjust: setGateAdjust`, `closeGateAdjust`).
+ * overlay; WP-J 2026-09-05 extended scope — the full-screen gate editor;
+ * WP-K (cycle 2) 2026-09-05 — the catalog (place/way) detail): lets a screen
+ * switch tabs or open a full-screen overlay WITHOUT importing App.tsx / Shell
+ * — screens depend on this module, App owns the implementation (`go:
+ * setTab`, `openRide: setRideDetail`, `closeRide`, `openGateAdjust:
+ * setGateAdjust`, `closeGateAdjust`, `openCatalog: setCatalogDetail`,
+ * `closeCatalog`).
  *
  * `Tab` is exported from here (not App.tsx) precisely so a screen can import
  * the type without creating a screen -> App -> screen import cycle.
@@ -18,24 +20,30 @@ export type Tab = 'record' | 'rides' | 'routes' | 'settings' | 'demo';
 
 /** WP-H: who opened the ride detail, and for which ride. `source` decides
  * where CLOSE lands (post-stop → RECORD's idle setup, 'rides' → the RIDES
- * list) and what the primary button says. `startedAtMs` is the SESSION's
+ * list, 'routes' → the way detail underneath — WP-K (cycle 2)'s reference-
+ * ride row) and what the primary button says. `startedAtMs` is the SESSION's
  * start (location/index.ts:329) when the opener has it — the exact key a
  * free-ride record is filed under (`free:${startedAtMs}`, freeRides.ts:127);
  * RIDES only knows the raw index's startMs (a few ms earlier), so it passes
  * that and rideDetailModel falls back to a tolerance match. */
 export interface RideDetailRequest {
   rideId: string;
-  source: 'post-stop' | 'rides';
+  source: 'post-stop' | 'rides' | 'routes';
   startedAtMs: number;
 }
 
 /** WP-J (extended scope, 2026-09-05): who to edit the gates of. Opened from
- * ROUTES' "edit gates" (RoutesScreen.tsx) — the editor resolves the draft
- * itself (store/wayFromRide.ts gateEditDraftFor) so the request stays a
- * plain id, like RideDetailRequest. */
+ * ROUTES' "edit gates" (now the way detail, WP-K cycle 2) — the editor
+ * resolves the draft itself (store/wayFromRide.ts gateEditDraftFor) so the
+ * request stays a plain id, like RideDetailRequest. */
 export interface GateAdjustRequest {
   routeId: string;
 }
+
+/** WP-K (cycle 2): who to show the full-screen catalog detail for — a place
+ * or a way (a route never gets its own screen; a way's routes are its
+ * variants, shown inside the way detail). */
+export type CatalogDetailRequest = { kind: 'place'; id: string } | { kind: 'way'; id: string };
 
 export interface TabNav {
   go(tab: Tab): void;
@@ -51,6 +59,14 @@ export interface TabNav {
   openGateAdjust(req: GateAdjustRequest): void;
   /** WP-J: dismiss the editor; the active tab's screen remounts underneath. */
   closeGateAdjust(): void;
+  /** WP-K (cycle 2): show the full-screen place/way detail over the ROUTES
+   * tab (Shell mount-swaps it in and hides the tab bar). Idempotent:
+   * re-opening replaces the request; the ride detail and the gate editor,
+   * when open, sit above it. */
+  openCatalog(req: CatalogDetailRequest): void;
+  /** WP-K (cycle 2): dismiss the detail; ROUTES remounts underneath and
+   * re-reads the catalog on its own. */
+  closeCatalog(): void;
 }
 
 const TabNavContext = createContext<TabNav | null>(null);
