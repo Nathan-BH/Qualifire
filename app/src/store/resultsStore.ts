@@ -43,7 +43,7 @@ import { emptyResultsIndex, rebuildIndex, removeResult, upsertResult } from './r
 import type { ResultsIndex, RideResult } from './types.ts';
 import { catalogTrackSpecs } from '../live/tracks.ts';
 import type { FsAdapter } from '../storage/fsAdapter.ts';
-import { decodeRideFile } from '../storage/jsonl.ts';
+import { chronologicalFixes, decodeRideFile } from '../storage/jsonl.ts';
 import { CORRIDOR_M, crossTime, projectRideOffline, toXY, type RefLine } from '../../core/src/index.ts';
 
 export const RESULTS_DIR = 'results';
@@ -434,11 +434,12 @@ export async function backfillMissingResults(fs: FsAdapter, rideIds: string[]): 
       const text = await fs.readText(`rides/${rideId}.jsonl`);
       if (text === null) continue;
       const decoded = decodeRideFile(text);
-      if (decoded.fixes.length < 2) continue; // nothing derivable; no marker (D-023: cheap to retry)
+      const inOrder = chronologicalFixes(decoded.fixes);
+      if (inOrder.length < 2) continue; // nothing derivable; no marker (D-023: cheap to retry)
 
-      const t = decoded.fixes.map((f) => f.tUnixMs / 1000); // epoch seconds (derive.ts convention)
-      const lat = decoded.fixes.map((f) => f.lat);
-      const lon = decoded.fixes.map((f) => f.lon);
+      const t = inOrder.map((f) => f.tUnixMs / 1000); // epoch seconds (derive.ts convention)
+      const lat = inOrder.map((f) => f.lat);
+      const lon = inOrder.map((f) => f.lon);
 
       const accepted: { result: RideResult; proj: Projected }[] = [];
       for (const spec of specs) {

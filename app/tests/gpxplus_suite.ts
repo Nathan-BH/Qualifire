@@ -11,6 +11,7 @@ import { createMemoryFsAdapter } from '../src/storage/fsAdapter.ts';
 import { createStorage } from '../src/storage/core.ts';
 import { encodeEvent, decodeEventsFile } from '../src/storage/eventsJsonl.ts';
 import { escapeXml, isoTime } from '../src/storage/gpxExport.ts';
+import { decodeRideFile } from '../src/storage/jsonl.ts';
 import type { Fix, RideEvent } from '../src/storage/types.ts';
 import { parseGpx } from '../core/src/index.ts';
 import { test, assert, loadFixture, refFor } from './lib.ts';
@@ -49,6 +50,18 @@ function stripGpxPlus(gpxPlus: string): string {
       );
     })
     .join('\n');
+}
+
+/** Deterministic PRNG (mulberry32) — reproducible "random" doubles. Same
+ * implementation as tests/storage_suite.ts's rng() (WP-B cycle 2 T4). */
+function rng(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 // ---------------------------------------------------------------- (a) events JSONL
@@ -286,6 +299,63 @@ test('gpx+: no-sidecar ride (pre-feature) — exportGpxPlus still succeeds, only
   assert(!gpx.includes('<qf:storageErrors'), 'storageErrors present with no events file on disk');
   assert(!gpx.includes('<qf:relaunches'), 'relaunches present with no events file on disk');
   assert(!gpx.includes('<qf:buttons'), 'buttons present with no events file on disk');
+});
+
+// ---------------------------------------------------------------- (h2) WP-B cycle 2: qf:fixOrder
+
+test('gpx+: WP-B cycle 2 — <qf:fixOrder> counts backward time steps in FILE order; 0 on a clean ride', async () => {
+  // Same scramble shape as tests/storage_suite.ts: one contiguous 17-line
+  // block of fix lines shuffled out of order on disk.
+  const { fs, storage, clock } = makeEnv();
+  const rideId = await storage.startRide();
+  const fixes: Fix[] = [];
+  for (let i = 0; i < 40; i++) {
+    clock.t += 1000;
+    fixes.push({ tUnixMs: clock.t, lat: 50.8 + i * 1e-4, lon: 4.6 + i * 1e-4, ele: 30 + i });
+  }
+  for (const f of fixes) await storage.appendFix(rideId, f);
+  await storage.endRide(rideId);
+  const file = `rides/${rideId}.jsonl`;
+  const lines = fs.files.get(file)!.trimEnd().split('\n');
+  const block = lines.splice(16, 17);
+  const shuf = rng(99);
+  for (let i = block.length - 1; i > 0; i--) {
+    const j = Math.floor(shuf() * (i + 1));
+    [block[i], block[j]] = [block[j], block[i]];
+  }
+  lines.splice(16, 0, ...block);
+  const scrambled = lines.join('\n') + '\n';
+  fs.files.set(file, scrambled);
+
+  // Compute the expected outOfOrder/maxBackstepS from the shuffled file
+  // itself (never hard-code the shuffle's own output).
+  const decoded = decodeRideFile(scrambled);
+  let expectedCount = 0;
+  let expectedMaxBackMs = 0;
+  for (let i = 1; i < decoded.fixes.length; i++) {
+    const back = decoded.fixes[i - 1].tUnixMs - decoded.fixes[i].tUnixMs;
+    if (back > 0) { expectedCount += 1; if (back > expectedMaxBackMs) expectedMaxBackMs = back; }
+  }
+  assert(expectedCount > 0, 'scramble setup failed — no backward step found');
+
+  const restarted = createStorage(fs, { now: () => clock.t });
+  const gpx = await restarted.exportGpxPlus(rideId);
+  const expectedMaxBackS = expectedMaxBackMs / 1000;
+  assert(
+    gpx.includes(`<qf:fixOrder outOfOrder="${expectedCount}" maxBackstepS="${expectedMaxBackS}"/>`),
+    `qf:fixOrder wrong or missing for outOfOrder=${expectedCount} maxBackstepS=${expectedMaxBackS}`,
+  );
+  assert(fs.files.get(file) === scrambled, 'exportGpxPlus rewrote the raw JSONL (D-023 violation)');
+
+  const clean = makeEnv(1755168000000);
+  const cleanRideId = await clean.storage.startRide();
+  for (let i = 0; i < 5; i++) {
+    clean.clock.t = 1755168000000 + i * 1000;
+    await clean.storage.appendFix(cleanRideId, { tUnixMs: clean.clock.t, lat: 50.8, lon: 4.6 });
+  }
+  await clean.storage.endRide(cleanRideId);
+  const cleanGpx = await clean.storage.exportGpxPlus(cleanRideId);
+  assert(cleanGpx.includes('<qf:fixOrder outOfOrder="0"/>'), 'clean ride must report outOfOrder="0"');
 });
 
 // ---------------------------------------------------------------- (i) sidecar torn-tail healing

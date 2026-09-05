@@ -41,6 +41,7 @@ import type {
   StorageErrorEvent,
 } from './types.ts';
 import { escapeXml, isoTime, num } from './gpxExport.ts';
+import { chronologicalFixes } from './jsonl.ts';
 import {
   CORRIDOR_M, computeKinematics, projectRideOffline, PROPOSED_GATES, toXY,
   type RefLine, type TrackId,
@@ -202,6 +203,7 @@ function computeMaxSpeedKmh(fixes: FixRecord[]): number | null {
  * Always emitted for a GPX+ document, even when every child is omitted. */
 function buildSessionBlock(
   fixes: FixRecord[], events: DecodedEvents | null, refFor: RefLookup | undefined,
+  fileOrder: readonly FixRecord[],
 ): string {
   const evs = events?.events ?? [];
   const lines: string[] = [];
@@ -260,6 +262,25 @@ function buildSessionBlock(
   if (nPreStart + nWarmup > 0) {
     lines.push(`   <qf:excludedFixes preStart="${nPreStart}" warmup="${nWarmup}"/>`);
   }
+
+  // WP-B (cycle 2, 2026-09-04): how far the JSONL's line order departs from
+  // chronological. The exporters sort (F-2 belt-and-braces) so the trkpts
+  // above are always in time order; this line records what was on disk, so
+  // a scrambled ride (route 20260903-182911-3c34's reference ride) can be
+  // recognised from its export alone. outOfOrder = number of consecutive
+  // line pairs whose time steps backwards; maxBackstepS = the largest such
+  // step. Always emitted: "0" is a statement, absence would be ambiguity.
+  let outOfOrder = 0;
+  let maxBackstepMs = 0;
+  for (let i = 1; i < fileOrder.length; i++) {
+    const back = fileOrder[i - 1].tUnixMs - fileOrder[i].tUnixMs;
+    if (back > 0) { outOfOrder += 1; if (back > maxBackstepMs) maxBackstepMs = back; }
+  }
+  lines.push(
+    outOfOrder === 0
+      ? `   <qf:fixOrder outOfOrder="0"/>`
+      : `   <qf:fixOrder outOfOrder="${outOfOrder}" maxBackstepS="${num(maxBackstepMs / 1000)}"/>`,
+  );
 
   if (events !== null) {
     const lockEvs = evs.filter((e): e is LockEvent => e.kind === 'lock');
@@ -492,7 +513,7 @@ export function buildGpxPlus(
   decoded: DecodedRide, events: DecodedEvents | null, rideId: string, refFor?: RefLookup,
 ): string {
   const name = decoded.header?.rideId ?? rideId;
-  const fixes = [...decoded.fixes].sort((a, b) => a.tUnixMs - b.tUnixMs);
+  const fixes = chronologicalFixes(decoded.fixes);
   const startMs = fixes[0]?.tUnixMs ?? decoded.header?.startedAtMs ?? 0;
   const pts: string[] = [];
   let lastEle = 0;
@@ -532,7 +553,7 @@ export function buildGpxPlus(
     (pts.length > 0 ? '\n' : '') +
     `  </trkseg>\n` +
     ` </trk>\n` +
-    buildSessionBlock(fixes, events, refFor) +
+    buildSessionBlock(fixes, events, refFor, decoded.fixes) +
     `</gpx>\n`
   );
 }

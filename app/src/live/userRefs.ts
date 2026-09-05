@@ -61,9 +61,14 @@ const round = (v: number, d: number) => Math.round(v * 10 ** d) / 10 ** d;
  * than 2 usable fixes remain after flag-filtering, when the line has <2
  * vertices, or when its length is under MIN_TRACK_LENGTH_M — the same floor
  * as the naming offer itself.
+ *
+ * Fixes are sorted by tUnixMs first — the on-disk order is not chronological
+ * in general (WP-B cycle 2).
  */
 export function buildRefFromRideFixes(fixes: readonly RefFixInput[]): BuiltRideRef | null {
-  const used = fixes.filter((f) => !f.preStart && !f.warmup);
+  const used = [...fixes]
+    .filter((f) => !f.preStart && !f.warmup)
+    .sort((a, b) => a.tUnixMs - b.tUnixMs);
   if (used.length < 2) return null;
   const ride: RidePoints = {
     name: '',

@@ -12,7 +12,7 @@
  */
 import { test, assert } from './lib.ts';
 import { createMemoryFsAdapter } from '../src/storage/fsAdapter.ts';
-import { collapseStationaryRuns, M_PER_DEG_LAT } from '../core/src/index.ts';
+import { buildReference, collapseStationaryRuns, M_PER_DEG_LAT, meanOrigin, xyToLatLon } from '../core/src/index.ts';
 import type { RidePoints } from '../core/src/index.ts';
 import {
   buildRefFromRideFixes, initUserRefs, saveUserRef, userRefFor, flushUserRefWrites,
@@ -83,7 +83,17 @@ test('userRefs: a >=20 s stationary knot collapses and reports one stop chainage
       tUnixMs: knotSpot.tUnixMs + (k + 1) * 1000, // 1 s apart, ~30 s stationary
     });
   }
-  const spliced = [...base.slice(0, 11), ...extras, ...base.slice(11)];
+  // The knot occupies t = 51..80 s, so the rest of the ride resumes AFTER
+  // it: shift the tail by the knot's 30 s (base[11] lands at 85 s, keeping
+  // the 5 s cadence). Before WP-B cycle 2 the tail kept its original
+  // 55..95 s stamps — physically impossible (one rider "at" the knot and
+  // 110 m+ north at the same instants) — and the test only passed because
+  // the builder walked fixes in array order, the very bug WP-B fixed. Sorted
+  // by tUnixMs, overlapping stamps interleave the knot with the tail (0 runs,
+  // and a 2,994 m zig-zag line for a 2,100 m ride).
+  const KNOT_MS = extras.length * 1000; // 30 fixes, 1 s apart
+  const tail = base.slice(11).map((f) => ({ ...f, tUnixMs: f.tUnixMs + KNOT_MS }));
+  const spliced = [...base.slice(0, 11), ...extras, ...tail];
   const built = buildRefFromRideFixes(spliced);
   assert(built !== null, 'expected a built ref with a stationary knot');
   assert(
@@ -198,6 +208,81 @@ test('userRefs (WP-Q): removeUserRef on an unknown id never throws and writes no
   await flushUserRefWrites();
   assert(fs.files.get(USER_REFS_FILE) === before, 'file text unchanged for an unknown id');
   assert(userRefFor('route:only') !== null, 'the real entry is untouched');
+});
+
+test('userRefs: buildRefFromRideFixes is order-independent (WP-B cycle 2 — scrambled fix order doubled route 3c34)', () => {
+  // A ~137 deg arc (radius 600 m) about (50.85, 4.66) — NOT a straight line,
+  // so smoothing has power to distinguish chronological from scrambled
+  // (a straight line is order-insensitive under the box smoother). 240
+  // fixes, 1 Hz, ~6 m/s (angle step = 6/600 rad).
+  const CENTER_LAT = 50.85;
+  const CENTER_LON = 4.66;
+  const RADIUS_M = 600;
+  const ANGLE_STEP = 6 / 600;
+  const N = 240;
+  const BASE_MS = 1700000000000;
+
+  const xs: number[] = [];
+  const ys: number[] = [];
+  const fixes: RefFixInput[] = [];
+  for (let i = 0; i < N; i++) {
+    const theta = i * ANGLE_STEP;
+    const x = RADIUS_M * Math.sin(theta);
+    const y = RADIUS_M * (1 - Math.cos(theta));
+    xs.push(x);
+    ys.push(y);
+    const [lat, lon] = xyToLatLon(x, y, CENTER_LAT, CENTER_LON);
+    fixes.push({ lat, lon, tUnixMs: BASE_MS + i * 1000 });
+  }
+
+  const sorted = buildRefFromRideFixes(fixes);
+  assert(sorted !== null, 'expected the chronological build to succeed');
+
+  // Scramble fixes 60..179: two round-robin batches (60..119 and 120..179
+  // interleaved), rest left in order.
+  const batchA = fixes.slice(60, 120);
+  const batchB = fixes.slice(120, 180);
+  assert(batchA.length === 60 && batchB.length === 60, 'batch construction sanity');
+  const interleaved: RefFixInput[] = [];
+  for (let i = 0; i < batchA.length; i++) interleaved.push(batchA[i], batchB[i]);
+  const scrambled = [...fixes.slice(0, 60), ...interleaved, ...fixes.slice(180)];
+  assert(scrambled.length === N, `scrambled length ${scrambled.length} != ${N}`);
+
+  // (a) buildRefFromRideFixes must produce a bit-identical RefLine regardless
+  // of input permutation — the A3 fix sorts internally.
+  const scrambledBuilt = buildRefFromRideFixes(scrambled);
+  assert(scrambledBuilt !== null, 'expected the scrambled build to succeed');
+  assert(scrambledBuilt!.ref.rx.length === sorted!.ref.rx.length,
+    `rx length ${scrambledBuilt!.ref.rx.length} != ${sorted!.ref.rx.length}`);
+  for (let i = 0; i < sorted!.ref.rx.length; i++) {
+    assert(scrambledBuilt!.ref.rx[i] === sorted!.ref.rx[i], `rx[${i}] differs`);
+    assert(scrambledBuilt!.ref.ry[i] === sorted!.ref.ry[i], `ry[${i}] differs`);
+    assert(scrambledBuilt!.ref.ch[i] === sorted!.ref.ch[i], `ch[${i}] differs`);
+  }
+
+  // (b) harness power: the SAME scrambled fixes fed through the raw pipeline
+  // (collapseStationaryRuns -> meanOrigin -> buildReference) with NO sort
+  // (i.e. what buildRefFromRideFixes would have done before the A3 fix) must
+  // come out much longer than the chronological build — otherwise this test
+  // would not have failed on the pre-fix code.
+  const rawRide: RidePoints = {
+    name: '',
+    t: Float64Array.from(scrambled, (f) => f.tUnixMs / 1000),
+    lat: Float64Array.from(scrambled, (f) => f.lat),
+    lon: Float64Array.from(scrambled, (f) => f.lon),
+    ele: Float64Array.from(scrambled, () => 0),
+  };
+  const collapsed = collapseStationaryRuns(rawRide);
+  const origin = meanOrigin([collapsed.ride]);
+  const rawRef = buildReference(collapsed.ride, origin.lat0, origin.lon0);
+  assert(rawRef.length > 1.5 * sorted!.ref.length,
+    `harness has no power: pre-fix-shaped length ${rawRef.length} not > 1.5x sorted ${sorted!.ref.length}`);
+
+  // (c) plausibility bound on the chronological build itself: arc/chord for
+  // a ~137 deg arc is ~1.28, well under 1.7.
+  const chordM = Math.hypot(xs[N - 1] - xs[0], ys[N - 1] - ys[0]);
+  const ratio = sorted!.ref.length / chordM;
+  assert(ratio < 1.7, `sorted ref length ${sorted!.ref.length} / chord ${chordM} = ${ratio}, expected < 1.7`);
 });
 
 test('core: collapseStationaryRuns collapses a run to its centroid and reports it', () => {

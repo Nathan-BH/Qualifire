@@ -16,7 +16,7 @@
  */
 import type { RefLine } from '../../core/src/index.ts';
 import type { FsAdapter } from '../storage/fsAdapter.ts';
-import { decodeRideFile } from '../storage/jsonl.ts';
+import { chronologicalFixes, decodeRideFile } from '../storage/jsonl.ts';
 import { buildRefFromRideFixes, saveUserRef } from '../live/userRefs.ts';
 import { seedGateChainages } from './gateSeeding.ts';
 import { addGateSet, gateSetFor, routesForWay } from './catalog.ts';
@@ -39,12 +39,16 @@ export type RideFix = { lat: number; lon: number; [k: string]: unknown };
  * default would statically import storage/expoFsAdapter.ts (real
  * expo-file-system), which the headless test runner cannot load — every
  * caller (RideDetailScreen.tsx included) passes createExpoFsAdapter()
- * itself. */
+ * itself.
+ *
+ * Returned in chronological order (WP-B cycle 2) — disk order is not; every
+ * consumer of this (reference build, way draft, trace, replay) needs a
+ * path/time series. */
 export async function readRideFixes(rideId: string, fs: FsAdapter) {
   try {
     const text = await fs.readText(`rides/${rideId}.jsonl`);
     if (text === null) return null;
-    return decodeRideFile(text).fixes;
+    return chronologicalFixes(decodeRideFile(text).fixes);
   } catch {
     return null;
   }

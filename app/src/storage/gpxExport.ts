@@ -8,6 +8,7 @@
  * emitted here honours that; see the round-trip check in README.md.
  */
 import type { DecodedRide } from './types.ts';
+import { chronologicalFixes } from './jsonl.ts';
 
 /** Numbers must never render in exponent form or the core regex drops the point. */
 export function num(n: number): string {
@@ -35,7 +36,7 @@ export function buildGpx(decoded: DecodedRide, rideId: string): string {
   // F-2 belt-and-braces: emit in timestamp order even if the JSONL lines are
   // not (a pre-fix ride on disk has one scrambled block). Stable sort; the
   // JSONL itself is never rewritten (D-023) — the GPX is a derived view.
-  const fixes = [...decoded.fixes].sort((a, b) => a.tUnixMs - b.tUnixMs);
+  const fixes = chronologicalFixes(decoded.fixes);
   const startMs = fixes[0]?.tUnixMs ?? decoded.header?.startedAtMs ?? 0;
   const pts: string[] = [];
   let lastEle = 0;

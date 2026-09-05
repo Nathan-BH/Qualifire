@@ -80,15 +80,30 @@ export function decodeRideFile(text: string): DecodedRide {
   return out;
 }
 
+/** The fixes in chronological (tUnixMs) order — a stable sort of a COPY.
+ * decodeRideFile's own `fixes` stay in FILE order on purpose: that array is
+ * the F-2 tests' oracle for "file order == call order", and the raw JSONL
+ * is never rewritten (D-023). File order is NOT guaranteed chronological
+ * (WP-B cycle 2, 2026-09-04: route 20260903-182911-3c34's reference line was
+ * built from a scrambled block of fixes and came out 13.96 km for a 5.7 km
+ * ride, gates bunched on the doubled-back stretch). Every consumer that
+ * walks fixes as a path or a time series goes through this. */
+export function chronologicalFixes<T extends { tUnixMs: number }>(fixes: readonly T[]): T[] {
+  return [...fixes].sort((a, b) => a.tUnixMs - b.tUnixMs);
+}
+
 /** Meta is derived from the fixes actually on disk, not from the end record —
- * so a crashed (end-less) ride still reports honest numbers. */
+ * so a crashed (end-less) ride still reports honest numbers. Start/end are
+ * the earliest/latest fix on disk, not the first/last line (file order is
+ * not guaranteed chronological — see chronologicalFixes). */
 export function deriveMeta(decoded: DecodedRide, rideId: string): RideMeta {
   const n = decoded.fixes.length;
   const fallback = decoded.header?.startedAtMs ?? 0;
+  const inOrder = chronologicalFixes(decoded.fixes);
   return {
     rideId: decoded.header?.rideId ?? rideId,
-    startMs: n > 0 ? decoded.fixes[0].tUnixMs : fallback,
-    endMs: n > 0 ? decoded.fixes[n - 1].tUnixMs : fallback,
+    startMs: n > 0 ? inOrder[0].tUnixMs : fallback,
+    endMs: n > 0 ? inOrder[n - 1].tUnixMs : fallback,
     nFixes: n,
   };
 }

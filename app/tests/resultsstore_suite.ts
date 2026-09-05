@@ -245,6 +245,65 @@ test('resultsstore: backfill derives a result matching a direct deriveRideResult
   );
 });
 
+/** Deterministic PRNG (mulberry32) — same implementation as
+ * tests/storage_suite.ts's rng() (WP-B cycle 2 T5). */
+function rng(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+test('resultsstore: backfill of a scrambled-on-disk copy of the same ride yields the same RideResult (WP-B cycle 2)', async () => {
+  const fs = createMemoryFsAdapter();
+  const fx = loadFixture('clean_morning');
+  const rideId = 'backfillride-scrambled';
+  await writeRideFile(fs, rideId, fx.fixes.t, fx.fixes.lat, fx.fixes.lon);
+
+  // Shuffle a contiguous 17-line block of the written ride file (same shape
+  // as tests/storage_suite.ts's scramble) before backfilling.
+  const file = `rides/${rideId}.jsonl`;
+  const text = fs.files.get(file)!;
+  const lines = text.trimEnd().split('\n'); // header, N fixes, end
+  assert(lines.length >= 40, `fixture too short to shuffle a 17-line block: ${lines.length} lines`);
+  const block = lines.splice(16, 17);
+  const shuf = rng(99);
+  for (let i = block.length - 1; i > 0; i--) {
+    const j = Math.floor(shuf() * (i + 1));
+    [block[i], block[j]] = [block[j], block[i]];
+  }
+  lines.splice(16, 0, ...block);
+  const scrambled = lines.join('\n') + '\n';
+  fs.files.set(file, scrambled);
+
+  resultsStore.resetResultsStoreForTests();
+  await resultsStore.initResultsStore(fs);
+  await resultsStore.backfillMissingResults(fs, [rideId]);
+
+  const stored = resultsStore.getStoredResult(rideId);
+  assert(stored !== null, 'expected the backfill to produce a stored result from a scrambled-on-disk ride');
+  assert(stored!.routeId === 'Morning', `routeId ${stored!.routeId}`);
+
+  const direct = deriveRideResult({
+    rideId, t: fx.fixes.t, lat: fx.fixes.lat, lon: fx.fixes.lon,
+    ref: fixtureRefFor('Morning'), gates: gateChainages('Morning'),
+    routeId: 'Morning', gateSetVersion: 1,
+    engineVersion: resultsStore.BACKFILL_ENGINE_VERSION, source: 'app',
+  });
+  assert(stored!.lap.quality === direct.lap.quality, `lap quality ${stored!.lap.quality} != ${direct.lap.quality}`);
+  assert(
+    Math.abs((stored!.lap.movingS ?? 0) - (direct.lap.movingS ?? 0)) < 1e-6,
+    `lap movingS ${stored!.lap.movingS} != ${direct.lap.movingS}`,
+  );
+  assert(
+    Math.abs(stored!.lap.rawS - direct.lap.rawS) < 1e-6,
+    `lap rawS ${stored!.lap.rawS} != ${direct.lap.rawS}`,
+  );
+});
+
 test('lastRide: WP-B fix B2 — initRideHistory excludes mode:"free" index entries from backfill, even when status is "ended" (D-025)', async () => {
   lastRide.resetRecordedForTests();
   resultsStore.resetResultsStoreForTests();

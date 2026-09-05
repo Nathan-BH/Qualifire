@@ -5,12 +5,31 @@
  */
 import * as nodeFs from 'node:fs';
 import * as path from 'node:path';
+import { registerHooks } from 'node:module';
+import { fileURLToPath } from 'node:url';
 import { createMemoryFsAdapter, type FsAdapter } from '../src/storage/fsAdapter.ts';
 import { createStorage } from '../src/storage/core.ts';
-import { encodeFix, decodeRideFile } from '../src/storage/jsonl.ts';
+import { encodeEnd, encodeFix, encodeHeader, decodeRideFile, deriveMeta, chronologicalFixes } from '../src/storage/jsonl.ts';
 import type { Fix } from '../src/storage/types.ts';
 import { parseGpx } from '../core/src/index.ts';
 import { test, assert, loadFixture, FIXTURES_DIR } from './lib.ts';
+
+// WP-B cycle 2 (T2): app/src/store/wayFromRide.ts transitively imports
+// store/catalogStore.ts -> store/seed.ts, which imports catalog.seed.json as
+// a bare `.json` — Metro bundles that directly, Node needs a loader hook
+// (same shim as resultsstore_suite.ts/waycreation_suite.ts). readRideFixes
+// is pulled in DYNAMICALLY, after the hook exists, since static imports are
+// linked before any module body (including this hook) runs.
+registerHooks({
+  load(url, context, nextLoad) {
+    if (url.endsWith('.json')) {
+      const source = nodeFs.readFileSync(fileURLToPath(url), 'utf8');
+      return { format: 'module', source: `export default ${source};`, shortCircuit: true };
+    }
+    return nextLoad(url, context);
+  },
+});
+const { readRideFixes } = await import('../src/store/wayFromRide.ts');
 
 /** Deterministic PRNG (mulberry32) — reproducible "random" doubles. */
 function rng(seed: number): () => number {
@@ -370,6 +389,93 @@ test('storage: F-2 — GPX export of a scrambled-on-disk ride is chronological, 
       `point ${i}: coords decoupled from their timestamp by the sort`);
   }
   assert(fs.files.get(file) === scrambled, 'exportGpx rewrote the raw JSONL (D-023 violation)');
+});
+
+test('storage: readRideFixes / chronologicalFixes — scrambled-on-disk ride comes back chronological, JSONL untouched (WP-B cycle 2)', async () => {
+  // Reuses the scramble construction above: a pre-fix ride on disk with one
+  // contiguous 17-line block out of order.
+  const { fs, storage, clock } = makeEnv();
+  const rideId = await storage.startRide();
+  const fixes: Fix[] = [];
+  for (let i = 0; i < 40; i++) {
+    clock.t += 1000;
+    fixes.push({ tUnixMs: clock.t, lat: 50.8 + i * 1e-4, lon: 4.6 + i * 1e-4, ele: 30 + i });
+  }
+  for (const f of fixes) await storage.appendFix(rideId, f);
+  await storage.endRide(rideId);
+  const file = `rides/${rideId}.jsonl`;
+  const lines = fs.files.get(file)!.trimEnd().split('\n');
+  const block = lines.splice(16, 17);
+  const shuf = rng(99);
+  for (let i = block.length - 1; i > 0; i--) {
+    const j = Math.floor(shuf() * (i + 1));
+    [block[i], block[j]] = [block[j], block[i]];
+  }
+  lines.splice(16, 0, ...block);
+  const scrambled = lines.join('\n') + '\n';
+  fs.files.set(file, scrambled);
+  const onDisk = decodeRideFile(scrambled).fixes.map((f) => f.tUnixMs);
+  assert(onDisk.some((t, i) => i > 0 && t < onDisk[i - 1]), 'scramble setup failed — file still in order');
+
+  const result = await readRideFixes(rideId, fs);
+  assert(result !== null, 'readRideFixes returned null');
+  assert(result!.length === 40, `expected 40 fixes, got ${result!.length}`);
+  for (let i = 1; i < result!.length; i++) {
+    assert(
+      result![i].tUnixMs >= result![i - 1].tUnixMs,
+      `not non-decreasing at ${i}: ${result![i - 1].tUnixMs} -> ${result![i].tUnixMs}`,
+    );
+  }
+  const byT = new Map(fixes.map((f) => [f.tUnixMs, f]));
+  for (const f of result!) {
+    const src = byT.get(f.tUnixMs);
+    assert(src !== undefined, `fix tUnixMs ${f.tUnixMs} not among the original fixes`);
+    assert(
+      f.lat === src!.lat && f.lon === src!.lon,
+      `fix ${f.tUnixMs}: lat/lon decoupled from its own timestamp by the sort`,
+    );
+  }
+  assert(fs.files.get(file) === scrambled, 'readRideFixes rewrote the raw JSONL (D-023 violation)');
+
+  // chronologicalFixes stability: two fixes sharing a tUnixMs keep file order.
+  const tied = [
+    { tUnixMs: 5000, tag: 'a' },
+    { tUnixMs: 5000, tag: 'b' },
+    { tUnixMs: 1000, tag: 'c' },
+  ];
+  const sortedTied = chronologicalFixes(tied);
+  assert(
+    sortedTied[0].tag === 'c' && sortedTied[1].tag === 'a' && sortedTied[2].tag === 'b',
+    `chronologicalFixes not stable on ties: got ${sortedTied.map((f) => f.tag).join(',')}`,
+  );
+});
+
+test('storage: deriveMeta on a scrambled-on-disk ride reports the earliest/latest fix, not first/last line (WP-B cycle 2)', () => {
+  const fixes: Fix[] = [];
+  let t = 1755167000000;
+  for (let i = 0; i < 40; i++) {
+    t += 1000;
+    fixes.push({ tUnixMs: t, lat: 50.8 + i * 1e-4, lon: 4.6 + i * 1e-4, ele: 30 + i });
+  }
+  let text = encodeHeader('meta-scramble', fixes[0].tUnixMs);
+  for (const f of fixes) text += encodeFix(f);
+  text += encodeEnd(fixes[39].tUnixMs, 40);
+  const lines = text.trimEnd().split('\n');
+  const block = lines.splice(16, 17);
+  const shuf = rng(99);
+  for (let i = block.length - 1; i > 0; i--) {
+    const j = Math.floor(shuf() * (i + 1));
+    [block[i], block[j]] = [block[j], block[i]];
+  }
+  lines.splice(16, 0, ...block);
+  const scrambled = lines.join('\n') + '\n';
+  const onDisk = decodeRideFile(scrambled).fixes.map((f) => f.tUnixMs);
+  assert(onDisk.some((tt, i) => i > 0 && tt < onDisk[i - 1]), 'scramble setup failed — file still in order');
+
+  const meta = deriveMeta(decodeRideFile(scrambled), 'meta-scramble');
+  assert(meta.startMs === fixes[0].tUnixMs, `startMs ${meta.startMs} != earliest ${fixes[0].tUnixMs}`);
+  assert(meta.endMs === fixes[39].tUnixMs, `endMs ${meta.endMs} != latest ${fixes[39].tUnixMs}`);
+  assert(meta.nFixes === 40, `nFixes ${meta.nFixes} != 40`);
 });
 
 test('storage: real export 20260815-0024 — core parses all 92 points; pre-fix scramble preserved as the F-2 fossil', () => {
