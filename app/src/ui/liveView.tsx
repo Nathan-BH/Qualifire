@@ -30,6 +30,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import type { LiveEngineState, LiveSector } from '../live/engine';
 import { LiveBigChip, LiveLapChip, PosChip, StripSlot, Tier } from './chips';
 import { useTheme } from './themeContext';
+import { scoredS } from '../store/timing';
 
 /* ---------------- timebase: one clock, two speeds ---------------- */
 
@@ -118,10 +119,11 @@ export function fmtSec(s: number, decimals: 0 | 1 = 0): string {
   return `${m}:${(rest < 10 ? '0' : '') + sec}`;
 }
 
-/** (sectorIndex, movingS) -> tier. Supplied by the screen from the colour
- * model in Settings and the ghost history for the locked route; returns
- * 'neutral' when there is too little history to judge (D-008's <5 rule). */
-export type TierSource = (sectorIndex: number, movingS: number | null) => Tier;
+/** (sectorIndex, timeS — scoredS() of the sector) -> tier. Supplied by the
+ * screen from the colour model in Settings and the ghost history for the
+ * locked route; returns 'neutral' when there is too little history to judge
+ * (D-008's <5 rule). */
+export type TierSource = (sectorIndex: number, timeS: number | null) => Tier;
 
 const NEUTRAL_SOURCE: TierSource = () => 'neutral';
 
@@ -134,10 +136,10 @@ function bigFromSector(k: number, sec: LiveSector, tierOf: TierSource): BigChipM
     }
     return {
       // cycle 008: real tier from the ghost history, via the injected source
-      tier: tierOf(k, sec.movingS ?? null),
+      tier: tierOf(k, scoredS(sec)),
       lbl,
       glyph: sec.interrupted ? '‖' : '',
-      time: fmtSec(sec.movingS ?? sec.rawS, 1),
+      time: fmtSec(scoredS(sec) ?? sec.rawS, 1),
       delta: '', // D-021: no reference on this track yet → delta blank
     };
   }
@@ -158,9 +160,9 @@ export function viewModelFromEngine(
         return sec.estimated
           ? { tier: 'est' as Tier, label: `${label} ~`, time: `~${fmtSec(sec.rawS)}` }
           : {
-              tier: tierOf(i + 1, sec.movingS ?? null),
+              tier: tierOf(i + 1, scoredS(sec)),
               label: sec.interrupted ? `${label} ‖` : label,
-              time: fmtSec(sec.movingS ?? sec.rawS), // frozen m:ss — decimal lives in the flash
+              time: fmtSec(scoredS(sec) ?? sec.rawS), // frozen m:ss — decimal lives in the flash
             };
       case 'current':
         return { tier: 'none' as Tier, label, current: true };
@@ -187,8 +189,8 @@ export function viewModelFromEngine(
         }
       : {
           // lap tier: sector index 0 is the convention for "the whole lap"
-          tier: tierOf(0, st.lap.movingS ?? st.lap.rawS ?? null),
-          time: fmtSec(st.lap.movingS ?? st.lap.rawS ?? 0),
+          tier: tierOf(0, scoredS(st.lap) ?? st.lap.rawS ?? null),
+          time: fmtSec(scoredS(st.lap) ?? st.lap.rawS ?? 0),
           delta: '', // no lap reference yet (D-021)
         };
   }

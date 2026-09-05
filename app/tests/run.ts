@@ -11,6 +11,7 @@ import './storage_suite.ts';
 import './gpxplus_suite.ts';
 import './live_suite.ts';
 import './store_suite.ts';
+import './timing_suite.ts';
 import './routemap_suite.ts';
 import './routemapgeo_suite.ts';
 import './routemapstyle_suite.ts';

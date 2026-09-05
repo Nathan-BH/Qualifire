@@ -48,7 +48,7 @@ const THIN = [100, 110];
 // palette happened to return null.
 const paintAll = (t: string): string => `P:${t}`;
 
-type StoredLike = { index: number; movingS: number | null; quality: string };
+type StoredLike = { index: number; rawS: number; movingS: number | null; quality: string };
 
 function stored(sectors: StoredLike[]) {
   return { sectors };
@@ -58,9 +58,9 @@ function stored(sectors: StoredLike[]) {
 
 test('sectortrail: stored — no clean sector -> all null, length max-index+1', () => {
   const ride = stored([
-    { index: 1, movingS: 90, quality: 'estimated' },
-    { index: 2, movingS: 95, quality: 'missed' },
-    { index: 3, movingS: 100, quality: 'interrupted' },
+    { index: 1, rawS: 90, movingS: 90, quality: 'estimated' },
+    { index: 2, rawS: 95, movingS: 95, quality: 'missed' },
+    { index: 3, rawS: 100, movingS: 100, quality: 'interrupted' },
   ]);
   const out = storedSectorColours(ride, () => RICH, paintAll);
   assert(out.length === 4, `expected length 4, got ${out.length}`);
@@ -69,9 +69,9 @@ test('sectortrail: stored — no clean sector -> all null, length max-index+1', 
 
 test('sectortrail: stored — tiers land on the span ending at that gate (purple/green/yellow)', () => {
   const ride = stored([
-    { index: 1, movingS: 95, quality: 'clean' }, // < best(100) -> purple
-    { index: 2, movingS: 115, quality: 'clean' }, // < mean(140) -> green
-    { index: 3, movingS: 125, quality: 'clean' }, // < mean(140) -> green... need yellow case below
+    { index: 1, rawS: 95, movingS: 95, quality: 'clean' }, // < best(100) -> purple
+    { index: 2, rawS: 115, movingS: 115, quality: 'clean' }, // < mean(140) -> green
+    { index: 3, rawS: 125, movingS: 125, quality: 'clean' }, // < mean(140) -> green... need yellow case below
   ]);
   const out = storedSectorColours(ride, () => RICH, paintAll);
   assert(out[0] === null, 'index 0 always null');
@@ -80,19 +80,19 @@ test('sectortrail: stored — tiers land on the span ending at that gate (purple
 
 test('sectortrail: stored — a value above the mean earns yellow', () => {
   // RICH = [100,110,120,130,140], best=100, mean=120
-  const ride = stored([{ index: 1, movingS: 135, quality: 'clean' }]);
+  const ride = stored([{ index: 1, rawS: 135, movingS: 135, quality: 'clean' }]);
   const out = storedSectorColours(ride, () => RICH, paintAll);
   assert(out[1] === 'P:yellow', `expected P:yellow, got ${out[1]}`);
 });
 
 test('sectortrail: stored — a value between best and mean earns green', () => {
-  const ride = stored([{ index: 1, movingS: 110, quality: 'clean' }]);
+  const ride = stored([{ index: 1, rawS: 110, movingS: 110, quality: 'clean' }]);
   const out = storedSectorColours(ride, () => RICH, paintAll);
   assert(out[1] === 'P:green', `expected P:green, got ${out[1]}`);
 });
 
 test('sectortrail: stored — neutral (< MIN_HISTORY) never paints even when paint would', () => {
-  const ride = stored([{ index: 1, movingS: 95, quality: 'clean' }]);
+  const ride = stored([{ index: 1, rawS: 95, movingS: 95, quality: 'clean' }]);
   const out = storedSectorColours(ride, () => THIN, paintAll);
   assert(out.length === 2, `expected length 2, got ${out.length}`);
   assert(out[1] === null, `expected null on too-little history, got ${out[1]}`);
@@ -100,10 +100,10 @@ test('sectortrail: stored — neutral (< MIN_HISTORY) never paints even when pai
 
 test('sectortrail: stored — interrupted / estimated / missed stay null with rich history', () => {
   const ride = stored([
-    { index: 1, movingS: 95, quality: 'clean' },
-    { index: 2, movingS: 95, quality: 'interrupted' },
-    { index: 3, movingS: 95, quality: 'estimated' },
-    { index: 4, movingS: null, quality: 'missed' },
+    { index: 1, rawS: 95, movingS: 95, quality: 'clean' },
+    { index: 2, rawS: 95, movingS: 95, quality: 'interrupted' },
+    { index: 3, rawS: 95, movingS: 95, quality: 'estimated' },
+    { index: 4, rawS: 0, movingS: null, quality: 'missed' },
   ]);
   const out = storedSectorColours(ride, () => RICH, paintAll);
   assert(out[1] === 'P:purple', `S1 clean expected coloured, got ${out[1]}`);
@@ -114,9 +114,9 @@ test('sectortrail: stored — interrupted / estimated / missed stay null with ri
 
 test('sectortrail: stored — unsorted sectors slot by index, not array position', () => {
   const ride = stored([
-    { index: 3, movingS: 135, quality: 'clean' }, // yellow
-    { index: 1, movingS: 95, quality: 'clean' }, // purple
-    { index: 2, movingS: 110, quality: 'clean' }, // green
+    { index: 3, rawS: 135, movingS: 135, quality: 'clean' }, // yellow
+    { index: 1, rawS: 95, movingS: 95, quality: 'clean' }, // purple
+    { index: 2, rawS: 110, movingS: 110, quality: 'clean' }, // green
   ]);
   const out = storedSectorColours(ride, () => RICH, paintAll);
   assert(out.length === 4, `expected length 4, got ${out.length}`);
@@ -138,9 +138,9 @@ test('sectortrail: stored — empty sectors -> [null] (index 0 slot only, reduce
 test('sectortrail: stored — hist is called with the sector index, once per clean sector', () => {
   const calls: number[] = [];
   const ride = stored([
-    { index: 1, movingS: 95, quality: 'clean' },
-    { index: 2, movingS: 95, quality: 'missed' },
-    { index: 3, movingS: 95, quality: 'clean' },
+    { index: 1, rawS: 95, movingS: 95, quality: 'clean' },
+    { index: 2, rawS: 95, movingS: 95, quality: 'missed' },
+    { index: 3, rawS: 95, movingS: 95, quality: 'clean' },
   ]);
   storedSectorColours(ride, (i) => { calls.push(i); return RICH; }, paintAll);
   assert(JSON.stringify(calls) === JSON.stringify([1, 3]), `expected hist called for [1,3], got ${JSON.stringify(calls)}`);
@@ -195,7 +195,7 @@ test('sectortrail: live/stored agreement — same moving times through both buil
   const times = [95, 110, 135];
   const liveOut = liveSectorColours(times.map((v) => done(v)), () => RICH, paintAll);
   const storedOut = storedSectorColours(
-    stored(times.map((v, i) => ({ index: i + 1, movingS: v, quality: 'clean' }))),
+    stored(times.map((v, i) => ({ index: i + 1, rawS: v, movingS: v, quality: 'clean' }))),
     () => RICH,
     paintAll,
   );
@@ -224,10 +224,10 @@ test('sectortrail: ALL_YELLOW is a truthy no-op for the span builder, never muta
 
 test('sectortrail: storedSectorColours output feeds sectorSpansFeatureCollection end-to-end', () => {
   const ride = stored([
-    { index: 1, movingS: 95, quality: 'clean' }, // purple
-    { index: 2, movingS: 110, quality: 'clean' }, // green
-    { index: 3, movingS: 135, quality: 'clean' }, // yellow
-    { index: 4, movingS: 95, quality: 'interrupted' }, // null
+    { index: 1, rawS: 95, movingS: 95, quality: 'clean' }, // purple
+    { index: 2, rawS: 110, movingS: 110, quality: 'clean' }, // green
+    { index: 3, rawS: 135, movingS: 135, quality: 'clean' }, // yellow
+    { index: 4, rawS: 95, movingS: 95, quality: 'interrupted' }, // null
   ]);
   const out = storedSectorColours(ride, () => RICH, paintAll);
   const fc = sectorSpansFeatureCollection(manifest.routes.Morning, out);

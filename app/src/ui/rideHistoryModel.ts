@@ -24,6 +24,7 @@ import { routeLabel } from '../store/defaultRoute.ts';
 import { MIN_HISTORY, fmt, positionAmong, tierFor, type UiTier } from './colourModel.ts';
 import { towerDate } from './towerModel.ts';
 import { ranks } from '../store/results.ts';
+import { scoredS } from '../store/timing.ts';
 
 export { routeLabel };
 
@@ -35,11 +36,11 @@ export { routeLabel };
  * i.e. one that reached START and FINISH but lost a middle gate: not clean,
  * not 'estimated' either, so it slipped past both screens' own `estimated`
  * check and rendered as an ordinary, unearned-looking time). D-025: never
- * display an unearned lap as if it were genuine — a lap with no real moving
- * time is either the honestly-marked `~rawS` of an estimated crossing, or
- * 'no lap' for everything else (missed gate, or no result at all). */
-export function lapCellLabel(movingS: number | null, estimated: boolean, rawS: number | null): string {
-  if (movingS !== null) return fmt(movingS, 1);
+ * display an unearned lap as if it were genuine — a lap with no real time
+ * (scoredS null) is either the honestly-marked `~rawS` of an estimated
+ * crossing, or 'no lap' for everything else (missed gate, or no result at all). */
+export function lapCellLabel(lapS: number | null, estimated: boolean, rawS: number | null): string {
+  if (lapS !== null) return fmt(lapS, 1);
   if (estimated && rawS !== null) return `~${fmt(rawS)}`;
   return 'no lap';
 }
@@ -111,7 +112,7 @@ export function buildRideRows(
       }
       const routeId = result.routeId;
       const { lap } = result;
-      const lapS = lap.movingS;
+      const lapS = scoredS(lap);
       const lapLabel = lapCellLabel(lapS, lap.quality === 'estimated', lap.rawS);
       const quality = lap.quality === 'clean' ? null : lap.quality;
       let rank: { pos: number; of: number } | null = null;
@@ -168,16 +169,17 @@ export function buildSectorRows(
           timeLabel: '– did not traverse –', tier: 'est', avgLabel,
         };
       }
-      if (sec.quality === 'estimated' || sec.movingS === null) {
+      const v = scoredS(sec);
+      if (sec.quality === 'estimated' || v === null) {
         return {
           index: sec.index, label: `S${sec.index}`,
           timeLabel: `~${fmt(sec.rawS)}`, tier: 'est', avgLabel,
         };
       }
-      // clean or interrupted, with a real moving time.
-      const tier = tierFor(sec.movingS, h);
+      // clean or interrupted, with a real time (store/timing.ts).
+      const tier = tierFor(v, h);
       const label = sec.quality === 'interrupted' ? `S${sec.index} ‖` : `S${sec.index}`;
-      return { index: sec.index, label, timeLabel: fmt(sec.movingS, 1), tier, avgLabel };
+      return { index: sec.index, label, timeLabel: fmt(v, 1), tier, avgLabel };
     });
 }
 
@@ -230,10 +232,10 @@ export interface PbDetailModel {
  * from it, unlike buildRideRows/the RESULT rank line).
  */
 export function buildPbDetail(window: RideResult[], lastRideId: string | null): PbDetailModel {
-  const sorted = [...window].sort((a, b) => (a.lap.movingS as number) - (b.lap.movingS as number));
-  const p1 = sorted.length ? (sorted[0].lap.movingS as number) : null;
+  const sorted = [...window].sort((a, b) => (scoredS(a.lap) as number) - (scoredS(b.lap) as number));
+  const p1 = sorted.length ? (scoredS(sorted[0].lap) as number) : null;
   const ranking = sorted.map((r, i) => {
-    const v = r.lap.movingS as number;
+    const v = scoredS(r.lap) as number;
     const today = r.rideId === lastRideId;
     return {
       posLabel: `P${i + 1}`,
@@ -253,8 +255,9 @@ export function buildPbDetail(window: RideResult[], lastRideId: string | null): 
     let best: number | null = null;
     for (const r of window) {
       const s = r.sectors.find((x) => x.index === i);
-      if (s && s.quality === 'clean' && s.movingS !== null && (best === null || s.movingS < best)) {
-        best = s.movingS;
+      const v = s && s.quality === 'clean' ? scoredS(s) : null;
+      if (v !== null && (best === null || v < best)) {
+        best = v;
       }
     }
     return { label: `S${i}`, timeLabel: best !== null ? fmt(best, 1) : '–' };

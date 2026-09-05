@@ -139,7 +139,8 @@ export interface ResultsIndex {
 /** One row of the timing tower (D-028). Rank is computed, never stored. */
 export interface TowerRow {
   rideId: string;
-  movingS: number;
+  /** the lap's scored seconds under the current timing mode (store/timing.ts) */
+  timeS: number;
   /** 1-based; null = present but unranked (estimated / tripwire-demoted) */
   position: number | null;
   ghost: boolean;

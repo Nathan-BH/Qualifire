@@ -16,6 +16,7 @@ import type {
   TowerRow,
 } from './types.ts';
 import { RESULT_SCHEMA_VERSION } from './types.ts';
+import { scoredS } from './timing.ts';
 
 export function emptyResultsIndex(): ResultsIndex {
   return { schemaVersion: RESULT_SCHEMA_VERSION, entries: [] };
@@ -85,30 +86,31 @@ export function isStale(
 }
 
 /** A lap that may take a position (D-028): clean or interrupted, with a real
- * moving time. Estimated laps never rank; nor do tripwire-demoted seeds; nor
+ * time. Estimated laps never rank; nor do tripwire-demoted seeds; nor
  * does a ride the RIDER excluded from ranking (WP-H "Ignore in ranking" —
  * ignoredFromRanking === true). */
 export function ranks(r: RideResult): boolean {
   if (r.lap.quality === 'estimated' || r.lap.quality === 'missed') return false;
   if (r.tripwireDemoted) return false;
   if (r.ignoredFromRanking === true) return false; // WP-H: rider-set exclusion
-  return r.lap.movingS !== null;
+  return scoredS(r.lap) !== null; // identical set in both modes — scoredS keeps the movingS-null marker
 }
 
 /**
  * The timing tower for one route (D-028) — B-28's whole seam.
  *
- * Ranked rows sort ascending by moving time and carry 1-based positions;
- * unrankable laps are still returned, with `position: null`, so the surface can
- * show today's "NO TIME" row without inventing a rank for it. Archive-seeded
- * laps rank as marked ghosts.
+ * Ranked rows sort ascending by scored time (store/timing.ts — wall clock by
+ * default, moving time opt-in) and carry 1-based positions; unrankable laps
+ * are still returned, with `position: null`, so the surface can show today's
+ * "NO TIME" row without inventing a rank for it. Archive-seeded laps rank as
+ * marked ghosts.
  */
 export function tower(results: RideResult[]): TowerRow[] {
   const rankable = results.filter(ranks);
-  rankable.sort((a, b) => (a.lap.movingS as number) - (b.lap.movingS as number));
+  rankable.sort((a, b) => (scoredS(a.lap) as number) - (scoredS(b.lap) as number));
   const rows: TowerRow[] = rankable.map((r, i) => ({
     rideId: r.rideId,
-    movingS: r.lap.movingS as number,
+    timeS: scoredS(r.lap) as number,
     position: i + 1,
     ghost: r.source === 'archive',
     interrupted: r.lap.quality === 'interrupted',
@@ -117,7 +119,7 @@ export function tower(results: RideResult[]): TowerRow[] {
     if (ranks(r)) continue;
     rows.push({
       rideId: r.rideId,
-      movingS: r.lap.movingS ?? r.lap.rawS,
+      timeS: scoredS(r.lap) ?? r.lap.rawS,
       position: null,
       ghost: r.source === 'archive',
       interrupted: r.lap.quality === 'interrupted',
@@ -135,7 +137,7 @@ export function positionLabel(rows: TowerRow[], rideId: string): string | null {
 
 /** Ordered sector times for one sector index across a window — the input every
  * colour model consumes. Dirty sectors are dropped: an estimated sector has no
- * moving time and must never enter a benchmark (D-008/D-025). */
+ * real time (store/timing.ts) and must never enter a benchmark (D-008/D-025). */
 export function sectorHistory(
   results: RideResult[],
   sectorIndex: number,
@@ -143,9 +145,11 @@ export function sectorHistory(
   const out: number[] = [];
   for (const r of results) {
     const s = r.sectors.find((x) => x.index === sectorIndex);
-    if (!s || s.movingS === null) continue;
+    if (!s) continue;
     if (s.quality !== 'clean' && s.quality !== 'interrupted') continue;
-    out.push(s.movingS);
+    const v = scoredS(s);
+    if (v === null) continue;
+    out.push(v);
   }
   return out;
 }

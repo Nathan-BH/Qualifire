@@ -759,10 +759,10 @@ export default function RecordScreen({
   // Colour comes from the ghost history for the LOCKED route only: before the
   // lock there is nothing honest to compare against, so everything stays
   // neutral (D-025). Sector index 0 means "the whole lap".
-  const tierOf = (sectorIndex: number, movingS: number | null): Tier => {
-    if (live.track === null || movingS === null) return 'neutral';
+  const tierOf = (sectorIndex: number, timeS: number | null): Tier => {
+    if (live.track === null || timeS === null) return 'neutral';
     const history = sectorIndex === 0 ? lapValues(live.track) : sectorValues(live.track, sectorIndex);
-    const tier = tierFor(movingS, history);
+    const tier = tierFor(timeS, history);
     return tier === 'est' ? 'est' : (tier as Tier);
   };
 
@@ -787,7 +787,7 @@ export default function RecordScreen({
         tierLineColour,
       )
       : ALL_YELLOW),
-    [live.sectors, live.track, settings.sectorColours],
+    [live.sectors, live.track, settings.sectorColours, settings.timing],
   );
 
   const startable = CATALOG.landmarks.filter((l) => l.offerAtStart);

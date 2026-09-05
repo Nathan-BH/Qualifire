@@ -72,7 +72,7 @@ test('ridedetail: rideDetailFor — result with routeId null but a free record �
 });
 
 test('ridedetail: rideDetailFor — clean ranked lap, >=MIN_HISTORY → rank line, lapTier from tierFor, rows sized right', () => {
-  const hist = Array.from({ length: MIN_HISTORY }, (_, i) => 900 + i * 5); // all slower -> today is purple
+  const hist = Array.from({ length: MIN_HISTORY }, (_, i) => 905 + i * 5); // all slower than the raw lap (900) -> today is purple (WP-C: raw is the scored default)
   const res = mkResult({ rideId: 'r1', startedAtMs: 5000, lap: { rawS: 900, movingS: 850, quality: 'clean' } });
   const m = rideDetailFor('r1', 5000, {
     ...NOOP_DEPS, result: res,
@@ -80,7 +80,7 @@ test('ridedetail: rideDetailFor — clean ranked lap, >=MIN_HISTORY → rank lin
   });
   assert(m.kind === 'route', `expected route, got ${m.kind}`);
   assert(/^P\d+ of \d+ on this route$/.test(m.rankLine), `expected "P_ of _ on this route", got "${m.rankLine}"`);
-  assert(m.lapTier === 'purple', `expected purple (850 < min of hist), got ${m.lapTier}`);
+  assert(m.lapTier === 'purple', `expected purple (raw 900 < min of hist), got ${m.lapTier}`);
   assert(m.sectorRows.length === res.sectors.length, `sectorRows length ${m.sectorRows.length} != ${res.sectors.length}`);
   assert(m.sectorColours[0] === null, 'index 0 (START) is always null');
   assert(m.sectorColours.length === res.sectors.length + 1, `sectorColours length ${m.sectorColours.length} != sectors+1`);
@@ -127,7 +127,7 @@ test('ridedetail: rideDetailFor — referenceOf resolves the route whose referen
 
 test('ridedetail: rankLineFor — ignored wins over every other branch', () => {
   const line = rankLineFor(
-    { lapMovingS: 850, estimated: false, ignored: true },
+    { lapS: 850, estimated: false, ignored: true },
     Array.from({ length: MIN_HISTORY }, () => 900),
     true, // barred too
   );
@@ -144,7 +144,7 @@ test('ridedetail: sectorColoursFor — mirrors ResultScreen (clean+movingS colou
       { index: 4, fromChainageM: 3000, toChainageM: 4000, rawS: 0, movingS: null, quality: 'missed' },
     ],
   });
-  const hist = (i: number) => (i === 1 ? Array.from({ length: MIN_HISTORY }, (_, k) => 95 + k) : []);
+  const hist = (i: number) => (i === 1 ? Array.from({ length: MIN_HISTORY }, (_, k) => 101 + k) : []); // all above the raw sector time (100) (WP-C: raw is the scored default)
   const colours = sectorColoursFor(res, hist);
   assert(colours.length === 5, `expected 5 (4 sectors + null head), got ${colours.length}`);
   assert(colours[0] === null, 'index 0 always null');

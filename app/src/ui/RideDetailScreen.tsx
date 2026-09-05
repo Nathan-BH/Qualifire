@@ -186,7 +186,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
       barred: (routeId) => ownLapBarredFromRanking(routeId, request.rideId),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [request.rideId, request.startedAtMs, tick],
+    [request.rideId, request.startedAtMs, tick, s.timing],
   );
 
   // §3.3: the retroactive naming offer, drafted against the CURRENT catalog

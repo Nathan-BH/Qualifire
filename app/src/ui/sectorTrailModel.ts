@@ -15,7 +15,7 @@
  * suite: tests/sectortrail_suite.ts.
  *
  * Honesty (unchanged from P1, ruled 2026-08-26): only a CLEAN sector with a
- * real moving time and an EARNED tier (purple/green/yellow) paints. 'neutral'
+ * real time (scoredS) and an EARNED tier (purple/green/yellow) paints. 'neutral'
  * (< MIN_HISTORY comparable rides — D-008/D-013) and 'est' never paint,
  * whatever `paint` would return for them: that rule lives here, not in the
  * palette. Interrupted sectors do not paint (same as P1's rule; the sector
@@ -24,6 +24,7 @@
  */
 import type { LiveSector } from '../live/engine.ts';
 import { tierFor, type UiTier } from './colourModel.ts';
+import { scoredS } from '../store/timing.ts';
 
 /** tier -> map-line colour, or null. Screens pass chips.tsx's tierLineColour. */
 export type SpanPaint = (tier: UiTier) => string | null;
@@ -39,14 +40,14 @@ export type SectorHistory = (sectorIndex: number) => number[];
  * mount-order rule: a source mounted later paints over the rider dot). */
 export const ALL_YELLOW: (string | null)[] = [];
 
-function earnedColour(movingS: number, history: number[], paint: SpanPaint): string | null {
-  const tier = tierFor(movingS, history);
+function earnedColour(timeS: number, history: number[], paint: SpanPaint): string | null {
+  const tier = tierFor(timeS, history);
   return tier === 'purple' || tier === 'green' || tier === 'yellow' ? paint(tier) : null;
 }
 
 /** Minimal shape shared by store/types.ts's SectorResult (ride-detail hands
  * in a RideResult) and any FinishedRide-shaped caller. */
-export interface StoredSectorLike { index: number; movingS: number | null; quality: string }
+export interface StoredSectorLike { index: number; rawS: number; movingS: number | null; quality: string }
 
 /** WP-K: stored/finished ride -> sectorColours. Slots by `sec.index`, not
  * array position, so an unsorted `sectors` array still lands on the right
@@ -60,15 +61,17 @@ export function storedSectorColours(
   const n = ride.sectors.reduce((m, s) => Math.max(m, s.index), 0);
   const out: (string | null)[] = new Array<string | null>(n + 1).fill(null);
   for (const sec of ride.sectors) {
-    if (sec.index < 1 || sec.quality !== 'clean' || sec.movingS === null) continue;
-    out[sec.index] = earnedColour(sec.movingS, hist(sec.index), paint);
+    if (sec.index < 1 || sec.quality !== 'clean') continue;
+    const v = scoredS(sec);
+    if (v === null) continue;
+    out[sec.index] = earnedColour(v, hist(sec.index), paint);
   }
   return out;
 }
 
 /** WP-K: live engine sectors -> sectorColours, mid-ride. sectors[k] is sector
  * k+1 (the same k -> k+1 mapping RecordScreen's gateColours uses). Only
- * kind 'done' AND !interrupted AND !estimated with a moving time is "clean" —
+ * kind 'done' AND !interrupted AND !estimated with a real time (scoredS) is "clean" —
  * the predicate that becomes quality 'clean' when the ride is stored, so a
  * span keeps the exact colour it earned live when it reappears on the ride
  * detail and in RIDES. `hist(i)` mid-ride is sectorValues(live.track, i) with
@@ -81,11 +84,16 @@ export function liveSectorColours(
   const out: (string | null)[] = [null];
   for (let k = 0; k < sectors.length; k++) {
     const sec = sectors[k];
-    if (sec.kind !== 'done' || sec.interrupted || sec.estimated || sec.movingS === null) {
+    if (sec.kind !== 'done' || sec.interrupted || sec.estimated) {
       out.push(null);
       continue;
     }
-    out.push(earnedColour(sec.movingS, hist(k + 1), paint));
+    const v = scoredS(sec);
+    if (v === null) {
+      out.push(null);
+      continue;
+    }
+    out.push(earnedColour(v, hist(k + 1), paint));
   }
   return out;
 }

@@ -16,6 +16,7 @@ import { USER_REFS_FILE, initUserRefs } from '../live/userRefs';
 import { initFreeRidePersistence, resetFreeRides } from '../store/freeRides';
 import { initRideHistory, resetRecorded } from './lastRide';
 import { saveTextFile } from './saveGpx';
+import { DEFAULT_TIMING, setTimingMode, type TimingMode } from '../store/timing';
 import { PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
 
@@ -30,6 +31,10 @@ export interface Settings {
   /** WP-K: paint each sector of the route line in the tier it earned (live
    * map, ride-detail trace, RIDES row) — off keeps the line all yellow. */
   sectorColours: boolean;
+  /** Which clock scores a ride (STATE.md ground rule): 'raw' = wall clock,
+   * every stop counts (the default — luck counts); 'moving' = raw minus
+   * detected stopped time, the opt-in. Read by store/timing.ts's scoredS(). */
+  timing: TimingMode;
 }
 
 const DEFAULTS: Settings = {
@@ -39,6 +44,7 @@ const DEFAULTS: Settings = {
   liveMap: true,
   earcons: true,
   sectorColours: true,
+  timing: DEFAULT_TIMING,
 };
 
 interface Ctx { s: Settings; set: <K extends keyof Settings>(k: K, v: Settings[K]) => void }
@@ -62,6 +68,12 @@ async function load(): Promise<Partial<Settings> | null> {
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [s, setS] = useState<Settings>(DEFAULTS);
   const loaded = useRef(false);
+
+  // Sync, not an effect: RecordScreen/RidesScreen/RideDetailScreen memoise
+  // their verdicts on s.timing and recompute in THIS render pass, so the
+  // register must already hold the new mode when they do (an effect would
+  // lag one render). Idempotent, so StrictMode's double render is harmless.
+  setTimingMode(s.timing);
 
   useEffect(() => {
     (async () => {
@@ -308,6 +320,12 @@ export default function SettingsScreen() {
             Result tab with the RIDES/RESULT redesign; this switch now gates
             the ranking table inside Result's Personal Bests accordion. Still
             a real switch, never decorative (file doctrine, unchanged). */}
+        <Row label="Timing" t={t}
+          hint="wall clock is the lap as the road gave it — every stop counts, a red light is your luck; moving drops the time you stood still">
+          <Seg t={t} value={s.timing}
+            options={[['raw', 'wall clock'], ['moving', 'moving']]}
+            onPick={(v) => set('timing', v)} />
+        </Row>
         <Row label="Rankings" hint="show where each ride placed against your others on that route" t={t}>
           <Switch on={s.tower} onToggle={() => set('tower', !s.tower)} t={t} />
         </Row>

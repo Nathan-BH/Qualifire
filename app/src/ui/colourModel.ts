@@ -17,6 +17,7 @@
  */
 import { shippedResults } from '../store/seed.ts';
 import { ranks, sectorHistory } from '../store/results.ts';
+import { scoredS } from '../store/timing.ts';
 import type { RideResult } from '../store/types.ts';
 import { recordedResults } from './lastRide.ts';
 
@@ -90,7 +91,7 @@ export function rankingPoolFor(routeId: string, currentRideId: string | null): R
 
 /** B-117 (RESULT half): true when the judged ride HAS a stored result on this
  * route but the store's own ranks() bars it (e.g. a tripwire-demoted lap) —
- * such a lap must not be ranked by a local movingS-only lookalike rule.
+ * such a lap must not be ranked by a local scored-time-only lookalike rule.
  * False when no stored result exists at all: an in-session lap that never
  * reached the store still ranks by its live numbers, as before. */
 export function ownLapBarredFromRanking(routeId: string, rideId: string): boolean {
@@ -109,7 +110,7 @@ function stats(values: number[]) {
 }
 
 export function lapValues(routeId: string, excludeRideId?: string): number[] {
-  return ghostsFor(routeId, excludeRideId).map((r) => r.lap.movingS as number);
+  return ghostsFor(routeId, excludeRideId).map((r) => scoredS(r.lap) as number);
 }
 
 /**
@@ -122,7 +123,10 @@ export function sectorValues(routeId: string, index: number, excludeRideId?: str
   const out: number[] = [];
   for (const r of ghostsFor(routeId, excludeRideId)) {
     const s = r.sectors.find((x) => x.index === index);
-    if (s && s.movingS !== null && s.quality === 'clean') out.push(s.movingS);
+    if (s && s.quality === 'clean') {
+      const v = scoredS(s);
+      if (v !== null) out.push(v);
+    }
   }
   return out;
 }
@@ -142,14 +146,14 @@ export function tierFor(value: number | null, history: number[]): UiTier {
   return value < st.mean ? 'green' : 'yellow';
 }
 
-/** All-time best moving lap for a route — NOT window-limited: every seed and
+/** All-time best scored lap (store/timing.ts) for a route — NOT window-limited: every seed and
  * session result that passes ranks() counts. Feeds the tower's PB ● (D-007),
  * which marks the all-time best, not merely the best of the last N. */
 export function allTimeBestLapS(routeId: string): number | null {
   let best: number | null = null;
   for (const r of [...GHOSTS, ...recordedResults()]) {
     if (r.routeId !== routeId || !ranks(r)) continue;
-    const v = r.lap.movingS as number;
+    const v = scoredS(r.lap) as number;
     if (best === null || v < best) best = v;
   }
   return best;

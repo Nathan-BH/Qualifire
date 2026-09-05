@@ -427,13 +427,13 @@ test('store: the archive ghost seed ranks, and a live lap places against it', ()
     const ranked = rows.filter((r) => r.position !== null);
     assert(ranked.length >= 5, `${routeId}: too few rankable ghosts (${ranked.length})`);
     assert(ranked.every((r) => r.ghost), 'seeded laps rank as MARKED ghosts, never as plain rows');
-    assert(ranked[0].position === 1 && ranked[0].movingS <= ranked[ranked.length - 1].movingS,
+    assert(ranked[0].position === 1 && ranked[0].timeS <= ranked[ranked.length - 1].timeS,
       `${routeId}: pole must be the fastest`);
-    // sane e-bike commute laps: 8–40 min of moving time
-    assert(ranked.every((r) => r.movingS > 480 && r.movingS < 2400),
+    // sane e-bike commute laps: 8–40 min (WP-C: raw wall-clock is the default scored time)
+    assert(ranked.every((r) => r.timeS > 480 && r.timeS < 2400),
       `${routeId}: implausible seeded lap time`);
     // Monday's point: a live lap slots in among them and gets a real position.
-    const pole = ranked[0].movingS;
+    const pole = ranked[0].timeS;
     const hot = mkResult({ rideId: 'today', startedAtMs: Date.now(), routeId,
       lap: { rawS: pole - 5, movingS: pole - 10, quality: 'clean' } });
     const withToday = tower([...mine, hot]);
@@ -457,10 +457,12 @@ test('store: sector history drops dirty sectors before any benchmark sees them',
       { index: 2, fromChainageM: 1500, toChainageM: 3000, rawS: 230, movingS: 228, quality: 'clean' },
     ] }),
   ];
-  assert(JSON.stringify(sectorHistory(rs, 1)) === JSON.stringify([210]),
+  // WP-C: the default scored clock is raw wall-clock, so sectorHistory now
+  // reads each clean/interrupted sector's rawS, not its movingS.
+  assert(JSON.stringify(sectorHistory(rs, 1)) === JSON.stringify([220]),
     'only the clean sector-1 time survives');
-  assert(JSON.stringify(sectorHistory(rs, 2)) === JSON.stringify([235, 245, 228]),
-    'interrupted sectors keep their moving time and do count');
+  assert(JSON.stringify(sectorHistory(rs, 2)) === JSON.stringify([240, 250, 230]),
+    'interrupted sectors keep their scored time and do count');
 });
 
 // --------------------------------------------------- WP-D1 (cycle 024, 2026-08-20)

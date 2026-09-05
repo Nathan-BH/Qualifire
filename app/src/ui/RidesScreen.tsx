@@ -17,12 +17,14 @@ import { routeLabelIn } from '../store/defaultRoute';
 import { createExpoFsAdapter } from '../storage/expoFsAdapter';
 import { buildRideRows } from './rideHistoryModel';
 import { lapValues } from './colourModel';
+import { useSettings } from './settings';
 import { useTabNav } from './tabNav';
 import { PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
 
 export default function RidesScreen() {
   const { t } = useTheme();
+  const { s } = useSettings();
   const tabNav = useTabNav();
   const styles = useMemo(() => makeStyles(t), [t]);
   const [rides, setRides] = useState<RideMeta[] | null>(null);
@@ -95,7 +97,7 @@ export default function RidesScreen() {
     () => buildRideRows(rides ?? [], getStoredResult, (routeId, excl) => lapValues(routeId, excl),
       (id) => routeLabelIn(currentCatalog(), id)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rides, resultsTick],
+    [rides, resultsTick, s.timing],
   );
   return (
     <View style={styles.container}>

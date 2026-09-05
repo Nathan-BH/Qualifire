@@ -22,6 +22,7 @@ import type { RideResult } from '../store/types.ts';
 import type { Tier } from './chips.tsx';
 import type { TowerModel, TowerRowModel } from './tower.tsx';
 import { fmt, tierFor, type UiTier } from './colourModel.ts';
+import { scoredS } from '../store/timing.ts';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -54,11 +55,11 @@ export function buildTowerModel(
   allTimeBestS: number | null,
 ): TowerModel {
   // The window comes from ghostsFor(), whose ranks() filter already drops
-  // null moving times — this filter is belt-and-braces, never semantics.
+  // null scored times — this filter is belt-and-braces, never semantics.
   const past = window
-    .filter((r) => r.lap.movingS !== null)
+    .filter((r) => scoredS(r.lap) !== null)
     .map((r) => ({
-      value: r.lap.movingS as number,
+      value: scoredS(r.lap) as number,
       startedAtMs: r.startedAtMs,
       // Absent source (malformed entry) reads as ghost too — undefined !== 'app'.
       ghost: r.source !== 'app',

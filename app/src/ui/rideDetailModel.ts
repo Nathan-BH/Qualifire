@@ -8,6 +8,7 @@
 import type { RideResult, Route } from '../store/types.ts';
 import type { FreeRideRecord } from '../store/freeRides.ts';
 import { ranks } from '../store/results.ts';
+import { scoredS } from '../store/timing.ts';
 import { MIN_HISTORY, positionAmong, tierFor, type UiTier } from './colourModel.ts';
 import { lapCellLabel, buildSectorRows, type SectorRowModel } from './rideHistoryModel.ts';
 import { storedSectorColours } from './sectorTrailModel.ts';
@@ -60,15 +61,15 @@ export interface RideDetailDeps {
  * FIRST — a rider's own exclusion is the most specific reason and reads as
  * such. */
 export function rankLineFor(
-  r: { lapMovingS: number | null; estimated: boolean; ignored: boolean },
+  r: { lapS: number | null; estimated: boolean; ignored: boolean },
   hist: number[],
   barred: boolean,
 ): string {
   if (r.ignored) return 'not ranked — you excluded this ride from ranking';
-  if (r.lapMovingS !== null) {
+  if (r.lapS !== null) {
     if (barred) return 'no rank — this lap is excluded from the comparison';
     if (hist.length >= MIN_HISTORY) {
-      const { pos, of } = positionAmong(r.lapMovingS, hist);
+      const { pos, of } = positionAmong(r.lapS, hist);
       return `P${pos} of ${of} on this route`;
     }
     return `${hist.length} rides of history — too few to rank`;
@@ -105,6 +106,7 @@ export function rideDetailFor(rideId: string, startedAtMs: number, d: RideDetail
   const ignored = res.ignoredFromRanking === true;
   const estimated = res.lap.quality === 'estimated';
   const hist = d.laps(routeId);
+  const lapS = scoredS(res.lap);
   // While ignored, the ride's OWN verdicts go neutral too (D-013 in spirit:
   // a ride withdrawn from judging others is not judged either).
   const secHist = ignored ? () => [] : (i: number) => d.sectors(routeId, i);
@@ -112,9 +114,9 @@ export function rideDetailFor(rideId: string, startedAtMs: number, d: RideDetail
     ...base,
     kind: 'route',
     routeId,
-    lapLabel: lapCellLabel(res.lap.movingS, estimated, res.lap.rawS),
-    lapTier: ignored ? 'neutral' : tierFor(res.lap.movingS, hist),
-    rankLine: rankLineFor({ lapMovingS: res.lap.movingS, estimated, ignored }, hist, d.barred(routeId)),
+    lapLabel: lapCellLabel(lapS, estimated, res.lap.rawS),
+    lapTier: ignored ? 'neutral' : tierFor(lapS, hist),
+    rankLine: rankLineFor({ lapS, estimated, ignored }, hist, d.barred(routeId)),
     ignored,
     canToggleIgnore: ranks({ ...res, ignoredFromRanking: false }),
     // §3.3b: promotable iff matched to a user-owned route it is not already the reference of.
