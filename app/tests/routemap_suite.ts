@@ -277,3 +277,19 @@ test('routemap: every MapLibre GeoJSONSource carries key === id (frozen-id crash
       `GeoJSONSource id="${id}" must carry key="${id}" so React never rebinds a mounted source's frozen id: ${tag}`);
   }
 });
+
+test('routemap: routeId={null} draws NO route — the catalog-wide defaultRouteId() fallback is gone (cycle-2 WP-A)', () => {
+  // Same static-guard doctrine as the two tests above (the component cannot
+  // be rendered headlessly): this locks the wiring, not the pixels.
+  const src = fs.readFileSync(
+    path.join(TESTS_DIR, '..', 'src', 'ui', 'routeMapView.tsx'), 'utf8');
+  assert(!src.includes('defaultRouteId'),
+    'defaultRouteId() must be gone from routeMapView.tsx — routeId={null} must mean "no route line", full stop');
+  assert(!src.includes('defaultMapRouteId'),
+    'defaultMapRouteId (the store/defaultRoute.ts helper it wrapped) must no longer be imported/consumed here');
+  const idAssignments = src.match(/const id = props\.routeId;/g) ?? [];
+  assert(idAssignments.length === 2,
+    `expected exactly 2 occurrences of "const id = props.routeId;" (one per rung: MapLibre + PNG), got ${idAssignments.length}`);
+  assert(!src.includes('props.routeId ??'),
+    'no rung may fall back off props.routeId with ?? any more');
+});

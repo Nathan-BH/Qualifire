@@ -70,6 +70,25 @@ export function effectiveFromId(input: {
   return input.detectedId ?? input.from;
 }
 
+/** Cycle-2 WP-A (Nathan 2026-09-04): what the RUNNING map overlays, derived
+ * per render from the engine state + the pick frozen at START. Three states:
+ *  1. free ride (new>>new)                  -> no route line, trail shown
+ *  2. route mode, nothing picked, no lock   -> no route line, trail shown
+ *  3. a known route (picked or locked)      -> that route's line, trail HIDDEN
+ * The trail is shown exactly when no reference line is — never both (the
+ * "two yellow lines overlap" bug), never neither. `track` (the engine's locked
+ * route) outranks `routeHint` (the pick), same precedence the map already
+ * used; a lock appearing or dropping mid-ride flips the state live. */
+export type LiveMapOverlay = { routeId: string | null; showTrail: boolean };
+export function liveMapOverlayFor(input: {
+  mode: 'route' | 'free';
+  track: string | null;
+  routeHint: string | null;
+}): LiveMapOverlay {
+  const routeId = input.mode === 'free' ? null : (input.track ?? input.routeHint);
+  return { routeId, showTrail: routeId === null };
+}
+
 /** The rotating status-line items (IDEAS §24) while running — WITHOUT any
  * fixes count ("I don't know what 'fixes' are" — Nathan 2026-08-19; the raw
  * count stays in the GPX+ sidecar for diagnostics, never a user-facing

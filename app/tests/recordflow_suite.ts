@@ -5,7 +5,7 @@
  */
 import { assert, test } from './lib.ts';
 import {
-  canTransition, effectiveFromId, isFullscreen, statusItemsFor, type RecordPhase,
+  canTransition, effectiveFromId, isFullscreen, liveMapOverlayFor, statusItemsFor, type RecordPhase,
 } from '../src/ui/recordFlow.ts';
 
 const PHASES: RecordPhase[] = ['setup', 'armed', 'running', 'ending'];
@@ -129,4 +129,48 @@ test('effectiveFromId: tapping `new` in auto mode now takes hold (was previously
     effectiveFromId({ startMode: 'auto', detectedId: 'work', from: '~new', fromExplicit: true }) === '~new',
     'tapping new while a landmark is detected must win, exactly like any other explicit tap',
   );
+});
+
+test('liveMapOverlayFor: free ride (new>>new) -> no route line, trail shown, regardless of track/hint', () => {
+  const a = liveMapOverlayFor({ mode: 'free', track: null, routeHint: null });
+  assert(a.routeId === null && a.showTrail === true, `free + no track/hint expected {routeId:null, showTrail:true}, got ${JSON.stringify(a)}`);
+  // belt-and-braces: free mode never locks, but the rule must not depend on that
+  const b = liveMapOverlayFor({ mode: 'free', track: 'HomeWork', routeHint: 'HomeWork' });
+  assert(b.routeId === null && b.showTrail === true, `free mode must ignore track/hint entirely, got ${JSON.stringify(b)}`);
+});
+
+test('liveMapOverlayFor: route mode, nothing picked, nothing locked -> no route line, trail shown (writing history)', () => {
+  const r = liveMapOverlayFor({ mode: 'route', track: null, routeHint: null });
+  assert(r.routeId === null && r.showTrail === true, `expected {routeId:null, showTrail:true}, got ${JSON.stringify(r)}`);
+});
+
+test('liveMapOverlayFor: a picked known route shows its line and hides the trail from the first frame', () => {
+  const r = liveMapOverlayFor({ mode: 'route', track: null, routeHint: 'HomeWork' });
+  assert(r.routeId === 'HomeWork' && r.showTrail === false, `expected {routeId:'HomeWork', showTrail:false}, got ${JSON.stringify(r)}`);
+});
+
+test('liveMapOverlayFor: a lock outranks the pick hint and hides the trail', () => {
+  const r = liveMapOverlayFor({ mode: 'route', track: 'HomeWork', routeHint: null });
+  assert(r.routeId === 'HomeWork' && r.showTrail === false, `expected {routeId:'HomeWork', showTrail:false}, got ${JSON.stringify(r)}`);
+  // documents existing precedence (track wins over hint) — the engine's hard-pick
+  // rule never actually produces a differing pair, but the derivation must be total
+  const r2 = liveMapOverlayFor({ mode: 'route', track: 'EveningA', routeHint: 'HomeWork' });
+  assert(r2.routeId === 'EveningA', `track must outrank routeHint, got ${JSON.stringify(r2)}`);
+});
+
+test('liveMapOverlayFor: trail and route line are mutually exclusive in every reachable state', () => {
+  const modes: Array<'route' | 'free'> = ['route', 'free'];
+  const tracks: Array<string | null> = [null, 'A'];
+  const hints: Array<string | null> = [null, 'B'];
+  for (const mode of modes) {
+    for (const track of tracks) {
+      for (const routeHint of hints) {
+        const r = liveMapOverlayFor({ mode, track, routeHint });
+        assert(
+          r.showTrail === (r.routeId === null),
+          `mutual exclusivity violated for mode=${mode} track=${track} routeHint=${routeHint}: ${JSON.stringify(r)}`,
+        );
+      }
+    }
+  }
 });

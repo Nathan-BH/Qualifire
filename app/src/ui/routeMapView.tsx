@@ -74,7 +74,6 @@ import { Image, LayoutChangeEvent, Modal, Pressable, StyleSheet, Text, View } fr
 import manifest from '../../assets/routes/routes.json';
 import { cropFor, gateTickPx, offRouteM, projectToPixel, type RouteAsset } from './routeMapMath.ts';
 import { currentCatalog } from '../store/catalogStore.ts';
-import { defaultMapRouteId } from '../store/defaultRoute.ts';
 import { SEED_MODE, bundledForSeedMode } from '../store/seed.ts';
 import { refFor } from '../live/refs.ts';
 import { allRouteAssets, resolveRouteAsset, type RouteAssetDeps } from './routeAssetRuntime.ts';
@@ -132,17 +131,6 @@ function assetDeps(): RouteAssetDeps {
 function assetFor(id: string | null): RouteAsset | null {
   return id === null ? null : resolveRouteAsset(id, assetDeps());
 }
-/** Fallback when no route is known yet (candidate not picked/locked): the
- * first CATALOG route with a drawable asset (B-39, empty-seed install path)
- * — not the manifest's first key, which in a virgin build (empty catalog,
- * manifest still bundled but emptied by WP-E) would draw a shipped route the
- * rider does not have. Null => both rungs render nothing. Resolved per
- * render: the runtime catalog can grow after boot (store/catalogStore.ts).
- * WP-C: "drawable" now includes a runtime-built user-route asset, not just
- * the bundled manifest. */
-function defaultRouteId(): string | null {
-  return defaultMapRouteId(currentCatalog(), (ref) => assetFor(ref) !== null);
-}
 /** WP-E: same guard as ASSETS — a virgin build has no route PNGs either;
  * the PNG rung then draws `asset.path` (its existing no-image fallback). */
 const IMAGES: Record<string, number> = bundledForSeedMode(SEED_MODE, {
@@ -175,7 +163,10 @@ type RouteMapVariant = 'live' | 'browse';
 type LiveMapState = 'prestart' | 'moving' | 'stopped' | 'finished';
 
 type RouteMapProps = {
-  /** null before the route locks — the map then just shows the candidate */
+  /** The route whose line/ticks to draw. null = NO route line: a live surface renders
+   * rider-only (WP-D), a browse surface renders trail-only (WP-H). There is no
+   * catalog-wide fallback any more (cycle-2 WP-A, Nathan 2026-09-04: a null pick must
+   * never draw "whichever route happens to be first in the catalog"). */
   routeId: string | null;
   /** WP-E: a caller-OWNED drawable. When set, both rungs draw THIS asset and
    * skip the id -> asset lookup entirely — neither the bundled manifest nor
@@ -314,7 +305,7 @@ function MapLibreRouteMap(props: RouteMapProps & {
   const { t, mode: themeMode } = useTheme();
   const styleUrl = themeMode === 'night' ? MAP_STYLE_NIGHT : MAP_STYLE_DAY;
   const gatesOnly = props.gatesOnly ?? false;
-  const id = props.routeId ?? defaultRouteId();
+  const id = props.routeId;
   const asset = !gatesOnly ? props.asset ?? assetFor(id) ?? undefined : undefined;
   const h = props.height ?? 190;
 
@@ -732,7 +723,7 @@ function PngRouteMap(props: RouteMapProps) {
   // say so and draw the route from `path` instead of showing black.
   const [imgFailed, setImgFailed] = useState(false);
   useEffect(() => { setZoom(props.zoom ?? 4); }, [props.zoom]);
-  const id = props.routeId ?? defaultRouteId();
+  const id = props.routeId;
   const asset = props.asset ?? assetFor(id) ?? undefined;
   const img = id !== null ? IMAGES[id] : undefined;
   const h = props.height ?? 190;

@@ -10,9 +10,11 @@
  * - FIRST RIDE: basemap + moving dot + a yellow trail growing behind it, no
  *   route, no gates, no sector strip — exactly what a stranger's very first
  *   ride looks like. Needs a non-null, no-manifest-entry route id
- *   (`DEMO_FIRST_RIDE_ID`) so `RouteMapView` takes WP-D's rider-only path
- *   instead of falling back to a real bundled route (an id of `null` would
- *   resolve via `defaultRouteId()` — wrong for this mode).
+ *   (`DEMO_FIRST_RIDE_ID`) so `RouteMapView` takes WP-D's rider-only path;
+ *   the id is kept non-null (rather than `null`) so the fake id stays a
+ *   stable, recognisably-not-a-catalog-route `key`/zoom-reset id for this
+ *   mode (cycle-2 WP-A: `null` would now also render rider-only, since
+ *   routeMapView.tsx no longer has any catalog-wide fallback to avoid).
  *
  * Both modes drive the SAME pane as the Record screen (§17's
  * shared-render-path rule): a scripted ride replayed at 25x. Nothing here
@@ -50,8 +52,10 @@ const TICK_MS = 33;           // ~30 fps redraw; sim time is wall-clock anchored
 
 // FIRST RIDE mode: a deliberately non-null id with NO manifest entry, so
 // RouteMapView's `asset` lookup misses and WP-D's rider-only path (basemap +
-// dot, no route layers) renders. Do not use `null` — that falls back to
-// `defaultRouteId()`, which draws a real bundled route (§2.2/§3.4).
+// dot, no route layers) renders. Kept non-null (rather than `null`) so this
+// mode is recognisably not a catalog route and stays a stable `key`/
+// zoom-reset id; `null` would now also render rider-only (cycle-2 WP-A
+// removed routeMapView.tsx's catalog-wide `defaultRouteId()` fallback).
 const DEMO_FIRST_RIDE_ID = 'demo:first-ride';
 const FIRST_RIDE_STATUS = 'writing history · no known route here';
 

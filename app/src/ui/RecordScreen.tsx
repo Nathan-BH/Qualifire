@@ -36,7 +36,7 @@ import { liveEngine, type LiveEngineState } from '../live/engine';
 import { getLiveTowerPosition } from '../live/towerSource';
 import { LiveSectorPane, realTimebase, viewModelFromEngine } from './liveView';
 import { LaunchAnimation } from './launchAnimation';
-import { effectiveFromId, isFullscreen, statusItemsFor, type RecordPhase } from './recordFlow';
+import { effectiveFromId, isFullscreen, liveMapOverlayFor, statusItemsFor, type RecordPhase } from './recordFlow';
 import { useTabNav } from './tabNav';
 import RouteMapView from './routeMapView';
 import { metresBetween } from './routeMapGeo';
@@ -709,6 +709,10 @@ export default function RecordScreen({
   // ride. A "so far" indicator, not a verdict: a later lock replaces it.
   const writingHistory = live.mode !== 'free' && !routeLocked
     && live.fixesFed >= WRITING_HISTORY_AFTER_FIXES && !live.anyAnchored;
+  // Cycle-2 WP-A: reference line vs live trail, mutually exclusive — see
+  // recordFlow.ts liveMapOverlayFor. Derived per render (no effect/state):
+  // live.track (lock) outranks the START-frozen pick hint; free mode = neither.
+  const mapOverlay = liveMapOverlayFor({ mode: live.mode, track: live.track, routeHint: rideRouteHint });
   // Cycle 024 (WP-D2): a soft lock is displayed and scored, but it is not yet
   // corridor-confirmed — say so. Verified/finalized keep today's wording.
   // Before the soft lock, under a pick, nothing is being *detected* (hard
@@ -1015,7 +1019,7 @@ export default function RecordScreen({
         {settings.liveMap ? (
           <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch' }}>
             <RouteMapView
-              routeId={live.mode === 'free' ? null : (live.track ?? rideRouteHint)}
+              routeId={mapOverlay.routeId}
               lat={status.lastLat}
               lon={status.lastLon}
               zoom={4}
@@ -1024,7 +1028,7 @@ export default function RecordScreen({
               gatesOnly={live.mode === 'free'}
               crossedGates={live.freeCrossings}
               gateRouteIds={rideFreeRouteIds}
-              trail={trail}
+              trail={mapOverlay.showTrail ? trail : undefined}
               variant="live"
               liveState={live.phase === 'finished' ? 'finished' : (stationary ? 'stopped' : 'moving')}
               fill
@@ -1166,7 +1170,10 @@ export default function RecordScreen({
             user-created route with no drawable asset (WP-P's "HomeWork") —
             RouteMapView now renders rider-only (real tiles + the dot, no
             route line) instead of a blank space; it no longer falls back to
-            drawing some other route from the asset manifest. */}
+            drawing some other route from the asset manifest. Cycle-2 WP-A
+            removed the catalog-wide defaultRouteId() fallback in
+            routeMapView.tsx, so a null pick draws rider-only even once the
+            catalog holds drawable routes. */}
         {settings.liveMap ? (
           <View style={{ alignSelf: 'stretch' }}>
             <RouteMapView
