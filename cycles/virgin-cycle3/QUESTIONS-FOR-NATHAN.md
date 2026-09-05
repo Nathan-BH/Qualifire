@@ -46,13 +46,13 @@ history view: the RESULTS board lists ALL rides fastest-first with all-time posi
 first` so it can't be confused with the scoring pool. The ride detail's rank line and all scoring
 stay on the 9+1 window. `STATE.md` gets a one-clause amendment scoping the rule accordingly
 (WP-2 §3.2). Veto if you'd rather the board also stopped at the last 10.
-Answer:
+Answer: Not clear for me now, lets build it and refine later
 
 **Q2 — Plot above board.** You listed map → tower → scatterplot. The brief puts the
 scatterplot ABOVE the ranked board: the board grows without bound (27+ rows), the plot is a
 fixed 220 px, and the plot is the thing you came for — so it should be on the first screen.
 Fine, or keep your order?
-Answer:
+Answer: agree lets put the plot first and tower second, and maybe remove the map as it is already in routes
 
 **Q3 — Two decided defaults you may flip.** (a) Y axis: time increases upward, so the PB is the
 *lowest* dot — Strava's orientation (its help doc: "the y-axis represents an effort's time",
@@ -61,7 +61,7 @@ already judges against), not the median; a ride you "Ignore in ranking" leaves t
 the existing remedy for a puncture day. Outliers never disappear: slow ones beyond the Tukey
 fence are pinned to the top edge as ▲ markers instead of squashing the axis (§3.3). Say so if you
 want faster-up or median instead.
-Answer:
+Answer: lets have faster up so it makes intuitively more sense. And for now lets keep it at just the last 9 rides for the scatterplot instead of all rides, this way it mirrors the ranking tower. Fastest is a purple dot. rest of the dots are either green/yellow for if they are above or below the average. So the tower shows absolute ranking (one visualization) and the scatterplot shows it in time so that you can see how long ago the purple lap was for example and you know it will disappear in X rides.
 
 ### From WP-3 (way/route inversion) — none block writing the brief; Q3 decides WHEN it runs, Q1 changes one small step
 
@@ -72,26 +72,26 @@ a pre-WP-3 route is `way:…`): those ids are referenced from your append-only r
 results, and D-023 forbids rewriting them. The code handles both prefixes. Fine — or would you
 rather freeze the OLD prefixes for new ids too, so your catalog stays internally consistent at the
 cost of every future install reading backwards (WP-3 §3.3 option a)?
-Answer:
+Answer: no need to update the recorded data as well as I will probably try to reset the app to get a virgin build again.That data will then be all correct again with the updated naming.
 
 **Q2 — Tab name.** The browse tab stays **ROUTES**. Its sections read YOUR PLACES / ROUTES (each
 route row `from → to · N way(s)`); a route's detail lists its WAYS; a place's detail lists
 ROUTES TO HERE. OK?
-Answer:
+Answer: OK
 
 **Q3 — When WP-3 runs.** The brief runs WP-3 LAST, after every phase of WP-1 and WP-2 has landed:
 their briefs were written in today's words and execute as written, and WP-3's scripted identifier
 swap then covers their code for free. Until then the app keeps saying "way" for the from→to path
 and the coordinator translates in chat. Alternative: run WP-3 first, at the cost of re-issuing both
 earlier briefs (a Plan pass each) before they can execute. Last, or first?
-Answer:
+Answer: run WP-3 first!
 
 **Q4 — GPX+ export.** The `<qf:pick>` element's `routeId=` / `routeIds=` attributes become
 `wayId=` / `wayIds=` and the `qf` namespace moves from `…/gpx/1` to `…/gpx/2`. Do you have any
 script or tool of your own that reads GPX+ files and keys on those attribute names? If yes, we emit
 both old and new names for one cycle.
-Answer:
+Answer: I dont have my own tool for reading gpx+ files. If we think this is an issue you can consider making a new branch, and calling the old branch something like "legacy-virgin". This way we still know how the previous naming was done but we can move forward with the new one.
 
 **Q5 — RECORD copy.** The pill row for picking the variant becomes **WHICH WAY TODAY?** (today
 WHICH ROUTE TODAY?). Good, or another wording?
-Answer:
+Answer: good.
