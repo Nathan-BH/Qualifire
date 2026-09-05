@@ -16,17 +16,17 @@ occurrence of WP-B's bug on a route created that same evening. Both are folded i
 WP-I through WP-L are the 2026-09-04 round; WP-B's brief has an update section flagging the
 newer route to use instead of the one that's since been deleted.
 
-## Status at a glance (updated 2026-09-05 — Nathan answered all 3 questions; WP-M added from his Q3 answer)
+## Status at a glance (updated 2026-09-05 — WP-E/WP-F/WP-G/WP-D executed and landed this session; Nathan answered all 3 questions, WP-M added from his Q3 answer)
 
 | WP | What | Size | Status | Brief |
 |---|---|---|---|---|
 | A | RECORD-screen route-match & yellow-trail visibility (2026-09-03 review issues #1+#2, Nathan's exact 3-state spec) | small-medium | **BRIEF WRITTEN, Inspect: PASS WITH FINDINGS.** Root cause: `routeMapView.tsx`'s `?? defaultRouteId()` fallback silently substitutes "first drawable catalog route." Fix drops that fallback for the live map, adds one pure `liveMapOverlayFor()` helper making the reference line and the live trail mutually exclusive by construction. | `WP-A-record-route-match-trail-visibility.md` |
 | B | Gate placement scale bug on newly-created routes (2026-09-03 review issue #3) | small-medium | **BRIEF WRITTEN, Inspect: PASS WITH FINDINGS.** Genuine defect, confirmed twice over: fixes read in on-disk write order, not chronological order. Original example route deleted by Nathan since — **a second route from his 2026-09-04 evening ride ("WorkHomeWet") hit the same bug and is the current live example**, see the brief's update section and `QUESTIONS-FOR-NATHAN.md` Q1. | `WP-B-gate-placement-scale-bug.md` |
 | C | Raw-time scoring default — implementation half of an already-settled STATE.md rule | medium | **BRIEF WRITTEN, Inspect: PASS WITH FINDINGS.** `rawS` already stored (no schema change); 27 real call sites re-verified across 9 files. Two mechanical tsc-strictness gaps found and documented for Execute to close. Land after WP-E (both touch the same `RecordScreen.tsx` region). | `WP-C-raw-time-scoring-default.md` |
-| D | GPS re-acquisition teleport-guard hole (≤245m hops slip through uncounted) | small | **BRIEF WRITTEN, Inspect: PASS.** Plan measured and rejected a naive time-based threshold (fails on real corpus data); landed on discounting by *cause* (was the candidate off-route just before this fix?) instead of jump size. Corpus-safety re-verified independently by Inspect. | `WP-D-gps-teleport-guard-hole.md` |
-| E | Retire per-tier gate-tick colour (`gateColours`) — Nathan's "gates should not change colour" rule | chore | **BRIEF WRITTEN, Inspect: PASS WITH FINDINGS.** One-line change + dead-code removal. Inspect corrected the exact deletion range (769-787 only — the original range would have deleted an unrelated comment). | `WP-E-gate-tick-colour-retire.md` |
-| F | Dedupe `lineColourFor`/`tierLineColour` (rideDetailModel.ts hand-copies chips.tsx) | chore | **BRIEF WRITTEN, Inspect: PASS WITH FINDINGS.** Extraction into a new pure `tierColour.ts` module. The brief's one open question (are the two tier types compatible?) is now resolved: yes, no cast needed. | `WP-F-linecolour-dedupe.md` |
-| G | Way-creation polish — loop-copy wording + regression tests for two under-covered branches | chore | **BRIEF WRITTEN (G2 corrected 2026-09-04 by a fresh Fable pass after Inspect found the original test spec targeted the wrong branch).** G1 (copy fix) unchanged; G2 now specifies two genuinely-uncovered test cases, verified against the real 882-line test file. | `WP-G-waycreation-polish.md` |
+| D | GPS re-acquisition teleport-guard hole (≤245m hops slip through uncounted) | small | **DONE — landed 2026-09-05, commit `2fe0ede`.** Discounts by *cause* (`wasOnRoute`) instead of jump size; `core/src/live.ts` untouched. | `WP-D-gps-teleport-guard-hole.md` |
+| E | Retire per-tier gate-tick colour (`gateColours`) — Nathan's "gates should not change colour" rule | chore | **DONE — landed 2026-09-05, commit `d7e925b`.** `gateColours` useMemo + override removed; gate-buzz NOTE preserved. | `WP-E-gate-tick-colour-retire.md` |
+| F | Dedupe `lineColourFor`/`tierLineColour` (rideDetailModel.ts hand-copies chips.tsx) | chore | **DONE — landed 2026-09-05, commit `644cb04`.** New `app/src/ui/tierColour.ts`; `chips.tsx` re-exports, `rideDetailModel.ts` imports the real function. | `WP-F-linecolour-dedupe.md` |
+| G | Way-creation polish — loop-copy wording + regression tests for two under-covered branches | chore | **DONE — landed 2026-09-05, commit `eaab0a4`.** G1: loop copy names an existing landmark when applicable. G2: two new regression tests (WP-G 9/10). | `WP-G-waycreation-polish.md` |
 | H | ~~Gate-adjust pad button label overflow~~ | — | **SUPERSEDED — folded into WP-J.** Its overflow/sizing analysis was correct but incomplete (missed a 5th row child); WP-J owns the whole card redesign now. Do not execute this brief separately. | `WP-H-gate-adjust-pad-overflow.md` |
 | I | Edit gates on an EXISTING (already-saved) route from ROUTES — today only whole-route delete exists | small-medium | **BRIEF WRITTEN.** Reuses cycle1's `promoteRideToReference` pattern (new gate-set version, results cleared, one-step warning) but keeps the existing reference line — only the gate positions move, no new ride involved. One product question drafted for Nathan (Q2: does "starting over" mean re-timed, or gone for good). Coordinates with WP-K on shared `RoutesScreen.tsx` edits — see WP-K's §3.6 ordering table. **Its one open product question (re-time vs. discard old rides) is now resolved — Nathan confirmed re-timing (Q2).** | `WP-I-edit-existing-route-gates.md` |
 | J | Gate-adjust card redesign — real zoomable OpenMap, long-press-to-repeat nudge, start/finish gates adjustable (2026-09-04 notes) | medium-large | **BRIEF WRITTEN.** Swaps the card's custom-drawn line for a real `RouteMapView` (browse variant); adds `onLongPress`/repeat-nudge to the pad; unlocks start/finish gates (`chainageM` already holds them, just needed UI selectability); absorbs WP-H's overflow fix by moving the chainage readout above the button row instead of squeezed between two button pairs. | `WP-J-gate-adjust-card-redesign.md` |
@@ -39,6 +39,15 @@ questions are now answered: Q1 confirms which route to use for WP-B's on-device 
 notes a possible app-switching contributing cause, folded into WP-B), Q2 ratifies WP-I's
 re-timing design as final (no follow-on needed), and Q3 is Nathan's own full design spec for
 WP-M, the map-rotation feature below.
+
+**2026-09-05 — first execution session: WP-E → WP-F → WP-G → WP-D, all landed.** Nathan
+picked the four smallest/lowest-risk briefs for a fast first pass. All four Executed in
+parallel (confirmed disjoint target files first), verified together, and committed as four
+separate commits: `d7e925b` (WP-E), `644cb04` (WP-F), `eaab0a4` (WP-G), `2fe0ede` (WP-D).
+Combined result: 7 files changed + 1 new file, 165 insertions / 89 deletions; test suite went
+468→472 (WP-G +2, WP-D +2), 0 fail, 3 skip throughout; `tsc --noEmit` clean before and after.
+No file overlaps, no regressions. See each WP's own status line for its own detail, and
+`TOKEN-USAGE.md` for the four Execute dispatches' token/tool-call figures.
 
 ## How to resume this cycle (in this chat or a fresh one)
 

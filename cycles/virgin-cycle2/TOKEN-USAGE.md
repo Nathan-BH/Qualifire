@@ -1,7 +1,8 @@
 # virgin-cycle2 — token/tool-call reference
 
-Running tally for this cycle's dispatches (2026-09-04 session, planning-only — no Execute
-dispatches this cycle, see README). Approximate — from each subagent's own reported usage.
+Running tally for this cycle's dispatches. Approximate — from each subagent's own reported
+usage. Planning dispatches (Digest/Plan/Inspect) are from the 2026-09-04 session; the four
+Execute dispatches below are from the first execution session, 2026-09-05.
 
 | Dispatch | Tier | Model | Tokens (reported) | Tool calls | Outcome |
 |---|---|---|---|---|---|
@@ -27,10 +28,21 @@ dispatches this cycle, see README). Approximate — from each subagent's own rep
 | Plan — WP-M (two-finger map rotation + compass button) | Plan | Fable | ~125.2k | 27 | Brief written from Nathan's own Q3 design spec |
 | Inspect — fresh-context check of WP-M | Inspect | Fable (fresh context) | ~116.8k | 34 | PASS WITH FINDINGS — found the prestart→moving reset was load-bearing, not belt-and-braces (same map instance reused across START) |
 | Coordinator direct — process Nathan's 3 answers (patch WP-I/WP-B, rewrite README/CONTEXT/TOKEN-USAGE/QUESTIONS) | Chore | — (coordinator, no subagent) | — | ~10 | Q1 folded into WP-B, Q2 resolved WP-I's open question, Q3 → WP-M |
+| Execute — WP-E (retire gate-tick colour) | Execute | Sonnet | ~68.6k | 16 | Landed `d7e925b`: removed `gateColours` useMemo + override, preserved gate-buzz NOTE |
+| Execute — WP-F (linecolour dedupe) | Execute | Sonnet | ~97.2k | 22 | Landed `644cb04`: new `tierColour.ts`, `chips.tsx` re-exports, `rideDetailModel.ts` uses the real function |
+| Execute — WP-G (way-creation polish) | Execute | Sonnet | ~88.7k | 26 | Landed `eaab0a4`: G1 copy fix + G2's two re-derived regression tests, non-duplication double-checked against the real file |
+| Execute — WP-D (GPS teleport-guard hole) | Execute | Sonnet | ~117.2k | 43 | Landed `2fe0ede`: `wasOnRoute` capture + widened discount condition, self-resolved one transient ambiguity in the doc-comment rewrite (reported, not guessed) |
+| Coordinator direct — verify + commit WP-E/F/G/D, update briefs/README/TOKEN-USAGE | Chore | — (coordinator, no subagent) | — | ~15 | Combined verification (472 tests, 469 pass, 0 fail, 3 skip; tsc clean), 4 separate commits, status lines + README table + this file updated |
 
-**Subtotal (subagent dispatches only): ~1.96M tokens across 15 dispatches** (2 Digest + 9 Plan
-+ 3 Inspect + 1 Plan-correction), plus 7 coordinator-direct chore briefs/corrections (no
-separate token report — folded into this session's own cost).
+**Planning subtotal (Digest/Plan/Inspect dispatches only): ~1.96M tokens across 15 dispatches**
+(2 Digest + 9 Plan + 3 Inspect + 1 Plan-correction), plus 7 coordinator-direct chore
+briefs/corrections (no separate token report — folded into that session's own cost).
 
-**No Execute-tier dispatches this cycle** — nothing has landed on the device. When Nathan
-picks a WP to actually build, that's a fresh Execute (Sonnet) dispatch against that brief.
+**Execute subtotal (2026-09-05 session): ~371.7k tokens across 4 dispatches** (WP-E + WP-F +
+WP-G + WP-D, run in parallel — confirmed disjoint target files first), plus 1 coordinator-direct
+verify+commit pass (no separate token report).
+
+**Cycle running total so far: ~2.33M tokens across 19 subagent dispatches** (15 planning + 4
+Execute), plus 8 coordinator-direct chore passes. Four of thirteen WPs (E, F, G, D) are now
+DONE and landed on the device; the remaining nine (A, B, C, I, J, K, L, M — H superseded) stay
+BRIEF WRITTEN for a future Execute session.

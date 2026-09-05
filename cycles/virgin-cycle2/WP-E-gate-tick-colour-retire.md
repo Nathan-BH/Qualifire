@@ -1,4 +1,4 @@
-**Status: BRIEF WRITTEN, NOT YET EXECUTED.**
+**Status: DONE. Landed on the device (`app/src/ui/RecordScreen.tsx`) on 2026-09-05, commit `d7e925b`. Removed the `gateColours` useMemo and its dead-code override entirely (`gateColours={undefined}` now passed to `RouteMapView`); the gate-buzz NOTE comment immediately above was preserved untouched, per the Inspect-corrected deletion range (769-787). Verified together with WP-F/WP-G/WP-D: 472 tests, 469 pass, 0 fail, 3 skip; `tsc --noEmit` exit 0.**
 **Open item:** OPEN-ITEMS.md "Parked" — live gate ticks still recolour by tier (`gateColours`). Size: chore (~1 line functional change + a dead-code removal).
 **Written by:** coordinator directly (Sonnet chat) — well-specified by a prior inspection note + Nathan's own stated rule, no Plan-tier design judgment needed; re-verified against the real repo before writing (see below), not copied blind from OPEN-ITEMS.md.
 
