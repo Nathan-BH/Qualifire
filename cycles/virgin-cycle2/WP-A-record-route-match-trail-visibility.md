@@ -1,4 +1,4 @@
-**Status: BRIEF WRITTEN, NOT YET EXECUTED.**
+**Status: DONE. Landed on the device (`app/src/ui/routeMapView.tsx`, `app/src/ui/recordFlow.ts`, `app/src/ui/RecordScreen.tsx`, `app/src/ui/DemoScreen.tsx`, `app/tests/recordflow_suite.ts`, `app/tests/routemap_suite.ts`) on 2026-09-05, commit `064b6e2`. The `?? defaultRouteId()` fallback is gone from both map rungs; the new pure `liveMapOverlayFor()` helper makes the reference line and live trail mutually exclusive by construction. Verified together with WP-B: 483 tests, 480 pass, 0 fail, 3 skip; `tsc --noEmit` exit 0.**
 **Review doc item:** qualifire-20260903 review, issues #1+#2 (combined), Nathan's 2026-09-04
 addendum in `qualifire-20260903-notes.md`. Also resolves OPEN-ITEMS' parked **"Free-ride
 'new>>new' design"** entry as far as the live map is concerned (see §1.2). Size: **small-medium**

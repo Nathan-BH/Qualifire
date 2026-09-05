@@ -33,16 +33,27 @@ Execute dispatches below are from the first execution session, 2026-09-05.
 | Execute — WP-G (way-creation polish) | Execute | Sonnet | ~88.7k | 26 | Landed `eaab0a4`: G1 copy fix + G2's two re-derived regression tests, non-duplication double-checked against the real file |
 | Execute — WP-D (GPS teleport-guard hole) | Execute | Sonnet | ~117.2k | 43 | Landed `2fe0ede`: `wasOnRoute` capture + widened discount condition, self-resolved one transient ambiguity in the doc-comment rewrite (reported, not guessed) |
 | Coordinator direct — verify + commit WP-E/F/G/D, update briefs/README/TOKEN-USAGE | Chore | — (coordinator, no subagent) | — | ~15 | Combined verification (472 tests, 469 pass, 0 fail, 3 skip; tsc clean), 4 separate commits, status lines + README table + this file updated |
+| Execute — WP-A (RECORD route-match/trail-visibility) | Execute | Sonnet | ~112.3k | 46 | Landed `064b6e2`: removed the `?? defaultRouteId()` fallback, added `liveMapOverlayFor()` |
+| Execute — WP-B (gate placement scale bug) | Execute | Sonnet | ~189.8k | 76 | Landed `495b3f8` (A1-A5); correctly stopped on a test-fixture ambiguity rather than guessing |
+| Plan — adjudicate WP-B's test-fixture ambiguity | Plan | Fable (fresh context) | ~79.9k | 10 | Ruled the fixture's overlapping timestamps were the defect, not the new chronological-sort code; specified the exact fixture fix |
+| Coordinator direct — apply WP-B's fixture fix, verify, commit WP-A+WP-B, update briefs | Chore | — (coordinator, no subagent) | — | ~20 | ~10-line mechanical fix per the ruling; 483 tests, 480 pass, 0 fail, 3 skip; 2 commits |
+| Execute — WP-I (edit gates on an existing route) | Execute | Sonnet | ~152.6k | 48 | Landed `0b45803`: `editRouteGates()`/`gateEditDraftFor()`, ROUTES wiring, nested-Pressable fix |
+| Execute — WP-M (two-finger map rotation + compass reset) | Execute | Sonnet | ~122.1k | 41 | Landed `6c3d6ab`: `rotateEnabledFor()`, held `userBearing`, compass button, Inspect-tier guard applied |
+| Coordinator direct — verify + commit WP-I/WP-M, update briefs/README/TOKEN-USAGE | Chore | — (coordinator, no subagent) | — | ~15 | Combined verification (495 tests, 492 pass, 0 fail, 3 skip; tsc clean), 2 commits, status lines + README table + this file updated |
 
 **Planning subtotal (Digest/Plan/Inspect dispatches only): ~1.96M tokens across 15 dispatches**
 (2 Digest + 9 Plan + 3 Inspect + 1 Plan-correction), plus 7 coordinator-direct chore
 briefs/corrections (no separate token report — folded into that session's own cost).
 
-**Execute subtotal (2026-09-05 session): ~371.7k tokens across 4 dispatches** (WP-E + WP-F +
-WP-G + WP-D, run in parallel — confirmed disjoint target files first), plus 1 coordinator-direct
-verify+commit pass (no separate token report).
+**Execute subtotal, first session (WP-E/F/G/D): ~371.7k tokens across 4 dispatches** (run in
+parallel — confirmed disjoint target files first), plus 1 coordinator-direct verify+commit pass.
 
-**Cycle running total so far: ~2.33M tokens across 19 subagent dispatches** (15 planning + 4
-Execute), plus 8 coordinator-direct chore passes. Four of thirteen WPs (E, F, G, D) are now
-DONE and landed on the device; the remaining nine (A, B, C, I, J, K, L, M — H superseded) stay
-BRIEF WRITTEN for a future Execute session.
+**Execute subtotal, second session (WP-A/B/I/M): ~576.8k tokens across 4 Execute dispatches**
+(two disjoint-file waves: WP-A+WP-B, then WP-I+WP-M) **+ ~79.9k for 1 Plan-tier ambiguity
+ruling** (WP-B's test-fixture ambiguity — correctly stopped on by Execute rather than guessed
+past), plus 2 coordinator-direct verify+commit passes.
+
+**Cycle running total so far: ~2.98M tokens across 24 subagent dispatches** (15 planning + 8
+Execute + 1 Plan-tier ruling), plus 10 coordinator-direct chore passes. Eight of thirteen WPs
+(E, F, G, D, A, B, I, M) are now DONE and landed on the device; the remaining five (C, J, K, L
+— H superseded) stay BRIEF WRITTEN for a future Execute session.
