@@ -766,25 +766,6 @@ export default function RecordScreen({
   // it sees every fire even with the screen off, and two buzzers meant the
   // rider felt each gate twice (cycle 009). This screen only sets the flag.
 
-  // Gate markers on the map take the colour their sector earned, once scored.
-  // Purple is the one tier chipColors().text gets wrong for a MAP marker:
-  // purple's .text is PURPLE_INK, the near-black ink for text drawn ON a
-  // purple-filled chip, not the tier's actual colour — near-invisible on the
-  // map (same bug class as the 2026-09-02 DEMO-tab/ResultScreen map-line fix,
-  // chips.tsx's tierLineColour()). Every OTHER tier's .text is already the
-  // right marker colour here (grey for 'est', theme accent for 'neutral'), so
-  // only purple is overridden rather than swapping in tierLineColour() wholesale.
-  const gateColours = useMemo(() => {
-    const out: (string | null)[] = [null];
-    for (let i = 0; i < live.sectors.length; i++) {
-      const sec = live.sectors[i];
-      if (sec.kind !== 'done') { out.push(null); continue; }
-      const tier = sec.estimated ? 'est' : tierOf(i + 1, sec.movingS ?? null);
-      out.push(tier === 'purple' ? colors.purple : chipColors(tier, t).text);
-    }
-    return out;
-  }, [live.sectors, live.track, t]);
-
   // WP-K (phase 2): sector spans on the live map — the segment BETWEEN gates,
   // never the tick (Nathan: "they are gates"). Same comparison window tierOf()
   // uses (sectorValues on the LOCKED track, [] before the lock — D-025), the
@@ -1038,7 +1019,7 @@ export default function RecordScreen({
               lat={status.lastLat}
               lon={status.lastLon}
               zoom={4}
-              gateColours={gateColours}
+              gateColours={undefined}
               sectorColours={sectorColours}
               gatesOnly={live.mode === 'free'}
               crossedGates={live.freeCrossings}
