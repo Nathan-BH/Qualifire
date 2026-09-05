@@ -11,27 +11,7 @@ import { ranks } from '../store/results.ts';
 import { MIN_HISTORY, positionAmong, tierFor, type UiTier } from './colourModel.ts';
 import { lapCellLabel, buildSectorRows, type SectorRowModel } from './rideHistoryModel.ts';
 import { storedSectorColours } from './sectorTrailModel.ts';
-import { colors } from './theme.ts';
-
-// NOT `import { tierLineColour } from './chips.tsx'`: chips.tsx has real JSX
-// (React Native components) alongside its pure helpers, and Node's headless
-// test runner (--experimental-strip-types) cannot load a .tsx file AT ALL —
-// "Unknown file extension .tsx" — even for a value import of a JSX-free
-// export. Every prior consumer of chips.tsx's pure pieces (towerModel.ts,
-// rideHistoryModel.ts) only ever did TYPE-only imports, which strip to
-// nothing and never actually load the module — this is the first PURE model
-// that needs the real colour string at runtime. Reproduced verbatim from
-// chips.tsx's tierLineColour (chips.tsx:36-43) rather than touching that
-// file, which this brief does not name. Keep the two in sync by hand if
-// either changes — flagged in the execution report.
-function lineColourFor(tier: UiTier): string | null {
-  switch (tier) {
-    case 'purple': return colors.purple;
-    case 'green': return colors.green;
-    case 'yellow': return colors.neutral; // chips.tsx's YELLOW_TIER = colors.neutral
-    default: return null;
-  }
-}
+import { tierLineColour } from './tierColour.ts';
 
 export type RideDetailKind = 'route' | 'free' | 'none';
 
@@ -108,7 +88,7 @@ export function rankLineFor(
  * tie set by a different ride, and RIDES's buildSectorRows never had that
  * filter — the two surfaces now agree. */
 export function sectorColoursFor(result: RideResult, hist: (index: number) => number[]): (string | null)[] {
-  return storedSectorColours(result, hist, lineColourFor);
+  return storedSectorColours(result, hist, tierLineColour);
 }
 
 export function rideDetailFor(rideId: string, startedAtMs: number, d: RideDetailDeps): RideDetailModel {

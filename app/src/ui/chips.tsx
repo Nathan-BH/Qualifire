@@ -8,39 +8,17 @@ import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { PaddockTheme, colors, radius } from './theme';
 import { useTheme } from './themeContext';
+import { YELLOW_TIER, tierLineColour } from './tierColour';
 
 export type Tier = 'none' | 'neutral' | 'yellow' | 'green' | 'purple' | 'est';
 
-/** An ordinary time — below the recent average. F1 yellow, the same yellow the
- * brand already uses, because in F1 yellow is the DEFAULT colour of a lap time,
- * not a warning (D-013: no failure styling, ever). */
-export const YELLOW_TIER = colors.neutral;
+/** YELLOW_TIER / tierLineColour: moved to tierColour.ts (a pure `.ts` module
+ * headless tests can load) and re-exported here so every existing `.tsx`
+ * consumer keeps importing them from './chips' with zero changes. See
+ * tierColour.ts for the doc comment on what these mean. */
+export { YELLOW_TIER, tierLineColour };
 
 export const PURPLE_INK = '#120521';
-
-/**
- * The colour a tier paints on a MAP LINE (sector-coloured trail) — the same
- * colour the sector legend block shows for that tier: purple's chip FILL,
- * green's chip BORDER, yellow's flat TEXT. This is the single source of truth
- * for every sector-coloured trail (ResultScreen, DemoScreen, any future
- * live/race screen) — do not build a local map, and do NOT use
- * `chipColors(tier, t).text`: purple's `.text` is PURPLE_INK, the near-black
- * ink for text drawn ON a purple chip, which paints a purple sector's line
- * almost black (the 2026-09-02 DEMO-tab bug).
- *
- * null = no earned colour: the span paints transparent and the yellow base
- * route line shows through (RouteMapView's "not yet run" fallback).
- * 'none' / 'neutral' / 'est' are deliberately null — a verdict-less sector is
- * never given a scored colour on the map.
- */
-export function tierLineColour(tier: Tier): string | null {
-  switch (tier) {
-    case 'purple': return colors.purple;
-    case 'green': return colors.green;
-    case 'yellow': return YELLOW_TIER;
-    default: return null;
-  }
-}
 
 export interface ChipPalette {
   bg: string;
