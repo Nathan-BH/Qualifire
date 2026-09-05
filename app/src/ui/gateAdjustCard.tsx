@@ -36,6 +36,11 @@ export interface GateAdjustCardProps {
   busy: boolean;
   onKeep: () => void;
   onSave: (chainageM: number[]) => void;
+  /** WP-I: optional copy overrides for the "editing an existing route" case
+   * — default (undefined) is today's just-created-route copy, byte-for-byte. */
+  title?: string;
+  subtitle?: string;
+  discardLabel?: string;
 }
 
 const MAP_H = 200;
@@ -89,11 +94,9 @@ export function GateAdjustCard(props: GateAdjustCardProps) {
 
   return (
     <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-      <Text style={[st.title, { color: t.text }]}>Sector gates — proposed</Text>
+      <Text style={[st.title, { color: t.text }]}>{props.title ?? 'Sector gates — proposed'}</Text>
       <Text style={[st.sub, { color: t.textDim }]}>
-        Seeded at 25/50/75% of your ride, nudged clear of where you stopped. A
-        proposal, not a benchmark — tap a gate to nudge it, or keep it and refine
-        after a few rides.
+        {props.subtitle ?? 'Seeded at 25/50/75% of your ride, nudged clear of where you stopped. A proposal, not a benchmark — tap a gate to nudge it, or keep it and refine after a few rides.'}
       </Text>
 
       <View style={[st.map, { borderColor: t.cardBorder }]} onLayout={onMapLayout}>
@@ -166,7 +169,7 @@ export function GateAdjustCard(props: GateAdjustCardProps) {
       </Pressable>
       {dirty ? (
         <Pressable style={st.skipBtn} disabled={props.busy} onPress={props.onKeep}>
-          <Text style={[st.skipText, { color: t.textDim }]}>discard nudges — keep the proposal</Text>
+          <Text style={[st.skipText, { color: t.textDim }]}>{props.discardLabel ?? 'discard nudges — keep the proposal'}</Text>
         </Pressable>
       ) : null}
     </View>

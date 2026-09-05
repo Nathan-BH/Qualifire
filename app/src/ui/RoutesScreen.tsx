@@ -24,14 +24,17 @@ import { currentCatalog, saveUserCatalog, userCatalog } from '../store/catalogSt
 import { isSeedOwned, removeLandmark, removeRoute, removeWay, type CatalogDeletion } from '../store/catalogDelete.ts';
 import { shippedCatalog } from '../store/seed.ts';
 import { removeUserRef } from '../live/userRefs.ts';
-import { removeStoredResult, storedResultsForRoute } from '../store/resultsStore.ts';
-import { clearLastRide, dropRecorded, getLastRide } from './lastRide.ts';
+import { getStoredResult, removeStoredResult, storedResultsForRoute } from '../store/resultsStore.ts';
+import { clearLastRide, dropRecorded, getLastRide, replaceRecorded } from './lastRide.ts';
 import { rankedCountFor } from './colourModel.ts';
 import { routeLabelIn, routeVariantLabel, sortRoutesForDisplay } from '../store/defaultRoute.ts';
 import RouteMapView from './routeMapView.tsx';
 import { radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
 import type { Catalog, Landmark, Route, Way } from '../store/types.ts';
+import { editRouteGates, gateEditDraftFor, type GateAdjustDraft } from '../store/wayFromRide.ts';
+import { GateAdjustCard } from './gateAdjustCard.tsx';
+import { createExpoFsAdapter } from '../storage/expoFsAdapter.ts';
 
 /** "A", "A and B", "A, B and C" — for the "no longer used by any way" clause. */
 function joinLabels(labels: string[]): string {
@@ -116,10 +119,61 @@ export default function RoutesScreen() {
   // changed on their own (same idiom as RidesScreen's resultsTick).
   const [, setTick] = useState(0);
   const bump = () => setTick((v) => v + 1);
+  // WP-I: the gate-adjust draft currently open inline (one at a time), and
+  // whether a save is in flight.
+  const [editing, setEditing] = useState<GateAdjustDraft | null>(null);
+  const [busy, setBusy] = useState(false);
   const now = Date.now();
   // B-39: read per render, never captured at import (see RecordScreen).
   const CATALOG = currentCatalog();
   const SEED = shippedCatalog();
+
+  // WP-I (virgin-cycle2): "edit gates" on an EXISTING route — reuses
+  // promoteRideToReference's reset-not-remap convention (ratified,
+  // QUESTIONS-FOR-NATHAN.md Q2, 2026-09-05), mirroring RideDetailScreen.tsx's
+  // confirmPromote/onPromote one-for-one, but the reference line itself is
+  // untouched — only gate positions move.
+  function confirmEditGates(routeId: string, chainageM: number[]) {
+    const n = storedResultsForRoute(routeId).length;
+    const ghosts = n === 0
+      ? 'There are no past results on this route yet.'
+      : `Its ${n} past result${n === 1 ? ' is' : 's are'} discarded and re-timed from the recordings against the new gates — old times and ranks do not survive.`;
+    Alert.alert(
+      `Move the gates of "${routeLabelIn(currentCatalog(), routeId)}"?`,
+      `This route's history will be reset and past ghosts will be lost.\n\n${ghosts} The reference line and ride recordings are kept.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Save & reset', style: 'destructive', onPress: () => void onEditGates(routeId, chainageM) },
+      ],
+    );
+  }
+
+  async function onEditGates(routeId: string, chainageM: number[]) {
+    setBusy(true);
+    try {
+      const out = await editRouteGates(routeId, chainageM, createExpoFsAdapter());
+      if (!out.ok) {
+        Alert.alert('Could not save the gates', out.errors.join('\n'));
+        return;
+      }
+      if (out.moved) {
+        // lastRide coherence — applyDeletion's steps (above) plus replaceRecorded
+        // for whatever the immediate re-derive came back with (RideDetailScreen's onPromote).
+        for (const id of out.clearedRideIds) dropRecorded(id);
+        if (getLastRide()?.routeId === routeId) clearLastRide();
+        for (const id of out.clearedRideIds) {
+          const r = getStoredResult(id);
+          if (r) replaceRecorded(r);
+        }
+      }
+      setEditing(null);
+      bump();
+    } catch (e) {
+      Alert.alert('Could not save the gates', e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
@@ -180,25 +234,31 @@ export default function RoutesScreen() {
         const isOpen = open === w.id;
         const wayDeletable = !isSeedOwned(SEED, 'way', w.id);
         return (
-          <Pressable key={w.id} onPress={() => setOpen(isOpen ? null : w.id)}
+          <View key={w.id}
             style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder, marginBottom: 10 }]}>
-            <View style={[st.row, { borderBottomWidth: 0 }]}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: t.text, fontSize: 15 }}>
-                  {from?.label} → {to?.label}
-                </Text>
-                <Text style={{ color: t.textDim, fontSize: 11.5 }}>
-                  {routes.length} route{routes.length === 1 ? '' : 's'}
-                  {routes.length > 1 ? ' · asks which one at START' : ''}
-                </Text>
+            {/* WP-I: only the header row toggles open/closed now — the open
+                body (map, captions, the gate-adjust card) is plain View, so a
+                touch there no longer bubbles up and collapses the card mid-edit. */}
+            <Pressable onPress={() => setOpen(isOpen ? null : w.id)}>
+              <View style={[st.row, { borderBottomWidth: 0 }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ color: t.text, fontSize: 15 }}>
+                    {from?.label} → {to?.label}
+                  </Text>
+                  <Text style={{ color: t.textDim, fontSize: 11.5 }}>
+                    {routes.length} route{routes.length === 1 ? '' : 's'}
+                    {routes.length > 1 ? ' · asks which one at START' : ''}
+                  </Text>
+                </View>
+                <Text style={{ color: t.textDim }}>{isOpen ? '▾' : '›'}</Text>
               </View>
-              <Text style={{ color: t.textDim }}>{isOpen ? '▾' : '›'}</Text>
-            </View>
+            </Pressable>
             {isOpen ? (
               <View style={{ paddingBottom: 12 }}>
                 {routes.map((r) => {
                   const n = rankedCountFor(r.id);
                   const routeDeletable = !isSeedOwned(SEED, 'route', r.id);
+                  const editDraft = routeDeletable ? gateEditDraftFor(r.id) : null;
                   return (
                     <View key={r.id} style={{ marginTop: 10 }}>
                       <Text style={{ color: t.text, fontSize: 13.5 }}>{routeVariantLabel(r.id, w, r.specs)}</Text>
@@ -218,6 +278,35 @@ export default function RoutesScreen() {
                           <Text style={[st.deleteText, { color: t.textDim }]}>delete route</Text>
                         </Pressable>
                       ) : null}
+                      {/* WP-I: the missing entry point — edit an existing
+                          route's gates in place (reset-not-remap; see
+                          confirmEditGates above). Only for a user route with a
+                          resolvable draft (gateEditDraftFor !== null). */}
+                      {editDraft !== null ? (
+                        <Pressable
+                          style={[st.deleteBtn, { borderColor: t.cardBorder }, busy && st.dim]}
+                          disabled={busy}
+                          onPress={() => setEditing(editDraft)}
+                        >
+                          <Text style={[st.deleteText, { color: t.textDim }]}>edit gates</Text>
+                        </Pressable>
+                      ) : null}
+                      {editing !== null && editing.routeId === r.id ? (
+                        <View style={{ marginTop: 12 }}>
+                          <GateAdjustCard
+                            key={editing.routeId}
+                            refLine={editing.ref}
+                            refLengthM={editing.refLengthM}
+                            initialChainageM={editing.chainageM}
+                            busy={busy}
+                            title={`Sector gates — ${routeVariantLabel(r.id, w, r.specs)}`}
+                            subtitle="Tap a gate to nudge it. Saving moved gates resets this route's history — past results are re-timed from their recordings against the new gates, old times and ranks do not survive."
+                            discardLabel="discard nudges — keep the current gates"
+                            onKeep={() => setEditing(null)}
+                            onSave={(ch) => confirmEditGates(r.id, ch)}
+                          />
+                        </View>
+                      ) : null}
                     </View>
                   );
                 })}
@@ -231,13 +320,13 @@ export default function RoutesScreen() {
                 ) : null}
               </View>
             ) : null}
-          </Pressable>
+          </View>
         );
       })}
 
       <Text style={{ color: t.textDim, fontSize: 11.5, marginTop: 4 }}>
         Route lines are pre-rendered from your own rides, with the measured gates marked.
-        Moving a middle gate keeps lap history comparable; moving START or FINISH does not.
+        Editing a route's gates resets its history — every past ride is re-timed against the new gates.
       </Text>
     </ScrollView>
   );
@@ -258,4 +347,6 @@ const st = StyleSheet.create({
     borderWidth: 1,
   },
   deleteText: { fontSize: 12, fontWeight: '700' },
+  // WP-I: dim the edit-gates button while a save is in flight (as gateAdjustCard.tsx's own `dim`).
+  dim: { opacity: 0.45 },
 });

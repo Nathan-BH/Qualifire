@@ -17,7 +17,7 @@
 import type { RefLine } from '../../core/src/index.ts';
 import type { FsAdapter } from '../storage/fsAdapter.ts';
 import { chronologicalFixes, decodeRideFile } from '../storage/jsonl.ts';
-import { buildRefFromRideFixes, saveUserRef } from '../live/userRefs.ts';
+import { buildRefFromRideFixes, saveUserRef, userRefFor } from '../live/userRefs.ts';
 import { seedGateChainages } from './gateSeeding.ts';
 import { addGateSet, gateSetFor, routesForWay } from './catalog.ts';
 import { currentCatalog, saveUserCatalog, userCatalog } from './catalogStore.ts';
@@ -243,4 +243,101 @@ export async function saveAdjustedGates(a: GateAdjustDraft, chainageM: number[])
     }),
   );
   return errs.length > 0 ? { ok: false, errors: errs } : { ok: true, moved: true };
+}
+
+// ============================================================ WP-I
+// (virgin-cycle2): "edit gates for an EXISTING route" from the ROUTES tab —
+// reuses promoteRideToReference's reset-not-remap convention (ratified,
+// QUESTIONS-FOR-NATHAN.md Q2, 2026-09-05) but keeps the existing reference
+// line: only gate positions move, no new ride is involved.
+
+/** WP-I (virgin-cycle2): the gate-adjust draft for an EXISTING user route —
+ * its own reference line and its CURRENT gate set, so RoutesScreen can open
+ * GateAdjustCard on it. null when the route is not user-owned, has no
+ * resolvable user ref (a way saved without a line), or no gate set. Pure
+ * read, no I/O. Same shape as the create-way draft on purpose: the card and
+ * the screen wiring do not care which flow produced it. */
+export function gateEditDraftFor(routeId: string): GateAdjustDraft | null {
+  const user = userCatalog();
+  const route = user.routes.find((r) => r.id === routeId);
+  if (!route) return null;
+  const ref = userRefFor(route.refLineId);
+  const gates = gateSetFor(user, routeId, route.gateSetVersion);
+  if (!ref || !gates) return null;
+  return { routeId, ref, refLengthM: ref.length, chainageM: [...gates.chainageM] };
+}
+
+export type EditGatesOutcome =
+  | { ok: true; moved: false }
+  | {
+      ok: true;
+      moved: true;
+      /** the gate-set version minted */
+      gateSetVersion: number;
+      /** every rideId whose stored result on this route was removed */
+      clearedRideIds: string[];
+      /** of clearedRideIds, the ones the immediate re-derive scored on THIS route again */
+      retimed: string[];
+    }
+  | { ok: false; errors: string[] };
+
+/** WP-I: move the gates of an EXISTING user route to `chainageM` — Nathan's
+ * "edit the gate … it should not recalculate, and just say that previous
+ * recordings will be lost (starting over basically)" (2026-09-04), i.e. the
+ * SAME reset-not-remap convention as promoteRideToReference above, minus the
+ * parts that are about a new ride: the reference line is untouched (no
+ * readRideFixes/buildRefFromRideFixes/saveUserRef), referenceRideId is
+ * untouched, and the chainages are the rider's, not seedGateChainages'.
+ * Kept identical: user-route-only refusal, version = latest + 1 through
+ * addGateSet (old versions stay), one refusable catalog write first, then
+ * every stored result on the route removed and the affected rides re-derived
+ * at once through the ordinary backfill (see promote's doc comment for why a
+ * bare delete would come back re-timed at the next boot anyway). Unmoved
+ * gates are a free no-op, as saveAdjustedGates. Refuses, with no writes, for
+ * a non-user route, a missing gate set or ref, a chainage list of a different
+ * length, or one that is not strictly increasing within [0, ref.length]. */
+export async function editRouteGates(
+  routeId: string, chainageM: number[], fs: FsAdapter,
+): Promise<EditGatesOutcome> {
+  const user = userCatalog();
+  const route = user.routes.find((r) => r.id === routeId);
+  if (!route) {
+    return { ok: false, errors: [`"${routeId}" is not one of your own routes — a shipped route's gates cannot be edited`] };
+  }
+  const current = gateSetFor(user, routeId);
+  const ref = userRefFor(route.refLineId);
+  if (!current || !ref) {
+    return { ok: false, errors: ['this route has no gate set or no reference line to place gates on'] };
+  }
+  if (chainageM.length !== current.chainageM.length) {
+    return { ok: false, errors: [`expected ${current.chainageM.length} gates, got ${chainageM.length}`] };
+  }
+  for (let i = 0; i < chainageM.length; i++) {
+    const c = chainageM[i];
+    if (!(c >= 0 && c <= ref.length) || (i > 0 && c <= chainageM[i - 1])) {
+      return { ok: false, errors: [`gate ${i} at ${c} m is not on the line or not after gate ${i - 1}`] };
+    }
+  }
+  const moved = chainageM.some((v, i) => Math.abs(v - current.chainageM[i]) > 1e-6);
+  if (!moved) return { ok: true, moved: false };
+
+  const version = current.version + 1;
+  const errs = await saveUserCatalog(
+    addGateSet(user, {
+      routeId,
+      version,
+      chainageM: [...chainageM],
+      createdAtMs: Date.now(),
+      origin: 'geometric',
+      note: `edited from ROUTES (tap-then-nudge) over v${current.version} (WP-I, virgin-cycle2)`,
+    }),
+  );
+  if (errs.length > 0) return { ok: false, errors: errs };
+
+  // The reset, then the immediate re-derive — promoteRideToReference's exact loop.
+  const clearedRideIds = storedResultsForRoute(routeId).map((r) => r.rideId);
+  for (const id of clearedRideIds) await removeStoredResult(id);
+  await backfillMissingResults(fs, clearedRideIds);
+  const retimed = clearedRideIds.filter((id) => getStoredResult(id)?.routeId === routeId);
+  return { ok: true, moved: true, gateSetVersion: version, clearedRideIds, retimed };
 }
