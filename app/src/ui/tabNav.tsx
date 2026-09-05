@@ -1,8 +1,10 @@
 /**
  * Tab-navigation seam (Cycle 024, WP-A2; WP-H 2026-09-04 — the ride-detail
- * overlay): lets a screen switch tabs or open the full-screen ride detail
- * WITHOUT importing App.tsx / Shell — screens depend on this module, App owns
- * the implementation (`go: setTab`, `openRide: setRideDetail`, `closeRide`).
+ * overlay; WP-J 2026-09-05 extended scope — the full-screen gate editor):
+ * lets a screen switch tabs or open a full-screen overlay WITHOUT importing
+ * App.tsx / Shell — screens depend on this module, App owns the
+ * implementation (`go: setTab`, `openRide: setRideDetail`, `closeRide`,
+ * `openGateAdjust: setGateAdjust`, `closeGateAdjust`).
  *
  * `Tab` is exported from here (not App.tsx) precisely so a screen can import
  * the type without creating a screen -> App -> screen import cycle.
@@ -27,6 +29,14 @@ export interface RideDetailRequest {
   startedAtMs: number;
 }
 
+/** WP-J (extended scope, 2026-09-05): who to edit the gates of. Opened from
+ * ROUTES' "edit gates" (RoutesScreen.tsx) — the editor resolves the draft
+ * itself (store/wayFromRide.ts gateEditDraftFor) so the request stays a
+ * plain id, like RideDetailRequest. */
+export interface GateAdjustRequest {
+  routeId: string;
+}
+
 export interface TabNav {
   go(tab: Tab): void;
   /** WP-H: show the full-screen ride detail over whatever tab is active
@@ -35,6 +45,12 @@ export interface TabNav {
   openRide(req: RideDetailRequest): void;
   /** WP-H: dismiss the detail; the active tab's screen remounts underneath. */
   closeRide(): void;
+  /** WP-J: show the full-screen gate editor over whatever tab is active
+   * (Shell mount-swaps it in and hides the tab bar — the same chrome rule as
+   * openRide). Idempotent: re-opening replaces the request. */
+  openGateAdjust(req: GateAdjustRequest): void;
+  /** WP-J: dismiss the editor; the active tab's screen remounts underneath. */
+  closeGateAdjust(): void;
 }
 
 const TabNavContext = createContext<TabNav | null>(null);

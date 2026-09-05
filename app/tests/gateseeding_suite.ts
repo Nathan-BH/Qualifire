@@ -3,7 +3,7 @@
  * Date.now() — so this suite is plain assertions, no fixtures. */
 import { assert, test } from './lib.ts';
 import { seedGateChainages } from '../src/store/gateSeeding.ts';
-import { clampNudge, gateName, isAdjustable, fmtChainage, nudgeDeltaM } from '../src/ui/gateAdjustModel.ts';
+import { clampNudge, gateName, isAdjustable, fmtChainage, fmtPct, nudgeDeltaM } from '../src/ui/gateAdjustModel.ts';
 
 const near = (a: number, b: number) => Math.abs(a - b) < 1e-9;
 
@@ -50,22 +50,27 @@ test('gateAdjust: clampNudge moves by ±10/±50 and clamps 50 m off both neighbo
   assert(clampNudge(base, 1, 5000, 4000) === 1950, 'clamped to hi = neighbour - 50');
 });
 
-test('gateAdjust: START and FINISH are locked', () => {
+test('gateAdjust: START and FINISH nudge like any gate, clamped to the line ends and the 50 m gap', () => {
   const base = [40, 1000, 2000, 3000, 3960];
-  assert(isAdjustable(0, 5) === false, 'START locked');
-  assert(isAdjustable(4, 5) === false, 'FINISH locked');
-  assert(clampNudge(base, 0, 500, 4000) === 40, 'START does not move');
-  assert(clampNudge(base, 4, -500, 4000) === 3960, 'FINISH does not move');
-  assert(isAdjustable(2, 5) === true, 'a middle gate is adjustable');
+  assert(isAdjustable(0, 5) === true, 'START is adjustable');
+  assert(isAdjustable(4, 5) === true, 'FINISH is adjustable');
+  assert(isAdjustable(5, 5) === false, 'out-of-range index is not adjustable');
+  assert(clampNudge(base, 0, 500, 4000) === 40 + 500, 'START nudges up, clear of the line start');
+  assert(clampNudge(base, 0, -500, 4000) === 0, 'START clamps at chainage 0');
+  assert(clampNudge(base, 0, 5000, 4000) === 950, 'START clamps 50 m clear of G1 (1000 - 50)');
+  assert(clampNudge(base, 4, 500, 4000) === 4000, 'FINISH clamps at the route length');
+  assert(clampNudge(base, 4, -5000, 4000) === 3050, 'FINISH clamps 50 m clear of G3 (3000 + 50)');
 });
 
-test('gateAdjust: gateName maps START/G1/G2/G3/FINISH and fmtChainage groups thousands', () => {
+test('gateAdjust: gateName maps START/G1/G2/G3/FINISH, fmtChainage groups thousands, fmtPct reads percent of route', () => {
   assert(gateName(0, 5) === 'START', 'index 0 is START');
   assert(gateName(1, 5) === 'G1', 'index 1 is G1');
   assert(gateName(3, 5) === 'G3', 'index 3 is G3');
   assert(gateName(4, 5) === 'FINISH', 'index 4 is FINISH');
   assert(fmtChainage(1842) === '1 842 m', `got ${fmtChainage(1842)}`);
   assert(fmtChainage(75) === '75 m', `got ${fmtChainage(75)}`);
+  assert(fmtPct(1488, 4000) === '37.2 %', `got ${fmtPct(1488, 4000)}`);
+  assert(fmtPct(0, 4000) === '0.0 %', `got ${fmtPct(0, 4000)}`);
 });
 
 test('gateAdjust: nudgeDeltaM turns a route-length percentage into metres (WP-I §3.3b, Q2)', () => {

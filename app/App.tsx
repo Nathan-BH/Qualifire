@@ -29,6 +29,7 @@ import RecordScreen from './src/ui/RecordScreen';
 import RidesScreen from './src/ui/RidesScreen';
 import RoutesScreen from './src/ui/RoutesScreen';
 import RideDetailScreen from './src/ui/RideDetailScreen';
+import GateAdjustScreen from './src/ui/GateAdjustScreen';
 import SettingsScreen, { SettingsProvider } from './src/ui/settings';
 import DemoScreen from './src/ui/DemoScreen';
 import { PaddockTheme } from './src/ui/theme';
@@ -38,7 +39,7 @@ import { initFreeRidePersistence } from './src/store/freeRides';
 import { initCatalogStore } from './src/store/catalogStore';
 import { initUserRefs } from './src/live/userRefs';
 import { createExpoFsAdapter } from './src/storage/expoFsAdapter';
-import { TabNavProvider, type RideDetailRequest, type Tab, type TabNav } from './src/ui/tabNav';
+import { TabNavProvider, type GateAdjustRequest, type RideDetailRequest, type Tab, type TabNav } from './src/ui/tabNav';
 
 /**
  * Android 15 forces edge-to-edge: the app draws under the system navigation
@@ -61,6 +62,10 @@ function Shell() {
   // tab's screen while non-null. Second instance of WP-A2's "screen owns
   // intent, Shell owns chrome" split (recFullscreen above).
   const [rideDetail, setRideDetail] = useState<RideDetailRequest | null>(null);
+  // WP-J (extended scope): the full-screen gate editor, mount-swapped like
+  // rideDetail. Third instance of the "screen owns intent, Shell owns
+  // chrome" split.
+  const [gateAdjust, setGateAdjust] = useState<GateAdjustRequest | null>(null);
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomPad = Math.max(insets.bottom, NAV_BAR_MIN_PAD);
@@ -74,6 +79,14 @@ function Shell() {
   // before this one fires.
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      // WP-J: back on the full-screen gate editor is a plain discard, no
+      // confirm — Shell cannot see the card's `dirty` state and must not
+      // learn it through the seam; the destructive direction (save) is
+      // already behind confirmEditGates' Alert.
+      if (gateAdjust !== null) {
+        setGateAdjust(null);
+        return true;
+      }
       if (rideDetail !== null) {
         setRideDetail(null);
         return true;
@@ -85,7 +98,7 @@ function Shell() {
       return false;
     });
     return () => sub.remove();
-  }, [tab, rideDetail]);
+  }, [tab, rideDetail, gateAdjust]);
 
   // Rehydrate the comparison window once per launch, from the persistent
   // results/ store (cycle 024, WP-A1 — replaced B-40's results-cache.json;
@@ -119,7 +132,7 @@ function Shell() {
   // no tab browsing." The bar is hidden ENTIRELY (not just dimmed) while on
   // the record tab and RecordScreen reports itself fullscreen. WP-H: the
   // ride detail hides the bar the same way, from any tab.
-  const tabBarHidden = (tab === 'record' && recFullscreen) || rideDetail !== null;
+  const tabBarHidden = (tab === 'record' && recFullscreen) || rideDetail !== null || gateAdjust !== null;
   // WP-A2 hides the tab bar entirely while fullscreen, which also removes
   // the only thing padding the screen for the device's bottom gesture-nav
   // inset (the bar's own paddingBottom, via bottomPad above) — so content
@@ -132,7 +145,13 @@ function Shell() {
   );
 
   const nav = useMemo<TabNav>(
-    () => ({ go: setTab, openRide: setRideDetail, closeRide: () => setRideDetail(null) }),
+    () => ({
+      go: setTab,
+      openRide: setRideDetail,
+      closeRide: () => setRideDetail(null),
+      openGateAdjust: setGateAdjust,
+      closeGateAdjust: () => setGateAdjust(null),
+    }),
     [],
   );
 
@@ -140,7 +159,8 @@ function Shell() {
     <TabNavProvider nav={nav}>
       <View style={styles.root}>
         <View style={styles.content}>
-          {rideDetail !== null ? <RideDetailScreen request={rideDetail} />
+          {gateAdjust !== null ? <GateAdjustScreen request={gateAdjust} />
+            : rideDetail !== null ? <RideDetailScreen request={rideDetail} />
             : tab === 'record' ? <RecordScreen onFullscreenChange={setRecFullscreen} />
             : tab === 'rides' ? <RidesScreen />
             : tab === 'routes' ? <RoutesScreen />

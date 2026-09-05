@@ -12,6 +12,7 @@ import {
   gateTicksFeatureCollection, metresBetween, riderFeature, rotateEnabledFor, routeBounds, routeLineFeature,
   routeSplitFeatures, sectorSpansFeatureCollection, trailBounds,
 } from '../src/ui/routeMapGeo.ts';
+import { gateName } from '../src/ui/gateAdjustModel.ts';
 import type { RouteAsset } from '../src/ui/routeMapMath.ts';
 
 interface Manifest { schemaVersion: number; projection: string; routes: Record<string, RouteAsset> }
@@ -222,6 +223,21 @@ test('routemapgeo: gate ticks — 5 per manifest route, each a 2-point LineStrin
         assert(lat > 50.8 && lat < 50.89, `${id}: tick lat ${lat} out of expected Leuven range — swap regression?`);
       }
     }
+  }
+});
+
+// WP-J (gate-adjust card): the map-tap -> gate-index mapping in
+// routeMapView.tsx relies on each tick's properties.name being unique and
+// matching gateAdjustModel.ts's own gateName(i, n) — assert the contract
+// holds for every manifest route, not just the card's runtime-built assets.
+test('routemapgeo: gate ticks — properties.name is unique per route and matches gateName(i, n)', () => {
+  for (const [id, a] of Object.entries(manifest.routes)) {
+    const fc = gateTicksFeatureCollection(a);
+    const names = fc.features.map((f) => f.properties.name);
+    assert(new Set(names).size === names.length, `${id}: gate tick names must be unique, got ${names}`);
+    const expected = names.map((_, i) => gateName(i, names.length));
+    assert(names.every((n, i) => n === expected[i]),
+      `${id}: expected ${expected}, got ${names}`);
   }
 });
 

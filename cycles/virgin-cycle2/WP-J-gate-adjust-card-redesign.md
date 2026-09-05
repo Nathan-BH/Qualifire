@@ -480,3 +480,257 @@ never guess, never rule on it from chat; forward to a fresh Fable Plan pass. Spe
 - `safe_to_delete/` move refused (§6).
 - Anything that would require touching `store/`, `live/engine.ts`, the seed rule in `gateSeeding.ts`,
   or the `RouteMapProps` beyond the single `gateSelect` prop — out of scope; stop.
+
+## Update 2026-09-05 (extended scope + anchor re-verification)
+
+**Written by:** Fable Plan pass (fresh context), 2026-09-05, against the mount at `340e3f7` (HEAD: `virgin-cycle2: log WP-A/B/I/M as landed`). Baseline re-run on the mount before writing: `tsc --noEmit` exit 0; `node --experimental-strip-types tests/run.ts` → 495 tests, 492 pass, 0 fail, 3 skip. Everything below was read from the real files; Execute still re-verifies before each edit (standard).
+
+**What changed since the original brief (2026-09-04):** four WPs landed and moved anchors — WP-A (`064b6e2`, `routeMapView.tsx`: `defaultRouteId()` fallback removed), WP-B (`495b3f8`, store only), WP-I (`0b45803`, `gateAdjustCard.tsx` +3 optional copy props, `RoutesScreen.tsx` +inline "edit gates" card, `wayFromRide.ts` +`gateEditDraftFor`/`editRouteGates`), WP-M (`6c3d6ab`, `routeMapView.tsx` +84 lines: `userBearing`, `rotateEnabledFor`, compass button, `onRegionDidChange`). **The original design (§3–§6) is still sound — nothing it relies on was removed.** Part A of this update corrects anchors; Part B adds the new scope Nathan asked for on 2026-09-05:
+
+> since WP-J redesigns the gate adjusting feature, also apply it to the current gates editing via the ROUTES tab. Upon pressing edit, open in a new tab with a proper openmap render so I can adjust the gates more precisely.
+
+§1.2's first bullet ("does not add edit-gates-from-ROUTES") is now obsolete: WP-I built that entry point (inline). Part B **replaces WP-I's inline presentation** with a full-screen editor hosting the redesigned card; WP-I's store functions and its reset confirm are reused verbatim. RecordScreen's and RideDetailScreen's inline just-created-route flow is unchanged from the original brief.
+
+---
+
+### Part A — original design, anchors re-verified file by file
+
+#### A.1 `app/src/ui/gateAdjustCard.tsx` — now 198 lines (was 195; WP-I added the 3 copy props)
+
+| Original brief said | Now | Note |
+|---|---|---|
+| header 1–18 | 1–18 | unchanged — still says "no basemap, no pan/zoom" (rewrite per §4.1.2) |
+| imports 19–29 | `react` 19 (add `useEffect, useRef`); RN 20 (drop `LayoutChangeEvent`); `gateAdjustModel` 24–26 (add `fmtPct`); `gateAdjustMapModel` 27–29 (**delete**) | |
+| props 31–39 | **31–44**: `refLine` 33, `refLengthM` 34, `initialChainageM` 35, `busy` 36, `onKeep` 37, `onSave` 38, **WP-I `title?` 41, `subtitle?` 42, `discardLabel?` 43** | Add `routeId: string` (§4.1.2) **and** `mapHeight?: number` (Part B, B.4). The WP-I props are independent and coexist untouched — confirmed: they are read only at lines 97, 99, 172 (`??` fallbacks), which the redesign keeps. |
+| `MAP_H = 200` line 41 | **46** | → `280` (stays the DEFAULT; `mapHeight` overrides) |
+| `selected` 46 | **51**; `chainageM` 50; `boxW` 52 (delete); `n` 53; `dirty` 54 | |
+| lines 51–65 (`onMapLayout`, `frame`, `segs`, `marks`) | **56–70** — delete | |
+| `smallM`/`largeM` 67–68 | **72–73** | |
+| `nudge` 70–77 | **75–82** (functional `setChainageM` at 77) | keep |
+| `pad` 79–88 | **84–93** | gains `size` arg + long-press props (§4.4, §5) |
+| title/sub 93–97 | **97–100** — `props.title ?? 'Sector gates — proposed'` (97), `props.subtitle ?? '…'` (99) | §4.1.3's new sub text goes into the `??` fallback string at 99 only; the override path stays. |
+| drawing 99–144 | **102–147** — delete whole block. `isAdjustable` at 116, `overlapsStart` 120, `disabled={!adjustable \|\| props.busy}` 136 | |
+| pad row 146–156, hint 155 | **149–159**, hint **158** (`tap G1–G3 to nudge a gate`) | |
+| save/skip 158–171 | **161–174**; `discardLabel` fallback at **172** | keep verbatim |
+| styles 173–195 | **179–198**: `card` 180, `title` 181, `sub` 182, `map` 183 (delete), `hit` 184 (delete), `halo` 185 (delete), `labelBox` 186 (delete), `tickLabel` 187 (delete), `padRow` 188, `padBtn` 189, `padText` 190, `chainage` 191 (delete per §5), `hint` 192, `saveBtn` 193, `saveText` 194, `skipBtn` 195, `skipText` 196, `dim` 197 | add `mapWrap`, `chipRow`, `chip`, `chipText`, `readout`, `padBtnBig/Small`, `padTextBig/Small` |
+
+The 294-px width arithmetic in §2.1/§5 still holds for the two inline hosts (Record `raceColumn` `paddingHorizontal: 12` is now at line **1335**; RideDetail's ScrollView `padding: 16` at line **361**). The new full-screen host (Part B) uses the same `padding: 16` ScrollView, so it is the same 294 px worst case — no new arithmetic.
+
+#### A.2 `app/src/ui/gateAdjustModel.ts` — 59 lines, byte-identical to the brief's read
+
+All anchors hold: `isAdjustable` 28–30, `gateName` 32–36, `clampNudge` 41–52 (guard 48, `lo`/`hi` 49–50), `fmtChainage` 56–59. §4.2 applies as written. **One comment correction for §4.2:** the rewritten `isAdjustable` comment says "The future 'edit an existing route's gates' WP must reinstate a cost dialog, not this lock." That WP is WP-I and it already landed: its `confirmEditGates` Alert ("history will be reset … past ghosts will be lost", `Save & reset`) IS the cost dialog, shown on SAVE regardless of which gate moved. Write the comment as: "the ROUTES entry point (WP-I's `editRouteGates` confirm) already prices every gate move with its reset dialog, so START/FINISH need no separate lock there either." `editRouteGates` (wayFromRide.ts 315–320) accepts `0 <= c <= ref.length`, strictly increasing — consistent with the new end-aware clamp (START may reach 0, FINISH may reach `refLengthM`).
+
+#### A.3 `app/src/ui/gateAdjustMapModel.ts` (134 lines) + `app/tests/gateadjustmap_suite.ts`
+
+Unchanged. Sole consumer is still `gateAdjustCard.tsx` (lines 13, 27–29) — re-verified with grep. `tests/run.ts` line **36** `import './gateadjustmap_suite.ts';` — still line 36. §6 applies as written.
+
+#### A.4 `app/src/ui/routeMapView.tsx` — now **1064 lines** (was 980). Most drift is here.
+
+| Item | Original | **Now** | Adaptation |
+|---|---|---|---|
+| `RouteMapProps` type | 177–247 | **182–255**; `routeId: string \| null` 187; `asset?` 194; `trail?` **249–254**; closing `};` **255** | Insert `gateSelect?` after line 254, before 255. |
+| `RouteMapView` default export | 249 | **257–261** | — |
+| `MapLibreRouteMap` | — | **317**; `asset` derived at **326** | — |
+| mode-reset effect | 205–208 | **358–361**, keys `[props.zoom, variant, phaseKey, props.routeId]` | unchanged in substance — none change during a nudge. ✓ |
+| WP-M additions | n/a | `rotateEnabled` **343**; `userBearing` state **398**; `cameraRef` 399; `resetNorth` 414–424 | No interaction with the nudge: `userBearing` only changes via `onRegionDidChange` on user interaction. The card's browse map now also gets two-finger rotation + the compass button — intended (WP-M is "every non-race map"). |
+| `routeFC` / `trailFC` hooks | 421–439 | `routeFC` **471–475**, `trailFC` **485–489**; mount-order comment **480–484** | Put `gateSelectedFC` directly after line 489, before the `hasTrail`/`riderOnly` guard at **497–499**. |
+| `riderOnly` early return | 449 | **499** | — |
+| `gateTicksFC` | 475 | **525** | — |
+| `cameraTargetFor` call | — | **543–553** (now passes `userBearing: rotateEnabled ? userBearing : null`) | untouched |
+| `<M.Map>` | 536–542 | **575–612**: `onRegionWillChange` 585–587, `onRegionDidChange` 595–599, `compass={false}` 602, `touchRotate={rotateEnabled}` 610 | untouched |
+| route source | — | **617–626** | — |
+| trail source | — | **633–640** | — |
+| sector-spans | — | **671–680** | — |
+| frozen-id comment (`key === id`) | 612–622 | **681–691** | — |
+| gates / gate-ticks ternary | 654–663 | **692–733**; `gate-ticks` source **723–732** (`<M.GeoJSONSource key="gate-ticks" id="gate-ticks" data={gateTicksFC}>` at 723) | Add `onPress`/`hitbox` to line 723's element (§4.1.1 step 2). |
+| rider source | 665–679 | **734–748** | Mount the ring source between line 733 (`) : null}`) and 734. |
+| zoom bar | 683–702 | **752–786** (compass button 770–779; four buttons on a browse map) | 4 × 30 px + 3 × 5 px = 135 px column — fits in `MAP_H = 280`. |
+| PNG rung `PngRouteMap` | 725 | **809**; `id`/`asset`/`img` **819–821** | **WP-A changed this:** `const id = props.routeId; … const img = id !== null ? IMAGES[id] : undefined;` — there is no `defaultRouteId()` any more, so §2.4's "a null routeId could paint a different route's PNG" risk is gone. `routeId: string` stays REQUIRED on the card anyway (honesty: the map is for that route; the mode-reset effect keys on it). |
+| PNG gate ticks | 880–898 | **964–982**: `col ?? CASING` at 977, `height: 3` / `top: y0 - 1.5` at 975–976 | §4.1.1 PNG-rung rule applies at these lines. |
+| `st.frame` | 944 | **1028** | — |
+
+`onPress` typing (§4.1.1 step 2, refined after reading the installed types): `PressableSourceProps.onPress` is `(event: NativeSyntheticEvent<PressEventWithFeatures>) => void` with `features: GeoJSON.Feature[]`, and `GeoJSON.Feature.properties` is `{ [name: string]: any } | null`. Under this repo's `strict: true`, a handler typed structurally must accept `null` properties or it will not assign. Use exactly:
+```ts
+type GatePressEvent = { nativeEvent: { features?: { properties?: Record<string, unknown> | null }[] } };
+```
+and `const name = String(e.nativeEvent.features?.[0]?.properties?.name ?? '');` then `asset.gates.findIndex((g) => g.name === name)`. `hitbox` is `ViewPadding = { top?, right?, bottom?, left? }` — `{ top: 24, right: 24, bottom: 24, left: 24 }` type-checks. `@maplibre/maplibre-react-native` is **11.3.6** as the brief assumed (`GeoJSONSourceProps extends BaseProps, PressableSourceProps`, `src/components/sources/geojson-source/GeoJSONSource.tsx` line 85).
+
+#### A.5 `app/src/ui/routeAssetRuntime.ts` (132 lines) and `app/src/ui/routeMapGeo.ts` (552 lines)
+
+Unchanged where it matters: `pointAtChainage` **30**, `buildRuntimeRouteAsset` **34–93** (`gates[i].name = gateName(i, n)` at 90 — the tap→index mapping still relies on this). `GateProperties` **55–58**, `riderFeature` **155–161**, `gateTicksFeatureCollection` **333–379**, `cameraTargetFor` **412–443** (`mode === 'free'` → `{}` at 427), `rotateEnabledFor` **457–462**. §2.5/§2.6 hold.
+
+#### A.6 Hosts (original inline scope — presentation unchanged, ONE prop added each)
+
+- `RecordScreen.tsx`: `adjust` state **180** (+`adjustRef` 181–182); `onAdjustKeep` **588–591**, `onAdjustSave` **593–612**; the card at **952–960** (`<GateAdjustCard` 953; `refLine` 954 … `onSave` 959) inside `raceColumn` (View at **948**; style **1333–1336**). Add `routeId={adjust.routeId}`. Nothing else.
+- `RideDetailScreen.tsx`: `adjust` state **136**; `onAdjustSave` **238–251**; ScrollView **361**; the card at **529–540** (`<GateAdjustCard` 531; props 532–537) — the brief's numbers here were already right. Add `routeId={adjust.routeId}`. Nothing else. (Its `topBar` at 362–368 / styles 555–559 is the pattern Part B copies.)
+
+#### A.7 Tests
+
+`app/tests/gateseeding_suite.ts` lines **53–60** — still the `'gateAdjust: START and FINISH are locked'` test, exactly as §2.8 quotes it; §4.2's rewrite applies. `run.ts` line 36 as above. Expected count after §6: 495 − 12 = 483 (+ whatever §4.2 adds).
+
+---
+
+### Part B — NEW scope: the ROUTES "edit gates" entry opens a full-screen editor
+
+#### B.1 What exists today (WP-I, `RoutesScreen.tsx`, 352 lines)
+
+- State **122–125**: `editing: GateAdjustDraft | null` (124), `busy` (125).
+- `confirmEditGates(routeId, chainageM)` **136–149**: the reset `Alert.alert` (Cancel / `Save & reset` destructive) → `onEditGates`.
+- `onEditGates(routeId, chainageM)` **151–176**: `setBusy(true)`; `editRouteGates(routeId, chainageM, createExpoFsAdapter())`; on `!ok` Alert and return; on `moved` the lastRide-coherence loop (162–167: `dropRecorded` each cleared id, `clearLastRide()` if the last ride was on this route, `replaceRecorded(getStoredResult(id))` for each re-derived); then `setEditing(null); bump();`; catch → Alert; finally `setBusy(false)`.
+- Per route inside the OPEN way card: `editDraft = routeDeletable ? gateEditDraftFor(r.id) : null` **261**; the `edit gates` Pressable **285–293** (`onPress={() => setEditing(editDraft)}` at 289, `busy && st.dim` at 287); the inline `<GateAdjustCard key={editing.routeId} …>` block **294–309** (title `Sector gates — ${routeVariantLabel(r.id, w, r.specs)}`, the WP-I subtitle, `discardLabel="discard nudges — keep the current gates"`, `onKeep={() => setEditing(null)}`, `onSave={(ch) => confirmEditGates(r.id, ch)}`).
+- Comment **239–241** mentions "the gate-adjust card" as a reason the header row alone toggles the accordion.
+- Style `dim` **350–351**.
+- Imports that exist ONLY for this path: line 27's `getStoredResult`, `replaceRecorded` (28), `editRouteGates` + `type GateAdjustDraft` (35), `GateAdjustCard` (36), `createExpoFsAdapter` (37). `gateEditDraftFor` (35), `storedResultsForRoute`, `removeStoredResult`, `dropRecorded`, `getLastRide`, `clearLastRide`, `Alert` are also used by the delete path and STAY.
+
+The card is hosted inside the way card's accordion body, inside the tab's ScrollView — cramped, and the map cannot grow. That is what Nathan is objecting to.
+
+#### B.2 The mechanism to mirror (already in the app)
+
+`tabNav.tsx` (53 lines): `RideDetailRequest` **24–28**; `TabNav` **30–38** (`go` 31, `openRide` 35, `closeRide` 37). `App.tsx` (230 lines) `Shell`: `rideDetail` state **63**; hardware-back handler **75–88** (rideDetail branch 77–80, tab→record 81–84); `tabBarHidden` **122**; `nav` memo **134–137**; mount-swap **143–148** (`rideDetail !== null ? <RideDetailScreen request={rideDetail} /> : tab === 'record' ? …`); tab bar **152–169**. `RideDetailScreen.tsx`: ScrollView **361**, `topBar` with `‹ BACK` → `tabNav.closeRide()` **362–368**, `makeStyles.topBar/backText/topTitle` **555–559**. This is the "screen owns intent, Shell owns chrome" seam; the new editor is its third instance (after `recFullscreen` and `rideDetail`).
+
+**Decision — who owns the save:** the new screen owns it (moves `confirmEditGates`/`onEditGates` verbatim), exactly as `RideDetailScreen` owns its own `onAdjustSave`/`onPromote`. Nothing is passed down from `App.tsx`; `RoutesScreen.tsx` keeps no editing state at all. Rationale: the Shell seam carries only a request object (like `RideDetailRequest`), and `RoutesScreen` is UNMOUNTED while the editor is up (mount-swap), so a callback living there would be stale by definition. `RoutesScreen`'s `bump()` after a save is no longer needed — it remounts on close and re-reads `currentCatalog()` on render (line 128).
+
+**Decision — store reuse:** yes, exactly as today. `gateEditDraftFor(routeId)` (wayFromRide.ts **260–268**, pure read: user route + `userRefFor(refLineId)` + current gate set → `GateAdjustDraft`) resolves the draft inside the screen; `editRouteGates(routeId, chainageM, fs)` (**299–343**) performs the reset-not-remap save. Neither function changes. The redesigned card calls `buildRuntimeRouteAsset(props.refLine, chainageM, …)` per nudge internally (§4.1.2), so the full-screen host gets the live-repainting map for free — nothing extra.
+
+#### B.3 `app/src/ui/tabNav.tsx` — interface additions (mirror `openRide`/`closeRide` exactly)
+
+After `RideDetailRequest` (line 28) add:
+```ts
+/** WP-J (extended scope, 2026-09-05): who to edit the gates of. Opened from
+ * ROUTES' "edit gates" (RoutesScreen.tsx) — the editor resolves the draft
+ * itself (store/wayFromRide.ts gateEditDraftFor) so the request stays a
+ * plain id, like RideDetailRequest. */
+export interface GateAdjustRequest {
+  routeId: string;
+}
+```
+In `TabNav` (30–38), after `closeRide()` add:
+```ts
+  /** WP-J: show the full-screen gate editor over whatever tab is active
+   * (Shell mount-swaps it in and hides the tab bar — the same chrome rule as
+   * openRide). Idempotent: re-opening replaces the request. */
+  openGateAdjust(req: GateAdjustRequest): void;
+  /** WP-J: dismiss the editor; the active tab's screen remounts underneath. */
+  closeGateAdjust(): void;
+```
+Update the file header (lines 1–5) to list the third overlay: `openGateAdjust: setGateAdjust`, `closeGateAdjust`.
+
+#### B.4 `app/src/ui/gateAdjustCard.tsx` — one extra optional prop for the new host
+
+In addition to §4.1.2's `routeId: string`, add to `GateAdjustCardProps`:
+```ts
+  /** WP-J (extended scope): map height in px. Default MAP_H (280) — the inline
+   * Record/RideDetail hosts. GateAdjustScreen passes a larger value so the
+   * full-screen editor spends its room on the map. */
+  mapHeight?: number;
+```
+and render `<RouteMapView … height={props.mapHeight ?? MAP_H} …>`. Nothing else in the card knows about the host.
+
+#### B.5 New file `app/src/ui/GateAdjustScreen.tsx` (~120 lines)
+
+`export default function GateAdjustScreen({ request }: { request: GateAdjustRequest })`. Imports (extension style as `RoutesScreen.tsx`/`RideDetailScreen.tsx`): `useMemo, useState` from react; `Alert, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions` from react-native; `useTabNav, type GateAdjustRequest` from `./tabNav.tsx`; `useTheme` from `./themeContext.tsx`; `GateAdjustCard` from `./gateAdjustCard.tsx`; `currentCatalog` from `../store/catalogStore.ts`; `routeLabelIn` from `../store/defaultRoute.ts`; `getStoredResult, storedResultsForRoute` from `../store/resultsStore.ts`; `clearLastRide, dropRecorded, getLastRide, replaceRecorded` from `./lastRide.ts`; `editRouteGates, gateEditDraftFor` from `../store/wayFromRide.ts`; `createExpoFsAdapter` from `../storage/expoFsAdapter.ts`.
+
+Body, top to bottom:
+1. `const { t } = useTheme(); const tabNav = useTabNav(); const { height: winH } = useWindowDimensions(); const [busy, setBusy] = useState(false);`
+2. `const draft = useMemo(() => gateEditDraftFor(request.routeId), [request.routeId]);` — resolved once per request (pure read; the card copies it into state on mount, so re-resolving would be pointless).
+3. `const label = routeLabelIn(currentCatalog(), request.routeId);` — the full "Home → Work · Dry" name (there is no way header for context on this screen, so NOT `routeVariantLabel`, which would print just "plain"/"Dry").
+4. `const mapHeight = Math.max(280, Math.round(winH * 0.5));` — half the window, floor = the inline default. On a ~780-dp phone that is ~390 px vs 280 inline; the ScrollView keeps the chips/pad/buttons reachable on any phone. (A non-scrolling `fill` layout was considered and rejected: on a short phone it would push the pad off-screen with no recovery; RideDetail's ScrollView-hosted 300-px map is the proven precedent.)
+5. `confirmEditGates(chainageM: number[])` and `onEditGates(chainageM: number[])` — **moved verbatim from `RoutesScreen.tsx` 136–176**, with these exact changes: `routeId` comes from `request.routeId` (drop the parameter); `setEditing(null); bump();` (169–170) becomes `tabNav.closeGateAdjust();`. Keep the Alert copy, the `Save & reset` destructive button, the lastRide-coherence loop, `catch` → Alert, `finally { setBusy(false) }` byte-for-byte. (`setBusy(false)` after `closeGateAdjust` runs on an unmounted component — a no-op in React 18, no warning.)
+6. Render:
+```tsx
+<ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+  <View style={st.topBar}>
+    <Pressable onPress={() => tabNav.closeGateAdjust()} hitSlop={8}>
+      <Text style={[st.backText, { color: t.textDim }]}>‹ BACK</Text>
+    </Pressable>
+    <Text style={[st.topTitle, { color: t.text }]}>EDIT GATES</Text>
+    <View style={{ width: 56 }} />{/* balances ‹ BACK so the title centres, as RideDetail's date does */}
+  </View>
+  {draft === null ? (
+    <Text style={{ color: t.textDim, fontSize: 13 }}>
+      This route's gates cannot be edited — it has no reference line or gate set on file.
+    </Text>
+  ) : (
+    <GateAdjustCard
+      key={request.routeId}
+      routeId={request.routeId}
+      refLine={draft.ref}
+      refLengthM={draft.refLengthM}
+      initialChainageM={draft.chainageM}
+      busy={busy}
+      mapHeight={mapHeight}
+      title={`Sector gates — ${label}`}
+      subtitle="Tap a gate on the map or below to nudge it — start and finish too. Saving moved gates resets this route's history: past results are re-timed from their recordings against the new gates, old times and ranks do not survive."
+      discardLabel="discard nudges — keep the current gates"
+      onKeep={() => tabNav.closeGateAdjust()}
+      onSave={(ch) => confirmEditGates(ch)}
+    />
+  )}
+</ScrollView>
+```
+Styles: copy `RideDetailScreen`'s `topBar` (`flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12`), `backText` (`fontSize: 14, fontWeight: '700'`), `topTitle` (`fontSize: 15, fontWeight: '800', letterSpacing: 2`) into a plain `StyleSheet.create` (no theme-dependent values → no `makeStyles`). **No bottom "BACK TO ROUTES" button** — KEEP GATES / discard / ‹ BACK already give three exits; a fourth would be clutter (WP-L's spirit). The `draft === null` branch cannot be reached from the ROUTES button (it only renders when `gateEditDraftFor !== null`), it exists so a stale request never renders a blank screen; ‹ BACK is its exit.
+
+File header (in the house voice): what it is (WP-J extended scope, Nathan 2026-09-05 quote), the third instance of the Shell mount-swap seam, "owns the save exactly as RideDetailScreen owns onPromote — moved from RoutesScreen.tsx (WP-I) unchanged", `[UNTESTED ON DEVICE]`.
+
+#### B.6 `app/App.tsx` — Shell wiring (mirror `rideDetail` line for line)
+
+- Line 31 area: `import GateAdjustScreen from './src/ui/GateAdjustScreen';`. Line 41: add `type GateAdjustRequest` to the tabNav import.
+- After line 63: `const [gateAdjust, setGateAdjust] = useState<GateAdjustRequest | null>(null);` with a comment: "WP-J (extended scope): the full-screen gate editor, mount-swapped like rideDetail. Third instance of the 'screen owns intent, Shell owns chrome' split."
+- Back handler (75–88): insert BEFORE the `rideDetail` branch:
+  ```ts
+  if (gateAdjust !== null) { setGateAdjust(null); return true; }
+  ```
+  and add `gateAdjust` to the deps array (88). **Back = discard, no confirm** — Shell cannot see the card's `dirty` state and must not learn it through the seam; the destructive direction (save) is already behind `confirmEditGates`' Alert. Update the handler's comment (71–74) to say so.
+- `tabBarHidden` (122): `… || rideDetail !== null || gateAdjust !== null;` — extend the comment at 117–121.
+- `nav` (134–137): `openGateAdjust: setGateAdjust, closeGateAdjust: () => setGateAdjust(null)`.
+- Mount-swap (143–148): `gateAdjust !== null ? <GateAdjustScreen request={gateAdjust} /> : rideDetail !== null ? <RideDetailScreen … /> : tab === 'record' ? …`. **Stacking order: `gateAdjust` (top) → `rideDetail` → tab.** Today the editor is only opened from ROUTES (tab ≠ record, no ride detail up), so the two overlays never coexist; the order matters only for WP-K (B.9).
+
+#### B.7 `app/src/ui/RoutesScreen.tsx` — what goes, what stays
+
+**Remove:** state lines 122–125 (`editing`, `busy` and their comment); functions 131–176 (`confirmEditGates`, `onEditGates` and their WP-I comment); the inline card block 294–309; the `busy && st.dim` / `disabled={busy}` on the edit button (287–288); style `dim` 350–351 and its comment; imports `getStoredResult` (27), `replaceRecorded` (28), `editRouteGates` and `type GateAdjustDraft` (35), `GateAdjustCard` (36), `createExpoFsAdapter` (37). After this, `Alert`, `storedResultsForRoute`, `removeStoredResult`, `dropRecorded`, `getLastRide`, `clearLastRide`, `gateEditDraftFor`, `routeVariantLabel` are all still used — re-run tsc to catch any I missed rather than trusting this list.
+
+**Change:** the `edit gates` Pressable (285–293) → `onPress={() => tabNav.openGateAdjust({ routeId: r.id })}`; its guard `editDraft !== null` (285, from 261) STAYS as the "only a user route with a resolvable draft" rule (WP-I acceptance 1). Comment 281–284: "WP-I's entry point, WP-J (extended): opens the full-screen editor (GateAdjustScreen.tsx) instead of an inline card." Comment 239–241: drop "the gate-adjust card" from the list — the header-only toggle stays because the browse map is still in the body.
+
+**Add:** `import { useTabNav } from './tabNav.tsx';` and `const tabNav = useTabNav();` in the component (as `RidesScreen.tsx` lines 20, 26).
+
+Known, accepted consequence: `RoutesScreen` remounts on close with `open = null` — the way accordion is collapsed when you come back, exactly as RIDES → ride detail → RIDES collapses the expanded row today. Not a bug; do not add state-preservation machinery (WP-K's way-detail screen makes this moot).
+
+#### B.8 Hosts NOT changed by Part B
+
+`RecordScreen.tsx` and `RideDetailScreen.tsx` keep their inline card (A.6) — Nathan's "just created a way" flow stays where it is; only `routeId=` is added there.
+
+#### B.9 Ordering against WP-K and WP-L (both briefs written, not executed; both touch `RoutesScreen.tsx`)
+
+- **WP-L** removes the two footer `<Text>`s (RoutesScreen 218–222 and 327–330). No overlap with B.7's lines. Either order works.
+- **WP-K** adds `openCatalog`/`closeCatalog` + `catalogDetail` through the SAME seam and, in its §3.3(b)/§3.6 "WP-I only" row, plans to MOVE WP-I's inline card/state/functions into `CatalogDetailScreen.tsx`. After this WP lands there is nothing to move: the way detail's per-route section just renders the same `edit gates` button calling `tabNav.openGateAdjust({ routeId })`, and the stacking becomes `gateAdjust` (top) → `rideDetail` → `catalogDetail` → tab (the editor stacks over the way detail and BACK returns to it). **Coordinator follow-up, not Execute's:** amend WP-K §3.3 item 3 case (b), §3.5, §3.6 and §4.6 accordingly. **If WP-K has ALREADY landed when this executes** (`app/src/ui/CatalogDetailScreen.tsx` exists): apply B.7's removals/changes to that file's per-route section instead of `RoutesScreen.tsx`, keep B.6's mount-swap order with `gateAdjust` above `catalogDetail`, and STOP if the moved code is not recognisably WP-I's (`confirmEditGates`/`onEditGates`/`editing`) — see B.12.
+
+#### B.10 Updated acceptance criteria (on top of §7; supersede WP-I's criteria 2 and 3)
+
+9. On ROUTES, `edit gates` on an expanded user route opens a **full-screen** editor: tab bar hidden, `‹ BACK` / `EDIT GATES` top bar, the redesigned card with a map at least 280 px tall and about half the window height on a normal phone, the route's full name in the card title. No inline card ever renders inside the way card any more.
+10. The editor's map is the real interactive basemap (§7 items 1–2 apply verbatim here), START/FINISH nudge (item 3), hold-to-repeat works (item 4), pad fits (item 5).
+11. KEEP GATES, "discard nudges — keep the current gates", `‹ BACK` and the hardware back button all return to ROUTES with **no write and no dialog** — even with unsaved nudges.
+12. SAVE GATES with a moved gate shows WP-I's `Save & reset` Alert (its copy unchanged: counts past results, says line and recordings are kept). Cancel keeps the editor open, nothing written. Confirm → WP-I's acceptance 5 holds verbatim (gate set `latest+1`, `origin: 'geometric'`, old sets kept, `referenceRideId`/`refs.user.json` unchanged, stored results on the route removed and re-derived), then the editor closes to ROUTES, whose remounted browse map shows the gates in their new place. A refused save keeps the editor open with the error Alert.
+13. Moving START or FINISH from ROUTES is priced by the same reset Alert as any gate (no separate lock, no second dialog).
+14. Returning to ROUTES shows the list with every way collapsed (accepted, B.7).
+15. RecordScreen's and RideDetailScreen's inline cards behave exactly as §7 already specifies; `openGateAdjust` is never called from either.
+16. `tsc --noEmit` exit 0; test count = baseline 495 − 12 (§6) + §4.2's additions, 0 fail. No headless test covers the new screen or the Shell wiring (context + RN components) — say so in the report.
+
+#### B.11 Verification additions
+
+Run 2 (device, after Run 1 in §8): open ROUTES, expand a user way, `edit gates` → the editor fills the screen; pinch to a gate under a landmark, nudge START by holding `−1%`, press hardware back → back on ROUTES, `catalog.user.json` unchanged. Re-open, nudge G2, SAVE, Cancel → still editing; SAVE, `Save & reset` → back on ROUTES, `catalog.user.json` has the new version, results for that route regenerated. Confirm the tab bar was hidden throughout and returns on close.
+
+#### B.12 Stop-on-ambiguity (adds to §10 — same rule: stop and report, never guess)
+
+- `CatalogDetailScreen.tsx` exists on the mount (WP-K landed first) and the WP-I code inside it is not the recognisable `confirmEditGates`/`onEditGates`/`editing` trio from B.1 — report the shape; B.9's fallback assumes a verbatim move.
+- `TabNav` already has an `openGateAdjust`/`openCatalog`-style third method with a different signature, or `Shell` already has a third overlay whose back/stacking order conflicts with B.6 — report the current `App.tsx` 54–150 verbatim.
+- After removing B.7's imports tsc reports one of them still used elsewhere in `RoutesScreen.tsx` — keep that import, note it; do not restructure the delete path.
+- **Camera re-fit on nudge (device, cannot be verified from code):** while the editor's map is still in its initial `fit` mode (no gesture yet), each nudge rebuilds `asset`, and `routeBounds(asset)` can shift by a few metres when the moved gate vertex sits at the bbox edge, so `<M.Camera bounds>` receives a marginally different value. Expected: imperceptible. If Nathan sees the map visibly re-animate on every nudge before he has touched it, that is a Plan decision (likely a stable-bounds memo keyed on the FIRST asset, inside the card or the map), not an Execute fix.
+- Hardware back mid-save: `Shell` closes the editor while `editRouteGates` is still awaiting; the write and re-derive complete regardless, `RoutesScreen` may remount before they finish and read the old catalog until its next remount. Accepted edge; do not add a guard through the seam — report if observed.
+- Anything that would make the new screen need a prop from `App.tsx` beyond `request`, or make `RoutesScreen.tsx` keep any editing state — out of shape; stop.
+
+#### B.13 Coordinator follow-ups (extends §9; not for Execute)
+
+- README status table: WP-J's row gains "extended 2026-09-05: ROUTES edit-gates now a full-screen `GateAdjustScreen`"; WP-I's row: "inline presentation superseded by WP-J (extended); store + confirm reused".
+- WP-K brief: amend §3.3(b), §3.5, §3.6, §4.6 per B.9 before it executes.
+- STATE.md: the ROUTES-tab bullet — "edit gates opens a full-screen editor (WP-J)"; the three-overlay Shell seam (`recFullscreen`, `rideDetail`, `gateAdjust`).
+- OPEN-ITEMS.md: WP-I's on-device UI acceptance items 2/3 are replaced by B.10's 9–14.

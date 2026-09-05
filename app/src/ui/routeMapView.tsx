@@ -111,6 +111,11 @@ type RegionWillChangeEvent = { nativeEvent: { userInteraction: boolean } };
  * `userInteraction` check (our own camera pushes must not be read back as
  * rider intent). */
 type RegionDidChangeEvent = { nativeEvent: { userInteraction: boolean; bearing: number } };
+/** WP-J (gate-adjust card): the shape of a GeoJSONSource press event we
+ * actually read. Typed structurally (not importing MapLibre's own
+ * `PressEventWithFeatures`) — under `strict: true`, `properties` must be
+ * typed as possibly-null to match GeoJSON.Feature.properties. */
+type GatePressEvent = { nativeEvent: { features?: { properties?: Record<string, unknown> | null }[] } };
 
 // Lazy native-module load, at module scope: the dev client installed before
 // build 4 has no MapLibre native module, so a bare `import` would crash the
@@ -252,6 +257,13 @@ type RouteMapProps = {
    * MapLibre rung draws it — the PNG rung has no equivalent (see file
    * header's rung notes) and is unaffected. */
   trail?: readonly TrailPoint[];
+  /** WP-J (gate-adjust card, 2026-09-05): gate selection on a browse map.
+   * `selected` is the gate index to ring (null = none); `onPress` fires with
+   * the tapped gate's index (MapLibre rung only — the PNG rung has no
+   * per-feature hit test, the card's chip row covers selection there).
+   * Selection is UI state, not a verdict: the ring is riderBlue, never a
+   * tier colour (D-013/D-030). */
+  gateSelect?: { selected: number | null; onPress: (gateIndex: number) => void };
 };
 
 export default function RouteMapView(props: RouteMapProps) {
@@ -488,6 +500,20 @@ function MapLibreRouteMap(props: RouteMapProps & {
     return { type: 'FeatureCollection' as const, features: f ? [f] : [] };
   }, [props.trail, props.lat, props.lon]);
 
+  // WP-J (gate-adjust card): the selected gate's ring — always-mounted when
+  // gateSelect is given (empty when nothing is selected) so it takes a mount
+  // slot ABOVE the gate-ticks source (mount order, see trailFC's comment
+  // above). Computed unconditionally, same Rules-of-Hooks reason as
+  // routeFC/trailFC (must run before the riderOnly guard below).
+  const gateSelectedFC = useMemo(() => {
+    const sel = props.gateSelect?.selected ?? null;
+    const g = sel !== null && asset ? asset.gates[sel] : undefined;
+    return {
+      type: 'FeatureCollection' as const,
+      features: g ? [riderFeature(g.lat, g.lon)] : [],
+    };
+  }, [asset, props.gateSelect?.selected]);
+
   // WP-D: gatesOnly has no single route asset to bail out on (unchanged). A
   // live surface (showRider) with no asset is now "rider-only" — real tiles
   // + the dot, no route line/ticks — instead of blank; a browse surface (no
@@ -720,7 +746,17 @@ function MapLibreRouteMap(props: RouteMapProps & {
           // tier, yellow included) still reads as visibly different/bolder.
           // WP-N: line-cap round on both layers, matching the route line
           // itself (which was already round) — was 'butt' on these two.
-          <M.GeoJSONSource key="gate-ticks" id="gate-ticks" data={gateTicksFC}>
+          <M.GeoJSONSource
+            key="gate-ticks"
+            id="gate-ticks"
+            data={gateTicksFC}
+            onPress={props.gateSelect ? (e: GatePressEvent) => {
+              const name = String(e.nativeEvent.features?.[0]?.properties?.name ?? '');
+              const idx = asset ? asset.gates.findIndex((g) => g.name === name) : -1;
+              if (idx >= 0) props.gateSelect!.onPress(idx);
+            } : undefined}
+            hitbox={props.gateSelect ? { top: 24, right: 24, bottom: 24, left: 24 } : undefined}
+          >
             <M.Layer id="gate-ticks-casing" type="line"
               paint={{ 'line-color': CASING, 'line-width': 5 }}
               layout={{ 'line-cap': 'round' }} />
@@ -729,6 +765,23 @@ function MapLibreRouteMap(props: RouteMapProps & {
               'line-width': ['case', ['has', 'colour'], 3, 2],
               'line-opacity': ['case', ['has', 'colour'], 1, 0.6],
             }} layout={{ 'line-cap': 'round' }} />
+          </M.GeoJSONSource>
+        ) : null}
+        {/* WP-J (gate-adjust card): the selected-gate ring, mounted whenever
+            gateSelect is defined (not whenever something is actually
+            selected) so its mount slot is stable — see gateSelectedFC's
+            comment above. riderBlue is deliberately NOT the yellow
+            line/tick colour and not a tier colour; there is no rider on
+            this surface (showRider={false} on the card's map), so it
+            cannot be misread as the rider dot. */}
+        {props.gateSelect ? (
+          <M.GeoJSONSource key="gate-selected" id="gate-selected" data={gateSelectedFC}>
+            <M.Layer id="gate-selected-ring" type="circle" paint={{
+              'circle-radius': 15,
+              'circle-color': 'rgba(0,0,0,0)',
+              'circle-stroke-color': colors.riderBlue,
+              'circle-stroke-width': 3,
+            }} />
           </M.GeoJSONSource>
         ) : null}
         {showRider && here ? (
@@ -970,11 +1023,15 @@ function PngRouteMap(props: RouteMapProps) {
             const y1 = tick.y1 * crop.scale + crop.translateY;
             const len = Math.max(Math.hypot(x1 - x0, y1 - y0), 10);
             const ang = (Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI;
+            // WP-J (gate-adjust card): the selected gate draws bolder/blue on
+            // this rung too — the PNG rung has no tap, the card's chip row
+            // is this rung's selection path (see file header's rung notes).
+            const sel = props.gateSelect?.selected === i;
             return (
               <View key={g.name} style={{
-                position: 'absolute', left: x0, top: y0 - 1.5,
-                width: len, height: 3,
-                backgroundColor: col ?? CASING,
+                position: 'absolute', left: x0, top: y0 - (sel ? 2.5 : 1.5),
+                width: len, height: sel ? 5 : 3,
+                backgroundColor: sel ? colors.riderBlue : (col ?? CASING),
                 transform: [{ translateX: 0 }, { rotate: `${ang}deg` }],
                 transformOrigin: 'left center',
               }} />
