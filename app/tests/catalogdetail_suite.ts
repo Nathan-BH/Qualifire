@@ -7,9 +7,9 @@
  */
 import { assert, test } from './lib.ts';
 import {
-  fmtLengthM, placeDetailFor, wayDetailFor, type CatalogDetailDeps,
+  fmtLengthM, placeDetailFor, routeDetailFor, type CatalogDetailDeps,
 } from '../src/ui/catalogDetailModel.ts';
-import type { Catalog, GateSet, Landmark, Route, Way } from '../src/store/types.ts';
+import type { Catalog, GateSet, Landmark, Way, Route } from '../src/store/types.ts';
 
 // ------------------------------------------------------------------ fixture
 
@@ -23,29 +23,29 @@ const lmC: Landmark = { id: 'lm:c', label: 'Park Loop', lat: 50.80, lon: 4.68, r
 const lmD: Landmark = { id: 'lm:d', label: 'Orphan', lat: 50.90, lon: 4.60, radiusM: 150, activeFromMs: 0, activeUntilMs: null, offerAtStart: true };
 const lmSeed: Landmark = { id: 'lm:seed', label: 'Seed Place', lat: 50.95, lon: 4.55, radiusM: 150, activeFromMs: 0, activeUntilMs: null, offerAtStart: true };
 
-const wayAB: Way = { id: 'way:AB', startLandmarkId: 'lm:a', endLandmarkId: 'lm:b', routeIds: [STD_ID, ALT_ID] };
-const wayLoop: Way = { id: 'way:Loop', startLandmarkId: 'lm:c', endLandmarkId: 'lm:c', loopDiscriminator: 'via park', routeIds: [LOOP_ID] };
+const routeAB: Route = { id: 'way:AB', startLandmarkId: 'lm:a', endLandmarkId: 'lm:b', wayIds: [STD_ID, ALT_ID] };
+const routeLoop: Route = { id: 'way:Loop', startLandmarkId: 'lm:c', endLandmarkId: 'lm:c', loopDiscriminator: 'via park', wayIds: [LOOP_ID] };
 
-const routeStd: Route = { id: STD_ID, wayId: 'way:AB', refLineId: 'ref:std', gateSetVersion: 2, seeded: false, referenceRideId: 'ride:ref1' };
-const routeAlt: Route = { id: ALT_ID, wayId: 'way:AB', refLineId: 'ref:alt', gateSetVersion: 1, seeded: false };
-const routeLoop: Route = { id: LOOP_ID, wayId: 'way:Loop', refLineId: 'ref:loop', gateSetVersion: 1, seeded: false, referenceRideId: 'ride:missing' };
+const wayStd: Way = { id: STD_ID, routeId: 'way:AB', refLineId: 'ref:std', gateSetVersion: 2, seeded: false, referenceRideId: 'ride:ref1' };
+const wayAlt: Way = { id: ALT_ID, routeId: 'way:AB', refLineId: 'ref:alt', gateSetVersion: 1, seeded: false };
+const wayLoop: Way = { id: LOOP_ID, routeId: 'way:Loop', refLineId: 'ref:loop', gateSetVersion: 1, seeded: false, referenceRideId: 'ride:missing' };
 
-const gsStd: GateSet = { routeId: STD_ID, version: 2, chainageM: [0, 1200, 2900, 4400, 5800], createdAtMs: 0, origin: 'geometric' };
-const gsLoop: GateSet = { routeId: LOOP_ID, version: 1, chainageM: [0, 300, 850], createdAtMs: 0 };
+const gsStd: GateSet = { wayId: STD_ID, version: 2, chainageM: [0, 1200, 2900, 4400, 5800], createdAtMs: 0, origin: 'geometric' };
+const gsLoop: GateSet = { wayId: LOOP_ID, version: 1, chainageM: [0, 300, 850], createdAtMs: 0 };
 
 const CATALOG: Catalog = {
   schemaVersion: 1,
   landmarks: [lmA, lmB, lmC, lmD, lmSeed],
-  ways: [wayAB, wayLoop],
-  routes: [routeStd, routeAlt, routeLoop],
+  routes: [routeAB, routeLoop],
+  ways: [wayStd, wayAlt, wayLoop],
   gateSets: [gsStd, gsLoop],
 };
 
 const SEED: Catalog = {
   schemaVersion: 1,
   landmarks: [lmSeed],
-  ways: [],
   routes: [],
+  ways: [],
   gateSets: [],
 };
 
@@ -63,29 +63,29 @@ const DEPS: CatalogDetailDeps = {
 
 test('catalogdetail: placeDetailFor/wayDetailFor — unknown id → null', () => {
   assert(placeDetailFor('nope', DEPS) === null, 'placeDetailFor unknown id must be null');
-  assert(wayDetailFor('nope', DEPS) === null, 'wayDetailFor unknown id must be null');
+  assert(routeDetailFor('nope', DEPS) === null, 'wayDetailFor unknown id must be null');
 });
 
 test('catalogdetail: place A — one touching way, direction "from", touchingRouteIds both routes in catalog order', () => {
   const p = placeDetailFor('lm:a', DEPS)!;
-  assert(p.ways.length === 1, `expected 1 touching way, got ${p.ways.length}`);
-  assert(p.ways[0].wayId === 'way:AB' && p.ways[0].direction === 'from', `expected way:AB/from, got ${p.ways[0].wayId}/${p.ways[0].direction}`);
-  assert(p.ways[0].routeCount === 2, `expected routeCount 2, got ${p.ways[0].routeCount}`);
-  assert(p.touchingRouteIds.length === 2 && p.touchingRouteIds[0] === STD_ID && p.touchingRouteIds[1] === ALT_ID,
-    `expected [${STD_ID}, ${ALT_ID}], got ${JSON.stringify(p.touchingRouteIds)}`);
+  assert(p.routes.length === 1, `expected 1 touching way, got ${p.routes.length}`);
+  assert(p.routes[0].routeId === 'way:AB' && p.routes[0].direction === 'from', `expected way:AB/from, got ${p.routes[0].routeId}/${p.routes[0].direction}`);
+  assert(p.routes[0].wayCount === 2, `expected routeCount 2, got ${p.routes[0].wayCount}`);
+  assert(p.touchingWayIds.length === 2 && p.touchingWayIds[0] === STD_ID && p.touchingWayIds[1] === ALT_ID,
+    `expected [${STD_ID}, ${ALT_ID}], got ${JSON.stringify(p.touchingWayIds)}`);
 });
 
 test('catalogdetail: place B — direction "to", dormant by offerAtStart=false', () => {
   const p = placeDetailFor('lm:b', DEPS)!;
-  assert(p.ways.length === 1 && p.ways[0].direction === 'to', `expected direction to, got ${p.ways[0].direction}`);
+  assert(p.routes.length === 1 && p.routes[0].direction === 'to', `expected direction to, got ${p.routes[0].direction}`);
   assert(p.dormant === true, 'place B (offerAtStart=false) must be dormant');
 });
 
 test('catalogdetail: place C — loop direction (way starts and ends on it), dormant by expired activeUntilMs, one touching route', () => {
   const p = placeDetailFor('lm:c', DEPS)!;
-  assert(p.ways.length === 1 && p.ways[0].direction === 'loop', `expected loop, got ${p.ways[0].direction}`);
+  assert(p.routes.length === 1 && p.routes[0].direction === 'loop', `expected loop, got ${p.routes[0].direction}`);
   assert(p.dormant === true, 'place C (activeUntilMs=500 < nowMs=1000) must be dormant');
-  assert(p.touchingRouteIds.length === 1 && p.touchingRouteIds[0] === LOOP_ID, `expected [${LOOP_ID}], got ${JSON.stringify(p.touchingRouteIds)}`);
+  assert(p.touchingWayIds.length === 1 && p.touchingWayIds[0] === LOOP_ID, `expected [${LOOP_ID}], got ${JSON.stringify(p.touchingWayIds)}`);
 });
 
 test('catalogdetail: place A — not dormant (offerAtStart true, activeUntilMs null)', () => {
@@ -103,15 +103,15 @@ test('catalogdetail: place deletable — user-owned AND unreferenced only', () =
 });
 
 test('catalogdetail: wayDetailFor — routes sorted Std before Alt', () => {
-  const w = wayDetailFor('way:AB', DEPS)!;
-  assert(w.routes.length === 2, `expected 2 routes, got ${w.routes.length}`);
-  assert(w.routes[0].id === STD_ID && w.routes[1].id === ALT_ID,
-    `expected [${STD_ID}, ${ALT_ID}], got ${w.routes.map((r) => r.id).join(',')}`);
+  const w = routeDetailFor('way:AB', DEPS)!;
+  assert(w.ways.length === 2, `expected 2 routes, got ${w.ways.length}`);
+  assert(w.ways[0].id === STD_ID && w.ways[1].id === ALT_ID,
+    `expected [${STD_ID}, ${ALT_ID}], got ${w.ways.map((r) => r.id).join(',')}`);
   assert(w.asksAtStart === true, 'a two-route way must ask which one at START');
 });
 
 test('catalogdetail: wayDetailFor — loop way: loop=true, loopDiscriminator carried, from===to', () => {
-  const w = wayDetailFor('way:Loop', DEPS)!;
+  const w = routeDetailFor('way:Loop', DEPS)!;
   assert(w.loop === true, 'wayLoop must report loop=true');
   assert(w.loopDiscriminator === 'via park', `expected 'via park', got ${w.loopDiscriminator}`);
   assert(w.from !== null && w.to !== null && w.from.id === w.to.id, 'loop way from/to must be the same landmark');
@@ -119,8 +119,8 @@ test('catalogdetail: wayDetailFor — loop way: loop=true, loopDiscriminator car
 });
 
 test('catalogdetail: gate rows — names (START/G.../FINISH) and fmtChainage output', () => {
-  const w = wayDetailFor('way:AB', DEPS)!;
-  const std = w.routes.find((r) => r.id === STD_ID)!;
+  const w = routeDetailFor('way:AB', DEPS)!;
+  const std = w.ways.find((r) => r.id === STD_ID)!;
   assert(std.gateRows.length === 5, `expected 5 gate rows, got ${std.gateRows.length}`);
   const names = std.gateRows.map((g) => g.name).join(',');
   assert(names === 'START,G1,G2,G3,FINISH', `expected START,G1,G2,G3,FINISH, got ${names}`);
@@ -129,27 +129,27 @@ test('catalogdetail: gate rows — names (START/G.../FINISH) and fmtChainage out
 });
 
 test('catalogdetail: gatesLabel — with origin, without origin, and null when no gate set', () => {
-  const ab = wayDetailFor('way:AB', DEPS)!;
-  const std = ab.routes.find((r) => r.id === STD_ID)!;
-  const alt = ab.routes.find((r) => r.id === ALT_ID)!;
+  const ab = routeDetailFor('way:AB', DEPS)!;
+  const std = ab.ways.find((r) => r.id === STD_ID)!;
+  const alt = ab.ways.find((r) => r.id === ALT_ID)!;
   assert(std.gatesLabel === '5 · v2 · geometric', `expected '5 · v2 · geometric', got ${std.gatesLabel}`);
   assert(alt.gatesLabel === null, `route with no gate set must have gatesLabel null, got ${alt.gatesLabel}`);
   assert(alt.gateRows.length === 0, 'route with no gate set must have empty gateRows');
 
-  const loopW = wayDetailFor('way:Loop', DEPS)!;
-  const loop = loopW.routes.find((r) => r.id === LOOP_ID)!;
+  const loopW = routeDetailFor('way:Loop', DEPS)!;
+  const loop = loopW.ways.find((r) => r.id === LOOP_ID)!;
   assert(loop.gatesLabel === '3 · v1', `expected '3 · v1' (no origin), got ${loop.gatesLabel}`);
 });
 
 test('catalogdetail: lengthLabel — null when refLengthM is null, "850 m" under 1km, "5.8 km" at/over 1km', () => {
-  const ab = wayDetailFor('way:AB', DEPS)!;
-  const std = ab.routes.find((r) => r.id === STD_ID)!;
-  const alt = ab.routes.find((r) => r.id === ALT_ID)!;
+  const ab = routeDetailFor('way:AB', DEPS)!;
+  const std = ab.ways.find((r) => r.id === STD_ID)!;
+  const alt = ab.ways.find((r) => r.id === ALT_ID)!;
   assert(std.lengthLabel === '5.8 km', `expected '5.8 km', got ${std.lengthLabel}`);
   assert(alt.lengthLabel === null, `expected null (unresolvable ref), got ${alt.lengthLabel}`);
 
-  const loopW = wayDetailFor('way:Loop', DEPS)!;
-  const loop = loopW.routes.find((r) => r.id === LOOP_ID)!;
+  const loopW = routeDetailFor('way:Loop', DEPS)!;
+  const loop = loopW.ways.find((r) => r.id === LOOP_ID)!;
   assert(loop.lengthLabel === '850 m', `expected '850 m', got ${loop.lengthLabel}`);
 
   assert(fmtLengthM(850) === '850 m', `fmtLengthM(850) expected '850 m', got ${fmtLengthM(850)}`);
@@ -157,9 +157,9 @@ test('catalogdetail: lengthLabel — null when refLengthM is null, "850 m" under
 });
 
 test('catalogdetail: referenceRide vs referenceUnscored vs omitted', () => {
-  const ab = wayDetailFor('way:AB', DEPS)!;
-  const std = ab.routes.find((r) => r.id === STD_ID)!;
-  const alt = ab.routes.find((r) => r.id === ALT_ID)!;
+  const ab = routeDetailFor('way:AB', DEPS)!;
+  const std = ab.ways.find((r) => r.id === STD_ID)!;
+  const alt = ab.ways.find((r) => r.id === ALT_ID)!;
   assert(std.referenceRide !== null && std.referenceRide.rideId === 'ride:ref1' && std.referenceRide.startedAtMs === 12345,
     `expected a resolved reference ride, got ${JSON.stringify(std.referenceRide)}`);
   assert(std.referenceUnscored === false, 'a resolved reference ride must not be flagged unscored');
@@ -167,8 +167,8 @@ test('catalogdetail: referenceRide vs referenceUnscored vs omitted', () => {
   assert(alt.referenceRide === null && alt.referenceUnscored === false,
     'a route with no referenceRideId must show neither a reference row nor "unscored"');
 
-  const loopW = wayDetailFor('way:Loop', DEPS)!;
-  const loop = loopW.routes.find((r) => r.id === LOOP_ID)!;
+  const loopW = routeDetailFor('way:Loop', DEPS)!;
+  const loop = loopW.ways.find((r) => r.id === LOOP_ID)!;
   assert(loop.referenceRide === null, 'an unresolvable referenceRideId must not produce a referenceRide');
   assert(loop.referenceUnscored === true, 'a referenceRideId with no stored result must be flagged unscored');
 });

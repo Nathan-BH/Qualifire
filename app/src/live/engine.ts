@@ -207,7 +207,7 @@ export type LockKind = 'none' | 'soft' | 'verified' | 'finalized';
 /** N9 (2026-09-02, GPX+ pick/lock-change logging): every mechanism that can
  * drive a `LockKind` transition — see EngineEvent's 'lockChange' member and
  * gpxPlusExport.ts's rendering of it. */
-export type LockChangeReason = 'pickAdvance' | 'unblockedLeader' | 'routeCompleted' | 'rideEndPromotion';
+export type LockChangeReason = 'pickAdvance' | 'unblockedLeader' | 'wayCompleted' | 'rideEndPromotion';
 
 /** One live candidate's route: id + reference polyline + gate chainages.
  * catalogTrackSpecs() (tracks.ts) builds one per ratified catalog route;
@@ -231,7 +231,7 @@ export interface EngineStartOptions {
   /** WP-B coordinator addendum: restricts `cands` to specs whose id is in
    * this list. `undefined`/`null` = every spec (today's behaviour). See the
    * file header. */
-  routeIds?: string[] | null;
+  wayIds?: string[] | null;
 }
 
 /** Raw engine events for the GPX+ sidecar: emitted only for the currently
@@ -273,7 +273,7 @@ export type EngineEvent =
  * out would be the wrong coupling. Fired for EVERY candidate, not just the
  * eventual winner — the whole point is to see attempts that never lock. */
 export type DiagnosticEvent = {
-  type: 'routeMatchAttempt';
+  type: 'wayMatchAttempt';
   track: TrackId;
   /** 'anchor' = a candidate's first fix (or its post-retry re-anchor) seeded
    * its chainage; 'retry' = the single post-settle re-anchor itself (fired
@@ -309,7 +309,7 @@ export interface LiveEngineState {
   gateFires: number;
   fixesFed: number;
   /** last fix was within the corridor of the locked / leading track */
-  onRoute: boolean;
+  onWay: boolean;
   /** cycle 024 (WP-D2): see LockKind's doc comment */
   lockKind: LockKind;
   /** the RECORD-tab pick this ride started with, or null */
@@ -322,11 +322,11 @@ export interface LiveEngineState {
   mode: 'route' | 'free';
   /** WP-B, free mode only (empty in route mode): every gate any candidate
    * crossed, in the order fired. */
-  freeCrossings: { routeId: string; gateIndex: number; t: number; estimated: boolean }[];
+  freeCrossings: { wayId: string; gateIndex: number; t: number; estimated: boolean }[];
   /** WP-B, free mode only (empty in route mode): one entry per consecutive,
    * both-non-estimated crossing pair on the SAME candidate — raw only, never
    * coloured (D-013: no comparable history for a free ride by construction). */
-  freeSectors: { routeId: string; index: number; rawS: number }[];
+  freeSectors: { wayId: string; index: number; rawS: number }[];
   /** true once ANY still-running candidate has anchored (joined at its own
    * start — see ANCHOR_M). Display-only: RecordScreen's status line says
    * "writing history" instead of "detecting route…" while this is false —
@@ -344,7 +344,7 @@ interface Candidate {
   /** chainage at the first fix — advance is measured from here */
   baseS: number | null;
   adv: number;
-  onRoute: boolean;
+  onWay: boolean;
   /** cycle 024: true once this candidate was joined at ITS OWN start
    * (see ANCHOR_M's doc comment) */
   anchored: boolean;
@@ -385,7 +385,7 @@ export class LiveEngine {
    * pair correctly sees "previous was estimated" and refuses to bound. */
   private lastFreeCrossing = new Map<TrackId, { gateIndex: number; t: number; estimated: boolean }>();
   private fixesFed = 0;
-  private onRoute = false;
+  private onWay = false;
   private tBuf: number[] = [];
   private latBuf: number[] = [];
   private lonBuf: number[] = [];
@@ -414,14 +414,14 @@ export class LiveEngine {
     this.freeSectors = [];
     this.lastFreeCrossing = new Map();
     this.fixesFed = 0;
-    this.onRoute = false;
+    this.onWay = false;
     this.tBuf = [];
     this.latBuf = [];
     this.lonBuf = [];
     // WP-B coordinator addendum: routeIds (undefined/null => every spec, the
     // unfiltered default) restricts which specs even get a candidate — see
     // the file header.
-    const specs = opts?.routeIds ? allSpecs.filter((s) => opts.routeIds!.includes(s.id)) : allSpecs;
+    const specs = opts?.wayIds ? allSpecs.filter((s) => opts.wayIds!.includes(s.id)) : allSpecs;
     this.cands = specs.map((spec) => ({
       track: spec.id,
       ref: spec.ref,
@@ -434,7 +434,7 @@ export class LiveEngine {
       events: [],
       baseS: null,
       adv: 0,
-      onRoute: false,
+      onWay: false,
       anchored: false,
       baseAccuracyM: null,
       retried: false,
@@ -507,7 +507,7 @@ export class LiveEngine {
           type: 'gate', track: this.locked!.track, gateIndex: e.gateIndex, t: e.time, estimated: e.estimated,
         });
       }
-      this.onRoute = this.locked!.onRoute;
+      this.onWay = this.locked!.onWay;
     } else {
       // Detecting, or soft-locked: every candidate keeps running (soft is a
       // display choice, not a narrowing of the evidence).
@@ -533,7 +533,7 @@ export class LiveEngine {
           c.retried = true;
           c.lastXtd = 999; // fresh candidate: nothing fed yet this instant
           this.emitDiagnostic({
-            type: 'routeMatchAttempt', track: c.track, phase: 'retry',
+            type: 'wayMatchAttempt', track: c.track, phase: 'retry',
             accuracyM: accuracyM ?? null, thresholdM: POOR_ACCURACY_M, poorAccuracy: false,
             xtdM: null, atT: tSec,
           });
@@ -554,7 +554,7 @@ export class LiveEngine {
         if (!wasAnchored && c.baseS !== null) {
           c.baseAccuracyM = accuracyM ?? null;
           this.emitDiagnostic({
-            type: 'routeMatchAttempt', track: c.track, phase: 'anchor',
+            type: 'wayMatchAttempt', track: c.track, phase: 'anchor',
             accuracyM: accuracyM ?? null, thresholdM: POOR_ACCURACY_M, poorAccuracy: poorNow,
             xtdM: c.lastXtd, atT: tSec,
           });
@@ -564,7 +564,7 @@ export class LiveEngine {
       // lap for the current candidate, stop re-evaluating entirely (a switch
       // after finish cannot happen).
       if (this.phase !== 'finished') this.evaluateLockState(tSec, accuracyM, poorNow);
-      this.onRoute = this.locked ? this.locked.onRoute : (this.pickLeader()?.onRoute ?? false);
+      this.onWay = this.locked ? this.locked.onWay : (this.pickLeader()?.onWay ?? false);
     }
     if (lockedFired && this.locked) this.recompute();
     this.emit();
@@ -584,19 +584,19 @@ export class LiveEngine {
     for (const c of this.cands) {
       const evs = this.feedCandidate(c, lat, lon, tSec);
       for (const e of evs) {
-        this.freeCrossings.push({ routeId: c.track, gateIndex: e.gateIndex, t: e.time, estimated: e.estimated });
+        this.freeCrossings.push({ wayId: c.track, gateIndex: e.gateIndex, t: e.time, estimated: e.estimated });
         this.emitEvent({ type: 'gate', track: c.track, gateIndex: e.gateIndex, t: e.time, estimated: e.estimated });
         const prev = this.lastFreeCrossing.get(c.track);
         if (
           e.gateIndex >= 1 && !e.estimated &&
           prev && prev.gateIndex === e.gateIndex - 1 && !prev.estimated
         ) {
-          this.freeSectors.push({ routeId: c.track, index: e.gateIndex, rawS: e.time - prev.t });
+          this.freeSectors.push({ wayId: c.track, index: e.gateIndex, rawS: e.time - prev.t });
         }
         this.lastFreeCrossing.set(c.track, { gateIndex: e.gateIndex, t: e.time, estimated: e.estimated });
       }
     }
-    this.onRoute = this.cands.some((c) => c.onRoute);
+    this.onWay = this.cands.some((c) => c.onWay);
   }
 
   /** Called once when the ride ends (src/location/index.ts's stopTracking(),
@@ -685,7 +685,7 @@ export class LiveEngine {
         type: 'lock', track: winner.track, atChainageM: winner.proj.chainage, atT, kind: 'finalized', pick: this.pick,
       });
       this.emitDiagnostic({
-        type: 'routeMatchAttempt', track: winner.track, phase: 'lock',
+        type: 'wayMatchAttempt', track: winner.track, phase: 'lock',
         accuracyM: null, thresholdM: POOR_ACCURACY_M, poorAccuracy: false,
         xtdM: winner.lastXtd, atT,
       });
@@ -700,7 +700,7 @@ export class LiveEngine {
     // N9: either way (already displayed or not) this settles a transition —
     // soft->finalized (the pick's own route completed) or none->finalized
     // (no live lock ever formed) — both named routeCompleted per the design.
-    this.noteLockChange(prevKind, winner, atT, 'routeCompleted');
+    this.noteLockChange(prevKind, winner, atT, 'wayCompleted');
     this.emit();
   }
 
@@ -735,7 +735,7 @@ export class LiveEngine {
       lap: this.lap,
       gateFires,
       fixesFed: this.fixesFed,
-      onRoute: this.onRoute,
+      onWay: this.onWay,
       lockKind: this.lockKind,
       pick: this.pick,
       pickHonoured: this.pickHonoured,
@@ -891,7 +891,7 @@ export class LiveEngine {
         type: 'lock', track: cand.track, atChainageM: cand.proj.chainage, atT: tSec, kind, pick: this.pick,
       });
       this.emitDiagnostic({
-        type: 'routeMatchAttempt', track: cand.track, phase: 'lock',
+        type: 'wayMatchAttempt', track: cand.track, phase: 'lock',
         accuracyM: accuracyM ?? null, thresholdM: POOR_ACCURACY_M, poorAccuracy: poorNow,
         xtdM: cand.lastXtd, atT: tSec,
       });
@@ -913,7 +913,7 @@ export class LiveEngine {
     const sBefore = c.proj.chainage;
     // WP-D (cycle 2): the PREVIOUS fix's verdict — c.onRoute is only rewritten
     // below, but read it here explicitly so the ordering is not load-bearing.
-    const wasOnRoute = c.onRoute;
+    const wasOnWay = c.onWay;
     const fix = c.proj.update(xy.x[0], xy.y[0], tSec);
     c.lastXtd = fix.xtd; // WP-G Part 2 gap-fill: per-candidate deviation for diagnostics
     if (c.baseS === null) {
@@ -926,10 +926,10 @@ export class LiveEngine {
       // projector only moves chainage on on-route fixes, so such a jump is
       // ground covered while the rider was outside this candidate's corridor.
       const jump = c.proj.chainage - sBefore;
-      if (jump > REACQ_JUMP_M || !wasOnRoute) c.baseS += jump;
+      if (jump > REACQ_JUMP_M || !wasOnWay) c.baseS += jump;
     }
     c.adv = c.proj.chainage - c.baseS;
-    c.onRoute = fix.onRoute;
+    c.onWay = fix.onRoute;
     if (!c.anchored && fix.onRoute && fix.s <= ANCHOR_M) c.anchored = true;
     const events = c.det.update(tSec, fix.s);
     if (events.length === 0) return events;

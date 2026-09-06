@@ -17,7 +17,7 @@ import * as nodeFs from 'node:fs';
 import { assert, test, loadFixture } from './lib.ts';
 import { createMemoryFsAdapter } from '../src/storage/fsAdapter.ts';
 import { decodeCatalog, emptyCatalog, encodeCatalog, validateCatalog } from '../src/store/catalog.ts';
-import { defaultEndpoints, defaultMapRouteId, fallbackRouteId } from '../src/store/defaultRoute.ts';
+import { defaultEndpoints, defaultMapWayId, fallbackWayId } from '../src/store/defaultWay.ts';
 import type { Catalog } from '../src/store/types.ts';
 
 // Same bare-.json loader shim as resultsstore_suite.ts, same reason: the
@@ -42,20 +42,20 @@ function userAddition(): Catalog {
     { id: 'alpha', label: 'alpha', lat: 51.2, lon: 4.4, radiusM: 150, activeFromMs: 0, activeUntilMs: null, offerAtStart: true },
     { id: 'beta', label: 'beta', lat: 51.25, lon: 4.45, radiusM: 150, activeFromMs: 0, activeUntilMs: null, offerAtStart: true },
   ];
-  c.ways = [{ id: 'alpha>beta', startLandmarkId: 'alpha', endLandmarkId: 'beta', routeIds: ['AlphaBeta'] }];
-  c.routes = [{ id: 'AlphaBeta', wayId: 'alpha>beta', refLineId: 'AlphaBeta', gateSetVersion: 1, seeded: false }];
-  c.gateSets = [{ routeId: 'AlphaBeta', version: 1, chainageM: [100, 1000, 2000, 3000, 3900], createdAtMs: 0 }];
+  c.routes = [{ id: 'alpha>beta', startLandmarkId: 'alpha', endLandmarkId: 'beta', wayIds: ['AlphaBeta'] }];
+  c.ways = [{ id: 'AlphaBeta', routeId: 'alpha>beta', refLineId: 'AlphaBeta', gateSetVersion: 1, seeded: false }];
+  c.gateSets = [{ wayId: 'AlphaBeta', version: 1, chainageM: [100, 1000, 2000, 3000, 3900], createdAtMs: 0 }];
   return c;
 }
 
 test('B-39 seed: under Node the seed mode is shipped; the empty mode is a real empty catalog and no ghosts', () => {
   assert(seedMod.SEED_MODE === 'shipped', `headless suite must run on the shipped seed, got ${seedMod.SEED_MODE}`);
   const shipped = seedMod.shippedCatalog();
-  assert(shipped.routes.length === 20 && shipped.landmarks.length === 6 && shipped.ways.length === 13,
-    `shipped seed is the ratified catalog (6/13/20), got ${shipped.landmarks.length}/${shipped.ways.length}/${shipped.routes.length}`);
+  assert(shipped.ways.length === 20 && shipped.landmarks.length === 6 && shipped.routes.length === 13,
+    `shipped seed is the ratified catalog (6/13/20), got ${shipped.landmarks.length}/${shipped.routes.length}/${shipped.ways.length}`);
   assert(seedMod.shippedResults().length > 0, 'shipped ghosts present');
   const empty = seedMod.catalogForSeedMode('empty');
-  assert(empty.landmarks.length === 0 && empty.ways.length === 0 && empty.routes.length === 0 && empty.gateSets.length === 0,
+  assert(empty.landmarks.length === 0 && empty.routes.length === 0 && empty.ways.length === 0 && empty.gateSets.length === 0,
     'empty seed mode: nothing at all');
   assert(validateCatalog(empty).length === 0, 'an empty catalog validates');
   assert(seedMod.resultsForSeedMode('empty').length === 0, 'empty seed mode: no ghosts');
@@ -73,7 +73,7 @@ test('B-39 catalogStore: boot with nothing added = the shipped seed, byte for by
     assert(JSON.stringify(got) === before && JSON.stringify(store.currentCatalog()) === before,
       'after init with no user file: still exactly the seed');
     assert(fs.files.size === 0, `init must write nothing (the seed is never copied to disk), wrote ${[...fs.files.keys()].join(',')}`);
-    assert(store.userCatalog().routes.length === 0, 'nothing added');
+    assert(store.userCatalog().ways.length === 0, 'nothing added');
   } finally {
     store.resetCatalogStoreForTests();
   }
@@ -84,21 +84,21 @@ test('B-39 catalogStore: a user catalog file merges in (seed first), saveUserCat
   try {
     const fs = createMemoryFsAdapter();
     await store.initCatalogStore(fs);
-    const seedRoutes = store.currentCatalog().routes.length;
+    const seedWays = store.currentCatalog().ways.length;
     const errs = await store.saveUserCatalog(userAddition());
     await store.flushCatalogWrites();
     assert(errs.length === 0, `save must accept a valid addition: ${errs.join('; ')}`);
-    assert(store.currentCatalog().routes.length === seedRoutes + 1, 'merged catalog visible at once');
-    assert(store.currentCatalog().routes[seedRoutes].id === 'AlphaBeta', 'user route appended AFTER the seed routes');
-    assert(store.currentCatalog().routes[0].id === seedMod.shippedCatalog().routes[0].id, 'seed order intact');
+    assert(store.currentCatalog().ways.length === seedWays + 1, 'merged catalog visible at once');
+    assert(store.currentCatalog().ways[seedWays].id === 'AlphaBeta', 'user route appended AFTER the seed routes');
+    assert(store.currentCatalog().ways[0].id === seedMod.shippedCatalog().ways[0].id, 'seed order intact');
     const text = fs.files.get(store.USER_CATALOG_FILE);
     assert(typeof text === 'string' && text.endsWith('\n'), 'the user file was written, newline-terminated');
     assert(JSON.stringify(JSON.parse(text!)) === JSON.stringify(userAddition()), 'the file holds ONLY the user catalog, never the seed');
 
     store.resetCatalogStoreForTests();
-    assert(store.currentCatalog().routes.length === seedRoutes, 'reset drops the in-memory addition');
+    assert(store.currentCatalog().ways.length === seedWays, 'reset drops the in-memory addition');
     await store.initCatalogStore(fs);
-    assert(store.currentCatalog().routes.length === seedRoutes + 1 && store.userCatalog().landmarks.length === 2,
+    assert(store.currentCatalog().ways.length === seedWays + 1 && store.userCatalog().landmarks.length === 2,
       're-init from the same fs reproduces the merged catalog');
     assert(fs.files.size === 1, 'init wrote nothing new');
   } finally {
@@ -114,22 +114,22 @@ test('WP-Q: saveUserCatalog(removeRoute(...).next) removes a user route end-to-e
     const errs = await store.saveUserCatalog(userAddition());
     await store.flushCatalogWrites();
     assert(errs.length === 0, `setup save must succeed: ${errs.join('; ')}`);
-    assert(store.currentCatalog().routes.some((r) => r.id === 'AlphaBeta'), 'setup: the route is there before deletion');
+    assert(store.currentCatalog().ways.some((r) => r.id === 'AlphaBeta'), 'setup: the route is there before deletion');
 
-    const { removeRoute } = await import('../src/store/catalogDelete.ts');
-    const deletion = removeRoute(store.userCatalog(), seedMod.shippedCatalog(), 'AlphaBeta');
+    const { removeWay } = await import('../src/store/catalogDelete.ts');
+    const deletion = removeWay(store.userCatalog(), seedMod.shippedCatalog(), 'AlphaBeta');
     assert(
-      deletion.removedRouteIds[0] === 'AlphaBeta' && deletion.removedWayIds[0] === 'alpha>beta',
+      deletion.removedWayIds[0] === 'AlphaBeta' && deletion.removedRouteIds[0] === 'alpha>beta',
       'setup: the whole way goes with its only route',
     );
     const errs2 = await store.saveUserCatalog(deletion.next);
     await store.flushCatalogWrites();
     assert(errs2.length === 0, `delete-save must succeed: ${errs2.join('; ')}`);
-    assert(!store.currentCatalog().routes.some((r) => r.id === 'AlphaBeta'), 'currentCatalog() no longer lists the route');
-    assert(!store.currentCatalog().ways.some((w) => w.id === 'alpha>beta'), 'currentCatalog() no longer lists the way');
+    assert(!store.currentCatalog().ways.some((r) => r.id === 'AlphaBeta'), 'currentCatalog() no longer lists the route');
+    assert(!store.currentCatalog().routes.some((w) => w.id === 'alpha>beta'), 'currentCatalog() no longer lists the way');
     const text = fs.files.get(store.USER_CATALOG_FILE)!;
-    const decoded = JSON.parse(text) as { routes: { id: string }[] };
-    assert(!decoded.routes.some((r) => r.id === 'AlphaBeta'), 'the file itself no longer lists the route');
+    const decoded = JSON.parse(text) as { ways: { id: string }[] };
+    assert(!decoded.ways.some((r) => r.id === 'AlphaBeta'), 'the file itself no longer lists the route');
   } finally {
     store.resetCatalogStoreForTests();
   }
@@ -176,9 +176,9 @@ test('B-39 catalogStore: saveUserCatalog refuses an addition whose MERGED catalo
     assert(fs.files.size === 0, 'refused: nothing written');
     // Dangling references are refused too.
     const dangling = userAddition();
-    dangling.routes[0].wayId = 'nowhere';
+    dangling.ways[0].routeId = 'nowhere';
     const errs2 = await store.saveUserCatalog(dangling);
-    assert(errs2.some((e) => e.includes('unknown way')), `expected an unknown-way error, got ${JSON.stringify(errs2)}`);
+    assert(errs2.some((e) => e.includes('unknown route')), `expected an unknown-route error, got ${JSON.stringify(errs2)}`);
     assert(JSON.stringify(store.currentCatalog()) === before && fs.files.size === 0, 'refused again: untouched, unwritten');
   } finally {
     store.resetCatalogStoreForTests();
@@ -190,12 +190,12 @@ test('B-39 VIRGIN install: empty seed + nothing added => zero catalog, zero live
   try {
     const fs = createMemoryFsAdapter();
     const c = await store.initCatalogStore(fs);
-    assert(c.landmarks.length === 0 && c.ways.length === 0 && c.routes.length === 0 && c.gateSets.length === 0,
+    assert(c.landmarks.length === 0 && c.routes.length === 0 && c.ways.length === 0 && c.gateSets.length === 0,
       'the virgin catalog is empty');
     assert(fs.files.size === 0, 'nothing written on a virgin boot');
     assert(catalogTrackSpecs().length === 0, 'no catalog routes => no live candidates (and no throw)');
-    assert(fallbackRouteId(c, []) === null, 'Result fallback route: null');
-    assert(defaultMapRouteId(c, () => true) === null, 'map fallback route: null even though the manifest is bundled');
+    assert(fallbackWayId(c, []) === null, 'Result fallback route: null');
+    assert(defaultMapWayId(c, () => true) === null, 'map fallback route: null even though the manifest is bundled');
     const ends = defaultEndpoints(c);
     assert(ends.from === null && ends.to === null, 'RecordScreen defaults: null/null => new>>new');
 
@@ -203,7 +203,7 @@ test('B-39 VIRGIN install: empty seed + nothing added => zero catalog, zero live
     const f = loadFixture('clean_morning');
     for (const mode of ['route', 'free'] as const) {
       const engine = new LiveEngine();
-      engine.start(mode === 'free' ? { mode: 'free', routeIds: null } : undefined);
+      engine.start(mode === 'free' ? { mode: 'free', wayIds: null } : undefined);
       for (let i = 0; i < f.fixes.t.length; i += 10) {
         engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
       }
@@ -247,22 +247,22 @@ test('item-2 seam: a virgin ride drafts, gets named, and saveUserCatalog lands i
   try {
     const fs = createMemoryFsAdapter();
     await store.initCatalogStore(fs);
-    const wc = await import('../src/store/wayCreation.ts');
+    const wc = await import('../src/store/routeCreation.ts');
     const fixes = Array.from({ length: 20 }, (_, i) => ({ lat: 50.87 + i * 0.001, lon: 4.7 }));
-    const draft = wc.draftWayCreation(store.currentCatalog(), { rideId: 'ride-e2e', startedAtMs: 123, fixes });
+    const draft = wc.draftRouteCreation(store.currentCatalog(), { rideId: 'ride-e2e', startedAtMs: 123, fixes });
     assert(draft !== null, 'virgin catalog: an unmatched ride drafts');
-    const built = wc.buildWayCreationCatalog(store.userCatalog(), draft!, { start: 'Home', end: 'Work' });
+    const built = wc.buildRouteCreationCatalog(store.userCatalog(), draft!, { start: 'Home', end: 'Work' });
     const errs = await store.saveUserCatalog(built);
     await store.flushCatalogWrites();
     assert(errs.length === 0, `saveUserCatalog must accept the built catalog: ${errs.join('; ')}`);
     assert(typeof fs.files.get(store.USER_CATALOG_FILE) === 'string', 'catalog.user.json written');
-    const r = store.currentCatalog().routes[0];
+    const r = store.currentCatalog().ways[0];
     assert(r !== undefined && r.referenceRideId === 'ride-e2e', 'the ride just recorded IS the reference (COLD-START §3 step 9)');
     // Survives a re-boot from the same disk.
     store.resetCatalogStoreForTests(emptyCatalog());
     await store.initCatalogStore(fs);
-    assert(store.currentCatalog().routes[0]?.referenceRideId === 'ride-e2e', 'reference designation survives re-init');
-    assert(store.currentCatalog().landmarks.length === 2 && store.currentCatalog().ways.length === 1
+    assert(store.currentCatalog().ways[0]?.referenceRideId === 'ride-e2e', 'reference designation survives re-init');
+    assert(store.currentCatalog().landmarks.length === 2 && store.currentCatalog().routes.length === 1
       && store.currentCatalog().gateSets.length === 1, 'landmarks/way/gates all round-trip');
   } finally {
     store.resetCatalogStoreForTests();
@@ -271,9 +271,9 @@ test('item-2 seam: a virgin ride drafts, gets named, and saveUserCatalog lands i
 
 test('WP-G: Route.specs round-trips through encodeCatalog/decodeCatalog', () => {
   const c = userAddition();
-  c.routes[0] = { ...c.routes[0], specs: ['Dry', 'Fast'] };
+  c.ways[0] = { ...c.ways[0], specs: ['Dry', 'Fast'] };
   const decoded = decodeCatalog(encodeCatalog(c));
   assert(decoded !== null, 'a catalog carrying specs still decodes');
-  assert(JSON.stringify(decoded!.routes[0].specs) === JSON.stringify(['Dry', 'Fast']),
+  assert(JSON.stringify(decoded!.ways[0].specs) === JSON.stringify(['Dry', 'Fast']),
     'specs survive the encode/decode round-trip unchanged');
 });

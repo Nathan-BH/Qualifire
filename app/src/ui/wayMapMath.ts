@@ -21,7 +21,7 @@
  * see offRouteM().
  */
 
-export interface RouteGate {
+export interface WayGate {
   name: string;
   lat: number;
   lon: number;
@@ -29,7 +29,7 @@ export interface RouteGate {
   py: number;
 }
 
-export interface RouteAsset {
+export interface WayAsset {
   image: string;
   /** the ridden line, decimated — [lat, lon] pairs */
   path?: [number, number][];
@@ -43,7 +43,7 @@ export interface RouteAsset {
   scale: number;
   offx: number;
   offy: number;
-  gates: RouteGate[];
+  gates: WayGate[];
   sourceRide: string;
 }
 
@@ -54,7 +54,7 @@ const mercY = (lat: number): number =>
   Math.log(Math.tan(Math.PI / 4 + ((lat * Math.PI) / 180) / 2));
 
 /** lat/lon → pixel in the pre-rendered PNG. Mirrors the Python renderer. */
-export function projectToPixel(a: RouteAsset, lat: number, lon: number): Px {
+export function projectToPixel(a: WayAsset, lat: number, lon: number): Px {
   return {
     px: a.offx + (mercX(lon) - a.x0) * a.scale,
     py: a.offy + (a.y1 - mercY(lat)) * a.scale,
@@ -63,7 +63,7 @@ export function projectToPixel(a: RouteAsset, lat: number, lon: number): Px {
 
 /** Metres per pixel at this latitude — for turning a pixel offset into a
  * distance the rider would recognise. */
-export function metresPerPixel(a: RouteAsset, lat: number): number {
+export function metresPerPixel(a: WayAsset, lat: number): number {
   return (6378137 * Math.cos((lat * Math.PI) / 180)) / a.scale;
 }
 
@@ -78,7 +78,7 @@ export function metresPerPixel(a: RouteAsset, lat: number): number {
  * whether to say "off route", not a substitute for the engine's corridor
  * test.
  */
-export function offRouteM(a: RouteAsset, lat: number, lon: number): number {
+export function offWayM(a: WayAsset, lat: number, lon: number): number {
   const p = projectToPixel(a, lat, lon);
   let best = Infinity;
   if (a.path && a.path.length >= 2) {
@@ -122,7 +122,7 @@ export function offRouteM(a: RouteAsset, lat: number, lon: number): number {
  * selection rule as the GeoJSON builder, so both rungs draw the same tick.
  */
 export function gateTickPx(
-  a: RouteAsset, i: number, halfLenM = 15,
+  a: WayAsset, i: number, halfLenM = 15,
 ): { x0: number; y0: number; x1: number; y1: number } {
   const g = a.gates[i];
   const n = a.gates.length;
@@ -166,7 +166,7 @@ export function gateTickPx(
  * of cutting the corner (cycle 009 — the demo used to draw straight lines).
  */
 export function positionAtTime(
-  a: RouteAsset, gateTimes: number[], tSec: number,
+  a: WayAsset, gateTimes: number[], tSec: number,
 ): { lat: number; lon: number } | null {
   const path = a.path;
   const idx = a.gateIdx;
@@ -212,7 +212,7 @@ export interface Crop {
  * asset's natural size: 1 = whole route visible, 4 = tight live crop.
  */
 export function cropFor(
-  a: RouteAsset, at: Px, viewW: number, viewH: number, zoom: number,
+  a: WayAsset, at: Px, viewW: number, viewH: number, zoom: number,
 ): Crop {
   const base = Math.min(viewW / a.w, viewH / a.h);   // fit-whole-route scale
   const scale = base * Math.max(1, zoom);

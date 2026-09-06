@@ -2,7 +2,7 @@
  * Pure — headless-testable. */
 import type { Catalog, RideResult } from './types.ts';
 import { ranks } from './results.ts';
-import { PLAIN_SPEC_LABEL } from './routeSpecs.ts';
+import { PLAIN_SPEC_LABEL } from './waySpecs.ts';
 
 /** Display-name overlay (Nathan, 2026-08-26 — WP-route-naming-migration):
  * the four legacy time-of-day ids plus StationHomePreferred render under
@@ -11,7 +11,7 @@ import { PLAIN_SPEC_LABEL } from './routeSpecs.ts';
  * then applies the same split-on-capitals every native FromToVariant id
  * gets, so overlaid and native routes render identically. Any id absent
  * here (including future routes) keeps its derived label byte-for-byte. */
-export const ROUTE_DISPLAY_ID: Record<string, string> = {
+export const WAY_DISPLAY_ID: Record<string, string> = {
   Morning: 'HomeWorkDry',
   MorningB: 'HomeWorkWet',
   EveningA: 'WorkHomeDry',
@@ -28,14 +28,17 @@ export const ROUTE_DISPLAY_ID: Record<string, string> = {
  * (schema untouched): "Morning" -> "Home Work Dry" (overlay), "EveningA" ->
  * "Work Home Dry" (overlay), "WorkStationA" -> "Work Station A" (derived).
  * Shared by RecordScreen and ResultScreen (previously duplicated). */
-export function routeLabel(id: string): string {
-  return (ROUTE_DISPLAY_ID[id] ?? id).replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+export function wayLabel(id: string): string {
+  return (WAY_DISPLAY_ID[id] ?? id).replace(/([a-z0-9])([A-Z])/g, '$1 $2');
 }
 
-/** WP-G: every route wayCreation.ts mints — the ids the FromToVariant
- * convention (and ROUTE_DISPLAY_ID) can never describe. */
-export function isUserMintedRouteId(id: string): boolean {
-  return id.startsWith('route:');
+/** WP-G: every way routeCreation.ts mints — the ids the FromToVariant
+ * convention (and WAY_DISPLAY_ID) can never describe. WP-3 (2026-09-05):
+ * ids minted before the swap carry the pre-WP-3 prefix ('route:') and
+ * never change (D-023) — both prefixes are accepted here so a way minted
+ * on an un-reset phone still resolves as user-minted (§3.3). */
+export function isUserMintedWayId(id: string): boolean {
+  return id.startsWith('way:') || id.startsWith('route:');
 }
 
 /** Variant-only label for a route shown inside its way's context (Nathan,
@@ -50,30 +53,30 @@ export function isUserMintedRouteId(id: string): boolean {
  * WP-G: `specs` (pass route.specs; seed callers omit it) takes priority —
  * a user-minted route's variant name is its own spec segments, joined,
  * never the raw id; with no specs it is PLAIN_SPEC_LABEL ('plain'). */
-export function routeVariantLabel(
+export function wayVariantLabel(
   id: string,
-  way: { startLandmarkId: string; endLandmarkId: string },
+  route: { startLandmarkId: string; endLandmarkId: string },
   specs?: readonly string[],
 ): string {
   if (specs && specs.length > 0) return specs.join(' · ');
-  if (isUserMintedRouteId(id)) return PLAIN_SPEC_LABEL;
-  const display = ROUTE_DISPLAY_ID[id] ?? id;
+  if (isUserMintedWayId(id)) return PLAIN_SPEC_LABEL;
+  const display = WAY_DISPLAY_ID[id] ?? id;
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-  const prefix = cap(way.startLandmarkId) + cap(way.endLandmarkId);
+  const prefix = cap(route.startLandmarkId) + cap(route.endLandmarkId);
   if (display.startsWith(prefix) && display.length > prefix.length) {
     return display.slice(prefix.length).replace(/([a-z0-9])([A-Z])/g, '$1 $2');
   }
-  return routeLabel(id);
+  return wayLabel(id);
 }
 
 /** WP-G: full name of a route as the rider knows it — "Home → Work · Dry ·
  * Fast" from the way's landmark labels plus specs — for any user-minted
  * route in `c`. Seed ids (and ids not in `c`) return routeLabel(id)
  * byte-for-byte, so nothing Nathan's shipped build prints today moves. */
-export function routeLabelIn(c: Catalog, id: string): string {
-  const r = c.routes.find((x) => x.id === id);
-  if (!r || !isUserMintedRouteId(id)) return routeLabel(id);
-  const w = c.ways.find((x) => x.id === r.wayId);
+export function wayLabelIn(c: Catalog, id: string): string {
+  const r = c.ways.find((x) => x.id === id);
+  if (!r || !isUserMintedWayId(id)) return wayLabel(id);
+  const w = c.routes.find((x) => x.id === r.routeId);
   const lab = (lid: string) => c.landmarks.find((l) => l.id === lid)?.label ?? lid;
   const base = w ? `${lab(w.startLandmarkId)} → ${lab(w.endLandmarkId)}` : id;
   return r.specs?.length ? `${base} · ${r.specs.join(' · ')}` : base;
@@ -87,12 +90,12 @@ export function routeLabelIn(c: Catalog, id: string): string {
  * list to defaultRouteFor, whose first-in-array tiebreak then makes Std
  * the empty-history §8a default too (Nathan's 2026-08-26 ruling: "Std is
  * the default selection"; previously flagged unimplemented). */
-export function sortRoutesForDisplay<T extends { id: string }>(routes: T[]): T[] {
+export function sortWaysForDisplay<T extends { id: string }>(ways: T[]): T[] {
   const pri = (id: string): number => {
-    const display = ROUTE_DISPLAY_ID[id] ?? id;
+    const display = WAY_DISPLAY_ID[id] ?? id;
     return display.endsWith('Std') ? 0 : display.endsWith('Alt') ? 2 : 1;
   };
-  return [...routes].sort((a, b) => pri(a.id) - pri(b.id));
+  return [...ways].sort((a, b) => pri(a.id) - pri(b.id));
 }
 
 /** The route of the most recent RANKING result (seed or session) — i.e. the
@@ -105,17 +108,17 @@ export function sortRoutesForDisplay<T extends { id: string }>(routes: T[]): T[]
  * Most-recent-first, not "first catalog route" — matches what the board's
  * stand-in ghost text promises: the most recent ride's context. Catalog
  * order is only the empty-history tiebreak. */
-export function fallbackRouteId(c: Catalog, results: RideResult[]): string | null {
+export function fallbackWayId(c: Catalog, results: RideResult[]): string | null {
   let best: RideResult | null = null;
   for (const r of results) {
-    if (r.routeId === null) continue;
+    if (r.wayId === null) continue;
     if (!ranks(r)) continue;
     if (best === null || r.startedAtMs > best.startedAtMs) best = r;
   }
-  if (best !== null && c.routes.some((route) => route.id === best!.routeId)) {
-    return best.routeId;
+  if (best !== null && c.ways.some((way) => way.id === best!.wayId)) {
+    return best.wayId;
   }
-  return c.routes[0]?.id ?? null;
+  return c.ways[0]?.id ?? null;
 }
 
 /** B-39 (empty-seed install path): the route the map draws when nothing is
@@ -128,8 +131,8 @@ export function fallbackRouteId(c: Catalog, results: RideResult[]): string | nul
  * caller's own asset lookup, so this stays pure. Today's seed: the first
  * route is Morning, which is also the manifest's first key — byte-identical
  * behaviour for Nathan's build. */
-export function defaultMapRouteId(c: Catalog, drawable: (refLineId: string) => boolean): string | null {
-  for (const r of c.routes) if (drawable(r.refLineId)) return r.refLineId;
+export function defaultMapWayId(c: Catalog, drawable: (refLineId: string) => boolean): string | null {
+  for (const r of c.ways) if (drawable(r.refLineId)) return r.refLineId;
   return null;
 }
 

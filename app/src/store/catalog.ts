@@ -6,8 +6,9 @@
  * so overlapping landmark discs are an ERROR, not a warning — the model must
  * be structurally incapable of repeating that.
  */
-import type { Catalog, GateSet, Landmark, Route, Way } from './types.ts';
+import type { Catalog, GateSet, Landmark, Way, Route } from './types.ts';
 import { CATALOG_SCHEMA_VERSION } from './types.ts';
+import { upgradeCatalog } from './migrations.ts';
 
 /** Metres between two lat/lon, equirectangular approximation using the pair's
  * own mean latitude (not a hardcoded constant) — good enough at
@@ -24,16 +25,13 @@ export function metresBetween(
 }
 
 export function emptyCatalog(): Catalog {
-  return { schemaVersion: CATALOG_SCHEMA_VERSION, landmarks: [], ways: [], routes: [], gateSets: [] };
+  return { schemaVersion: CATALOG_SCHEMA_VERSION, landmarks: [], routes: [], ways: [], gateSets: [] };
 }
 
 /** null on unrecognisable text so the caller rebuilds rather than trusting it. */
 export function decodeCatalog(text: string): Catalog | null {
   try {
-    const c = JSON.parse(text) as Catalog;
-    if (!c || !Array.isArray(c.landmarks) || !Array.isArray(c.ways)) return null;
-    if (!Array.isArray(c.routes) || !Array.isArray(c.gateSets)) return null;
-    return c;
+    return upgradeCatalog(JSON.parse(text)) as Catalog | null;
   } catch {
     return null;
   }
@@ -72,57 +70,57 @@ export function validateCatalog(c: Catalog): string[] {
     }
   }
 
-  const wayIds = new Set<string>();
-  for (const w of c.ways) {
-    if (wayIds.has(w.id)) errs.push(`duplicate way id ${w.id}`);
-    wayIds.add(w.id);
-    if (!lm.has(w.startLandmarkId)) errs.push(`way ${w.id}: unknown start ${w.startLandmarkId}`);
-    if (!lm.has(w.endLandmarkId)) errs.push(`way ${w.id}: unknown end ${w.endLandmarkId}`);
+  const routeIds = new Set<string>();
+  for (const w of c.routes) {
+    if (routeIds.has(w.id)) errs.push(`duplicate route id ${w.id}`);
+    routeIds.add(w.id);
+    if (!lm.has(w.startLandmarkId)) errs.push(`route ${w.id}: unknown start ${w.startLandmarkId}`);
+    if (!lm.has(w.endLandmarkId)) errs.push(`route ${w.id}: unknown end ${w.endLandmarkId}`);
     if (w.startLandmarkId === w.endLandmarkId && !w.loopDiscriminator) {
-      errs.push(`way ${w.id}: loop needs a loopDiscriminator`);
+      errs.push(`route ${w.id}: loop needs a loopDiscriminator`);
     }
-    if (w.routeIds.length === 0) errs.push(`way ${w.id}: no routes`);
+    if (w.wayIds.length === 0) errs.push(`route ${w.id}: no ways`);
   }
 
-  const routeIds = new Set<string>();
-  for (const r of c.routes) {
-    if (routeIds.has(r.id)) errs.push(`duplicate route id ${r.id}`);
-    routeIds.add(r.id);
-    if (!wayIds.has(r.wayId)) errs.push(`route ${r.id}: unknown way ${r.wayId}`);
+  const wayIds = new Set<string>();
+  for (const r of c.ways) {
+    if (wayIds.has(r.id)) errs.push(`duplicate way id ${r.id}`);
+    wayIds.add(r.id);
+    if (!routeIds.has(r.routeId)) errs.push(`way ${r.id}: unknown route ${r.routeId}`);
     if (!gateSetFor(c, r.id, r.gateSetVersion)) {
-      errs.push(`route ${r.id}: no gate set at version ${r.gateSetVersion}`);
+      errs.push(`way ${r.id}: no gate set at version ${r.gateSetVersion}`);
     }
     // WP-G: specs are trimmed non-empty strings; identical NON-empty lists on
     // one way would be two names for one thing (two plain routes stay legal —
     // that is the seed's own shape).
     if (r.specs !== undefined) {
       if (!Array.isArray(r.specs) || r.specs.some((s) => typeof s !== 'string' || s.trim() !== s || s.length === 0)) {
-        errs.push(`route ${r.id}: specs must be trimmed non-empty strings`);
+        errs.push(`way ${r.id}: specs must be trimmed non-empty strings`);
       }
     }
   }
-  for (const w of c.ways) {
-    for (const rid of w.routeIds) {
-      if (!routeIds.has(rid)) errs.push(`way ${w.id}: unknown route ${rid}`);
+  for (const w of c.routes) {
+    for (const rid of w.wayIds) {
+      if (!wayIds.has(rid)) errs.push(`route ${w.id}: unknown way ${rid}`);
     }
   }
-  for (const w of c.ways) {
+  for (const w of c.routes) {
     const seen = new Map<string, string>(); // lowercase joined specs -> route id
-    for (const r of c.routes) {
-      if (r.wayId !== w.id || !Array.isArray(r.specs) || r.specs.length === 0) continue; // non-array shapes were reported above; never throw here
+    for (const r of c.ways) {
+      if (r.routeId !== w.id || !Array.isArray(r.specs) || r.specs.length === 0) continue; // non-array shapes were reported above; never throw here
       const key = r.specs.map((s) => s.toLowerCase()).join(' ');
       const dup = seen.get(key);
-      if (dup) errs.push(`way ${w.id}: routes ${dup} and ${r.id} share specs ${JSON.stringify(r.specs)}`);
+      if (dup) errs.push(`route ${w.id}: ways ${dup} and ${r.id} share specs ${JSON.stringify(r.specs)}`);
       else seen.set(key, r.id);
     }
   }
 
   for (const g of c.gateSets) {
-    if (!routeIds.has(g.routeId)) errs.push(`gate set for unknown route ${g.routeId}`);
-    if (g.chainageM.length < 2) errs.push(`gate set ${g.routeId} v${g.version}: needs ≥2 gates`);
+    if (!wayIds.has(g.wayId)) errs.push(`gate set for unknown way ${g.wayId}`);
+    if (g.chainageM.length < 2) errs.push(`gate set ${g.wayId} v${g.version}: needs ≥2 gates`);
     for (let i = 1; i < g.chainageM.length; i++) {
       if (g.chainageM[i] <= g.chainageM[i - 1]) {
-        errs.push(`gate set ${g.routeId} v${g.version}: chainage not increasing at index ${i}`);
+        errs.push(`gate set ${g.wayId} v${g.version}: chainage not increasing at index ${i}`);
       }
     }
   }
@@ -159,13 +157,13 @@ export function landmarkAt(
 }
 
 /** Ways startable from a landmark, whose destination is itself offerable. */
-export function waysFrom(c: Catalog, landmarkId: string, atMs: number): Way[] {
+export function routesFrom(c: Catalog, landmarkId: string, atMs: number): Route[] {
   const offerable = new Set(startableLandmarks(c, atMs).map((l) => l.id));
-  return c.ways.filter((w) => w.startLandmarkId === landmarkId && offerable.has(w.endLandmarkId));
+  return c.routes.filter((w) => w.startLandmarkId === landmarkId && offerable.has(w.endLandmarkId));
 }
 
-export function routesForWay(c: Catalog, wayId: string): Route[] {
-  return c.routes.filter((r) => r.wayId === wayId);
+export function waysForRoute(c: Catalog, routeId: string): Way[] {
+  return c.ways.filter((r) => r.routeId === routeId);
 }
 
 /**
@@ -189,40 +187,40 @@ export function routesForWay(c: Catalog, wayId: string): Route[] {
  * null defensively rather than guessing a filter for a case that cannot
  * legitimately arise.
  */
-export function freeRideRouteIds(c: Catalog, from: string | null, to: string | null): string[] | null {
+export function freeRideWayIds(c: Catalog, from: string | null, to: string | null): string[] | null {
   if (from !== null && to === null) {
     const ids: string[] = [];
-    for (const w of c.ways) if (w.startLandmarkId === from) ids.push(...w.routeIds);
+    for (const w of c.routes) if (w.startLandmarkId === from) ids.push(...w.wayIds);
     return ids;
   }
   if (from === null && to !== null) {
     const ids: string[] = [];
-    for (const w of c.ways) if (w.endLandmarkId === to) ids.push(...w.routeIds);
+    for (const w of c.routes) if (w.endLandmarkId === to) ids.push(...w.wayIds);
     return ids;
   }
   return null;
 }
 
 /** True when the way needs a route pick at START (Nathan, §8a). */
-export function needsRoutePick(c: Catalog, wayId: string): boolean {
-  return routesForWay(c, wayId).length > 1;
+export function needsWayPick(c: Catalog, routeId: string): boolean {
+  return waysForRoute(c, routeId).length > 1;
 }
 
-export function gateSetFor(c: Catalog, routeId: string, version?: number): GateSet | null {
-  const forRoute = c.gateSets.filter((g) => g.routeId === routeId);
-  if (forRoute.length === 0) return null;
+export function gateSetFor(c: Catalog, wayId: string, version?: number): GateSet | null {
+  const forWay = c.gateSets.filter((g) => g.wayId === wayId);
+  if (forWay.length === 0) return null;
   if (version === undefined) {
-    return forRoute.reduce((a, b) => (b.version > a.version ? b : a));
+    return forWay.reduce((a, b) => (b.version > a.version ? b : a));
   }
-  return forRoute.find((g) => g.version === version) ?? null;
+  return forWay.find((g) => g.version === version) ?? null;
 }
 
 /** A gate move mints a new version; history is never deleted. */
 export function addGateSet(c: Catalog, next: GateSet): Catalog {
-  const routes = c.routes.map((r) =>
-    r.id === next.routeId ? { ...r, gateSetVersion: next.version } : r,
+  const ways = c.ways.map((r) =>
+    r.id === next.wayId ? { ...r, gateSetVersion: next.version } : r,
   );
-  return { ...c, routes, gateSets: [...c.gateSets, next] };
+  return { ...c, ways, gateSets: [...c.gateSets, next] };
 }
 
 /**
@@ -261,14 +259,14 @@ export function sectorsComparable(a: GateSet, b: GateSet): boolean {
  */
 export function mergeCatalogs(seed: Catalog, user: Catalog): Catalog {
   const lm = new Set(seed.landmarks.map((l) => l.id));
-  const wy = new Set(seed.ways.map((w) => w.id));
-  const rt = new Set(seed.routes.map((r) => r.id));
-  const gs = new Set(seed.gateSets.map((g) => `${g.routeId}@${g.version}`));
+  const wy = new Set(seed.routes.map((w) => w.id));
+  const rt = new Set(seed.ways.map((r) => r.id));
+  const gs = new Set(seed.gateSets.map((g) => `${g.wayId}@${g.version}`));
   return {
     schemaVersion: seed.schemaVersion,
     landmarks: [...seed.landmarks, ...user.landmarks.filter((l) => !lm.has(l.id))],
-    ways: [...seed.ways, ...user.ways.filter((w) => !wy.has(w.id))],
-    routes: [...seed.routes, ...user.routes.filter((r) => !rt.has(r.id))],
-    gateSets: [...seed.gateSets, ...user.gateSets.filter((g) => !gs.has(`${g.routeId}@${g.version}`))],
+    routes: [...seed.routes, ...user.routes.filter((w) => !wy.has(w.id))],
+    ways: [...seed.ways, ...user.ways.filter((r) => !rt.has(r.id))],
+    gateSets: [...seed.gateSets, ...user.gateSets.filter((g) => !gs.has(`${g.wayId}@${g.version}`))],
   };
 }

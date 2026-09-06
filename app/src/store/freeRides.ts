@@ -26,17 +26,18 @@
  */
 import type { LiveEngineState } from '../live/engine.ts';
 import type { FsAdapter } from '../storage/fsAdapter.ts';
+import { upgradeFreeRidesCache } from './migrations.ts';
 
 export const FREE_RIDES_CACHE_FILE = 'free-rides-cache.json';
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 export interface FreeRideRecord {
   kind: 'freeRide';
-  schemaVersion: 1;
+  schemaVersion: 2;
   rideId: string;
   startedAtMs: number;
-  crossings: { routeId: string; gateIndex: number; t: number; estimated: boolean }[];
-  sectors: { routeId: string; index: number; rawS: number }[];
+  crossings: { wayId: string; gateIndex: number; t: number; estimated: boolean }[];
+  sectors: { wayId: string; index: number; rawS: number }[];
 }
 
 let rides: FreeRideRecord[] = [];
@@ -51,7 +52,7 @@ function isNonNullObject(v: unknown): v is Record<string, unknown> {
 
 function isValidCrossing(v: unknown): v is FreeRideRecord['crossings'][number] {
   return isNonNullObject(v)
-    && typeof v.routeId === 'string'
+    && typeof v.wayId === 'string'
     && typeof v.gateIndex === 'number'
     && typeof v.t === 'number'
     && typeof v.estimated === 'boolean';
@@ -59,7 +60,7 @@ function isValidCrossing(v: unknown): v is FreeRideRecord['crossings'][number] {
 
 function isValidFreeSector(v: unknown): v is FreeRideRecord['sectors'][number] {
   return isNonNullObject(v)
-    && typeof v.routeId === 'string'
+    && typeof v.wayId === 'string'
     && typeof v.index === 'number'
     && typeof v.rawS === 'number';
 }
@@ -87,9 +88,8 @@ function encodeCache(rs: FreeRideRecord[]): string {
  * partly-corrupt cache should not cost every OTHER free ride on it). */
 export function decodeFreeRidesCache(text: string): FreeRideRecord[] | null {
   try {
-    const parsed = JSON.parse(text) as unknown;
-    if (!isNonNullObject(parsed) || !Array.isArray(parsed.rides)) return null;
-    return parsed.rides.filter(isValidFreeRideRecord);
+    const rides = upgradeFreeRidesCache(JSON.parse(text) as unknown);
+    return rides === null ? null : rides.filter(isValidFreeRideRecord);
   } catch {
     return null;
   }
@@ -123,7 +123,7 @@ export function rememberFreeRide(st: LiveEngineState, meta?: { startedAtMs: numb
   const startedAtMs = meta?.startedAtMs ?? Date.now();
   const record: FreeRideRecord = {
     kind: 'freeRide',
-    schemaVersion: 1,
+    schemaVersion: 2,
     rideId: `free:${startedAtMs}`,
     startedAtMs,
     crossings: st.freeCrossings.map((c) => ({ ...c })),

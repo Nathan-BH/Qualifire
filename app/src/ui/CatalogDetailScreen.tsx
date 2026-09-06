@@ -19,22 +19,22 @@ import type { CatalogDetailRequest } from './tabNav.tsx';
 import { useTabNav } from './tabNav.tsx';
 import { useTheme } from './themeContext.tsx';
 import { PaddockTheme, radius } from './theme.ts';
-import RouteMapView from './routeMapView.tsx';
+import WayMapView from './wayMapView.tsx';
 import { dateTimeLabel } from './rideHistoryModel.ts';
 import { rankedCountFor } from './colourModel.ts';
 import { currentCatalog } from '../store/catalogStore.ts';
 import { shippedCatalog } from '../store/seed.ts';
 import { refFor } from '../live/refs.ts';
-import { getStoredResult, storedResultsForRoute } from '../store/resultsStore.ts';
-import { gateEditDraftFor } from '../store/wayFromRide.ts';
+import { getStoredResult, storedResultsForWay } from '../store/resultsStore.ts';
+import { gateEditDraftFor } from '../store/routeFromRide.ts';
 import {
   onDeleteLandmark as deleteLandmark,
-  onDeleteRoute as deleteRoute,
   onDeleteWay as deleteWay,
+  onDeleteRoute as deleteRoute,
 } from './catalogDeleteActions.ts';
 import {
-  placeDetailFor, wayDetailFor,
-  type CatalogDetailDeps, type PlaceDetailModel, type RouteDetailModel, type WayDetailModel,
+  placeDetailFor, routeDetailFor,
+  type CatalogDetailDeps, type PlaceDetailModel, type WayDetailModel, type RouteDetailModel,
 } from './catalogDetailModel.ts';
 
 export default function CatalogDetailScreen({ request }: { request: CatalogDetailRequest }) {
@@ -66,13 +66,13 @@ export default function CatalogDetailScreen({ request }: { request: CatalogDetai
     seed: SEED,
     nowMs: Date.now(),
     refLengthM: (refLineId) => safeRefFor(refLineId)?.length ?? null,
-    resultsOnFile: (routeId) => storedResultsForRoute(routeId).length,
-    rankedCount: (routeId) => rankedCountFor(routeId),
+    resultsOnFile: (wayId) => storedResultsForWay(wayId).length,
+    rankedCount: (wayId) => rankedCountFor(wayId),
     storedStartMs: (rideId) => getStoredResult(rideId)?.startedAtMs ?? null,
   };
 
   const model = useMemo(
-    () => (request.kind === 'place' ? placeDetailFor(request.id, deps) : wayDetailFor(request.id, deps)),
+    () => (request.kind === 'place' ? placeDetailFor(request.id, deps) : routeDetailFor(request.id, deps)),
     // deps is rebuilt every render from the same per-render CATALOG/SEED
     // reads above; request/tick are what actually decide when to recompute.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -88,7 +88,7 @@ export default function CatalogDetailScreen({ request }: { request: CatalogDetai
 
   if (model === null) return null;
 
-  const title = request.kind === 'place' ? 'PLACE' : 'WAY';
+  const title = request.kind === 'place' ? 'PLACE' : 'ROUTE';
   const caption = model.seedOwned ? 'shipped' : 'yours';
 
   return (
@@ -106,28 +106,28 @@ export default function CatalogDetailScreen({ request }: { request: CatalogDetai
           model={model as PlaceDetailModel}
           t={t}
           styles={styles}
-          onOpenWay={(wayId) => tabNav.openCatalog({ kind: 'way', id: wayId })}
+          onOpenRoute={(routeId) => tabNav.openCatalog({ kind: 'route', id: routeId })}
           onDelete={() => {
             const l = CATALOG.landmarks.find((x) => x.id === request.id);
             if (l) deleteLandmark(SEED, l, bump);
           }}
         />
       ) : (
-        <WayBody
-          model={model as WayDetailModel}
+        <RouteBody
+          model={model as RouteDetailModel}
           t={t}
           styles={styles}
           onOpenPlace={(placeId) => tabNav.openCatalog({ kind: 'place', id: placeId })}
           onOpenRide={(rideId, startedAtMs) => tabNav.openRide({ rideId, source: 'routes', startedAtMs })}
-          onEditGates={(routeId) => tabNav.openGateAdjust({ routeId })}
-          onDeleteRoute={(routeId) => {
-            const w = CATALOG.ways.find((x) => x.id === request.id);
-            const r = CATALOG.routes.find((x) => x.id === routeId);
-            if (w && r) deleteRoute(CATALOG, SEED, w, r, bump);
+          onEditGates={(wayId) => tabNav.openGateAdjust({ wayId })}
+          onDeleteWay={(wayId) => {
+            const w = CATALOG.routes.find((x) => x.id === request.id);
+            const r = CATALOG.ways.find((x) => x.id === wayId);
+            if (w && r) deleteWay(CATALOG, SEED, w, r, bump);
           }}
-          onDeleteWay={() => {
-            const w = CATALOG.ways.find((x) => x.id === request.id);
-            if (w) deleteWay(CATALOG, SEED, w, bump);
+          onDeleteRoute={() => {
+            const w = CATALOG.routes.find((x) => x.id === request.id);
+            if (w) deleteRoute(CATALOG, SEED, w, bump);
           }}
         />
       )}
@@ -142,17 +142,17 @@ export default function CatalogDetailScreen({ request }: { request: CatalogDetai
 // ---------------------------------------------------------------- PlaceBody
 
 function PlaceBody({
-  model, t, styles, onOpenWay, onDelete,
+  model, t, styles, onOpenRoute, onDelete,
 }: {
   model: PlaceDetailModel;
   t: PaddockTheme;
   styles: ReturnType<typeof makeStyles>;
-  onOpenWay: (wayId: string) => void;
+  onOpenRoute: (routeId: string) => void;
   onDelete: () => void;
 }) {
-  const fromWays = model.ways.filter((w) => w.direction === 'from' || w.direction === 'loop');
-  const toWays = model.ways.filter((w) => w.direction === 'to');
-  const noWays = fromWays.length === 0 && toWays.length === 0;
+  const fromRoutes = model.routes.filter((w) => w.direction === 'from' || w.direction === 'loop');
+  const toRoutes = model.routes.filter((w) => w.direction === 'to');
+  const noRoutes = fromRoutes.length === 0 && toRoutes.length === 0;
 
   return (
     <>
@@ -167,29 +167,29 @@ function PlaceBody({
         </Text>
       </View>
 
-      <Text style={[st.h2, { color: t.textDim }]}>{noWays ? 'WAYS' : 'WAYS FROM HERE'}</Text>
-      {noWays ? (
-        <Text style={{ color: t.textDim, fontSize: 13 }}>No way uses this place yet.</Text>
+      <Text style={[st.h2, { color: t.textDim }]}>{noRoutes ? 'ROUTES' : 'ROUTES FROM HERE'}</Text>
+      {noRoutes ? (
+        <Text style={{ color: t.textDim, fontSize: 13 }}>No route uses this place yet.</Text>
       ) : (
         <>
-          {fromWays.map((w) => <WayLinkRow key={w.wayId} way={w} t={t} onPress={() => onOpenWay(w.wayId)} />)}
-          {fromWays.length === 0 ? <Text style={{ color: t.textDim, fontSize: 13 }}>None.</Text> : null}
-          {toWays.length > 0 ? (
+          {fromRoutes.map((w) => <RouteLinkRow key={w.routeId} route={w} t={t} onPress={() => onOpenRoute(w.routeId)} />)}
+          {fromRoutes.length === 0 ? <Text style={{ color: t.textDim, fontSize: 13 }}>None.</Text> : null}
+          {toRoutes.length > 0 ? (
             <>
-              <Text style={[st.h2, { color: t.textDim }]}>WAYS TO HERE</Text>
-              {toWays.map((w) => <WayLinkRow key={w.wayId} way={w} t={t} onPress={() => onOpenWay(w.wayId)} />)}
+              <Text style={[st.h2, { color: t.textDim }]}>ROUTES TO HERE</Text>
+              {toRoutes.map((w) => <RouteLinkRow key={w.routeId} route={w} t={t} onPress={() => onOpenRoute(w.routeId)} />)}
             </>
           ) : null}
         </>
       )}
 
-      {model.touchingRouteIds.length > 0 ? (
+      {model.touchingWayIds.length > 0 ? (
         <View style={{ marginTop: 12 }}>
-          <RouteMapView
+          <WayMapView
             variant="browse"
             gatesOnly
-            gateRouteIds={model.touchingRouteIds}
-            routeId={null}
+            gateWayIds={model.touchingWayIds}
+            wayId={null}
             lat={null}
             lon={null}
             showRider={false}
@@ -211,17 +211,17 @@ function PlaceBody({
   );
 }
 
-function WayLinkRow({
-  way, t, onPress,
+function RouteLinkRow({
+  route, t, onPress,
 }: {
-  way: PlaceDetailModel['ways'][number];
+  route: PlaceDetailModel['routes'][number];
   t: PaddockTheme;
   onPress: () => void;
 }) {
   return (
     <Pressable style={st.linkRow} onPress={onPress}>
       <Text style={{ flex: 1, color: t.text, fontSize: 14 }}>
-        {way.label} · {way.routeCount} route{way.routeCount === 1 ? '' : 's'}
+        {route.label} · {route.wayCount} way{route.wayCount === 1 ? '' : 's'}
       </Text>
       <Text style={{ color: t.textDim }}>›</Text>
     </Pressable>
@@ -230,17 +230,17 @@ function WayLinkRow({
 
 // ------------------------------------------------------------------ WayBody
 
-function WayBody({
-  model, t, styles, onOpenPlace, onOpenRide, onEditGates, onDeleteRoute, onDeleteWay,
+function RouteBody({
+  model, t, styles, onOpenPlace, onOpenRide, onEditGates, onDeleteWay, onDeleteRoute,
 }: {
-  model: WayDetailModel;
+  model: RouteDetailModel;
   t: PaddockTheme;
   styles: ReturnType<typeof makeStyles>;
   onOpenPlace: (placeId: string) => void;
   onOpenRide: (rideId: string, startedAtMs: number) => void;
-  onEditGates: (routeId: string) => void;
-  onDeleteRoute: (routeId: string) => void;
-  onDeleteWay: () => void;
+  onEditGates: (wayId: string) => void;
+  onDeleteWay: (wayId: string) => void;
+  onDeleteRoute: () => void;
 }) {
   return (
     <>
@@ -250,7 +250,7 @@ function WayBody({
           <Text style={{ color: t.textDim, fontSize: 12.5, marginTop: 4 }}>loop · {model.loopDiscriminator}</Text>
         ) : null}
         <Text style={{ color: t.textDim, fontSize: 12.5, marginTop: model.loop ? 0 : 4 }}>
-          {model.routes.length} route{model.routes.length === 1 ? '' : 's'}
+          {model.ways.length} way{model.ways.length === 1 ? '' : 's'}
           {model.asksAtStart ? ' · asks which one at START' : ''}
         </Text>
         {model.from ? (
@@ -267,23 +267,23 @@ function WayBody({
         ) : null}
       </View>
 
-      {model.routes.map((r) => (
-        <RouteSection
+      {model.ways.map((r) => (
+        <WaySection
           key={r.id}
           r={r}
           t={t}
           styles={styles}
           onOpenRide={onOpenRide}
           onEditGates={onEditGates}
-          onDeleteRoute={onDeleteRoute}
+          onDeleteWay={onDeleteWay}
         />
       ))}
 
       <View style={{ marginTop: 16 }}>
         <Text style={[st.h2, { color: t.textDim }]}>ACTIONS</Text>
         {model.deletable ? (
-          <Pressable style={[styles.deleteBtn, { borderColor: t.cardBorder }]} onPress={onDeleteWay}>
-            <Text style={[styles.deleteText, { color: t.textDim }]}>Delete way</Text>
+          <Pressable style={[styles.deleteBtn, { borderColor: t.cardBorder }]} onPress={onDeleteRoute}>
+            <Text style={[styles.deleteText, { color: t.textDim }]}>Delete route</Text>
           </Pressable>
         ) : null}
       </View>
@@ -300,15 +300,15 @@ function FactRow({ label, value, t }: { label: string; value: string; t: Paddock
   );
 }
 
-function RouteSection({
-  r, t, styles, onOpenRide, onEditGates, onDeleteRoute,
+function WaySection({
+  r, t, styles, onOpenRide, onEditGates, onDeleteWay,
 }: {
-  r: RouteDetailModel;
+  r: WayDetailModel;
   t: PaddockTheme;
   styles: ReturnType<typeof makeStyles>;
   onOpenRide: (rideId: string, startedAtMs: number) => void;
-  onEditGates: (routeId: string) => void;
-  onDeleteRoute: (routeId: string) => void;
+  onEditGates: (wayId: string) => void;
+  onDeleteWay: (wayId: string) => void;
 }) {
   // B.2 (2026-09-05 update): the "edit gates" guard is computed here at the
   // screen level, mirroring RoutesScreen.tsx:210's own `routeDeletable ?
@@ -318,8 +318,8 @@ function RouteSection({
 
   return (
     <View style={{ marginTop: 16 }}>
-      <Text style={[st.h2, { color: t.textDim, marginTop: 0 }]}>ROUTE · {r.variantLabel}</Text>
-      <RouteMapView variant="browse" routeId={r.refLineId} lat={null} lon={null} zoom={1} height={260} showRider={false} />
+      <Text style={[st.h2, { color: t.textDim, marginTop: 0 }]}>WAY · {r.variantLabel}</Text>
+      <WayMapView variant="browse" wayId={r.refLineId} lat={null} lon={null} zoom={1} height={260} showRider={false} />
 
       <View style={{ marginTop: 8 }}>
         {r.lengthLabel !== null ? <FactRow label="length" value={r.lengthLabel} t={t} /> : null}
@@ -346,8 +346,8 @@ function RouteSection({
         </Pressable>
       ) : null}
       {r.deletable ? (
-        <Pressable style={[styles.deleteBtn, { borderColor: t.cardBorder, marginTop: 8 }]} onPress={() => onDeleteRoute(r.id)}>
-          <Text style={[styles.deleteText, { color: t.textDim }]}>delete route</Text>
+        <Pressable style={[styles.deleteBtn, { borderColor: t.cardBorder, marginTop: 8 }]} onPress={() => onDeleteWay(r.id)}>
+          <Text style={[styles.deleteText, { color: t.textDim }]}>delete way</Text>
         </Pressable>
       ) : null}
     </View>

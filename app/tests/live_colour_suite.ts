@@ -45,7 +45,7 @@ function stateWith(over: Partial<LiveEngineState>): LiveEngineState {
   return {
     phase: 'finished', track: 'Morning', sectors: [], currentSector: null, lastDone: 4,
     lap: { rawS: 900, stoppedS: 20, movingS: 880, estimated: false },
-    gateFires: 5, fixesFed: 900, onRoute: true, anyAnchored: false,
+    gateFires: 5, fixesFed: 900, onWay: true, anyAnchored: false,
     ...over,
   } as LiveEngineState;
 }
@@ -121,8 +121,8 @@ test('cycle008: fmt never prints an impossible time (regression)', () => {
     assert(/^\d+:[0-5]\d(\.\d)?$/.test(out), `fmt(${v}, ${d}) = "${out}" is not a real time`);
   }
   // every value in the real seed, at both precisions
-  for (const routeId of ['Morning', 'EveningA', 'EveningB']) {
-    for (const v of lapValues(routeId)) {
+  for (const wayId of ['Morning', 'EveningA', 'EveningB']) {
+    for (const v of lapValues(wayId)) {
       for (const d of [0, 1] as const) {
         assert(/^\d+:[0-5]\d(\.\d)?$/.test(fmt(v, d)), `seed value ${v} formats badly`);
       }
@@ -325,10 +325,10 @@ test('WP-B: free rides never pollute route history (D-025 mode-consistency)', ()
   const freeState = stateWith({
     mode: 'free', track: null, lap: null, sectors: [], currentSector: null, lastDone: null,
     freeCrossings: [
-      { routeId: 'Morning', gateIndex: 0, t: 1000, estimated: false },
-      { routeId: 'Morning', gateIndex: 1, t: 1100, estimated: false },
+      { wayId: 'Morning', gateIndex: 0, t: 1000, estimated: false },
+      { wayId: 'Morning', gateIndex: 1, t: 1100, estimated: false },
     ],
-    freeSectors: [{ routeId: 'Morning', index: 1, rawS: 100 }],
+    freeSectors: [{ wayId: 'Morning', index: 1, rawS: 100 }],
   } as Partial<LiveEngineState>);
   rememberFreeRide(freeState);
 
@@ -339,7 +339,7 @@ test('WP-B: free rides never pollute route history (D-025 mode-consistency)', ()
   assert(recordedResults().length === 0, 'a free ride must never enter recordedResults()');
   assert(freeRideResults().length === 1, `freeRideResults().length = ${freeRideResults().length}, want 1`);
   const saved = freeRideResults()[0];
-  assert(saved.sectors.length === 1 && saved.sectors[0].routeId === 'Morning' && saved.sectors[0].rawS === 100,
+  assert(saved.sectors.length === 1 && saved.sectors[0].wayId === 'Morning' && saved.sectors[0].rawS === 100,
     'the free ride\'s own sector must be stored verbatim');
 
   resetRecordedForTests();
@@ -355,10 +355,10 @@ test('WP-B: free-ride cache round-trip — persist/rehydrate, corrupt-entry tole
   const freeState = stateWith({
     mode: 'free', track: null, lap: null,
     freeCrossings: [
-      { routeId: 'Morning', gateIndex: 0, t: 10, estimated: false },
-      { routeId: 'Morning', gateIndex: 1, t: 130, estimated: false },
+      { wayId: 'Morning', gateIndex: 0, t: 10, estimated: false },
+      { wayId: 'Morning', gateIndex: 1, t: 130, estimated: false },
     ],
-    freeSectors: [{ routeId: 'Morning', index: 1, rawS: 120 }],
+    freeSectors: [{ wayId: 'Morning', index: 1, rawS: 120 }],
   } as Partial<LiveEngineState>);
   rememberFreeRide(freeState);
   const saved = lastFreeRide();

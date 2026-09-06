@@ -19,12 +19,12 @@
  */
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { cleanSpecs, sameSpecs, type WayNames } from '../store/wayCreation';
-import { specSuggestions } from '../store/routeSpecs';
+import { cleanSpecs, sameSpecs, type RouteNames } from '../store/routeCreation';
+import { specSuggestions } from '../store/waySpecs';
 import { radius } from './theme';
 import { useTheme } from './themeContext';
 
-export interface WayNamingCardProps {
+export interface RouteNamingCardProps {
   /** label of the matched existing start landmark, or null => name input */
   startExistingLabel: string | null;
   /** label of the matched existing end landmark, or null => name input */
@@ -36,18 +36,18 @@ export interface WayNamingCardProps {
    * card's sub-copy then says so explicitly, since Result will show it as
    * scored even though these endpoints have no way of their own yet. Absent
    * or null renders the original ("does not match any way") copy. */
-  matchedRouteLabel?: string | null;
+  matchedWayLabel?: string | null;
   /** WP-G: set when draft.existingWayId is set â the card is then "new route
    * on this way" (title/copy/button change, â¥1 spec required, endpoints shown
    * as fixed text). `knownSpecLists` = specs of the routes already on it. */
-  existingWay?: { label: string; knownSpecLists: string[][] } | null;
+  existingRoute?: { label: string; knownSpecLists: string[][] } | null;
   /** WP-G: catalog-wide spec vocabulary for the chips (specVocabulary()). */
   vocabulary?: string[];
-  onSave: (names: WayNames) => void;
+  onSave: (names: RouteNames) => void;
   onSkip: () => void;
 }
 
-export function WayNamingCard(props: WayNamingCardProps) {
+export function RouteNamingCard(props: RouteNamingCardProps) {
   const { t } = useTheme();
   const [startName, setStartName] = useState('');
   const [endName, setEndName] = useState('');
@@ -58,16 +58,16 @@ export function WayNamingCard(props: WayNamingCardProps) {
   const needEnd = props.endExistingLabel === null && !props.loop;
   const nameComplete = (!needStart || startName.trim().length > 0) && (!needEnd || endName.trim().length > 0);
 
-  const existingWay = props.existingWay ?? null;
+  const existingRoute = props.existingRoute ?? null;
   const effectiveSpecs = cleanSpecs([...specs, specDraft]);
-  const dupList = existingWay
-    ? existingWay.knownSpecLists.find((l) => sameSpecs(l, effectiveSpecs)) ?? null
+  const dupList = existingRoute
+    ? existingRoute.knownSpecLists.find((l) => sameSpecs(l, effectiveSpecs)) ?? null
     : null;
   // Only a TYPED list can be a duplicate: on open effectiveSpecs is [] and would
   // match the way's plain route, showing the "already exists" hint before
   // anything is typed (Inspect, WP-G). The ≥1-spec rule already disables the button.
   const duplicate = dupList !== null && effectiveSpecs.length > 0;
-  const complete = nameComplete && (!existingWay || effectiveSpecs.length > 0) && !duplicate;
+  const complete = nameComplete && (!existingRoute || effectiveSpecs.length > 0) && !duplicate;
 
   const commitSpec = () => {
     const s = specDraft.trim();
@@ -79,26 +79,26 @@ export function WayNamingCard(props: WayNamingCardProps) {
     setSpecs((prev) => prev.slice(0, index));
   };
 
-  const suggestions = specSuggestions(existingWay?.knownSpecLists ?? [], props.vocabulary ?? [], cleanSpecs(specs));
+  const suggestions = specSuggestions(existingRoute?.knownSpecLists ?? [], props.vocabulary ?? [], cleanSpecs(specs));
 
   const inputStyle = [st.input, { color: t.text, borderColor: t.cardBorder, backgroundColor: t.bg }];
   return (
     <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
       <Text style={[st.title, { color: t.text }]}>
-        {existingWay ? `New route on ${existingWay.label}` : 'New way â name where you rode'}
+        {existingRoute ? `New way on ${existingRoute.label}` : 'New route â name where you rode'}
       </Text>
       <Text style={[st.sub, { color: t.textDim }]}>
-        {existingWay
-          ? props.matchedRouteLabel
-            ? `Scored as ${props.matchedRouteLabel}. Was this a different route? Add what made it different to save it as a new route on this way â this ride becomes its reference.`
-            : `${existingWay.label} is a way you have, but this ride did not follow any of its routes. Name what made it different to save it as a new route â this ride becomes its reference.`
+        {existingRoute
+          ? props.matchedWayLabel
+            ? `Scored as ${props.matchedWayLabel}. Was this a different way? Add what made it different to save it as a new way on this route â this ride becomes its reference.`
+            : `${existingRoute.label} is a route you have, but this ride did not follow any of its ways. Name what made it different to save it as a new way â this ride becomes its reference.`
           : props.loop
             ? props.startExistingLabel !== null
               ? `This ride looped from and back to ${props.startExistingLabel}.`
               : 'This ride looped from and back to one new place.'
-            : props.matchedRouteLabel
-              ? `Scored as ${props.matchedRouteLabel}, but no way of yours runs between these two places. Name them to make this a route of its own â this ride becomes its reference.`
-              : 'This ride does not match any way you have. Name its start and end to make it a real route â this ride becomes its reference.'}
+            : props.matchedWayLabel
+              ? `Scored as ${props.matchedWayLabel}, but no route of yours runs between these two places. Name them to make this a way of its own â this ride becomes its reference.`
+              : 'This ride does not match any route you have. Name its start and end to make it a real way â this ride becomes its reference.'}
       </Text>
 
       <Text style={[st.label, { color: t.textDim }]}>STARTED AT</Text>
@@ -136,7 +136,7 @@ export function WayNamingCard(props: WayNamingCardProps) {
       )}
 
       <Text style={[st.label, { color: t.textDim }]}>
-        {existingWay ? 'SPECIFICATIONS (required) â e.g. Dry, Left' : 'SPECIFICATIONS (optional) â e.g. Dry, Left'}
+        {existingRoute ? 'SPECIFICATIONS (required) â e.g. Dry, Left' : 'SPECIFICATIONS (optional) â e.g. Dry, Left'}
       </Text>
       {specs.length > 0 && (
         <View style={st.pillRow}>
@@ -187,7 +187,7 @@ export function WayNamingCard(props: WayNamingCardProps) {
       )}
       {duplicate && dupList && (
         <Text style={[st.hint, { color: t.textDim }]}>
-          already exists as {existingWay!.label}
+          already exists as {existingRoute!.label}
           {dupList.length ? ` Â· ${dupList.join(' Â· ')}` : ''} â pick it on RECORD next time, or add another
           specification
         </Text>
@@ -198,13 +198,13 @@ export function WayNamingCard(props: WayNamingCardProps) {
         disabled={!complete || props.busy}
         onPress={() => props.onSave({ start: startName, end: endName, specs: effectiveSpecs })}
       >
-        <Text style={[st.saveText, { color: t.onAccent }]}>{existingWay ? 'ADD ROUTE' : 'CREATE WAY'}</Text>
+        <Text style={[st.saveText, { color: t.onAccent }]}>{existingRoute ? 'ADD WAY' : 'CREATE ROUTE'}</Text>
       </Pressable>
       <Pressable style={st.skipBtn} disabled={props.busy} onPress={props.onSkip}>
         <Text style={[st.skipText, { color: t.textDim }]}>
-          {existingWay
-            ? props.matchedRouteLabel
-              ? `no â it was ${props.matchedRouteLabel}`
+          {existingRoute
+            ? props.matchedWayLabel
+              ? `no â it was ${props.matchedWayLabel}`
               : 'skip â keep it as a plain ride'
             : 'skip â keep it as a plain ride'}
         </Text>

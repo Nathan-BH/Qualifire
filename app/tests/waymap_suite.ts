@@ -11,20 +11,20 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { assert, loadJson, test, TESTS_DIR } from './lib.ts';
 import {
-  cropFor, gateTickPx, metresPerPixel, offRouteM, projectToPixel,
-  type RouteAsset,
-} from '../src/ui/routeMapMath.ts';
+  cropFor, gateTickPx, metresPerPixel, offWayM, projectToPixel,
+  type WayAsset,
+} from '../src/ui/wayMapMath.ts';
 
-interface Manifest { schemaVersion: number; projection: string; routes: Record<string, RouteAsset> }
+interface Manifest { schemaVersion: number; projection: string; ways: Record<string, WayAsset> }
 
 const manifest = loadJson<Manifest>(
-  path.join(TESTS_DIR, '..', 'assets', 'routes', 'routes.json'));
+  path.join(TESTS_DIR, '..', 'assets', 'ways', 'ways.json'));
 
 test('routemap: every ratified route has an asset with its five gates', () => {
-  const catalog = loadJson<{ routes: { refLineId: string }[] }>(
+  const catalog = loadJson<{ ways: { refLineId: string }[] }>(
     path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
-  const catalogRefIds = new Set(catalog.routes.map((r) => r.refLineId));
-  const assetIds = new Set(Object.keys(manifest.routes));
+  const catalogRefIds = new Set(catalog.ways.map((r) => r.refLineId));
+  const assetIds = new Set(Object.keys(manifest.ways));
   for (const refId of catalogRefIds) {
     assert(assetIds.has(refId), `catalog route refLineId ${refId} has no asset in routes.json`);
   }
@@ -33,7 +33,7 @@ test('routemap: every ratified route has an asset with its five gates', () => {
   }
   assert(manifest.projection === 'web-mercator',
     'the projection must stay Web Mercator so a real basemap could line up later');
-  for (const [id, a] of Object.entries(manifest.routes)) {
+  for (const [id, a] of Object.entries(manifest.ways)) {
     assert(a.gates.length === 5, `${id}: expected START+G1..G3+FINISH, got ${a.gates.length}`);
     assert(a.w > 0 && a.h > 0 && a.scale > 0, `${id}: broken asset dimensions`);
   }
@@ -48,7 +48,7 @@ test('routemap: every gate sits on its own drawn path (cycle 025 EveningA map-li
   // correct (Nathan, 2026-08-27). Distance is to the nearest path VERTEX
   // (~37 m spacing); worst healthy gate today reads 19.7 m, the bug 182.8 m —
   // 60 m splits them with 3x margin each way.
-  for (const [id, a] of Object.entries(manifest.routes)) {
+  for (const [id, a] of Object.entries(manifest.ways)) {
     assert(!!a.path && a.path.length >= 2, `${id}: asset has no drawable path`);
     for (const g of a.gates) {
       let best = Infinity;
@@ -64,7 +64,7 @@ test('routemap: every gate sits on its own drawn path (cycle 025 EveningA map-li
 });
 
 test('routemap: TS projection reproduces the Python renderer to sub-pixel', () => {
-  for (const [id, a] of Object.entries(manifest.routes)) {
+  for (const [id, a] of Object.entries(manifest.ways)) {
     for (const g of a.gates) {
       const p = projectToPixel(a, g.lat, g.lon);
       const err = Math.hypot(p.px - g.px, p.py - g.py);
@@ -76,7 +76,7 @@ test('routemap: TS projection reproduces the Python renderer to sub-pixel', () =
 });
 
 test('routemap: gates sit in ride order down the image, and the scale is sane', () => {
-  const a = manifest.routes.Morning;
+  const a = manifest.ways.Morning;
   // consecutive gates are real distances apart — 1.1–1.6 km on this track
   for (let i = 1; i < a.gates.length; i++) {
     const d = Math.hypot(a.gates[i].px - a.gates[i - 1].px, a.gates[i].py - a.gates[i - 1].py)
@@ -88,7 +88,7 @@ test('routemap: gates sit in ride order down the image, and the scale is sane', 
 });
 
 test('routemap: a rider ON the drawn path reads near zero; a detour reads far', () => {
-  const a = manifest.routes.Morning;
+  const a = manifest.ways.Morning;
   // WP-E (offRouteM now follows the real road/path, not the straight
   // gate-to-gate chord): a chord midpoint may legitimately read >60m once
   // the road bends, so the on-route probe is a mid-sector PATH vertex
@@ -96,21 +96,21 @@ test('routemap: a rider ON the drawn path reads near zero; a detour reads far', 
   // does not weaken the detour assertion below, which is unchanged.
   assert(!!a.path && a.path.length > 4, 'fixture expected a path for this check');
   const pathMid = a.path![Math.floor(a.path!.length / 2)];
-  assert(offRouteM(a, pathMid[0], pathMid[1]) < 30,
+  assert(offWayM(a, pathMid[0], pathMid[1]) < 30,
     'a point on the drawn path must read as on-route');
 
   const g1 = a.gates[1];
   const g2 = a.gates[2];
   const mid = { lat: (g1.lat + g2.lat) / 2, lon: (g1.lon + g2.lon) / 2 };
   // ~600 m sideways (0.0085° of longitude at this latitude)
-  const off = offRouteM(a, mid.lat, mid.lon + 0.0085);
+  const off = offWayM(a, mid.lat, mid.lon + 0.0085);
   assert(off > 300, `a detour must read far off-route, got ${off.toFixed(0)} m`);
 });
 
 // ================================================================ WP-E (race-map render fixes)
 
 test('routemap: gateTickPx — midpoint is the gate px/py, length ~30m in px, perpendicular to the path direction', () => {
-  for (const [id, a] of Object.entries(manifest.routes)) {
+  for (const [id, a] of Object.entries(manifest.ways)) {
     for (let i = 0; i < a.gates.length; i++) {
       const g = a.gates[i];
       const tick = gateTickPx(a, i);
@@ -153,7 +153,7 @@ test('routemap: gateTickPx — midpoint is the gate px/py, length ~30m in px, pe
 });
 
 test('routemap: offRouteM measures against the drawn path, not the gate-to-gate chord', () => {
-  const a = manifest.routes.Morning;
+  const a = manifest.ways.Morning;
   assert(!!a.path && a.path.length > 2, 'fixture expected a path for this check');
 
   // the OLD gate-chord-only distance, to find a path vertex the chord-based
@@ -182,7 +182,7 @@ test('routemap: offRouteM measures against the drawn path, not the gate-to-gate 
     if (chordDist(lat, lon) > 60) { probe = [lat, lon]; break; }
   }
   if (probe) {
-    const reads = offRouteM(a, probe[0], probe[1]);
+    const reads = offWayM(a, probe[0], probe[1]);
     assert(reads < 30,
       `a path vertex >60m from the gate chord must read <30m via the drawn-path offRouteM, got ${reads.toFixed(0)}m`);
   } else {
@@ -190,7 +190,7 @@ test('routemap: offRouteM measures against the drawn path, not the gate-to-gate 
     // asserting the path-following behaviour on an interior vertex anyway
     // (still proves offRouteM is measuring the drawn path).
     const [lat, lon] = a.path![Math.floor(a.path!.length / 2)];
-    const reads = offRouteM(a, lat, lon);
+    const reads = offWayM(a, lat, lon);
     assert(reads < 30, `a path vertex must read <30m via the drawn-path offRouteM, got ${reads.toFixed(0)}m`);
   }
 
@@ -198,12 +198,12 @@ test('routemap: offRouteM measures against the drawn path, not the gate-to-gate 
   const g1 = a.gates[1];
   const g2 = a.gates[2];
   const mid = { lat: (g1.lat + g2.lat) / 2, lon: (g1.lon + g2.lon) / 2 };
-  const off = offRouteM(a, mid.lat, mid.lon + 0.0085);
+  const off = offWayM(a, mid.lat, mid.lon + 0.0085);
   assert(off > 300, `a detour must read far off-route, got ${off.toFixed(0)} m`);
 });
 
 test('routemap: the crop centres the rider and never pulls off the image edge', () => {
-  const a = manifest.routes.Morning;
+  const a = manifest.ways.Morning;
   const VW = 360, VH = 190;
   const mid = projectToPixel(a, a.gates[2].lat, a.gates[2].lon);
   const c = cropFor(a, mid, VW, VH, 4);
@@ -243,7 +243,7 @@ test('routemap: the crop centres the rider and never pulls off the image edge', 
 
 test('routemap: MapLibre <M.Map> remounts on a style-URL change (cycle 023 fix 1 day-mode race)', () => {
   const src = fs.readFileSync(
-    path.join(TESTS_DIR, '..', 'src', 'ui', 'routeMapView.tsx'), 'utf8');
+    path.join(TESTS_DIR, '..', 'src', 'ui', 'wayMapView.tsx'), 'utf8');
   const mapStart = src.indexOf('<M.Map');
   assert(mapStart >= 0, '<M.Map> element not found — has the MapLibre rung moved/been renamed?');
   const nextChild = src.indexOf('<M.Camera', mapStart);
@@ -265,7 +265,7 @@ test('routemap: every MapLibre GeoJSONSource carries key === id (frozen-id crash
   // map tree crashed. key === id on EVERY source makes React unmount/remount
   // across any such swap instead of rebinding the id.
   const src = fs.readFileSync(
-    path.join(TESTS_DIR, '..', 'src', 'ui', 'routeMapView.tsx'), 'utf8');
+    path.join(TESTS_DIR, '..', 'src', 'ui', 'wayMapView.tsx'), 'utf8');
   const tags = src.match(/<M\.GeoJSONSource[^>]*>/g) ?? [];
   assert(tags.length >= 4,
     `expected at least 4 <M.GeoJSONSource> tags (route, gates, gate-ticks, rider), got ${tags.length}`);
@@ -282,16 +282,16 @@ test('routemap: routeId={null} draws NO route — the catalog-wide defaultRouteI
   // Same static-guard doctrine as the two tests above (the component cannot
   // be rendered headlessly): this locks the wiring, not the pixels.
   const src = fs.readFileSync(
-    path.join(TESTS_DIR, '..', 'src', 'ui', 'routeMapView.tsx'), 'utf8');
+    path.join(TESTS_DIR, '..', 'src', 'ui', 'wayMapView.tsx'), 'utf8');
   assert(!src.includes('defaultRouteId'),
     'defaultRouteId() must be gone from routeMapView.tsx — routeId={null} must mean "no route line", full stop');
   assert(!src.includes('defaultMapRouteId'),
     'defaultMapRouteId (the store/defaultRoute.ts helper it wrapped) must no longer be imported/consumed here');
-  const idAssignments = src.match(/const id = props\.routeId;/g) ?? [];
+  const idAssignments = src.match(/const id = props\.wayId;/g) ?? [];
   assert(idAssignments.length === 2,
-    `expected exactly 2 occurrences of "const id = props.routeId;" (one per rung: MapLibre + PNG), got ${idAssignments.length}`);
-  assert(!src.includes('props.routeId ??'),
-    'no rung may fall back off props.routeId with ?? any more');
+    `expected exactly 2 occurrences of "const id = props.wayId;" (one per rung: MapLibre + PNG), got ${idAssignments.length}`);
+  assert(!src.includes('props.wayId ??'),
+    'no rung may fall back off props.wayId with ?? any more');
 });
 
 // ------------------------------------------------------------------- WP-M
@@ -300,7 +300,7 @@ test('routemap: <M.Map> carries touchRotate={rotateEnabled} (not a literal false
   // Same static-guard doctrine as the cycle 023 test above (the component
   // cannot be rendered headlessly).
   const src = fs.readFileSync(
-    path.join(TESTS_DIR, '..', 'src', 'ui', 'routeMapView.tsx'), 'utf8');
+    path.join(TESTS_DIR, '..', 'src', 'ui', 'wayMapView.tsx'), 'utf8');
   const mapStart = src.indexOf('<M.Map');
   assert(mapStart >= 0, '<M.Map> element not found — has the MapLibre rung moved/been renamed?');
   const nextChild = src.indexOf('<M.Camera', mapStart);
@@ -317,7 +317,7 @@ test('routemap: <M.Map> carries touchRotate={rotateEnabled} (not a literal false
 test('routemap: the MapLibre zoom bar has exactly one compass reset button; the PNG zoom bar has none', () => {
   // Same static-guard doctrine as the tests above.
   const src = fs.readFileSync(
-    path.join(TESTS_DIR, '..', 'src', 'ui', 'routeMapView.tsx'), 'utf8');
+    path.join(TESTS_DIR, '..', 'src', 'ui', 'wayMapView.tsx'), 'utf8');
   const firstZoomBar = src.indexOf('st.zoomBar');
   assert(firstZoomBar >= 0, 'st.zoomBar not found — has the MapLibre zoom bar moved/been renamed?');
   const creditTag = src.indexOf('<Credit rung="maplibre"', firstZoomBar);

@@ -25,17 +25,17 @@ import { assert, test } from './lib.ts';
 import type { RefLine } from '../core/src/index.ts';
 import {
   RUNTIME_ASSET_H, RUNTIME_ASSET_PAD_PX, RUNTIME_ASSET_W, RUNTIME_PATH_TARGET_VERTICES,
-  allRouteAssets, buildRuntimeRouteAsset, pointAtChainage, resetRouteAssetCacheForTests,
-  resolveRouteAsset, type RouteAssetDeps,
-} from '../src/ui/routeAssetRuntime.ts';
+  allWayAssets, buildRuntimeWayAsset, pointAtChainage, resetWayAssetCacheForTests,
+  resolveWayAsset, type WayAssetDeps,
+} from '../src/ui/wayAssetRuntime.ts';
 import {
-  allGatesBounds, allGatesFeatureCollection, gateTicksFeatureCollection, routeBounds, routeLineFeature,
+  allGatesBounds, allGatesFeatureCollection, gateTicksFeatureCollection, wayBounds, wayLineFeature,
   sectorSpansFeatureCollection,
-} from '../src/ui/routeMapGeo.ts';
-import { gateTickPx, type RouteAsset } from '../src/ui/routeMapMath.ts';
+} from '../src/ui/wayMapGeo.ts';
+import { gateTickPx, type WayAsset } from '../src/ui/wayMapMath.ts';
 import { CATALOG_SCHEMA_VERSION } from '../src/store/types.ts';
-import { defaultMapRouteId } from '../src/store/defaultRoute.ts';
-import type { Catalog, GateSet, Route } from '../src/store/types.ts';
+import { defaultMapWayId } from '../src/store/defaultWay.ts';
+import type { Catalog, GateSet, Way } from '../src/store/types.ts';
 
 // --------------------------------------------------------------- fixtures
 
@@ -55,16 +55,16 @@ function straightNorthRef(nVerts: number, stepM: number, lat0 = 50.85, lon0 = 4.
   return { rx, ry, ch, lat0, lon0, length: ch[nVerts - 1] };
 }
 
-function catalogWith(routes: Route[], gateSets: GateSet[]): Catalog {
-  return { schemaVersion: CATALOG_SCHEMA_VERSION, landmarks: [], ways: [], routes, gateSets };
+function catalogWith(ways: Way[], gateSets: GateSet[]): Catalog {
+  return { schemaVersion: CATALOG_SCHEMA_VERSION, landmarks: [], routes: [], ways, gateSets };
 }
 
-function route(id: string, refLineId: string, gateSetVersion: number, referenceRideId?: string): Route {
-  return { id, wayId: 'w:test', refLineId, gateSetVersion, seeded: false, referenceRideId };
+function way(id: string, refLineId: string, gateSetVersion: number, referenceRideId?: string): Way {
+  return { id, routeId: 'w:test', refLineId, gateSetVersion, seeded: false, referenceRideId };
 }
 
-function gateSet(routeId: string, version: number, chainageM: number[]): GateSet {
-  return { routeId, version, chainageM, createdAtMs: 0 };
+function gateSet(wayId: string, version: number, chainageM: number[]): GateSet {
+  return { wayId, version, chainageM, createdAtMs: 0 };
 }
 
 // ---------------------------------------------------------- 1. buildRuntimeRouteAsset
@@ -72,7 +72,7 @@ function gateSet(routeId: string, version: number, chainageM: number[]): GateSet
 test('routeAssetRuntime: buildRuntimeRouteAsset — path/gates/gateIdx from a RefLine + chainages, exact gate positions, path length in range', () => {
   const ref = straightNorthRef(1000, 5); // 4995 m
   const gates = [13, 251, 4991];
-  const asset = buildRuntimeRouteAsset(ref, gates, 'ride:test1');
+  const asset = buildRuntimeWayAsset(ref, gates, 'ride:test1');
 
   assert(asset.gates.length === gates.length, `expected ${gates.length} gates, got ${asset.gates.length}`);
   assert(asset.gateIdx !== undefined && asset.gateIdx.length === gates.length, 'gateIdx must have one entry per gate');
@@ -95,7 +95,7 @@ test('routeAssetRuntime: buildRuntimeRouteAsset — path/gates/gateIdx from a Re
 
 test('routeAssetRuntime: the synthesised transform is self-consistent and fits the 900x1400/60px-pad frame', () => {
   const ref = straightNorthRef(200, 5); // 995 m, degenerate on x (dx ~ 0)
-  const asset = buildRuntimeRouteAsset(ref, [10, 500, 990]);
+  const asset = buildRuntimeWayAsset(ref, [10, 500, 990]);
 
   assert(asset.w === RUNTIME_ASSET_W && asset.h === RUNTIME_ASSET_H, 'frame size must match the renderer\'s 900x1400');
 
@@ -124,9 +124,9 @@ test('routeAssetRuntime: the synthesised transform is self-consistent and fits t
 
 test('routeAssetRuntime: the geo builders (routeLineFeature, gateTicksFeatureCollection, sectorSpansFeatureCollection, routeBounds, gateTickPx) accept a runtime asset unchanged', () => {
   const ref = straightNorthRef(300, 5); // 1495 m
-  const asset = buildRuntimeRouteAsset(ref, [10, 500, 1000, 1490]);
+  const asset = buildRuntimeWayAsset(ref, [10, 500, 1000, 1490]);
 
-  const line = routeLineFeature(asset);
+  const line = wayLineFeature(asset);
   assert(line !== null && line.geometry.coordinates.length === asset.path!.length, 'routeLineFeature must accept a runtime asset');
 
   const ticks = gateTicksFeatureCollection(asset);
@@ -136,7 +136,7 @@ test('routeAssetRuntime: the geo builders (routeLineFeature, gateTicksFeatureCol
   assert(spans !== null && spans.features.length === asset.gates.length - 1,
     'sectorSpansFeatureCollection must split a runtime asset into gates.length-1 sector spans');
 
-  const bounds = routeBounds(asset);
+  const bounds = wayBounds(asset);
   assert(bounds !== null, 'routeBounds must accept a runtime asset');
 
   for (let i = 0; i < asset.gates.length; i++) {
@@ -150,7 +150,7 @@ test('routeAssetRuntime: the geo builders (routeLineFeature, gateTicksFeatureCol
 
 test('routeAssetRuntime: a 2-gate set builds START/FINISH only, exact positions', () => {
   const ref = straightNorthRef(100, 5); // 495 m
-  const asset = buildRuntimeRouteAsset(ref, [50, 400]);
+  const asset = buildRuntimeWayAsset(ref, [50, 400]);
   assert(asset.gates.length === 2, `expected 2 gates, got ${asset.gates.length}`);
   assert(asset.gates[0].name === 'START' && asset.gates[1].name === 'FINISH',
     `2-gate set must name START/FINISH, got ${asset.gates.map((g) => g.name)}`);
@@ -158,7 +158,7 @@ test('routeAssetRuntime: a 2-gate set builds START/FINISH only, exact positions'
 
 test('routeAssetRuntime: gate chainage beyond [0, ref.length] is clamped, not dropped or thrown', () => {
   const ref = straightNorthRef(100, 5); // 495 m
-  const asset = buildRuntimeRouteAsset(ref, [-50, 10000]);
+  const asset = buildRuntimeWayAsset(ref, [-50, 10000]);
   assert(asset.gates.length === 2, 'both out-of-range gates must still produce a gate');
   const [lat0, lon0] = pointAtChainage(ref, 0);
   const [lat1, lon1] = pointAtChainage(ref, ref.length);
@@ -171,97 +171,97 @@ test('routeAssetRuntime: gate chainage beyond [0, ref.length] is clamped, not dr
 // ---------------------------------------------------------- 5. resolveRouteAsset: manifest wins by identity
 
 test('routeAssetRuntime: resolveRouteAsset — a bundled manifest entry wins by identity, even with no ref for it', () => {
-  resetRouteAssetCacheForTests();
-  const bundled: RouteAsset = {
+  resetWayAssetCacheForTests();
+  const bundled: WayAsset = {
     image: '', path: [[50.85, 4.68], [50.86, 4.69]], gateIdx: [0, 1],
     w: 900, h: 1400, x0: 0, y1: 0, scale: 1, offx: 0, offy: 0,
     gates: [{ name: 'START', lat: 50.85, lon: 4.68, px: 0, py: 0 }],
     sourceRide: '',
   };
-  const deps: RouteAssetDeps = {
+  const deps: WayAssetDeps = {
     manifest: { Seed1: bundled },
     catalog: catalogWith([], []),
     refFor: () => { throw new Error('must never be called for a bundled id'); },
   };
-  const resolved = resolveRouteAsset('Seed1', deps);
+  const resolved = resolveWayAsset('Seed1', deps);
   assert(resolved === bundled, 'a bundled manifest entry must be returned BY IDENTITY, never rebuilt');
 });
 
 // ---------------------------------------------------------- 6. user route falls back + cache identity
 
 test('routeAssetRuntime: resolveRouteAsset — a user route with no manifest entry falls back to a runtime build, cached by identity', () => {
-  resetRouteAssetCacheForTests();
+  resetWayAssetCacheForTests();
   const ref = straightNorthRef(100, 5); // 495 m
   const cat = catalogWith(
-    [route('U-cache', 'U-cache', 1, 'ride:r1')],
+    [way('U-cache', 'U-cache', 1, 'ride:r1')],
     [gateSet('U-cache', 1, [50, 200, 400])],
   );
-  const deps: RouteAssetDeps = { manifest: {}, catalog: cat, refFor: (id) => (id === 'U-cache' ? ref : null) };
+  const deps: WayAssetDeps = { manifest: {}, catalog: cat, refFor: (id) => (id === 'U-cache' ? ref : null) };
 
-  const a1 = resolveRouteAsset('U-cache', deps);
+  const a1 = resolveWayAsset('U-cache', deps);
   assert(a1 !== null, 'a user route with a real ref + gate set must resolve');
-  const a2 = resolveRouteAsset('U-cache', deps);
+  const a2 = resolveWayAsset('U-cache', deps);
   assert(a1 === a2, 'a second resolve with the SAME ref + gate set must return the cached object, by identity (MapLibre source keying)');
 });
 
 test('routeAssetRuntime: resolveRouteAsset cache is invalidated by a gate move (new version, same ref)', () => {
-  resetRouteAssetCacheForTests();
+  resetWayAssetCacheForTests();
   const ref = straightNorthRef(100, 5);
   const cat1 = catalogWith(
-    [route('U-move', 'U-move', 1)],
+    [way('U-move', 'U-move', 1)],
     [gateSet('U-move', 1, [50, 200, 400])],
   );
-  const deps1: RouteAssetDeps = { manifest: {}, catalog: cat1, refFor: () => ref };
-  const before = resolveRouteAsset('U-move', deps1);
+  const deps1: WayAssetDeps = { manifest: {}, catalog: cat1, refFor: () => ref };
+  const before = resolveWayAsset('U-move', deps1);
   assert(before !== null, 'setup: first resolve must succeed');
 
   // A gate move mints a new gate-set version (catalog.ts's addGateSet) —
   // same route, same ref, moved chainages.
   const cat2 = catalogWith(
-    [route('U-move', 'U-move', 2)],
+    [way('U-move', 'U-move', 2)],
     [gateSet('U-move', 1, [50, 200, 400]), gateSet('U-move', 2, [60, 210, 410])],
   );
-  const deps2: RouteAssetDeps = { manifest: {}, catalog: cat2, refFor: () => ref };
-  const after = resolveRouteAsset('U-move', deps2);
+  const deps2: WayAssetDeps = { manifest: {}, catalog: cat2, refFor: () => ref };
+  const after = resolveWayAsset('U-move', deps2);
   assert(after !== null && after !== before, 'a gate move must invalidate the cache and rebuild — the OLD asset must not be reused');
 });
 
 test('routeAssetRuntime: resolveRouteAsset cache is invalidated by a new ref object (same gate set)', () => {
-  resetRouteAssetCacheForTests();
+  resetWayAssetCacheForTests();
   const ref1 = straightNorthRef(100, 5);
   const cat = catalogWith(
-    [route('U-reref', 'U-reref', 1)],
+    [way('U-reref', 'U-reref', 1)],
     [gateSet('U-reref', 1, [50, 200, 400])],
   );
-  const before = resolveRouteAsset('U-reref', { manifest: {}, catalog: cat, refFor: () => ref1 });
+  const before = resolveWayAsset('U-reref', { manifest: {}, catalog: cat, refFor: () => ref1 });
   assert(before !== null, 'setup: first resolve must succeed');
 
   // A distinct RefLine object with identical numbers (e.g. reloaded from
   // disk on a fresh boot) must NOT be treated as the same cache hit — ref
   // identity is the guard (§7 open question 3 / test-plan item 6).
   const ref2 = straightNorthRef(100, 5);
-  const after = resolveRouteAsset('U-reref', { manifest: {}, catalog: cat, refFor: () => ref2 });
+  const after = resolveWayAsset('U-reref', { manifest: {}, catalog: cat, refFor: () => ref2 });
   assert(after !== null && after !== before, 'a new ref object (even with identical values) must invalidate the cache');
 });
 
 test('routeAssetRuntime: resolveRouteAsset returns null for an unknown id, a missing ref, or too few gates', () => {
-  resetRouteAssetCacheForTests();
+  resetWayAssetCacheForTests();
   const ref = straightNorthRef(50, 5);
   const cat = catalogWith(
-    [route('U-noref', 'U-noref', 1), route('U-toofew', 'U-toofew', 1)],
+    [way('U-noref', 'U-noref', 1), way('U-toofew', 'U-toofew', 1)],
     [gateSet('U-noref', 1, [10, 20]), gateSet('U-toofew', 1, [10])],
   );
-  const deps: RouteAssetDeps = { manifest: {}, catalog: cat, refFor: (id) => (id === 'U-toofew' ? ref : null) };
-  assert(resolveRouteAsset('DoesNotExist', deps) === null, 'an id in neither the manifest nor the catalog must be null');
-  assert(resolveRouteAsset('U-noref', deps) === null, 'a route whose ref is unresolvable must be null');
-  assert(resolveRouteAsset('U-toofew', deps) === null, 'a gate set with < 2 chainages must be null (matches validateCatalog\'s own floor)');
+  const deps: WayAssetDeps = { manifest: {}, catalog: cat, refFor: (id) => (id === 'U-toofew' ? ref : null) };
+  assert(resolveWayAsset('DoesNotExist', deps) === null, 'an id in neither the manifest nor the catalog must be null');
+  assert(resolveWayAsset('U-noref', deps) === null, 'a route whose ref is unresolvable must be null');
+  assert(resolveWayAsset('U-toofew', deps) === null, 'a gate set with < 2 chainages must be null (matches validateCatalog\'s own floor)');
 });
 
 // ---------------------------------------------------------- 7. allRouteAssets
 
 test('routeAssetRuntime: allRouteAssets — seed from the manifest by identity, user routes built, undrawable omitted, feeds the gates-only builders', () => {
-  resetRouteAssetCacheForTests();
-  const bundled: RouteAsset = {
+  resetWayAssetCacheForTests();
+  const bundled: WayAsset = {
     image: '', path: [[50.85, 4.68], [50.86, 4.69]], gateIdx: [0, 1],
     w: 900, h: 1400, x0: 0, y1: 0, scale: 1, offx: 0, offy: 0,
     gates: [{ name: 'START', lat: 50.85, lon: 4.68, px: 0, py: 0 }, { name: 'FINISH', lat: 50.86, lon: 4.69, px: 0, py: 0 }],
@@ -270,19 +270,19 @@ test('routeAssetRuntime: allRouteAssets — seed from the manifest by identity, 
   const ref = straightNorthRef(80, 5);
   const cat = catalogWith(
     [
-      route('Seed1', 'Seed1', 1),
-      route('U-drawable', 'U-drawable', 1),
-      route('U-undrawable', 'U-undrawable', 1),
+      way('Seed1', 'Seed1', 1),
+      way('U-drawable', 'U-drawable', 1),
+      way('U-undrawable', 'U-undrawable', 1),
     ],
     [gateSet('U-drawable', 1, [10, 100, 200]), gateSet('U-undrawable', 1, [10, 20])],
   );
-  const deps: RouteAssetDeps = {
+  const deps: WayAssetDeps = {
     manifest: { Seed1: bundled },
     catalog: cat,
     refFor: (id) => (id === 'U-drawable' ? ref : null),
   };
 
-  const all = allRouteAssets(deps);
+  const all = allWayAssets(deps);
   assert(all.Seed1 === bundled, 'the manifest entry must appear in allRouteAssets BY IDENTITY');
   assert(all['U-drawable'] !== undefined, 'a user route with a real ref + gate set must be built and included');
   assert(all['U-undrawable'] === undefined, 'an undrawable user route (no ref) must be OMITTED, not present as null/undefined-valued');
@@ -300,30 +300,30 @@ test('routeAssetRuntime: allRouteAssets — seed from the manifest by identity, 
 // ---------------------------------------------------------- 8. virgin-install end-to-end
 
 test('routeAssetRuntime: virgin-install end-to-end — a saved ride becomes the setup map\'s default route (the blank-map regression test), and survives a simulated reboot', () => {
-  resetRouteAssetCacheForTests();
+  resetWayAssetCacheForTests();
   const ref = straightNorthRef(150, 5); // 745 m
   // A virgin catalog: no seed routes at all (B-39 empty-seed install), one
   // user route born from RECORD's save/naming flow.
   const virginCat = catalogWith(
-    [route('route:ride-virgin1', 'route:ride-virgin1', 1, 'ride-virgin1')],
+    [way('route:ride-virgin1', 'route:ride-virgin1', 1, 'ride-virgin1')],
     [gateSet('route:ride-virgin1', 1, [8, 372, 737])],
   );
-  const deps: RouteAssetDeps = { manifest: {}, catalog: virginCat, refFor: (id) => (id === 'route:ride-virgin1' ? ref : null) };
+  const deps: WayAssetDeps = { manifest: {}, catalog: virginCat, refFor: (id) => (id === 'route:ride-virgin1' ? ref : null) };
 
   // The EXACT predicate routeMapView.tsx's defaultRouteId() now uses.
-  const drawable = (refLineId: string) => resolveRouteAsset(refLineId, deps) !== null;
-  const defaultId = defaultMapRouteId(virginCat, drawable);
+  const drawable = (refLineId: string) => resolveWayAsset(refLineId, deps) !== null;
+  const defaultId = defaultMapWayId(virginCat, drawable);
   assert(defaultId === 'route:ride-virgin1',
     `expected the newly-saved user route to be the setup map's default route, got ${defaultId} (blank-map regression)`);
 
   // Simulated reboot: a brand-new RefLine object (as if reloaded from
   // refs.user.json on a fresh boot), fresh cache — must still resolve, not
   // rely on any stale in-memory identity from before "reboot".
-  resetRouteAssetCacheForTests();
+  resetWayAssetCacheForTests();
   const rebootedRef = straightNorthRef(150, 5);
-  const rebootedDeps: RouteAssetDeps = {
+  const rebootedDeps: WayAssetDeps = {
     manifest: {}, catalog: virginCat, refFor: (id) => (id === 'route:ride-virgin1' ? rebootedRef : null),
   };
-  const defaultIdAfterReboot = defaultMapRouteId(virginCat, (refLineId) => resolveRouteAsset(refLineId, rebootedDeps) !== null);
+  const defaultIdAfterReboot = defaultMapWayId(virginCat, (refLineId) => resolveWayAsset(refLineId, rebootedDeps) !== null);
   assert(defaultIdAfterReboot === 'route:ride-virgin1', 'the user route must still resolve as the default after a simulated reboot');
 });

@@ -24,9 +24,9 @@ export function emptyResultsIndex(): ResultsIndex {
 
 /** Replaces by rideId; keeps ascending startedAtMs (ties break on rideId). */
 export function upsertResult(index: ResultsIndex, r: RideResult): ResultsIndex {
-  if (r.routeId === null) return removeResult(index, r.rideId); // matched no route
+  if (r.wayId === null) return removeResult(index, r.rideId); // matched no route
   const entries = index.entries.filter((e) => e.rideId !== r.rideId);
-  entries.push({ rideId: r.rideId, routeId: r.routeId, startedAtMs: r.startedAtMs });
+  entries.push({ rideId: r.rideId, wayId: r.wayId, startedAtMs: r.startedAtMs });
   entries.sort((a, b) => a.startedAtMs - b.startedAtMs || (a.rideId < b.rideId ? -1 : 1));
   return { schemaVersion: RESULT_SCHEMA_VERSION, entries };
 }
@@ -49,13 +49,13 @@ export function rebuildIndex(results: RideResult[]): ResultsIndex {
  * of the boundary; rides are already ordered, so this is a slice. */
 export function windowByDays(
   index: ResultsIndex,
-  routeId: string,
+  wayId: string,
   nowMs: number,
   days: number,
 ): ResultsIndexEntry[] {
   const from = nowMs - days * 86400_000;
   return index.entries.filter(
-    (e) => e.routeId === routeId && e.startedAtMs >= from && e.startedAtMs <= nowMs,
+    (e) => e.wayId === wayId && e.startedAtMs >= from && e.startedAtMs <= nowMs,
   );
 }
 
@@ -63,11 +63,11 @@ export function windowByDays(
  * returns what exists (Nathan: small comparison sets still compare). */
 export function windowLastN(
   index: ResultsIndex,
-  routeId: string,
+  wayId: string,
   nowMs: number,
   n: number,
 ): ResultsIndexEntry[] {
-  const upTo = index.entries.filter((e) => e.routeId === routeId && e.startedAtMs <= nowMs);
+  const upTo = index.entries.filter((e) => e.wayId === wayId && e.startedAtMs <= nowMs);
   return upTo.slice(Math.max(0, upTo.length - n));
 }
 

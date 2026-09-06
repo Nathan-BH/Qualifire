@@ -266,11 +266,11 @@ async function onResetPress(): Promise<void> {
   const uc = userCatalog();
   const r = rides.length;
   const p = uc.landmarks.length;
-  const w = uc.ways.length;
-  const q = uc.routes.length;
+  const w = uc.routes.length;
+  const q = uc.ways.length;
   Alert.alert(
     'Reset to virgin?',
-    `${r} ride${r === 1 ? '' : 's'}, ${p} place${p === 1 ? '' : 's'}, ${w} way${w === 1 ? '' : 's'}, ${q} route${q === 1 ? '' : 's'} and every result will be moved out of the app. Your settings and theme stay. Export anything you want to keep first (RIDES → Export GPX+, or the two share buttons above).`,
+    `${r} ride${r === 1 ? '' : 's'}, ${p} place${p === 1 ? '' : 's'}, ${w} route${w === 1 ? '' : 's'}, ${q} way${q === 1 ? '' : 's'} and every result will be moved out of the app. Your settings and theme stay. Export anything you want to keep first (RIDES → Export GPX+, or the two share buttons above).`,
     [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -350,7 +350,7 @@ export default function SettingsScreen() {
             options={[['raw', 'wall clock'], ['moving', 'moving']]}
             onPick={(v) => set('timing', v)} />
         </Row>
-        <Row label="Rankings" hint="Show where each ride placed against your others on that route." help={help} t={t}>
+        <Row label="Rankings" hint="Show where each ride placed against your others on that way." help={help} t={t}>
           <Switch on={s.tower} onToggle={() => set('tower', !s.tower)} t={t} />
         </Row>
       </View>

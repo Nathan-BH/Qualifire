@@ -46,17 +46,17 @@ import {
   Tier,
   demoClockAt,
 } from './data';
-import { PreviewRoute, ROUTES } from './routes';
+import { PreviewWay, WAYS } from './ways';
 
-const ROUTE_KEYS = ['morning', 'eveningA', 'eveningB'] as const;
-type RouteKey = (typeof ROUTE_KEYS)[number];
+const WAY_KEYS = ['morning', 'eveningA', 'eveningB'] as const;
+type WayKey = (typeof WAY_KEYS)[number];
 
 /** Morning per-sector stats from B-19; other tracks get lengths only for now. */
 const MORNING_SEC_STATS = ['median 3:06 · σ 6.4 s', 'median 3:23 · σ 3.8 s', 'median 4:01 · σ 5.3 s', 'median 3:23 · σ 7.1 s'];
 
 /** Position (x, y in 0..1) on a route polyline at a given chainage fraction. */
-function pointAtFrac(route: PreviewRoute, frac: number): [number, number] {
-  const pts = route.pts;
+function pointAtFrac(way: PreviewWay, frac: number): [number, number] {
+  const pts = way.pts;
   if (frac <= 0) return [pts[0][0], pts[0][1]];
   for (let i = 1; i < pts.length; i++) {
     if (pts[i][2] >= frac) {
@@ -250,7 +250,7 @@ export default function PreviewScreen() {
               <Text style={s.hlinkNum}>→</Text>
             </Pressable>
             <Pressable style={s.hlink} onPress={() => go('setup')}>
-              <Text style={s.hlinkText}>Route & sector setup</Text>
+              <Text style={s.hlinkText}>Way & sector setup</Text>
               <Text style={s.hlinkNum}>→</Text>
             </Pressable>
           </View>
@@ -520,35 +520,35 @@ function SetupScreen({
 }) {
   const { t } = useTheme();
   const s = useMemo(() => makeS(t), [t]);
-  const routeKey: RouteKey = ROUTE_KEYS[track];
-  const route = ROUTES[routeKey];
+  const wayKey: WayKey = WAY_KEYS[track];
+  const way = WAYS[wayKey];
   // Draggable gate chainages, per track, seeded from the measured proposal.
-  const [gates, setGates] = useState<Record<RouteKey, number[]>>(() => ({
-    morning: ROUTES.morning.gates.map((g) => g.m),
-    eveningA: ROUTES.eveningA.gates.map((g) => g.m),
-    eveningB: ROUTES.eveningB.gates.map((g) => g.m),
+  const [gates, setGates] = useState<Record<WayKey, number[]>>(() => ({
+    morning: WAYS.morning.gates.map((g) => g.m),
+    eveningA: WAYS.eveningA.gates.map((g) => g.m),
+    eveningB: WAYS.eveningB.gates.map((g) => g.m),
   }));
   const [mapW, setMapW] = useState(0);
   const [barW, setBarW] = useState(0);
   const [moved, setMoved] = useState(false);
 
-  const g = gates[routeKey];
-  const labels = route.gates.map((x) => x.lbl);
-  const mapH = mapW > 0 ? Math.min(200, Math.max(120, mapW / route.aspect)) : 150;
+  const g = gates[wayKey];
+  const labels = way.gates.map((x) => x.lbl);
+  const mapH = mapW > 0 ? Math.min(200, Math.max(120, mapW / way.aspect)) : 150;
   const PAD = 14;
 
   const setGate = useCallback(
     (i: number, m: number) => {
       setMoved(true);
       setGates((prev) => {
-        const arr = [...prev[routeKey]];
+        const arr = [...prev[wayKey]];
         const lo = i === 0 ? 0 : arr[i - 1] + 100;
-        const hi = i === arr.length - 1 ? route.total : arr[i + 1] - 100;
+        const hi = i === arr.length - 1 ? way.total : arr[i + 1] - 100;
         arr[i] = Math.round(Math.min(hi, Math.max(lo, m)));
-        return { ...prev, [routeKey]: arr };
+        return { ...prev, [wayKey]: arr };
       });
     },
-    [routeKey, route.total],
+    [wayKey, way.total],
   );
 
   const sectors = g.slice(1).map((m, i) => m - g[i]);
@@ -567,9 +567,9 @@ function SetupScreen({
         style={[s.mapbox, { height: mapH + 2 * PAD }]}
         onLayout={(e) => setMapW(e.nativeEvent.layout.width - 2 * PAD)}
       >
-        <Text style={s.mcap}>MAP PREVIEW (cosmetic — D-002) · real {(route.total / 1000).toFixed(1)} km trace</Text>
+        <Text style={s.mcap}>MAP PREVIEW (cosmetic — D-002) · real {(way.total / 1000).toFixed(1)} km trace</Text>
         {mapW > 0 &&
-          route.pts.map(([x, y], i) => (
+          way.pts.map(([x, y], i) => (
             <View
               key={i}
               style={[s.mapDot, { left: PAD + x * mapW - 1.5, top: PAD + y * mapH - 1.5 }]}
@@ -577,7 +577,7 @@ function SetupScreen({
           ))}
         {mapW > 0 &&
           g.map((m, i) => {
-            const [x, y] = pointAtFrac(route, m / route.total);
+            const [x, y] = pointAtFrac(way, m / way.total);
             const end = i === 0 || i === g.length - 1;
             return (
               <View
@@ -591,7 +591,7 @@ function SetupScreen({
           })}
         {mapW > 0 &&
           g.map((m, i) => {
-            const [x, y] = pointAtFrac(route, m / route.total);
+            const [x, y] = pointAtFrac(way, m / way.total);
             return (
               <Text
                 key={labels[i] + '-l'}
@@ -609,7 +609,7 @@ function SetupScreen({
             <GateHandle
               key={labels[i]}
               m={m}
-              total={route.total}
+              total={way.total}
               barW={barW}
               end={i === 0 || i === g.length - 1}
               lbl={labels[i] === 'START' ? 'start' : labels[i] === 'FINISH' ? 'finish' : labels[i]}
@@ -639,13 +639,13 @@ function SetupScreen({
         {sectors.map((len, i) => (
           <Text key={i} style={s.seclistText}>
             {`S${i + 1} · ${Math.round(len)} m` +
-              (routeKey === 'morning' ? ` · ${MORNING_SEC_STATS[i]}` : '')}
+              (wayKey === 'morning' ? ` · ${MORNING_SEC_STATS[i]}` : '')}
           </Text>
         ))}
       </View>
       <Text style={s.setupFoot}>
         Benchmarks start colouring after 5 clean rides (D-008 warm-up).
-        {routeKey !== 'morning' ? ' Sector medians for this track land with the B-19 rerun.' : ''}
+        {wayKey !== 'morning' ? ' Sector medians for this track land with the B-19 rerun.' : ''}
       </Text>
       <View style={s.bfoot}>
         <Pressable style={s.bfootBtn} onPress={goHome}>

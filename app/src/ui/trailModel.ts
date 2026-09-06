@@ -11,7 +11,7 @@
  * rebuilt from the live fix feed (and, on relaunch recovery, replayed from
  * the ride's own file — see RecordScreen.tsx).
  */
-import { metresBetween, type GeoFeature, type GeoPosition, type LineStringGeometry } from './routeMapGeo.ts';
+import { metresBetween, type GeoFeature, type GeoPosition, type LineStringGeometry } from './wayMapGeo.ts';
 
 export interface TrailPoint { lat: number; lon: number }
 

@@ -31,7 +31,7 @@ import { decodeIndex } from '../storage/rideIndex.ts';
 
 export interface FinishedRide {
   rideId: string;
-  routeId: string;
+  wayId: string;
   atMs: number;
   lapMovingS: number | null;
   lapRawS: number | null;
@@ -82,13 +82,13 @@ export function rememberRide(
   }
   const atMs = Date.now();
   const rideId = meta?.rideId ?? `session:${atMs}`;
-  const routeId = st.track;
+  const wayId = st.track;
   const lapMovingS = st.lap.movingS;
   const lapRawS = st.lap.rawS;
   const estimated = st.lap.estimated;
   last = {
     rideId,
-    routeId,
+    wayId,
     atMs,
     lapMovingS,
     lapRawS,
@@ -117,7 +117,7 @@ export function rememberRide(
   // today's 0/0 back-compat shape. Falls back to 0/0 if a gate set is somehow
   // unresolvable — defensive only; the live engine only ever locks a track
   // catalogTrackSpecs() itself resolved a gate set for.
-  const gateSet = gateSetFor(currentCatalog(), routeId);
+  const gateSet = gateSetFor(currentCatalog(), wayId);
   const gates = meta ? (gateSet ? gateSet.chainageM : null) : null;
   const derivedBy = {
     engineVersion: 'live',
@@ -155,7 +155,7 @@ export function rememberRide(
       schemaVersion: RESULT_SCHEMA_VERSION,
       rideId: meta.rideId,
       startedAtMs: meta.startedAtMs,
-      routeId,
+      wayId,
       source: 'app',
       lap: {
         rawS: lapRawS ?? lapMovingS ?? 0,
@@ -181,12 +181,12 @@ export function getLastRideOrStored(): FinishedRide | null {
   if (last !== null) return last;
   const candidates = resultsStore
     .storedResults()
-    .filter((r): r is RideResult & { routeId: string } => r.source === 'app' && r.routeId !== null);
+    .filter((r): r is RideResult & { wayId: string } => r.source === 'app' && r.wayId !== null);
   if (candidates.length === 0) return null;
   const newest = candidates.reduce((a, b) => (b.startedAtMs > a.startedAtMs ? b : a));
   return {
     rideId: newest.rideId,
-    routeId: newest.routeId,
+    wayId: newest.wayId,
     atMs: newest.startedAtMs,
     lapMovingS: newest.lap.movingS,
     lapRawS: newest.lap.rawS,
@@ -218,7 +218,7 @@ function pushRecorded(
     schemaVersion: RESULT_SCHEMA_VERSION,
     rideId: f.rideId,
     startedAtMs: meta?.startedAtMs ?? f.atMs,
-    routeId: f.routeId,
+    wayId: f.wayId,
     source: 'app',
     lap: { rawS: f.lapRawS ?? f.lapMovingS, movingS: f.lapMovingS, quality: 'clean' },
     sectors,

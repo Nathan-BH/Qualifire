@@ -1,5 +1,5 @@
 /**
- * Runtime RouteAsset for routes with no entry in assets/routes/routes.json
+ * Runtime RouteAsset for routes with no entry in assets/ways/routes.json
  * (WP-C). Builds the SAME RouteAsset shape the Python renderer writes: a
  * decimated [lat,lon] path, gates resolved from chainage onto that line, a
  * gateIdx per gate, and a Web-Mercator fit into the renderer's 900x1400 /
@@ -16,7 +16,7 @@ import { interp1, xyToLatLon } from '../../core/src/index.ts';
 import { gateSetFor } from '../store/catalog.ts';
 import type { Catalog } from '../store/types.ts';
 import { gateName } from './gateAdjustModel.ts';
-import { projectToPixel, type RouteAsset, type RouteGate } from './routeMapMath.ts';
+import { projectToPixel, type WayAsset, type WayGate } from './wayMapMath.ts';
 
 export const RUNTIME_ASSET_W = 900;
 export const RUNTIME_ASSET_H = 1400;
@@ -31,9 +31,9 @@ export function pointAtChainage(ref: RefLine, s: number): [number, number] {
   return xyToLatLon(interp1(s, ref.ch, ref.rx), interp1(s, ref.ch, ref.ry), ref.lat0, ref.lon0);
 }
 
-export function buildRuntimeRouteAsset(
+export function buildRuntimeWayAsset(
   ref: RefLine, gateChainageM: readonly number[], sourceRide = '',
-): RouteAsset {
+): WayAsset {
   const n = ref.ch.length;
   const stride = Math.max(1, Math.round((n - 1) / RUNTIME_PATH_TARGET_VERTICES));
   interface Cand { s: number; ll: [number, number]; gate: number | null }
@@ -76,7 +76,7 @@ export function buildRuntimeRouteAsset(
     (RUNTIME_ASSET_W - 2 * RUNTIME_ASSET_PAD_PX) / dx,
     (RUNTIME_ASSET_H - 2 * RUNTIME_ASSET_PAD_PX) / dy,
   );
-  const asset: RouteAsset = {
+  const asset: WayAsset = {
     image: '', path, gateIdx,
     w: RUNTIME_ASSET_W, h: RUNTIME_ASSET_H,
     x0: minX, y1: maxY, scale,
@@ -84,7 +84,7 @@ export function buildRuntimeRouteAsset(
     offy: (RUNTIME_ASSET_H - dy * scale) / 2,
     gates: [], sourceRide,
   };
-  asset.gates = gateIdx.map((pi, i): RouteGate => {
+  asset.gates = gateIdx.map((pi, i): WayGate => {
     const [lat, lon] = path[pi];
     const { px, py } = projectToPixel(asset, lat, lon);
     return { name: gateName(i, gateIdx.length), lat, lon, px, py };
@@ -92,41 +92,41 @@ export function buildRuntimeRouteAsset(
   return asset;
 }
 
-export interface RouteAssetDeps {
-  manifest: Record<string, RouteAsset>;
+export interface WayAssetDeps {
+  manifest: Record<string, WayAsset>;
   catalog: Catalog;
   refFor: (refLineId: string) => RefLine | null;
 }
 
-interface CacheEntry { ref: RefLine; gateKey: string; asset: RouteAsset }
+interface CacheEntry { ref: RefLine; gateKey: string; asset: WayAsset }
 let cache = new Map<string, CacheEntry>();
 
-export function resolveRouteAsset(id: string, deps: RouteAssetDeps): RouteAsset | null {
+export function resolveWayAsset(id: string, deps: WayAssetDeps): WayAsset | null {
   const bundled = deps.manifest[id];
   if (bundled !== undefined) return bundled;
-  const route = deps.catalog.routes.find((r) => r.id === id || r.refLineId === id);
-  if (!route) return null;
-  const ref = deps.refFor(route.refLineId);
+  const way = deps.catalog.ways.find((r) => r.id === id || r.refLineId === id);
+  if (!way) return null;
+  const ref = deps.refFor(way.refLineId);
   if (ref === null) return null;
-  const gateSet = gateSetFor(deps.catalog, route.id, route.gateSetVersion);
+  const gateSet = gateSetFor(deps.catalog, way.id, way.gateSetVersion);
   if (!gateSet || gateSet.chainageM.length < 2) return null;
   const gateKey = `${gateSet.version}|${gateSet.chainageM.join(',')}`;
   const hit = cache.get(id);
   if (hit && hit.ref === ref && hit.gateKey === gateKey) return hit.asset;
-  const asset = buildRuntimeRouteAsset(
-    ref, gateSet.chainageM, route.referenceRideId ? `ride:${route.referenceRideId}` : 'runtime',
+  const asset = buildRuntimeWayAsset(
+    ref, gateSet.chainageM, way.referenceRideId ? `ride:${way.referenceRideId}` : 'runtime',
   );
   cache.set(id, { ref, gateKey, asset });
   return asset;
 }
 
-export function allRouteAssets(deps: RouteAssetDeps): Record<string, RouteAsset> {
-  const out: Record<string, RouteAsset> = {};
-  for (const r of deps.catalog.routes) {
-    const a = resolveRouteAsset(r.id, deps);
+export function allWayAssets(deps: WayAssetDeps): Record<string, WayAsset> {
+  const out: Record<string, WayAsset> = {};
+  for (const r of deps.catalog.ways) {
+    const a = resolveWayAsset(r.id, deps);
     if (a) out[r.id] = a;
   }
   return out;
 }
 
-export function resetRouteAssetCacheForTests(): void { cache = new Map(); }
+export function resetWayAssetCacheForTests(): void { cache = new Map(); }

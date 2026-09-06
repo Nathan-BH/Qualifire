@@ -45,7 +45,7 @@ export interface DeriveInput {
   ref: RefLine;
   /** gate chainages [start..finish]; N gates ⇒ N-1 sectors */
   gates: number[];
-  routeId: string;
+  wayId: string;
   gateSetVersion: number;
   engineVersion: string;
   source?: 'app' | 'archive';
@@ -106,7 +106,7 @@ export function deriveRideResult(inp: DeriveInput): RideResult {
     schemaVersion: RESULT_SCHEMA_VERSION,
     rideId: inp.rideId,
     startedAtMs: Math.round((inp.t[0] as number) * 1000),
-    routeId: anyMissed && !haveBounds ? null : inp.routeId,
+    wayId: anyMissed && !haveBounds ? null : inp.wayId,
     source: inp.source ?? 'app',
     lap: {
       rawS: lapRaw,

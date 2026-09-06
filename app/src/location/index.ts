@@ -154,7 +154,7 @@ async function ensureSession(): Promise<ActiveSession | null> {
         kind: 'relaunch', tUnixMs: nowMs,
         ...(downS !== undefined ? { downS } : {}),
       });
-      liveEngine.start({ pickId: null, mode: session.mode ?? 'route', routeIds: session.routeIds ?? null });
+      liveEngine.start({ pickId: null, mode: session.mode ?? 'route', wayIds: session.wayIds ?? null });
     }
   }
   return session;
@@ -308,14 +308,14 @@ export interface StartContext {
 }
 
 export async function startTracking(opts?: {
-  routePick?: string | null;
+  wayPick?: string | null;
   /** WP-B: 'route' (default) or 'free' — threaded straight to
    * liveEngine.start(); see live/engine.ts's file header. */
   mode?: 'route' | 'free';
   /** WP-B coordinator addendum: restricts which catalog routes the engine
    * builds candidates for this ride — see live/engine.ts's file header and
    * store/catalog.ts's freeRideRouteIds(). */
-  routeIds?: string[] | null;
+  wayIds?: string[] | null;
   /** N9: the RECORD tab's from/to/labels/pickSource at the moment START was
    * pressed — logged as the sidecar's one `pick` event. Omitted (no pick
    * event at all) for a caller that doesn't supply it. */
@@ -337,7 +337,7 @@ export async function startTracking(opts?: {
     // in the same mode (session.ts) and so a completed ride's index entry
     // carries its mode (storage/core.ts's startRide) — see both files' headers.
     mode: opts?.mode ?? 'route',
-    routeIds: opts?.routeIds ?? null,
+    wayIds: opts?.wayIds ?? null,
   };
   try {
     await saveSession(s);
@@ -379,9 +379,9 @@ export async function startTracking(opts?: {
   prevEleTUnixMs = null;
   warmupState = newWarmupState();
   liveEngine.start({
-    pickId: opts?.routePick ?? null,
+    pickId: opts?.wayPick ?? null,
     mode: opts?.mode ?? 'route',
-    routeIds: opts?.routeIds ?? null,
+    wayIds: opts?.wayIds ?? null,
   }); // fresh live-sector state for this ride
   logEvent(rideId, {
     kind: 'meta', tUnixMs: pressedAtMs, schemaVersion: 1,
@@ -396,9 +396,9 @@ export async function startTracking(opts?: {
   logEvent(rideId, {
     kind: 'pick', tUnixMs: pressedAtMs,
     mode: opts?.mode ?? 'route',
-    routeId: opts?.routePick ?? null,
+    wayId: opts?.wayPick ?? null,
     ...(ctx ? { from: ctx.from, to: ctx.to, fromLabel: ctx.fromLabel, toLabel: ctx.toLabel, pickSource: ctx.pickSource } : {}),
-    ...(opts?.routeIds ? { routeIds: opts.routeIds } : {}),
+    ...(opts?.wayIds ? { wayIds: opts.wayIds } : {}),
   });
   emit();
   return s;
@@ -545,7 +545,7 @@ liveEngine.subscribeEvents((ev) => {
 liveEngine.subscribeDiagnostics((d) => {
   if (!session) return; // cannot attribute; headless relaunch resubscribes after ensureSession restores it
   logEvent(session.rideId, {
-    kind: 'routeMatchDiagnostic', tUnixMs: Math.round(d.atT * 1000),
+    kind: 'wayMatchDiagnostic', tUnixMs: Math.round(d.atT * 1000),
     track: d.track, phase: d.phase, accuracyM: d.accuracyM,
     thresholdM: d.thresholdM, poorAccuracy: d.poorAccuracy, xtdM: d.xtdM,
   });

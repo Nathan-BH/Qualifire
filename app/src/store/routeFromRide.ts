@@ -19,13 +19,13 @@ import type { FsAdapter } from '../storage/fsAdapter.ts';
 import { chronologicalFixes, decodeRideFile } from '../storage/jsonl.ts';
 import { buildRefFromRideFixes, saveUserRef, userRefFor } from '../live/userRefs.ts';
 import { seedGateChainages } from './gateSeeding.ts';
-import { addGateSet, gateSetFor, routesForWay } from './catalog.ts';
+import { addGateSet, gateSetFor, waysForRoute } from './catalog.ts';
 import { currentCatalog, saveUserCatalog, userCatalog } from './catalogStore.ts';
-import { backfillMissingResults, getStoredResult, removeStoredResult, storedResultsForRoute } from './resultsStore.ts';
+import { backfillMissingResults, getStoredResult, removeStoredResult, storedResultsForWay } from './resultsStore.ts';
 import type { Catalog } from './types.ts';
 import {
-  buildWayCreationCatalog, draftWayCreation, type WayCreationDraft, type WayNames,
-} from './wayCreation.ts';
+  buildRouteCreationCatalog, draftRouteCreation, type RouteCreationDraft, type RouteNames,
+} from './routeCreation.ts';
 
 export type RideFix = { lat: number; lon: number; [k: string]: unknown };
 
@@ -87,15 +87,15 @@ export type PromoteReferenceOutcome =
  * lastRide.recorded (dropRecorded / clearLastRide / replaceRecorded), as
  * RoutesScreen.tsx:57-62 does for delete-route. */
 export async function promoteRideToReference(
-  routeId: string, rideId: string, fs: FsAdapter,
+  wayId: string, rideId: string, fs: FsAdapter,
 ): Promise<PromoteReferenceOutcome> {
   const user = userCatalog();
-  const route = user.routes.find((r) => r.id === routeId);
-  if (!route) {
-    return { ok: false, errors: [`"${routeId}" is not one of your own routes — a shipped route cannot be re-referenced`] };
+  const way = user.ways.find((r) => r.id === wayId);
+  if (!way) {
+    return { ok: false, errors: [`"${wayId}" is not one of your own ways — a shipped way cannot be re-referenced`] };
   }
-  if (route.referenceRideId === rideId) {
-    return { ok: false, errors: ['this ride is already the reference of that route'] };
+  if (way.referenceRideId === rideId) {
+    return { ok: false, errors: ['this ride is already the reference of that way'] };
   }
   const fixes = await readRideFixes(rideId, fs);
   const built = fixes ? buildRefFromRideFixes(fixes) : null;
@@ -104,9 +104,9 @@ export async function promoteRideToReference(
   }
 
   // Everything below is decided; the catalog write is the only step that can refuse.
-  const version = (gateSetFor(user, routeId)?.version ?? 0) + 1;
+  const version = (gateSetFor(user, wayId)?.version ?? 0) + 1;
   const withGates = addGateSet(user, {
-    routeId,
+    wayId,
     version,
     chainageM: seedGateChainages(built.ref.length, built.stopChainageM),
     createdAtMs: Date.now(),
@@ -115,20 +115,20 @@ export async function promoteRideToReference(
   });
   const next: Catalog = {
     ...withGates,
-    routes: withGates.routes.map((r) => (r.id === routeId ? { ...r, referenceRideId: rideId } : r)),
+    ways: withGates.ways.map((r) => (r.id === wayId ? { ...r, referenceRideId: rideId } : r)),
   };
   const errs = await saveUserCatalog(next);
   if (errs.length > 0) return { ok: false, errors: errs };
 
-  await saveUserRef(route.refLineId, built.ref);
+  await saveUserRef(way.refLineId, built.ref);
 
   // The reset (WP-Q's loop, RoutesScreen.tsx:57-62), then the immediate
   // re-derive so the ghosts do not come back unannounced at the next boot.
-  const clearedRideIds = storedResultsForRoute(routeId).map((r) => r.rideId);
+  const clearedRideIds = storedResultsForWay(wayId).map((r) => r.rideId);
   for (const id of clearedRideIds) await removeStoredResult(id);
   const candidates = clearedRideIds.includes(rideId) ? clearedRideIds : [rideId, ...clearedRideIds];
   await backfillMissingResults(fs, candidates);
-  const retimed = candidates.filter((id) => getStoredResult(id)?.routeId === routeId);
+  const retimed = candidates.filter((id) => getStoredResult(id)?.wayId === wayId);
 
   return {
     ok: true,
@@ -146,14 +146,14 @@ export async function promoteRideToReference(
  * unreadable). Since WP-G an existing directed way is NOT a null: the draft
  * comes back with `existingWayId` set (variant offer). `fs` required, as
  * readRideFixes. */
-export async function draftWayFromRide(
-  rideId: string, startedAtMs: number, matchedRouteId: string | null, fs: FsAdapter,
-): Promise<WayCreationDraft | null> {
+export async function draftRouteFromRide(
+  rideId: string, startedAtMs: number, matchedWayId: string | null, fs: FsAdapter,
+): Promise<RouteCreationDraft | null> {
   const fixes = await readRideFixes(rideId, fs);
   if (fixes === null) return null;
   try {
-    return draftWayCreation(currentCatalog(), {
-      rideId, startedAtMs, fixes: fixes.map((f) => ({ lat: f.lat, lon: f.lon })), matchedRouteId,
+    return draftRouteCreation(currentCatalog(), {
+      rideId, startedAtMs, fixes: fixes.map((f) => ({ lat: f.lat, lon: f.lon })), matchedWayId,
     });
   } catch {
     return null;
@@ -162,35 +162,35 @@ export async function draftWayFromRide(
 
 /** The matched existing landmark's label for the naming card, or null when
  * the endpoint is a new place (the card shows an input instead). */
-export function existingLandmarkLabel(r: WayCreationDraft['start']): string | null {
+export function existingLandmarkLabel(r: RouteCreationDraft['start']): string | null {
   if (r.kind !== 'existing') return null;
   return currentCatalog().landmarks.find((l) => l.id === r.landmarkId)?.label ?? r.landmarkId;
 }
 
 /** WP-G: the naming card's view of the way a variant is being added to
  * (RecordScreen.tsx's existingWayProps). null for an unknown way id. */
-export function existingWayProps(wayId: string): { label: string; knownSpecLists: string[][] } | null {
+export function existingRouteProps(routeId: string): { label: string; knownSpecLists: string[][] } | null {
   const c = currentCatalog();
-  const w = c.ways.find((x) => x.id === wayId);
+  const w = c.routes.find((x) => x.id === routeId);
   if (!w) return null;
   const lab = (id: string) => c.landmarks.find((l) => l.id === id)?.label ?? id;
   return {
     label: `${lab(w.startLandmarkId)} → ${lab(w.endLandmarkId)}`,
-    knownSpecLists: routesForWay(c, wayId).map((r) => r.specs ?? []),
+    knownSpecLists: waysForRoute(c, routeId).map((r) => r.specs ?? []),
   };
 }
 
 /** What the gate-adjust step carries between CREATE WAY and its own save. */
 export interface GateAdjustDraft {
-  routeId: string;
+  wayId: string;
   /** the ride's real reference line — the card draws gates ON it (WP-I) */
   ref: RefLine;
   refLengthM: number;
   chainageM: number[];
 }
 
-export type CreateWayOutcome =
-  | { ok: true; routeId: string; adjust: GateAdjustDraft | null }
+export type CreateRouteOutcome =
+  | { ok: true; wayId: string; adjust: GateAdjustDraft | null }
   | { ok: false; errors: string[] };
 
 /** RecordScreen.tsx's onNamingSave try-body. Builds the route's real
@@ -203,23 +203,23 @@ export type CreateWayOutcome =
  * GateAdjustCard (SETUP-UX §4). The WP-G duplicate-specs belt check stays in
  * the callers (its Alert copy is theirs). Same body in both draft modes:
  * buildWayCreationCatalog forks on `draft.existingWayId` by itself. */
-export async function createWayFromDraft(
-  draft: WayCreationDraft, names: WayNames, fs: FsAdapter,
-): Promise<CreateWayOutcome> {
+export async function createRouteFromDraft(
+  draft: RouteCreationDraft, names: RouteNames, fs: FsAdapter,
+): Promise<CreateRouteOutcome> {
   const fixes = await readRideFixes(draft.rideId, fs);
   const builtRef = fixes ? buildRefFromRideFixes(fixes) : null;
   const seed = builtRef
     ? { chainageM: seedGateChainages(builtRef.ref.length, builtRef.stopChainageM) }
     : undefined;
-  const built = buildWayCreationCatalog(userCatalog(), draft, names, seed);
+  const built = buildRouteCreationCatalog(userCatalog(), draft, names, seed);
   const errs = await saveUserCatalog(built);
   if (errs.length > 0) return { ok: false, errors: errs };
-  const routeId = `route:${draft.rideId}`;
-  if (builtRef) await saveUserRef(routeId, builtRef.ref);
+  const wayId = `way:${draft.rideId}`;
+  if (builtRef) await saveUserRef(wayId, builtRef.ref);
   return {
     ok: true,
-    routeId,
-    adjust: builtRef && seed ? { routeId, ref: builtRef.ref, refLengthM: builtRef.ref.length, chainageM: seed.chainageM } : null,
+    wayId,
+    adjust: builtRef && seed ? { wayId, ref: builtRef.ref, refLengthM: builtRef.ref.length, chainageM: seed.chainageM } : null,
   };
 }
 
@@ -234,7 +234,7 @@ export async function saveAdjustedGates(a: GateAdjustDraft, chainageM: number[])
   if (!moved) return { ok: true, moved: false };
   const errs = await saveUserCatalog(
     addGateSet(userCatalog(), {
-      routeId: a.routeId,
+      wayId: a.wayId,
       version: 2,
       chainageM,
       createdAtMs: Date.now(),
@@ -257,14 +257,14 @@ export async function saveAdjustedGates(a: GateAdjustDraft, chainageM: number[])
  * resolvable user ref (a way saved without a line), or no gate set. Pure
  * read, no I/O. Same shape as the create-way draft on purpose: the card and
  * the screen wiring do not care which flow produced it. */
-export function gateEditDraftFor(routeId: string): GateAdjustDraft | null {
+export function gateEditDraftFor(wayId: string): GateAdjustDraft | null {
   const user = userCatalog();
-  const route = user.routes.find((r) => r.id === routeId);
-  if (!route) return null;
-  const ref = userRefFor(route.refLineId);
-  const gates = gateSetFor(user, routeId, route.gateSetVersion);
+  const way = user.ways.find((r) => r.id === wayId);
+  if (!way) return null;
+  const ref = userRefFor(way.refLineId);
+  const gates = gateSetFor(user, wayId, way.gateSetVersion);
   if (!ref || !gates) return null;
-  return { routeId, ref, refLengthM: ref.length, chainageM: [...gates.chainageM] };
+  return { wayId, ref, refLengthM: ref.length, chainageM: [...gates.chainageM] };
 }
 
 export type EditGatesOutcome =
@@ -296,18 +296,18 @@ export type EditGatesOutcome =
  * gates are a free no-op, as saveAdjustedGates. Refuses, with no writes, for
  * a non-user route, a missing gate set or ref, a chainage list of a different
  * length, or one that is not strictly increasing within [0, ref.length]. */
-export async function editRouteGates(
-  routeId: string, chainageM: number[], fs: FsAdapter,
+export async function editWayGates(
+  wayId: string, chainageM: number[], fs: FsAdapter,
 ): Promise<EditGatesOutcome> {
   const user = userCatalog();
-  const route = user.routes.find((r) => r.id === routeId);
-  if (!route) {
-    return { ok: false, errors: [`"${routeId}" is not one of your own routes — a shipped route's gates cannot be edited`] };
+  const way = user.ways.find((r) => r.id === wayId);
+  if (!way) {
+    return { ok: false, errors: [`"${wayId}" is not one of your own ways — a shipped way's gates cannot be edited`] };
   }
-  const current = gateSetFor(user, routeId);
-  const ref = userRefFor(route.refLineId);
+  const current = gateSetFor(user, wayId);
+  const ref = userRefFor(way.refLineId);
   if (!current || !ref) {
-    return { ok: false, errors: ['this route has no gate set or no reference line to place gates on'] };
+    return { ok: false, errors: ['this way has no gate set or no reference line to place gates on'] };
   }
   if (chainageM.length !== current.chainageM.length) {
     return { ok: false, errors: [`expected ${current.chainageM.length} gates, got ${chainageM.length}`] };
@@ -324,7 +324,7 @@ export async function editRouteGates(
   const version = current.version + 1;
   const errs = await saveUserCatalog(
     addGateSet(user, {
-      routeId,
+      wayId,
       version,
       chainageM: [...chainageM],
       createdAtMs: Date.now(),
@@ -335,9 +335,9 @@ export async function editRouteGates(
   if (errs.length > 0) return { ok: false, errors: errs };
 
   // The reset, then the immediate re-derive — promoteRideToReference's exact loop.
-  const clearedRideIds = storedResultsForRoute(routeId).map((r) => r.rideId);
+  const clearedRideIds = storedResultsForWay(wayId).map((r) => r.rideId);
   for (const id of clearedRideIds) await removeStoredResult(id);
   await backfillMissingResults(fs, clearedRideIds);
-  const retimed = clearedRideIds.filter((id) => getStoredResult(id)?.routeId === routeId);
+  const retimed = clearedRideIds.filter((id) => getStoredResult(id)?.wayId === wayId);
   return { ok: true, moved: true, gateSetVersion: version, clearedRideIds, retimed };
 }

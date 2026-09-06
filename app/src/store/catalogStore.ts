@@ -86,8 +86,9 @@ export async function initCatalogStore(fs: FsAdapter): Promise<Catalog> {
       if (decoded !== null) {
         user = decoded;
       } else {
+        armedFs = null;
         console.warn(
-          `initCatalogStore: ${USER_CATALOG_FILE} is not a catalog — ignored for this session, left untouched`,
+          `initCatalogStore: ${USER_CATALOG_FILE} is not a catalog — ignored for this session, left untouched, saving disabled`,
         );
       }
     }
@@ -102,8 +103,9 @@ export async function initCatalogStore(fs: FsAdapter): Promise<Catalog> {
     // initRideHistory. Same posture as an undecodable file: ignored for this
     // session, never overwritten. recompute() on an empty user catalog cannot
     // throw (the seed is bundled and structurally sound).
+    armedFs = null;
     console.warn(
-      `initCatalogStore: ${USER_CATALOG_FILE} decoded but did not merge — ignored for this session, left untouched`,
+      `initCatalogStore: ${USER_CATALOG_FILE} decoded but did not merge — ignored for this session, left untouched, saving disabled`,
     );
     user = emptyCatalog();
     recompute();

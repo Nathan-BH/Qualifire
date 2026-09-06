@@ -33,7 +33,7 @@ const { fmt, MIN_HISTORY } = await import('../src/ui/colourModel.ts');
 // ------------------------------------------------------------------ helpers
 
 function makeResult(
-  rideId: string, routeId: string | null, startedAtMs: number,
+  rideId: string, wayId: string | null, startedAtMs: number,
   lap: { movingS: number | null; rawS: number; quality: SectorQuality },
   sectors: { index: number; movingS: number | null; rawS: number; quality: SectorQuality }[] = [],
 ): RideResult {
@@ -42,7 +42,7 @@ function makeResult(
     schemaVersion: RESULT_SCHEMA_VERSION,
     rideId,
     startedAtMs,
-    routeId,
+    wayId,
     source: 'app',
     lap,
     sectors: sectors.map((s) => ({ ...s, fromChainageM: 0, toChainageM: 1000 })),
@@ -68,12 +68,12 @@ test('ridehistory: buildRideRows orders newest-first; a result gets routeName/la
     `expected newest-first order r2,r3,r1 — got ${rows.map((r) => r.rideId).join(',')}`);
 
   const withResult = rows.find((r) => r.rideId === 'r2')!;
-  assert(withResult.routeName === 'Home Work Dry',
-    `ride with a result must get its display routeName (Morning -> Home Work Dry overlay), got ${withResult.routeName}`);
+  assert(withResult.wayName === 'Home Work Dry',
+    `ride with a result must get its display routeName (Morning -> Home Work Dry overlay), got ${withResult.wayName}`);
   assert(withResult.lapS === 900, `ride with a clean result must carry lapS, got ${withResult.lapS}`);
 
   const withoutResult = rows.find((r) => r.rideId === 'r1')!;
-  assert(withoutResult.routeName === null && withoutResult.routeId === null,
+  assert(withoutResult.wayName === null && withoutResult.wayId === null,
     'a ride with no stored result must render null route fields');
   assert(withoutResult.lapS === null && withoutResult.rank === null && withoutResult.quality === null,
     'a ride with no stored result must render null lap/rank/quality');
@@ -85,7 +85,7 @@ test('ridehistory: buildRideRows rank excludes self — 5 others => "of" is 6, m
   const others = [510, 520, 530, 540, 550];
   const rows = buildRideRows(
     metas, () => result,
-    (routeId, excl) => (routeId === 'Morning' && excl === 'r1' ? others : []),
+    (wayId, excl) => (wayId === 'Morning' && excl === 'r1' ? others : []),
   );
   assert(rows[0].rank !== null, 'rank must be present with 5 comparable others (>= MIN_HISTORY)');
   assert(rows[0].rank!.of === 6, `"of" must be 6 (5 others + self inserted) — got ${rows[0].rank!.of}`);
@@ -191,8 +191,8 @@ test('ridehistory: buildPbRows omits zero-count routes and preserves the given o
     (r) => (r === 'Morning' ? 500 : r === 'EveningB' ? 600 : null),
     (r) => (r === 'Morning' ? 8 : r === 'EveningB' ? 3 : 0),
   );
-  assert(rows.map((r) => r.routeId).join(',') === 'Morning,EveningB',
-    `EveningA (count 0) must be omitted and the given order preserved — got ${rows.map((r) => r.routeId).join(',')}`);
+  assert(rows.map((r) => r.wayId).join(',') === 'Morning,EveningB',
+    `EveningA (count 0) must be omitted and the given order preserved — got ${rows.map((r) => r.wayId).join(',')}`);
 });
 
 // =========================================================== buildPbDetail

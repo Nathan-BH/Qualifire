@@ -21,24 +21,24 @@ import type { TrackSpec } from './engine.ts';
 export function catalogTrackSpecs(): TrackSpec[] {
   const CATALOG = currentCatalog();
   const specs: TrackSpec[] = [];
-  for (const route of CATALOG.routes) {
+  for (const way of CATALOG.ways) {
     let ref: TrackSpec['ref'];
     try {
-      ref = refFor(route.refLineId);
+      ref = refFor(way.refLineId);
     } catch {
       console.warn(
-        `catalogTrackSpecs: no ref for route "${route.id}" (refLineId "${route.refLineId}") — skipped`,
+        `catalogTrackSpecs: no ref for way "${way.id}" (refLineId "${way.refLineId}") — skipped`,
       );
       continue;
     }
-    const gateSet = gateSetFor(CATALOG, route.id, route.gateSetVersion);
+    const gateSet = gateSetFor(CATALOG, way.id, way.gateSetVersion);
     if (!gateSet) {
       console.warn(
-        `catalogTrackSpecs: no gate set for route "${route.id}" at version ${route.gateSetVersion} — skipped`,
+        `catalogTrackSpecs: no gate set for way "${way.id}" at version ${way.gateSetVersion} — skipped`,
       );
       continue;
     }
-    specs.push({ id: route.id, ref, gates: gateSet.chainageM });
+    specs.push({ id: way.id, ref, gates: gateSet.chainageM });
   }
   return specs;
 }

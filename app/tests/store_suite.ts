@@ -18,25 +18,25 @@ import {
 } from '../core/src/index.ts';
 import { deriveRideResult } from '../src/store/derive.ts';
 import {
-  defaultEndpoints, defaultMapRouteId, fallbackRouteId, routeLabel, routeVariantLabel, sortRoutesForDisplay,
-} from '../src/store/defaultRoute.ts';
+  defaultEndpoints, defaultMapWayId, fallbackWayId, wayLabel, wayVariantLabel, sortWaysForDisplay,
+} from '../src/store/defaultWay.ts';
 import {
   addGateSet,
   decodeCatalog,
   emptyCatalog,
   encodeCatalog,
-  freeRideRouteIds,
+  freeRideWayIds,
   gateSetFor,
   landmarkAt,
   lapsComparable,
   mergeCatalogs,
   metresBetween,
-  needsRoutePick,
-  routesForWay,
+  needsWayPick,
+  waysForRoute,
   sectorsComparable,
   startableLandmarks,
   validateCatalog,
-  waysFrom,
+  routesFrom,
 } from '../src/store/catalog.ts';
 import {
   emptyResultsIndex,
@@ -51,7 +51,7 @@ import {
   windowLastN,
 } from '../src/store/results.ts';
 import type { Catalog, RideResult } from '../src/store/types.ts';
-import { projectToPixel, type RouteAsset } from '../src/ui/routeMapMath.ts';
+import { projectToPixel, type WayAsset } from '../src/ui/wayMapMath.ts';
 import { RESULT_SCHEMA_VERSION } from '../src/store/types.ts';
 
 const DAY = 86400_000;
@@ -70,19 +70,19 @@ function baseCatalog(): Catalog {
     { id: 'puttestraat', label: 'family home', lat: 50.822078, lon: 4.505119, radiusM: 120,
       activeFromMs: 0, activeUntilMs: APR2026, offerAtStart: false },
   ];
-  c.ways = [
-    { id: 'home>work', startLandmarkId: 'home', endLandmarkId: 'work', routeIds: ['MorningA', 'MorningB'] },
-    { id: 'work>home', startLandmarkId: 'work', endLandmarkId: 'home', routeIds: ['EveningA'] },
-  ];
   c.routes = [
-    { id: 'MorningA', wayId: 'home>work', refLineId: 'Morning', gateSetVersion: 1, seeded: true },
-    { id: 'MorningB', wayId: 'home>work', refLineId: 'EveningB', gateSetVersion: 1, seeded: false },
-    { id: 'EveningA', wayId: 'work>home', refLineId: 'EveningA', gateSetVersion: 1, seeded: true },
+    { id: 'home>work', startLandmarkId: 'home', endLandmarkId: 'work', wayIds: ['MorningA', 'MorningB'] },
+    { id: 'work>home', startLandmarkId: 'work', endLandmarkId: 'home', wayIds: ['EveningA'] },
+  ];
+  c.ways = [
+    { id: 'MorningA', routeId: 'home>work', refLineId: 'Morning', gateSetVersion: 1, seeded: true },
+    { id: 'MorningB', routeId: 'home>work', refLineId: 'EveningB', gateSetVersion: 1, seeded: false },
+    { id: 'EveningA', routeId: 'work>home', refLineId: 'EveningA', gateSetVersion: 1, seeded: true },
   ];
   c.gateSets = [
-    { routeId: 'MorningA', version: 1, chainageM: [160, 1500, 3000, 4400, 5650], createdAtMs: 0 },
-    { routeId: 'MorningB', version: 1, chainageM: [160, 1600, 3100, 4500, 5780], createdAtMs: 0 },
-    { routeId: 'EveningA', version: 1, chainageM: [160, 1500, 3000, 4400, 5650], createdAtMs: 0 },
+    { wayId: 'MorningA', version: 1, chainageM: [160, 1500, 3000, 4400, 5650], createdAtMs: 0 },
+    { wayId: 'MorningB', version: 1, chainageM: [160, 1600, 3100, 4500, 5780], createdAtMs: 0 },
+    { wayId: 'EveningA', version: 1, chainageM: [160, 1500, 3000, 4400, 5650], createdAtMs: 0 },
   ];
   return c;
 }
@@ -91,7 +91,7 @@ function mkResult(o: Partial<RideResult> & { rideId: string; startedAtMs: number
   return {
     kind: 'rideResult',
     schemaVersion: RESULT_SCHEMA_VERSION,
-    routeId: 'MorningA',
+    wayId: 'MorningA',
     source: 'app',
     lap: { rawS: 900, movingS: 880, quality: 'clean' },
     sectors: [
@@ -129,10 +129,10 @@ test('store: overlapping landmark discs are an ERROR (the 88-cluster failure)', 
 
 test('store: a loop way without a discriminator is rejected', () => {
   const c = baseCatalog();
-  c.ways.push({ id: 'putt-loop', startLandmarkId: 'puttestraat', endLandmarkId: 'puttestraat',
-    routeIds: ['MorningA'] });
+  c.routes.push({ id: 'putt-loop', startLandmarkId: 'puttestraat', endLandmarkId: 'puttestraat',
+    wayIds: ['MorningA'] });
   assert(validateCatalog(c).some((e) => e.includes('loopDiscriminator')), 'loop must need a label');
-  c.ways[c.ways.length - 1].loopDiscriminator = 'north';
+  c.routes[c.routes.length - 1].loopDiscriminator = 'north';
   assert(validateCatalog(c).length === 0, 'discriminated loop should validate');
 });
 
@@ -141,7 +141,7 @@ test('store: gate chainage must strictly increase, and routes need their version
   c.gateSets[0].chainageM = [160, 1500, 1500, 4400, 5650];
   assert(validateCatalog(c).some((e) => e.includes('not increasing')), 'must catch flat chainage');
   const c2 = baseCatalog();
-  c2.routes[0].gateSetVersion = 7;
+  c2.ways[0].gateSetVersion = 7;
   assert(validateCatalog(c2).some((e) => e.includes('no gate set')), 'must catch missing version');
 });
 
@@ -151,9 +151,9 @@ test('store: dormant landmarks seed history but are never offered at START', () 
   assert(JSON.stringify(ids) === JSON.stringify(['home', 'work']),
     `expected home+work only, got ${ids}`);
   // and no way may be offered INTO a place he no longer goes
-  c.ways.push({ id: 'home>putt', startLandmarkId: 'home', endLandmarkId: 'puttestraat',
-    routeIds: ['MorningA'] });
-  assert(waysFrom(c, 'home', AUG2026).length === 1, 'dormant destination must not be offered');
+  c.routes.push({ id: 'home>putt', startLandmarkId: 'home', endLandmarkId: 'puttestraat',
+    wayIds: ['MorningA'] });
+  assert(routesFrom(c, 'home', AUG2026).length === 1, 'dormant destination must not be offered');
 });
 
 test('store: landmarkAt picks the containing landmark, and respects the era', () => {
@@ -166,47 +166,47 @@ test('store: landmarkAt picks the containing landmark, and respects the era', ()
 
 test('store: a way with two routes needs a route pick at START (§8a)', () => {
   const c = baseCatalog();
-  assert(needsRoutePick(c, 'home>work'), 'two routes ⇒ pick');
-  assert(!needsRoutePick(c, 'work>home'), 'single route ⇒ no extra step');
-  assert(routesForWay(c, 'home>work').length === 2, 'two routes on the way');
+  assert(needsWayPick(c, 'home>work'), 'two routes ⇒ pick');
+  assert(!needsWayPick(c, 'work>home'), 'single route ⇒ no extra step');
+  assert(waysForRoute(c, 'home>work').length === 2, 'two routes on the way');
 });
 
 test('store: freeRideRouteIds — WP-B coordinator addendum directional filter', () => {
   const c = baseCatalog();
   // outbound from a known origin (home >> new): only home>work's own routeIds
   assert(
-    JSON.stringify(freeRideRouteIds(c, 'home', null)) === JSON.stringify(['MorningA', 'MorningB']),
+    JSON.stringify(freeRideWayIds(c, 'home', null)) === JSON.stringify(['MorningA', 'MorningB']),
     'from=home,to=null must give home>work\'s own routeIds only',
   );
   // inbound to a known destination (new >> home): only work>home's own routeIds
   assert(
-    JSON.stringify(freeRideRouteIds(c, null, 'home')) === JSON.stringify(['EveningA']),
+    JSON.stringify(freeRideWayIds(c, null, 'home')) === JSON.stringify(['EveningA']),
     'from=null,to=home must give work>home\'s own routeIds only',
   );
   // both ends unknown (new >> new): NO filtering, deliberately (Nathan's
   // deferred-for-later case) — null, not an empty array.
-  assert(freeRideRouteIds(c, null, null) === null, 'both ends unknown must return null (unfiltered)');
+  assert(freeRideWayIds(c, null, null) === null, 'both ends unknown must return null (unfiltered)');
   // a landmark with no ways running that direction ⇒ an empty filter, never null
   assert(
-    JSON.stringify(freeRideRouteIds(c, 'puttestraat', null)) === JSON.stringify([]),
+    JSON.stringify(freeRideWayIds(c, 'puttestraat', null)) === JSON.stringify([]),
     'a landmark with no outbound ways must yield an empty filter, not null',
   );
   // both ends known is not a real free-ride case; defensively unfiltered
-  assert(freeRideRouteIds(c, 'home', 'work') === null, 'both ends known is defensively unfiltered');
+  assert(freeRideWayIds(c, 'home', 'work') === null, 'both ends known is defensively unfiltered');
 });
 
 test('store: a MIDDLE-gate move keeps laps comparable; an END move does not', () => {
   const c0 = baseCatalog();
   const v1 = gateSetFor(c0, 'MorningA', 1)!;
-  const middle = { routeId: 'MorningA', version: 2, chainageM: [160, 1450, 3050, 4400, 5650],
+  const middle = { wayId: 'MorningA', version: 2, chainageM: [160, 1450, 3050, 4400, 5650],
     createdAtMs: 1, note: 'sector boundary nudged' };
   const c1 = addGateSet(c0, middle);
-  assert(c1.routes.find((r) => r.id === 'MorningA')!.gateSetVersion === 2, 'route follows the new version');
+  assert(c1.ways.find((r) => r.id === 'MorningA')!.gateSetVersion === 2, 'route follows the new version');
   assert(gateSetFor(c1, 'MorningA', 1) !== null, 'old version is kept, never deleted');
   assert(lapsComparable(v1, middle), 'same start+finish ⇒ laps still comparable');
   assert(!sectorsComparable(v1, middle), 'moved boundary ⇒ sectors incomparable');
   // IDEAS §22: moving the finish gate closer to the door breaks laps
-  const ends = { routeId: 'MorningA', version: 3, chainageM: [40, 1500, 3000, 4400, 5900],
+  const ends = { wayId: 'MorningA', version: 3, chainageM: [40, 1500, 3000, 4400, 5900],
     createdAtMs: 2, note: '§22 — gates closer to the true start/finish' };
   assert(!lapsComparable(v1, ends), 'end move ⇒ lap history breaks');
 });
@@ -237,8 +237,8 @@ test('store: the index is a rebuildable cache, ordered by start time', () => {
   const again = upsertResult(idx, mkResult({ rideId: 'b', startedAtMs: 250 }));
   assert(again.entries.length === 3 && again.entries[2].rideId === 'c', 'replaced in place');
   // a ride that matched no route leaves no entry (D-025: uncoloured, unranked)
-  const noRoute = upsertResult(idx, mkResult({ rideId: 'a', startedAtMs: 100, routeId: null }));
-  assert(!noRoute.entries.some((e) => e.rideId === 'a'), 'unmatched ride must not enter the index');
+  const noWay = upsertResult(idx, mkResult({ rideId: 'a', startedAtMs: 100, wayId: null }));
+  assert(!noWay.entries.some((e) => e.rideId === 'a'), 'unmatched ride must not enter the index');
 });
 
 test('store: ONE history feeds both window shapes (the colour-agnostic claim)', () => {
@@ -248,11 +248,11 @@ test('store: ONE history feeds both window shapes (the colour-agnostic claim)', 
   for (let i = 0; i < 12; i++) {
     idx = upsertResult(idx, mkResult({ rideId: `m${i}`, startedAtMs: now - (11 - i) * 3 * DAY }));
   }
-  idx = upsertResult(idx, mkResult({ rideId: 'other', startedAtMs: now - DAY, routeId: 'EveningA' }));
+  idx = upsertResult(idx, mkResult({ rideId: 'other', startedAtMs: now - DAY, wayId: 'EveningA' }));
 
   const d28 = windowByDays(idx, 'MorningA', now, 28);      // D-007/D-008 shape
   const lastN = windowLastN(idx, 'MorningA', now, 10);     // IDEAS §19/§21 shape
-  assert(d28.every((e) => e.routeId === 'MorningA'), 'never mixes routes');
+  assert(d28.every((e) => e.wayId === 'MorningA'), 'never mixes routes');
   assert(d28.length === 10, `28 days at one ride/3 days ⇒ 10, got ${d28.length}`);
   assert(lastN.length === 10 && lastN[9].rideId === 'm11', 'last-N takes the tail');
   assert(windowLastN(idx, 'MorningA', now, 20).length === 12, 'fewer than N returns what exists');
@@ -325,8 +325,8 @@ test('store: the seeded catalog (ratified landmarks + D-016 gates) validates', (
   const putt = seed.landmarks.find((l) => l.id === 'puttestraat')!;
   assert(!putt.offerAtStart && putt.activeUntilMs !== null, 'family home must be dormant');
   assert(startableLandmarks(seed, AUG2026).length === 5, 'five offerable places today');
-  assert(needsRoutePick(seed, 'work>home'), 'Evening A/B ⇒ the way needs a route pick');
-  assert(needsRoutePick(seed, 'home>work'), 'home>work now has two catalog routes (Morning, MorningB — MorningB is a cold-start candidate, not yet ratified) — needs a route pick');
+  assert(needsWayPick(seed, 'work>home'), 'Evening A/B ⇒ the way needs a route pick');
+  assert(needsWayPick(seed, 'home>work'), 'home>work now has two catalog routes (Morning, MorningB — MorningB is a cold-start candidate, not yet ratified) — needs a route pick');
 });
 
 test('store: derive rebuilds a real ride from raw fixes and matches the offline pipeline', () => {
@@ -335,7 +335,7 @@ test('store: derive rebuilds a real ride from raw fixes and matches the offline 
   const gates = gateSetFor(seed, 'Morning')!.chainageM;
   const res = deriveRideResult({
     rideId: 'clean_morning', t: fx.fixes.t, lat: fx.fixes.lat, lon: fx.fixes.lon,
-    ref: refFor('Morning'), gates, routeId: 'Morning', gateSetVersion: 1, engineVersion: 'e1',
+    ref: refFor('Morning'), gates, wayId: 'Morning', gateSetVersion: 1, engineVersion: 'e1',
   });
   const oracle = analyzeOffline(fx.fixes, refFor('Morning'), 'Morning');
   assert(res.sectors.length === oracle.length, 'same sector count as the parity pipeline');
@@ -359,7 +359,7 @@ test('store: the real 237 s-gap ride derives dirty and never ranks', () => {
   const track = fx.track as 'Morning' | 'EveningA' | 'EveningB';
   const res = deriveRideResult({
     rideId: 'gap', t: fx.fixes.t, lat: fx.fixes.lat, lon: fx.fixes.lon, ref: refFor(track),
-    gates: gateSetFor(seed, track)!.chainageM, routeId: track, gateSetVersion: 1, engineVersion: 'e1',
+    gates: gateSetFor(seed, track)!.chainageM, wayId: track, gateSetVersion: 1, engineVersion: 'e1',
   });
   // Offline, this ride's gap surfaces as an OFF-CORRIDOR sector, not an
   // interpolated one — core flags sector 3 excluded_offroute — so the honest
@@ -376,7 +376,7 @@ test('store: offline never invents "estimated"; a punched gap reads as off-corri
   const fx = loadFixture('clean_morning');
   const seed = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
   const gates = gateSetFor(seed, 'Morning')!.chainageM;
-  const base = { ref: refFor('Morning'), gates, routeId: 'Morning', gateSetVersion: 1,
+  const base = { ref: refFor('Morning'), gates, wayId: 'Morning', gateSetVersion: 1,
     engineVersion: 'e1' } as const;
   const clean = deriveRideResult({ rideId: 'c', t: fx.fixes.t, lat: fx.fixes.lat,
     lon: fx.fixes.lon, ...base });
@@ -402,7 +402,7 @@ test('store: an estimated sector handed in by the live layer stays raw-only', ()
   const gates = gateSetFor(seed, 'Morning')!.chainageM;
   const res = deriveRideResult({
     rideId: 'live-est', t: fx.fixes.t, lat: fx.fixes.lat, lon: fx.fixes.lon, ref: refFor('Morning'),
-    gates, routeId: 'Morning', gateSetVersion: 1, engineVersion: 'e1',
+    gates, wayId: 'Morning', gateSetVersion: 1, engineVersion: 'e1',
     estimatedSectors: [2],   // as the live detector would report it (D-016(a))
   });
   const hit = res.sectors.find((s) => s.index === 2)!;
@@ -420,25 +420,25 @@ test('store: the archive ghost seed ranks, and a live lap places against it', ()
   assert(seeds.every((r) => r.derivedBy.resultSchemaVersion === RESULT_SCHEMA_VERSION),
     'seeds are stamped, so an engine change marks them stale rather than silently wrong');
 
-  for (const routeId of ['Morning', 'EveningA', 'EveningB']) {
-    const mine = seeds.filter((r) => r.routeId === routeId);
-    assert(mine.length > 0, `no seeds for ${routeId}`);
+  for (const wayId of ['Morning', 'EveningA', 'EveningB']) {
+    const mine = seeds.filter((r) => r.wayId === wayId);
+    assert(mine.length > 0, `no seeds for ${wayId}`);
     const rows = tower(mine);
     const ranked = rows.filter((r) => r.position !== null);
-    assert(ranked.length >= 5, `${routeId}: too few rankable ghosts (${ranked.length})`);
+    assert(ranked.length >= 5, `${wayId}: too few rankable ghosts (${ranked.length})`);
     assert(ranked.every((r) => r.ghost), 'seeded laps rank as MARKED ghosts, never as plain rows');
     assert(ranked[0].position === 1 && ranked[0].timeS <= ranked[ranked.length - 1].timeS,
-      `${routeId}: pole must be the fastest`);
+      `${wayId}: pole must be the fastest`);
     // sane e-bike commute laps: 8–40 min (WP-C: raw wall-clock is the default scored time)
     assert(ranked.every((r) => r.timeS > 480 && r.timeS < 2400),
-      `${routeId}: implausible seeded lap time`);
+      `${wayId}: implausible seeded lap time`);
     // Monday's point: a live lap slots in among them and gets a real position.
     const pole = ranked[0].timeS;
-    const hot = mkResult({ rideId: 'today', startedAtMs: Date.now(), routeId,
+    const hot = mkResult({ rideId: 'today', startedAtMs: Date.now(), wayId,
       lap: { rawS: pole - 5, movingS: pole - 10, quality: 'clean' } });
     const withToday = tower([...mine, hot]);
     assert(positionLabel(withToday, 'today') === 'P1', 'beating the ghost pole ⇒ P1');
-    const slow = mkResult({ rideId: 'slow', startedAtMs: Date.now(), routeId,
+    const slow = mkResult({ rideId: 'slow', startedAtMs: Date.now(), wayId,
       lap: { rawS: 9999, movingS: 9999, quality: 'clean' } });
     const last = tower([...mine, slow]);
     assert(positionLabel(last, 'slow') === `P${ranked.length + 1}`, 'a slow lap places last, not nowhere');
@@ -470,26 +470,26 @@ test('store: sector history drops dirty sectors before any benchmark sees them',
 test('store: every seed route\'s refLineId resolves in refs.json and fits its gate set', () => {
   const seed = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
   assert(validateCatalog(seed).length === 0, 'seed catalog must validate clean');
-  assert(seed.routes.length === 20, `expected 20 catalog routes, got ${seed.routes.length}`);
+  assert(seed.ways.length === 20, `expected 20 catalog routes, got ${seed.ways.length}`);
   const refsFile = loadJson<{ tracks: Record<string, { length: number }> }>(
     path.join(FIXTURES_DIR, 'refs.json'));
-  for (const route of seed.routes) {
-    const track = refsFile.tracks[route.refLineId];
-    assert(track !== undefined, `refs.json is missing track ${route.refLineId} (route ${route.id})`);
-    const gs = gateSetFor(seed, route.id, route.gateSetVersion);
-    assert(gs !== null, `route ${route.id}: no gate set at version ${route.gateSetVersion}`);
+  for (const way of seed.ways) {
+    const track = refsFile.tracks[way.refLineId];
+    assert(track !== undefined, `refs.json is missing track ${way.refLineId} (route ${way.id})`);
+    const gs = gateSetFor(seed, way.id, way.gateSetVersion);
+    assert(gs !== null, `route ${way.id}: no gate set at version ${way.gateSetVersion}`);
     const chain = gs!.chainageM;
-    assert(chain[0] > 0, `route ${route.id}: first gate chainage must be > 0`);
+    assert(chain[0] > 0, `route ${way.id}: first gate chainage must be > 0`);
     assert(chain[chain.length - 1] < track.length,
-      `route ${route.id}: last gate ${chain[chain.length - 1]} m must be < ref length ${track.length} m`);
+      `route ${way.id}: last gate ${chain[chain.length - 1]} m must be < ref length ${track.length} m`);
   }
 });
 
 test('catalog: station>home offers two routes (s>>h-w promotion, 2026-08-20)', () => {
   const seed = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
-  const way = seed.ways.find((w) => w.id === 'station>home')!;
-  assert(way.routeIds.includes('StationHomeWet'), 'station>home must offer StationHomeWet');
-  assert(needsRoutePick(seed, 'station>home'), 'two routes on station>home ⇒ a route pick is needed');
+  const route = seed.routes.find((w) => w.id === 'station>home')!;
+  assert(route.wayIds.includes('StationHomeWet'), 'station>home must offer StationHomeWet');
+  assert(needsWayPick(seed, 'station>home'), 'two routes on station>home ⇒ a route pick is needed');
 });
 
 test('refs: StationHomeWet line sanity (s>>h-w promotion, 2026-08-20)', () => {
@@ -526,8 +526,8 @@ test('refs: MorningB is the promoted 2026-08-19 ride (h>>w-w promotion, 2026-08-
     `MorningB length ${track.length} m out of the expected [5900, 6000] range`);
 
   const seed = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
-  const route = seed.routes.find((r) => r.id === 'MorningB')!;
-  assert(route.gateSetVersion === 2, `MorningB route must point at gate set v2, got v${route.gateSetVersion}`);
+  const way = seed.ways.find((r) => r.id === 'MorningB')!;
+  assert(way.gateSetVersion === 2, `MorningB route must point at gate set v2, got v${way.gateSetVersion}`);
   assert(gateSetFor(seed, 'MorningB', 1) !== null, 'MorningB gate set v1 must be retained (history is never deleted)');
   const v2 = gateSetFor(seed, 'MorningB', 2);
   assert(v2 !== null, 'MorningB gate set v2 must exist');
@@ -560,12 +560,12 @@ test('refs: MorningB is the promoted 2026-08-19 ride (h>>w-w promotion, 2026-08-
   }
 });
 
-for (const routeId of ['MorningB', 'StationHomeWet'] as const) {
-  test(`routes.json: ${routeId} entry projects consistently (2026-08-20 promotions)`, () => {
-    const routesJson = loadJson<{ routes: Record<string, RouteAsset> }>(
-      path.join(TESTS_DIR, '..', 'assets', 'routes', 'routes.json'));
-    const entry = routesJson.routes[routeId];
-    assert(entry !== undefined, `routes.json must hold a ${routeId} entry`);
+for (const wayId of ['MorningB', 'StationHomeWet'] as const) {
+  test(`routes.json: ${wayId} entry projects consistently (2026-08-20 promotions)`, () => {
+    const waysJson = loadJson<{ ways: Record<string, WayAsset> }>(
+      path.join(TESTS_DIR, '..', 'assets', 'ways', 'ways.json'));
+    const entry = waysJson.ways[wayId];
+    assert(entry !== undefined, `routes.json must hold a ${wayId} entry`);
     for (const g of entry.gates) {
       const p = projectToPixel(entry, g.lat, g.lon);
       assert(Math.abs(p.px - g.px) < 0.5 && Math.abs(p.py - g.py) < 0.5,
@@ -573,16 +573,16 @@ for (const routeId of ['MorningB', 'StationHomeWet'] as const) {
           `(${g.px.toFixed(2)},${g.py.toFixed(2)})`);
     }
     const seed = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
-    const route = seed.routes.find((r) => r.id === routeId)!;
-    const way = seed.ways.find((w) => w.id === route.wayId)!;
-    const startLm = seed.landmarks.find((l) => l.id === way.startLandmarkId)!;
-    const endLm = seed.landmarks.find((l) => l.id === way.endLandmarkId)!;
+    const way = seed.ways.find((r) => r.id === wayId)!;
+    const route = seed.routes.find((w) => w.id === way.routeId)!;
+    const startLm = seed.landmarks.find((l) => l.id === route.startLandmarkId)!;
+    const endLm = seed.landmarks.find((l) => l.id === route.endLandmarkId)!;
     const path0 = entry.path![0];
     const pathN = entry.path![entry.path!.length - 1];
     const dStart = metresBetween({ lat: path0[0], lon: path0[1] }, startLm);
     const dEnd = metresBetween({ lat: pathN[0], lon: pathN[1] }, endLm);
-    assert(dStart < 150, `${routeId} path start is ${dStart.toFixed(0)} m from the ${startLm.id} landmark centre`);
-    assert(dEnd < 150, `${routeId} path end is ${dEnd.toFixed(0)} m from the ${endLm.id} landmark centre`);
+    assert(dStart < 150, `${wayId} path start is ${dStart.toFixed(0)} m from the ${startLm.id} landmark centre`);
+    assert(dEnd < 150, `${wayId} path end is ${dEnd.toFixed(0)} m from the ${endLm.id} landmark centre`);
   });
 }
 
@@ -590,37 +590,37 @@ for (const routeId of ['MorningB', 'StationHomeWet'] as const) {
 
 test('fallbackRouteId: most recent ranking result wins', () => {
   const c = emptyCatalog();
-  c.routes = [
-    { id: 'RouteB', wayId: 'w', refLineId: 'RouteB', gateSetVersion: 1, seeded: false },
-    { id: 'RouteA', wayId: 'w', refLineId: 'RouteA', gateSetVersion: 1, seeded: false },
+  c.ways = [
+    { id: 'RouteB', routeId: 'w', refLineId: 'RouteB', gateSetVersion: 1, seeded: false },
+    { id: 'RouteA', routeId: 'w', refLineId: 'RouteA', gateSetVersion: 1, seeded: false },
   ];
-  const older = mkResult({ rideId: 'r1', startedAtMs: 1000, routeId: 'RouteA' });
-  const newer = mkResult({ rideId: 'r2', startedAtMs: 2000, routeId: 'RouteB' });
+  const older = mkResult({ rideId: 'r1', startedAtMs: 1000, wayId: 'RouteA' });
+  const newer = mkResult({ rideId: 'r2', startedAtMs: 2000, wayId: 'RouteB' });
   // Catalog order puts RouteB first, but the newer result is on RouteB anyway
   // here — flip the ages so the winner is decided by recency, not order.
-  const olderOnB = mkResult({ rideId: 'r3', startedAtMs: 1000, routeId: 'RouteB' });
-  const newerOnA = mkResult({ rideId: 'r4', startedAtMs: 2000, routeId: 'RouteA' });
-  assert(fallbackRouteId(c, [older, newer]) === 'RouteB', 'the most recent result (RouteB, t=2000) must win');
-  assert(fallbackRouteId(c, [newerOnA, olderOnB]) === 'RouteA',
+  const olderOnB = mkResult({ rideId: 'r3', startedAtMs: 1000, wayId: 'RouteB' });
+  const newerOnA = mkResult({ rideId: 'r4', startedAtMs: 2000, wayId: 'RouteA' });
+  assert(fallbackWayId(c, [older, newer]) === 'RouteB', 'the most recent result (RouteB, t=2000) must win');
+  assert(fallbackWayId(c, [newerOnA, olderOnB]) === 'RouteA',
     'recency decides even against catalog order (RouteB listed first)');
 });
 
 test('fallbackRouteId: empty results → first catalog route; empty catalog → null', () => {
   const c = emptyCatalog();
-  c.routes = [
-    { id: 'RouteFirst', wayId: 'w', refLineId: 'RouteFirst', gateSetVersion: 1, seeded: false },
-    { id: 'RouteSecond', wayId: 'w', refLineId: 'RouteSecond', gateSetVersion: 1, seeded: false },
+  c.ways = [
+    { id: 'RouteFirst', routeId: 'w', refLineId: 'RouteFirst', gateSetVersion: 1, seeded: false },
+    { id: 'RouteSecond', routeId: 'w', refLineId: 'RouteSecond', gateSetVersion: 1, seeded: false },
   ];
-  assert(fallbackRouteId(c, []) === 'RouteFirst', 'no history: catalog order picks the first route');
-  assert(fallbackRouteId(emptyCatalog(), []) === null, 'no routes at all (fresh install): null, nothing invented');
-  assert(fallbackRouteId(emptyCatalog(), [mkResult({ rideId: 'r1', startedAtMs: 1, routeId: 'RouteFirst' })]) === null,
+  assert(fallbackWayId(c, []) === 'RouteFirst', 'no history: catalog order picks the first route');
+  assert(fallbackWayId(emptyCatalog(), []) === null, 'no routes at all (fresh install): null, nothing invented');
+  assert(fallbackWayId(emptyCatalog(), [mkResult({ rideId: 'r1', startedAtMs: 1, wayId: 'RouteFirst' })]) === null,
     'a result naming a route absent from the catalog cannot stand in for it either');
 });
 
 test('fallbackRouteId on the real seed = the newest seeded archive ride\'s route', () => {
   const catalog = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
   const results = loadJson<RideResult[]>(path.join(TESTS_DIR, '..', 'src', 'store', 'results.seed.json'));
-  const routeIds = new Set(catalog.routes.map((r) => r.id));
+  const wayIds = new Set(catalog.ways.map((r) => r.id));
 
   // Independently derived expectation (no literal route id in this test):
   // the routeId of the newest result that names a route, RANKS (D-024/D-028
@@ -628,37 +628,37 @@ test('fallbackRouteId on the real seed = the newest seeded archive ride\'s route
   // tripwire-demoted seed is excluded here too), and names a catalogued route.
   let expected: RideResult | null = null;
   for (const r of results) {
-    if (r.routeId === null || !routeIds.has(r.routeId)) continue;
+    if (r.wayId === null || !wayIds.has(r.wayId)) continue;
     if (!ranks(r)) continue;
     if (expected === null || r.startedAtMs > expected.startedAtMs) expected = r;
   }
   assert(expected !== null, 'the real seed must contain at least one rankable, catalogued result');
-  assert(fallbackRouteId(catalog, results) === expected!.routeId,
-    `fallbackRouteId returned ${fallbackRouteId(catalog, results)}, expected the newest seed's route ${expected!.routeId}`);
+  assert(fallbackWayId(catalog, results) === expected!.wayId,
+    `fallbackRouteId returned ${fallbackWayId(catalog, results)}, expected the newest seed's route ${expected!.wayId}`);
 });
 
 // -------------------------------------- route display-name overlay (Nathan 2026-08-26)
 
 test('routeLabel: the ruled display-name overlays render their display names', () => {
-  assert(routeLabel('Morning') === 'Home Work Dry', `Morning -> ${routeLabel('Morning')}`);
-  assert(routeLabel('MorningB') === 'Home Work Wet', `MorningB -> ${routeLabel('MorningB')}`);
-  assert(routeLabel('EveningA') === 'Work Home Dry', `EveningA -> ${routeLabel('EveningA')}`);
-  assert(routeLabel('EveningB') === 'Work Home Wet', `EveningB -> ${routeLabel('EveningB')}`);
-  assert(routeLabel('StationHomePreferred') === 'Station Home Dry',
-    `StationHomePreferred -> ${routeLabel('StationHomePreferred')}`);
-  assert(routeLabel('WorkStationA') === 'Work Station Alt',
-    `WorkStationA -> ${routeLabel('WorkStationA')} (A=Alt, Nathan 2026-08-27)`);
-  assert(routeLabel('WorkStationB') === 'Work Station Std',
-    `WorkStationB -> ${routeLabel('WorkStationB')} (B=Std, Nathan 2026-08-27)`);
+  assert(wayLabel('Morning') === 'Home Work Dry', `Morning -> ${wayLabel('Morning')}`);
+  assert(wayLabel('MorningB') === 'Home Work Wet', `MorningB -> ${wayLabel('MorningB')}`);
+  assert(wayLabel('EveningA') === 'Work Home Dry', `EveningA -> ${wayLabel('EveningA')}`);
+  assert(wayLabel('EveningB') === 'Work Home Wet', `EveningB -> ${wayLabel('EveningB')}`);
+  assert(wayLabel('StationHomePreferred') === 'Station Home Dry',
+    `StationHomePreferred -> ${wayLabel('StationHomePreferred')}`);
+  assert(wayLabel('WorkStationA') === 'Work Station Alt',
+    `WorkStationA -> ${wayLabel('WorkStationA')} (A=Alt, Nathan 2026-08-27)`);
+  assert(wayLabel('WorkStationB') === 'Work Station Std',
+    `WorkStationB -> ${wayLabel('WorkStationB')} (B=Std, Nathan 2026-08-27)`);
 });
 
 test('routeLabel: StationWork pair (ruled unchanged) and native ids keep their derived labels', () => {
-  assert(routeLabel('StationWorkStd') === 'Station Work Std', 'Std keeps its name (ruled)');
-  assert(routeLabel('StationWorkAlt') === 'Station Work Alt', 'Alt keeps its name (ruled)');
-  assert(routeLabel('StationHomeWet') === 'Station Home Wet', 'already descriptive — no entry');
-  assert(routeLabel('WorkChurchA') === 'Work Church A', 'native id spot check');
-  assert(routeLabel('HomeChurch') === 'Home Church', 'native id spot check');
-  assert(routeLabel('SomeFutureRoute') === 'Some Future Route',
+  assert(wayLabel('StationWorkStd') === 'Station Work Std', 'Std keeps its name (ruled)');
+  assert(wayLabel('StationWorkAlt') === 'Station Work Alt', 'Alt keeps its name (ruled)');
+  assert(wayLabel('StationHomeWet') === 'Station Home Wet', 'already descriptive — no entry');
+  assert(wayLabel('WorkChurchA') === 'Work Church A', 'native id spot check');
+  assert(wayLabel('HomeChurch') === 'Home Church', 'native id spot check');
+  assert(wayLabel('SomeFutureRoute') === 'Some Future Route',
     'an id the table has never heard of falls back to split-on-capitals');
 });
 
@@ -667,17 +667,17 @@ test('overlay never touches stored ids: catalog, map-asset manifest and engine r
   const display = ['HomeWorkDry', 'HomeWorkWet', 'WorkHomeDry', 'WorkHomeWet', 'StationHomeDry', 'WorkStationAlt', 'WorkStationStd'];
 
   const catalog = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
-  const ids = new Set(catalog.routes.map((r) => r.id));
+  const ids = new Set(catalog.ways.map((r) => r.id));
   for (const id of legacy) assert(ids.has(id), `catalog.seed.json must still contain route id ${id}`);
   for (const d of display) assert(!ids.has(d), `display name ${d} must never appear as a catalog route id`);
-  for (const r of catalog.routes) {
+  for (const r of catalog.ways) {
     assert(!display.includes(r.refLineId), `refLineId ${r.refLineId} must stay a real track id`);
   }
 
-  const manifest = loadJson<{ routes: Record<string, unknown> }>(
-    path.join(TESTS_DIR, '..', 'assets', 'routes', 'routes.json'));
-  for (const id of legacy) assert(id in manifest.routes, `map-asset manifest must still key ${id}`);
-  for (const d of display) assert(!(d in manifest.routes), `map-asset manifest must not gain a ${d} key`);
+  const manifest = loadJson<{ ways: Record<string, unknown> }>(
+    path.join(TESTS_DIR, '..', 'assets', 'ways', 'ways.json'));
+  for (const id of legacy) assert(id in manifest.ways, `map-asset manifest must still key ${id}`);
+  for (const d of display) assert(!(d in manifest.ways), `map-asset manifest must not gain a ${d} key`);
 
   const refs = loadJson<{ tracks: Record<string, unknown> }>(path.join(TESTS_DIR, 'fixtures', 'refs.json'));
   for (const id of legacy) assert(id in refs.tracks, `engine refs.json must still key track ${id}`);
@@ -689,49 +689,49 @@ test('overlay never touches stored ids: catalog, map-asset manifest and engine r
 
 test('routeVariantLabel: the third choice shows only the variant word, every multi-route way', () => {
   const w = (a: string, b: string) => ({ startLandmarkId: a, endLandmarkId: b });
-  assert(routeVariantLabel('Morning', w('home', 'work')) === 'Dry', `Morning -> ${routeVariantLabel('Morning', w('home', 'work'))}`);
-  assert(routeVariantLabel('MorningB', w('home', 'work')) === 'Wet', 'MorningB -> Wet');
-  assert(routeVariantLabel('EveningA', w('work', 'home')) === 'Dry', 'EveningA -> Dry');
-  assert(routeVariantLabel('EveningB', w('work', 'home')) === 'Wet', 'EveningB -> Wet');
-  assert(routeVariantLabel('StationWorkStd', w('station', 'work')) === 'Std', 'StationWorkStd -> Std (Nathan example)');
-  assert(routeVariantLabel('StationWorkAlt', w('station', 'work')) === 'Alt', 'StationWorkAlt -> Alt');
-  assert(routeVariantLabel('WorkStationA', w('work', 'station')) === 'Alt', 'A -> Alt overlay then variant (Nathan 2026-08-27)');
-  assert(routeVariantLabel('WorkStationB', w('work', 'station')) === 'Std', 'B -> Std overlay then variant (Nathan 2026-08-27)');
-  assert(routeVariantLabel('StationHomePreferred', w('station', 'home')) === 'Dry', 'overlay applies before stripping');
-  assert(routeVariantLabel('StationHomeWet', w('station', 'home')) === 'Wet', 'StationHomeWet -> Wet');
-  assert(routeVariantLabel('HomeStationPreferred', w('home', 'station')) === 'Preferred', 'HomeStationPreferred -> Preferred');
-  assert(routeVariantLabel('HomeStationViaFosh', w('home', 'station')) === 'Via Fosh', 'multi-word variant splits on capitals');
-  assert(routeVariantLabel('WorkChurchB', w('work', 'church')) === 'B', 'WorkChurchB -> B');
+  assert(wayVariantLabel('Morning', w('home', 'work')) === 'Dry', `Morning -> ${wayVariantLabel('Morning', w('home', 'work'))}`);
+  assert(wayVariantLabel('MorningB', w('home', 'work')) === 'Wet', 'MorningB -> Wet');
+  assert(wayVariantLabel('EveningA', w('work', 'home')) === 'Dry', 'EveningA -> Dry');
+  assert(wayVariantLabel('EveningB', w('work', 'home')) === 'Wet', 'EveningB -> Wet');
+  assert(wayVariantLabel('StationWorkStd', w('station', 'work')) === 'Std', 'StationWorkStd -> Std (Nathan example)');
+  assert(wayVariantLabel('StationWorkAlt', w('station', 'work')) === 'Alt', 'StationWorkAlt -> Alt');
+  assert(wayVariantLabel('WorkStationA', w('work', 'station')) === 'Alt', 'A -> Alt overlay then variant (Nathan 2026-08-27)');
+  assert(wayVariantLabel('WorkStationB', w('work', 'station')) === 'Std', 'B -> Std overlay then variant (Nathan 2026-08-27)');
+  assert(wayVariantLabel('StationHomePreferred', w('station', 'home')) === 'Dry', 'overlay applies before stripping');
+  assert(wayVariantLabel('StationHomeWet', w('station', 'home')) === 'Wet', 'StationHomeWet -> Wet');
+  assert(wayVariantLabel('HomeStationPreferred', w('home', 'station')) === 'Preferred', 'HomeStationPreferred -> Preferred');
+  assert(wayVariantLabel('HomeStationViaFosh', w('home', 'station')) === 'Via Fosh', 'multi-word variant splits on capitals');
+  assert(wayVariantLabel('WorkChurchB', w('work', 'church')) === 'B', 'WorkChurchB -> B');
 });
 
 test('routeVariantLabel: never blank for any catalog route; off-convention ids fall back to the full label', () => {
   const catalog = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
-  for (const r of catalog.routes) {
-    const way = catalog.ways.find((x) => x.id === r.wayId);
-    assert(way !== undefined, `route ${r.id} must have a way`);
-    const v = routeVariantLabel(r.id, way!);
+  for (const r of catalog.ways) {
+    const route = catalog.routes.find((x) => x.id === r.routeId);
+    assert(route !== undefined, `route ${r.id} must have a way`);
+    const v = wayVariantLabel(r.id, route!);
     assert(v.length > 0, `variant label for ${r.id} must not be empty, got "${v}"`);
   }
-  assert(routeVariantLabel('HomeChurch', { startLandmarkId: 'home', endLandmarkId: 'church' }) === 'Home Church',
+  assert(wayVariantLabel('HomeChurch', { startLandmarkId: 'home', endLandmarkId: 'church' }) === 'Home Church',
     'a route with no variant suffix falls back to its full label (single-route ways never render pills anyway)');
-  assert(routeVariantLabel('Morning', { startLandmarkId: 'church', endLandmarkId: 'fosh' }) === 'Home Work Dry',
+  assert(wayVariantLabel('Morning', { startLandmarkId: 'church', endLandmarkId: 'fosh' }) === 'Home Work Dry',
     'an id that does not start with the way prefix falls back to the full label');
 });
 
 test('sortRoutesForDisplay: Std lists before Alt in BOTH station-work directions; everything else keeps catalog order', () => {
   const catalog = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
-  const wayIds = (wayId: string) =>
-    sortRoutesForDisplay(catalog.routes.filter((r) => r.wayId === wayId)).map((r) => r.id).join(',');
-  assert(wayIds('station>work') === 'StationWorkStd,StationWorkAlt',
-    `station>work must list Std first, got ${wayIds('station>work')}`);
-  assert(wayIds('work>station') === 'WorkStationB,WorkStationA',
-    `work>station must list Std (=B) first, got ${wayIds('work>station')}`);
-  assert(wayIds('home>work') === 'Morning,MorningB',
-    `home>work keeps catalog order, got ${wayIds('home>work')}`);
-  assert(wayIds('station>home') === 'StationHomePreferred,StationHomeWet',
-    `station>home keeps catalog order, got ${wayIds('station>home')}`);
-  assert(wayIds('work>church') === 'WorkChurchA,WorkChurchB',
-    `work>church keeps catalog order, got ${wayIds('work>church')}`);
+  const routeIds = (routeId: string) =>
+    sortWaysForDisplay(catalog.ways.filter((r) => r.routeId === routeId)).map((r) => r.id).join(',');
+  assert(routeIds('station>work') === 'StationWorkStd,StationWorkAlt',
+    `station>work must list Std first, got ${routeIds('station>work')}`);
+  assert(routeIds('work>station') === 'WorkStationB,WorkStationA',
+    `work>station must list Std (=B) first, got ${routeIds('work>station')}`);
+  assert(routeIds('home>work') === 'Morning,MorningB',
+    `home>work keeps catalog order, got ${routeIds('home>work')}`);
+  assert(routeIds('station>home') === 'StationHomePreferred,StationHomeWet',
+    `station>home keeps catalog order, got ${routeIds('station>home')}`);
+  assert(routeIds('work>church') === 'WorkChurchA,WorkChurchB',
+    `work>church keeps catalog order, got ${routeIds('work>church')}`);
 });
 
 // ------------------------------------------------------------- B-39 remainder: the empty-seed install path (cycle 025)
@@ -745,9 +745,9 @@ function userAddition(): Catalog {
     { id: 'alpha', label: 'alpha', lat: 51.2, lon: 4.4, radiusM: 150, activeFromMs: 0, activeUntilMs: null, offerAtStart: true },
     { id: 'beta', label: 'beta', lat: 51.25, lon: 4.45, radiusM: 150, activeFromMs: 0, activeUntilMs: null, offerAtStart: true },
   ];
-  c.ways = [{ id: 'alpha>beta', startLandmarkId: 'alpha', endLandmarkId: 'beta', routeIds: ['AlphaBeta'] }];
-  c.routes = [{ id: 'AlphaBeta', wayId: 'alpha>beta', refLineId: 'AlphaBeta', gateSetVersion: 1, seeded: false }];
-  c.gateSets = [{ routeId: 'AlphaBeta', version: 1, chainageM: [100, 1000, 2000, 3000, 3900], createdAtMs: 0 }];
+  c.routes = [{ id: 'alpha>beta', startLandmarkId: 'alpha', endLandmarkId: 'beta', wayIds: ['AlphaBeta'] }];
+  c.ways = [{ id: 'AlphaBeta', routeId: 'alpha>beta', refLineId: 'AlphaBeta', gateSetVersion: 1, seeded: false }];
+  c.gateSets = [{ wayId: 'AlphaBeta', version: 1, chainageM: [100, 1000, 2000, 3000, 3900], createdAtMs: 0 }];
   return c;
 }
 
@@ -756,27 +756,27 @@ test('mergeCatalogs: seed first, user additions after; seed wins every id collis
   const user = userAddition();
   const merged = mergeCatalogs(seed, user);
   assert(merged.landmarks.length === seed.landmarks.length + 2, 'two user landmarks appended');
-  assert(merged.ways.length === seed.ways.length + 1 && merged.routes.length === seed.routes.length + 1
+  assert(merged.routes.length === seed.routes.length + 1 && merged.ways.length === seed.ways.length + 1
     && merged.gateSets.length === seed.gateSets.length + 1, 'one user way/route/gate set appended');
-  assert(merged.landmarks[0].id === seed.landmarks[0].id && merged.routes[0].id === seed.routes[0].id,
+  assert(merged.landmarks[0].id === seed.landmarks[0].id && merged.ways[0].id === seed.ways[0].id,
     'seed order comes first — "first in catalog order" keeps its meaning');
-  assert(merged.landmarks[merged.landmarks.length - 1].id === 'beta' && merged.routes[merged.routes.length - 1].id === 'AlphaBeta',
+  assert(merged.landmarks[merged.landmarks.length - 1].id === 'beta' && merged.ways[merged.ways.length - 1].id === 'AlphaBeta',
     'user entries come after the seed, in their own order');
   assert(validateCatalog(merged).length === 0, `merged seed+user must validate: ${validateCatalog(merged).join('; ')}`);
 
   // Collisions: a user entry re-using a seed id is dropped, the seed entry survives untouched.
   const clash = userAddition();
   clash.landmarks.push({ ...seed.landmarks[0], label: 'IMPOSTOR' });
-  clash.ways.push({ ...seed.ways[0], routeIds: [] });
-  clash.routes.push({ ...seed.routes[0], gateSetVersion: 99 });
+  clash.routes.push({ ...seed.routes[0], wayIds: [] });
+  clash.ways.push({ ...seed.ways[0], gateSetVersion: 99 });
   clash.gateSets.push({ ...seed.gateSets[0], chainageM: [1, 2] });
   const m2 = mergeCatalogs(seed, clash);
-  assert(m2.landmarks.length === merged.landmarks.length && m2.ways.length === merged.ways.length
-    && m2.routes.length === merged.routes.length && m2.gateSets.length === merged.gateSets.length,
+  assert(m2.landmarks.length === merged.landmarks.length && m2.routes.length === merged.routes.length
+    && m2.ways.length === merged.ways.length && m2.gateSets.length === merged.gateSets.length,
     'colliding user entries are dropped, not appended');
   assert(m2.landmarks.find((l) => l.id === seed.landmarks[0].id)!.label === seed.landmarks[0].label,
     'the seed landmark, not the impostor, survives');
-  assert(m2.routes.find((r) => r.id === seed.routes[0].id)!.gateSetVersion === seed.routes[0].gateSetVersion,
+  assert(m2.ways.find((r) => r.id === seed.ways[0].id)!.gateSetVersion === seed.ways[0].gateSetVersion,
     'the seed route, not the impostor, survives');
   // A same-route gate set at a NEW version is not a collision (a gate move mints a version).
   const bump = userAddition();
@@ -793,21 +793,21 @@ test('mergeCatalogs: seed first, user additions after; seed wins every id collis
 
 test('defaultMapRouteId: first CATALOG route with a drawable asset; undrawable skipped; empty catalog => null; real seed => first seed route', () => {
   const c = emptyCatalog();
-  c.routes = [
-    { id: 'NoAsset', wayId: 'w', refLineId: 'NoAsset', gateSetVersion: 1, seeded: false },
-    { id: 'Drawable', wayId: 'w', refLineId: 'DrawableRef', gateSetVersion: 1, seeded: false },
-    { id: 'Later', wayId: 'w', refLineId: 'LaterRef', gateSetVersion: 1, seeded: false },
+  c.ways = [
+    { id: 'NoAsset', routeId: 'w', refLineId: 'NoAsset', gateSetVersion: 1, seeded: false },
+    { id: 'Drawable', routeId: 'w', refLineId: 'DrawableRef', gateSetVersion: 1, seeded: false },
+    { id: 'Later', routeId: 'w', refLineId: 'LaterRef', gateSetVersion: 1, seeded: false },
   ];
   const drawable = new Set(['DrawableRef', 'LaterRef', 'Morning']);
-  assert(defaultMapRouteId(c, (ref) => drawable.has(ref)) === 'DrawableRef', 'first route WITH an asset wins, by refLineId');
-  assert(defaultMapRouteId(c, () => false) === null, 'nothing drawable => null');
-  assert(defaultMapRouteId(emptyCatalog(), () => true) === null, 'empty catalog (virgin build) => null, never the manifest\'s own first key');
+  assert(defaultMapWayId(c, (ref) => drawable.has(ref)) === 'DrawableRef', 'first route WITH an asset wins, by refLineId');
+  assert(defaultMapWayId(c, () => false) === null, 'nothing drawable => null');
+  assert(defaultMapWayId(emptyCatalog(), () => true) === null, 'empty catalog (virgin build) => null, never the manifest\'s own first key');
   const seed = loadJson<Catalog>(path.join(TESTS_DIR, '..', 'src', 'store', 'catalog.seed.json'));
-  const manifest = loadJson<{ routes: Record<string, unknown> }>(
-    path.join(TESTS_DIR, '..', 'assets', 'routes', 'routes.json'));
-  const got = defaultMapRouteId(seed, (ref) => manifest.routes[ref] !== undefined);
-  assert(got === seed.routes[0].refLineId, `real seed: expected the first seed route's ref ${seed.routes[0].refLineId}, got ${got}`);
-  assert(got === Object.keys(manifest.routes)[0],
+  const manifest = loadJson<{ ways: Record<string, unknown> }>(
+    path.join(TESTS_DIR, '..', 'assets', 'ways', 'ways.json'));
+  const got = defaultMapWayId(seed, (ref) => manifest.ways[ref] !== undefined);
+  assert(got === seed.ways[0].refLineId, `real seed: expected the first seed route's ref ${seed.ways[0].refLineId}, got ${got}`);
+  assert(got === Object.keys(manifest.ways)[0],
     'real seed: identical to the manifest-first-key fallback it replaces (byte-identical behaviour for Nathan\'s build)');
 });
 

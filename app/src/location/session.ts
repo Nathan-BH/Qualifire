@@ -27,7 +27,7 @@ export interface ActiveSession {
    * matching every ride recorded before B1 (they were all route rides; free
    * mode did not exist yet). */
   mode?: 'route' | 'free';
-  routeIds?: string[] | null;
+  wayIds?: string[] | null;
   /** Cycle 025 (P4): last-known-alive heartbeat, refreshed by the location
    * task every HEARTBEAT_EVERY_N_FIXES fixes (location/index.ts) and set at
    * startTracking. On relaunch recovery, ensureSession derives
@@ -56,12 +56,12 @@ export async function loadSession(): Promise<ActiveSession | null> {
     const parsed = JSON.parse(raw) as Partial<ActiveSession>;
     if (typeof parsed.rideId === 'string' && typeof parsed.startedAtMs === 'number') {
       const mode = parsed.mode === 'free' ? 'free' : parsed.mode === 'route' ? 'route' : undefined;
-      const routeIds = Array.isArray(parsed.routeIds) ? parsed.routeIds : parsed.routeIds === null ? null : undefined;
+      const wayIds = Array.isArray(parsed.wayIds) ? parsed.wayIds : parsed.wayIds === null ? null : undefined;
       const lastAliveAtMs =
         typeof parsed.lastAliveAtMs === 'number' && Number.isFinite(parsed.lastAliveAtMs)
           ? parsed.lastAliveAtMs
           : undefined;
-      return { rideId: parsed.rideId, startedAtMs: parsed.startedAtMs, mode, routeIds, lastAliveAtMs };
+      return { rideId: parsed.rideId, startedAtMs: parsed.startedAtMs, mode, wayIds, lastAliveAtMs };
     }
     // Corrupt marker: discard rather than crash the task forever.
     await clearSession();

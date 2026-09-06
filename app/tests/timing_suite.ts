@@ -54,7 +54,7 @@ function mkResult(o: Partial<RideResult> & { rideId: string; startedAtMs: number
   return {
     kind: 'rideResult',
     schemaVersion: RESULT_SCHEMA_VERSION,
-    routeId: 'MorningA',
+    wayId: 'MorningA',
     source: 'app',
     lap: { rawS: 900, movingS: 880, quality: 'clean' },
     sectors: [
@@ -72,7 +72,7 @@ function stateWith(over: Partial<LiveEngineState>): LiveEngineState {
   return {
     phase: 'finished', track: 'Morning', sectors: [], currentSector: null, lastDone: 4,
     lap: { rawS: 900, stoppedS: 20, movingS: 880, estimated: false },
-    gateFires: 5, fixesFed: 900, onRoute: true, anyAnchored: false,
+    gateFires: 5, fixesFed: 900, onWay: true, anyAnchored: false,
     ...over,
   } as LiveEngineState;
 }
@@ -194,13 +194,13 @@ test('timing: lapValues / sectorValues / allTimeBestLapS follow the mode', () =>
 test('timing: rideDetailFor prints and judges the scored clock', () => {
   const res: RideResult = {
     kind: 'rideResult', schemaVersion: RESULT_SCHEMA_VERSION, rideId: 'tr1', startedAtMs: 1,
-    routeId: 'RouteA', source: 'app',
+    wayId: 'RouteA', source: 'app',
     lap: { rawS: 900, movingS: 880, quality: 'clean' },
     sectors: [{ index: 1, fromChainageM: 0, toChainageM: 1000, rawS: 440, movingS: 430, quality: 'clean' }],
     derivedBy: { engineVersion: 'e1', gateSetVersion: 1, resultSchemaVersion: RESULT_SCHEMA_VERSION },
   };
   const deps: RideDetailDeps = {
-    result: res, free: null, routes: [], userRoutes: [],
+    result: res, free: null, ways: [], userWays: [],
     laps: () => [], sectors: () => [], barred: () => false,
   };
 
@@ -220,7 +220,7 @@ test('timing: rideDetailFor prints and judges the scored clock', () => {
 test('timing: buildPbDetail orders rides and picks the sector best by the scored clock', () => {
   const ra: RideResult = {
     kind: 'rideResult', schemaVersion: RESULT_SCHEMA_VERSION, rideId: 'pa', startedAtMs: 1,
-    routeId: 'RouteA', source: 'app',
+    wayId: 'RouteA', source: 'app',
     lap: { rawS: 900, movingS: 880, quality: 'clean' },
     sectors: [{ index: 1, fromChainageM: 0, toChainageM: 1000, rawS: 440, movingS: 430, quality: 'clean' }],
     derivedBy: { engineVersion: 'e1', gateSetVersion: 1, resultSchemaVersion: RESULT_SCHEMA_VERSION },

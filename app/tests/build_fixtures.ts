@@ -53,12 +53,12 @@ function loadIndex(): Map<string, string[]> {
     .replace(/\r/g, '').trim().split('\n');
   const header = rows[0].split(',');
   const iFile = header.indexOf('filename');
-  const iRoute = header.indexOf('route');
+  const iWay = header.indexOf('route');
   const iVar = header.indexOf('variant');
   const m = new Map<string, string[]>();
   for (const row of rows.slice(1)) {
     const c = row.split(',');
-    const key = `${c[iRoute]}|${(c[iVar] ?? '').trim()}`;
+    const key = `${c[iWay]}|${(c[iVar] ?? '').trim()}`;
     if (!m.has(key)) m.set(key, []);
     m.get(key)!.push(c[iFile]);
   }
@@ -188,8 +188,8 @@ const refs: Partial<RefsFile['tracks']> = {};
 const perTrack = new Map<TrackId, { ref: RefLine; rides: Analyzed[]; medoid: string }>();
 
 for (const track of Object.keys(TRACKS) as Exclude<TrackId, 'MorningB'>[]) {
-  const [route, variant] = TRACKS[track];
-  const files = (index.get(`${route}|${variant}`) ?? []).slice().sort();
+  const [way, variant] = TRACKS[track];
+  const files = (index.get(`${way}|${variant}`) ?? []).slice().sort();
   const rides: RidePoints[] = files.map((f) =>
     parseGpx(fs.readFileSync(path.join(DATA, 'activities', f), 'utf8'), f.replace(/\.gpx$/, '')));
   const { lat0, lon0 } = meanOrigin(rides);

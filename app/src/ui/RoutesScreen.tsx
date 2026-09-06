@@ -62,20 +62,20 @@ export default function RoutesScreen() {
         ) : null}
       </View>
 
-      <Text style={[st.h2, { color: t.textDim }]}>WAYS</Text>
+      <Text style={[st.h2, { color: t.textDim }]}>ROUTES</Text>
       {/* B-39 minimal empty state — same note as the places card above. */}
-      {CATALOG.ways.length === 0 ? (
-        <Text style={{ color: t.textDim, fontSize: 14, marginBottom: 10 }}>No ways yet.</Text>
+      {CATALOG.routes.length === 0 ? (
+        <Text style={{ color: t.textDim, fontSize: 14, marginBottom: 10 }}>No routes yet.</Text>
       ) : null}
-      {CATALOG.ways.map((w) => {
+      {CATALOG.routes.map((w) => {
         const from = CATALOG.landmarks.find((l) => l.id === w.startLandmarkId);
         const to = CATALOG.landmarks.find((l) => l.id === w.endLandmarkId);
-        const routeCount = CATALOG.routes.filter((r) => r.wayId === w.id).length;
+        const wayCount = CATALOG.ways.filter((r) => r.routeId === w.id).length;
         return (
           <Pressable
             key={w.id}
             style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder, marginBottom: 10 }]}
-            onPress={() => tabNav.openCatalog({ kind: 'way', id: w.id })}
+            onPress={() => tabNav.openCatalog({ kind: 'route', id: w.id })}
           >
             <View style={[st.row, { borderBottomWidth: 0 }]}>
               <View style={{ flex: 1 }}>
@@ -83,8 +83,8 @@ export default function RoutesScreen() {
                   {from?.label} → {to?.label}
                 </Text>
                 <Text style={{ color: t.textDim, fontSize: 11.5 }}>
-                  {routeCount} route{routeCount === 1 ? '' : 's'}
-                  {routeCount > 1 ? ' · asks which one at START' : ''}
+                  {wayCount} way{wayCount === 1 ? '' : 's'}
+                  {wayCount > 1 ? ' · asks which one at START' : ''}
                 </Text>
               </View>
               <Text style={{ color: t.textDim }}>›</Text>

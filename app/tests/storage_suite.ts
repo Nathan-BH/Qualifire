@@ -29,7 +29,7 @@ registerHooks({
     return nextLoad(url, context);
   },
 });
-const { readRideFixes } = await import('../src/store/wayFromRide.ts');
+const { readRideFixes } = await import('../src/store/routeFromRide.ts');
 
 /** Deterministic PRNG (mulberry32) — reproducible "random" doubles. */
 function rng(seed: number): () => number {
@@ -270,14 +270,14 @@ test('storage: WP-B fix B2 — startRide(mode) persists mode on the index entry,
   // no argument at all (every pre-B2 call site) — both must round-trip too;
   // the second exercises the back-compat default (mode omitted -> undefined,
   // never invented as a literal 'route' string that would mask a real gap).
-  const routeId = await storage.startRide('route');
-  await storage.endRide(routeId);
+  const wayId = await storage.startRide('route');
+  await storage.endRide(wayId);
   const noArgId = await storage.startRide();
   await storage.endRide(noArgId);
   const finalIndex = JSON.parse(fs.files.get('index.json')!);
-  const routeEntry = finalIndex.rides.find((r: { rideId: string }) => r.rideId === routeId);
+  const wayEntry = finalIndex.rides.find((r: { rideId: string }) => r.rideId === wayId);
   const noArgEntry = finalIndex.rides.find((r: { rideId: string }) => r.rideId === noArgId);
-  assert(routeEntry.mode === 'route', `explicit 'route' mode not preserved: got ${routeEntry.mode}`);
+  assert(wayEntry.mode === 'route', `explicit 'route' mode not preserved: got ${wayEntry.mode}`);
   assert(noArgEntry.mode === undefined,
     `no-arg startRide() invented a mode (${noArgEntry.mode}) instead of leaving it unset`);
 });

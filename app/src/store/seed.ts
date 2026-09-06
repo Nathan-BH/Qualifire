@@ -56,7 +56,7 @@ export function shippedResults(): RideResult[] {
 /** WP-E (Nathan's Q6 ruling, 2026-09-03: "remove everything that's bundled
  * ... it should only use what is actually made on the phone"): anything ELSE
  * baked into the JS bundle that an empty-seed (virgin) build must not be
- * able to reach — today the route asset manifest (assets/routes/routes.json)
+ * able to reach — today the route asset manifest (assets/ways/routes.json)
  * and the three pre-rendered route PNGs, both defined in ui/routeMapView.tsx.
  * Static imports are resolved by Metro before any env logic runs, so the
  * bytes still ship; this makes them unreachable: every consumer sees `{}`.

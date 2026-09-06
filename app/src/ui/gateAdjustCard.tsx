@@ -36,14 +36,14 @@ import { useTheme } from './themeContext';
 import {
   NUDGE_LARGE_PCT, NUDGE_SMALL_PCT, clampNudge, fmtChainage, fmtPct, gateName, nudgeDeltaM,
 } from './gateAdjustModel';
-import { buildRuntimeRouteAsset } from './routeAssetRuntime.ts';
-import RouteMapView from './routeMapView.tsx';
+import { buildRuntimeWayAsset } from './wayAssetRuntime.ts';
+import WayMapView from './wayMapView.tsx';
 
 export interface GateAdjustCardProps {
   /** the route this card edits — a real id (never null): the embedded
    * RouteMapView needs it for the PNG rung's IMAGES lookup and its
    * mode-reset effect keys on it (routeMapView.tsx). */
-  routeId: string;
+  wayId: string;
   /** the ride's real reference line (WP-I): the map draws it and places gates on it */
   refLine: RefLine;
   refLengthM: number;
@@ -78,7 +78,7 @@ export function GateAdjustCard(props: GateAdjustCardProps) {
   // chainage on each nudge — the same asset shape the PNG/MapLibre rungs
   // already know how to draw (routeAssetRuntime.ts).
   const asset = useMemo(
-    () => buildRuntimeRouteAsset(props.refLine, chainageM, 'gate-card'),
+    () => buildRuntimeWayAsset(props.refLine, chainageM, 'gate-card'),
     [props.refLine, chainageM],
   );
 
@@ -144,8 +144,8 @@ export function GateAdjustCard(props: GateAdjustCardProps) {
       </Text>
 
       <View style={st.mapWrap}>
-        <RouteMapView
-          routeId={props.routeId}
+        <WayMapView
+          wayId={props.wayId}
           asset={asset}
           lat={null}
           lon={null}

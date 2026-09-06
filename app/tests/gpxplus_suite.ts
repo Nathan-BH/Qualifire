@@ -18,10 +18,10 @@ import { test, assert, loadFixture, refFor } from './lib.ts';
 
 interface Env { fs: ReturnType<typeof createMemoryFsAdapter>; storage: ReturnType<typeof createStorage>; clock: { t: number } }
 
-/** `withRefFor` (WP-G Part 4): only the routeFidelity-specific tests below
+/** `withRefFor` (WP-G Part 4): only the wayFidelity-specific tests below
  * inject tests/lib.ts's Node-safe refFor — every other test leaves it
  * undefined, so this suite's existing assertions (none of which know about
- * routeFidelity) are provably unaffected by the feature's addition. */
+ * wayFidelity) are provably unaffected by the feature's addition. */
 function makeEnv(startMs = 1755167000000, withRefFor = false): Env {
   const fs = createMemoryFsAdapter();
   const clock = { t: startMs };
@@ -37,7 +37,7 @@ function makeEnv(startMs = 1755167000000, withRefFor = false): Env {
 /** Strips a GPX+ document down to what buildGpx would have produced: removes
  * the xmlns:qf attribute and every line whose trimmed content is qf:-only. */
 function stripGpxPlus(gpxPlus: string): string {
-  const noXmlns = gpxPlus.replace(' xmlns:qf="https://qualifire.local/gpx/1"', '');
+  const noXmlns = gpxPlus.replace(' xmlns:qf="https://qualifire.local/gpx/2"', '');
   return noXmlns
     .split('\n')
     .filter((line) => {
@@ -74,8 +74,8 @@ test('gpx+: events JSONL encode->decode identity — one of each kind, garbage/u
     // N9 (2026-09-02, GPX+ pick/lock-change logging):
     {
       kind: 'pick', tUnixMs: 3200, mode: 'route', from: 'lm:a', to: 'lm:b',
-      fromLabel: 'Home', toLabel: 'Work', routeId: 'route:x', pickSource: 'picked',
-      routeIds: ['route:x', 'route:y'],
+      fromLabel: 'Home', toLabel: 'Work', wayId: 'route:x', pickSource: 'picked',
+      wayIds: ['route:x', 'route:y'],
     },
     {
       kind: 'lockChange', tUnixMs: 3500, track: 'Morning', from: 'soft', to: 'verified',
@@ -87,7 +87,7 @@ test('gpx+: events JSONL encode->decode identity — one of each kind, garbage/u
     { kind: 'relaunch', tUnixMs: 6500, downS: 6.2 },
     { kind: 'remount', tUnixMs: 6600 },
     {
-      kind: 'routeMatchDiagnostic', tUnixMs: 7000, track: 'Morning', phase: 'anchor',
+      kind: 'wayMatchDiagnostic', tUnixMs: 7000, track: 'Morning', phase: 'anchor',
       accuracyM: 97.7, thresholdM: 50, poorAccuracy: true, xtdM: 12.3,
     },
     { kind: 'elevationOutlier', tUnixMs: 8000, deltaM: 10.7, dtS: 1, thresholdMps: 4 },
@@ -185,7 +185,7 @@ test('gpx+: standard exportGpx stays byte-identical — stripped exportGpxPlus e
   // element — this is the byte-identity test's whole point.
   await storage.appendEvent(rideId, {
     kind: 'pick', tUnixMs: 1755166999600, mode: 'route', from: 'lm:a', to: 'lm:b',
-    fromLabel: 'Home', toLabel: 'Work', routeId: 'Morning', pickSource: 'picked',
+    fromLabel: 'Home', toLabel: 'Work', wayId: 'Morning', pickSource: 'picked',
   });
   await storage.appendEvent(rideId, {
     kind: 'lockChange', tUnixMs: 1755167000700, track: 'Morning', from: 'soft', to: 'verified',
@@ -265,7 +265,7 @@ test('gpx+: session-block derivations — pinned fixture matches every documente
   assert(accMatches.length === 1, `${accMatches.length} <qf:acc> elements, want exactly 1`);
   assert(gpx.includes('<qf:acc>12.5</qf:acc>'), 'accuracy value not 12.5');
   assert(gpx.includes('<qf:firstFixDelayS>3</qf:firstFixDelayS>'), 'firstFixDelayS not 3');
-  assert(gpx.includes('<qf:routeLock track="Morning" atChainageM="450.5"'), 'routeLock fields wrong');
+  assert(gpx.includes('<qf:wayLock track="Morning" atChainageM="450.5"'), 'wayLock fields wrong');
   assert(/<qf:gate name="START"[^>]*estimated="false"/.test(gpx), 'START gate wrong');
   assert(/<qf:gate name="G1"[^>]*estimated="true"/.test(gpx), 'G1 gate wrong');
   assert(/<qf:outage[^>]*maxGapS="20"/.test(gpx), 'outage maxGapS not 20');
@@ -293,7 +293,7 @@ test('gpx+: no-sidecar ride (pre-feature) — exportGpxPlus still succeeds, only
   assert(gpx.includes('<qf:session>'), 'qf:session missing even with no sidecar');
   assert(gpx.includes('<qf:firstFixAt>'), 'firstFixAt missing');
   assert(gpx.includes('<qf:outages>'), 'outages missing');
-  assert(!gpx.includes('<qf:routeLock'), 'routeLock present with no events file on disk');
+  assert(!gpx.includes('<qf:wayLock'), 'wayLock present with no events file on disk');
   assert(!gpx.includes('<qf:pick'), 'N9: qf:pick present with no events file on disk');
   assert(!gpx.includes('<qf:lockChanges'), 'N9: qf:lockChanges present with no events file on disk');
   assert(!gpx.includes('<qf:storageErrors'), 'storageErrors present with no events file on disk');
@@ -379,7 +379,7 @@ test('gpx+: events sidecar torn-tail healing — new event parses, nDropped is e
 
 // ---------------------------------------------------------------- (j) cycle 023 fix 4: route distance
 
-test('gpx+: cycle 023 fix 4 — a locked ride carries qf:routeDistanceM (START-to-FINISH distance)', async () => {
+test('gpx+: cycle 023 fix 4 — a locked ride carries qf:wayDistanceM (START-to-FINISH distance)', async () => {
   const { storage, clock } = makeEnv();
   const rideId = await storage.startRide();
   clock.t += 1000;
@@ -392,7 +392,7 @@ test('gpx+: cycle 023 fix 4 — a locked ride carries qf:routeDistanceM (START-t
   // Morning: START chainage 162 m, FINISH chainage 5487 m (core/src/reference.ts
   // PROPOSED_GATES) -> route distance is the difference, 5325 m, not FINISH's
   // raw absolute chainage (which overstates by the 162 m START offset).
-  assert(gpx.includes('<qf:routeDistanceM>5325</qf:routeDistanceM>'), 'routeDistanceM missing/wrong for Morning');
+  assert(gpx.includes('<qf:wayDistanceM>5325</qf:wayDistanceM>'), 'wayDistanceM missing/wrong for Morning');
 });
 
 test('gpx+: cycle 023 fix 4 guard — an unrecognized persisted track degrades gracefully, no export failure', async () => {
@@ -413,23 +413,23 @@ test('gpx+: cycle 023 fix 4 guard — an unrecognized persisted track degrades g
     threw = true;
   }
   assert(!threw, 'exportGpxPlus threw on an unrecognized track id — must degrade gracefully instead');
-  assert(gpx.includes('<qf:routeLock track="RetiredTrackXYZ"'), 'routeLock itself must still be emitted');
-  assert(!gpx.includes('<qf:routeDistanceM>'), 'routeDistanceM must be OMITTED for an unrecognized track, not fabricated');
+  assert(gpx.includes('<qf:wayLock track="RetiredTrackXYZ"'), 'wayLock itself must still be emitted');
+  assert(!gpx.includes('<qf:wayDistanceM>'), 'wayDistanceM must be OMITTED for an unrecognized track, not fabricated');
 });
 
 // ---------------------------------------------------------------- (k) cycle 023 fix 5b: new diagnostics kinds exported
 
-test('gpx+: cycle 023 fix 5b — routeMatchDiagnostic and elevationOutlier events reach the GPX+ export', async () => {
+test('gpx+: cycle 023 fix 5b — wayMatchDiagnostic and elevationOutlier events reach the GPX+ export', async () => {
   const { storage, clock } = makeEnv();
   const rideId = await storage.startRide();
   clock.t += 1000;
   await storage.appendFix(rideId, { tUnixMs: clock.t, lat: 50.8, lon: 4.6, ele: 30 });
   await storage.appendEvent(rideId, {
-    kind: 'routeMatchDiagnostic', tUnixMs: clock.t, track: 'Morning', phase: 'anchor',
+    kind: 'wayMatchDiagnostic', tUnixMs: clock.t, track: 'Morning', phase: 'anchor',
     accuracyM: 97.7, thresholdM: 50, poorAccuracy: true, xtdM: 12.3,
   });
   await storage.appendEvent(rideId, {
-    kind: 'routeMatchDiagnostic', tUnixMs: clock.t + 1000, track: 'Morning', phase: 'retry',
+    kind: 'wayMatchDiagnostic', tUnixMs: clock.t + 1000, track: 'Morning', phase: 'retry',
     accuracyM: 15, thresholdM: 50, poorAccuracy: false, xtdM: null,
   });
   await storage.appendEvent(rideId, {
@@ -437,7 +437,7 @@ test('gpx+: cycle 023 fix 5b — routeMatchDiagnostic and elevationOutlier event
   });
   await storage.endRide(rideId);
   const gpx = await storage.exportGpxPlus(rideId);
-  assert(gpx.includes('<qf:routeMatchDiagnostics>'), 'routeMatchDiagnostics block missing');
+  assert(gpx.includes('<qf:wayMatchDiagnostics>'), 'wayMatchDiagnostics block missing');
   assert(/<qf:attempt track="Morning" phase="anchor" accuracyM="97.7"/.test(gpx), 'anchor attempt line wrong/missing');
   assert(/<qf:attempt track="Morning" phase="retry" accuracyM="15"/.test(gpx), 'retry attempt line wrong/missing');
   assert(gpx.includes('poorAccuracy="true"'), 'poorAccuracy=true not rendered for the initial anchor');
@@ -454,7 +454,7 @@ test('gpx+: cycle 023 fix 5b — routeMatchDiagnostic and elevationOutlier event
   assert(!plain.includes('qf:'), 'standard exportGpx leaked new qf: diagnostics content');
 });
 
-test('gpx+: cycle 023 fix 5b — a ride with NO routeMatchDiagnostic/elevationOutlier events omits both blocks', async () => {
+test('gpx+: cycle 023 fix 5b — a ride with NO wayMatchDiagnostic/elevationOutlier events omits both blocks', async () => {
   const { storage, clock } = makeEnv();
   const rideId = await storage.startRide();
   clock.t += 1000;
@@ -462,7 +462,7 @@ test('gpx+: cycle 023 fix 5b — a ride with NO routeMatchDiagnostic/elevationOu
   await storage.appendEvent(rideId, { kind: 'button', tUnixMs: clock.t, button: 'start' });
   await storage.endRide(rideId);
   const gpx = await storage.exportGpxPlus(rideId);
-  assert(!gpx.includes('<qf:routeMatchDiagnostics>'), 'routeMatchDiagnostics present with none recorded');
+  assert(!gpx.includes('<qf:wayMatchDiagnostics>'), 'wayMatchDiagnostics present with none recorded');
   assert(!gpx.includes('<qf:elevationOutliers>'), 'elevationOutliers present with none recorded');
 });
 
@@ -514,7 +514,7 @@ test('gpx+: WP-G 1c follow-up — decoder also rejects finite-but-out-of-Date-ra
 
 // ---------------------------------------------------------------- (n) WP-G 1c/B-69: corrupted sidecar never throws
 
-test('gpx+: WP-G B-69 — a sidecar containing ONLY a malformed lock line never throws; export falls back to routeLock=none', async () => {
+test('gpx+: WP-G B-69 — a sidecar containing ONLY a malformed lock line never throws; export falls back to wayLock=none', async () => {
   const { fs, storage, clock } = makeEnv();
   const rideId = await storage.startRide();
   clock.t += 1000;
@@ -532,12 +532,12 @@ test('gpx+: WP-G B-69 — a sidecar containing ONLY a malformed lock line never 
     threw = true;
   }
   assert(!threw, 'exportGpxPlus threw on a hand-corrupted sidecar line — must degrade gracefully instead');
-  assert(gpx.includes('<qf:routeLock>none</qf:routeLock>'), 'malformed lock line did not fall back to the honest "none" state');
+  assert(gpx.includes('<qf:wayLock>none</qf:wayLock>'), 'malformed lock line did not fall back to the honest "none" state');
 });
 
 // ---------------------------------------------------------------- (o) WP-G Part 4: route fidelity
 
-test('gpx+: WP-G Part 4 — a locked clean_morning ride carries qf:routeFidelity with onRoutePct > 90', async () => {
+test('gpx+: WP-G Part 4 — a locked clean_morning ride carries qf:wayFidelity with onRoutePct > 90', async () => {
   const src = loadFixture('clean_morning');
   const { storage, clock } = makeEnv(src.fixes.t[0] * 1000, /* withRefFor */ true);
   const rideId = await storage.startRide();
@@ -550,13 +550,13 @@ test('gpx+: WP-G Part 4 — a locked clean_morning ride carries qf:routeFidelity
   });
   await storage.endRide(rideId);
   const gpx = await storage.exportGpxPlus(rideId);
-  const m = gpx.match(/<qf:routeFidelity track="Morning" corridorM="40" onRoutePct="([\d.]+)" maxXtdM="[\d.]+">/);
-  assert(m !== null, `routeFidelity block missing/malformed:\n${gpx}`);
+  const m = gpx.match(/<qf:wayFidelity track="Morning" corridorM="40" onRoutePct="([\d.]+)" maxXtdM="[\d.]+">/);
+  assert(m !== null, `wayFidelity block missing/malformed:\n${gpx}`);
   const pct = Number(m![1]);
   assert(pct > 90, `onRoutePct ${pct} not > 90 for a clean on-route fixture ride`);
 });
 
-test('gpx+: WP-G Part 4 — no lock event means routeFidelity is omitted entirely (no honest distance-to-route claim)', async () => {
+test('gpx+: WP-G Part 4 — no lock event means wayFidelity is omitted entirely (no honest distance-to-route claim)', async () => {
   const { storage, clock } = makeEnv(1755167000000, /* withRefFor */ true);
   const rideId = await storage.startRide();
   clock.t += 1000;
@@ -564,10 +564,10 @@ test('gpx+: WP-G Part 4 — no lock event means routeFidelity is omitted entirel
   await storage.appendEvent(rideId, { kind: 'button', tUnixMs: clock.t, button: 'start' });
   await storage.endRide(rideId);
   const gpx = await storage.exportGpxPlus(rideId);
-  assert(!gpx.includes('<qf:routeFidelity'), 'routeFidelity present despite no lock event');
+  assert(!gpx.includes('<qf:wayFidelity'), 'wayFidelity present despite no lock event');
 });
 
-test('gpx+: WP-G Part 4 — no refFor injected (the default) means routeFidelity is never emitted, even when locked', async () => {
+test('gpx+: WP-G Part 4 — no refFor injected (the default) means wayFidelity is never emitted, even when locked', async () => {
   const { storage, clock } = makeEnv(); // withRefFor defaults to false
   const rideId = await storage.startRide();
   clock.t += 1000;
@@ -577,10 +577,10 @@ test('gpx+: WP-G Part 4 — no refFor injected (the default) means routeFidelity
   });
   await storage.endRide(rideId);
   const gpx = await storage.exportGpxPlus(rideId);
-  assert(!gpx.includes('<qf:routeFidelity'), 'routeFidelity present despite no refFor lookup injected');
+  assert(!gpx.includes('<qf:wayFidelity'), 'wayFidelity present despite no refFor lookup injected');
 });
 
-test('gpx+: WP-G Part 4 fix — routeFidelity uses the LAST SETTLED lock, not a transient soft one from a display-target switch', async () => {
+test('gpx+: WP-G Part 4 fix — wayFidelity uses the LAST SETTLED lock, not a transient soft one from a display-target switch', async () => {
   const src = loadFixture('clean_morning');
   const { storage, clock } = makeEnv(src.fixes.t[0] * 1000, /* withRefFor */ true);
   const rideId = await storage.startRide();
@@ -602,12 +602,12 @@ test('gpx+: WP-G Part 4 fix — routeFidelity uses the LAST SETTLED lock, not a 
   await storage.endRide(rideId);
   const gpx = await storage.exportGpxPlus(rideId);
   assert(
-    gpx.includes('<qf:routeFidelity track="Morning"'),
-    `routeFidelity did not report the SETTLED (finalized) track:\n${gpx}`,
+    gpx.includes('<qf:wayFidelity track="Morning"'),
+    `wayFidelity did not report the SETTLED (finalized) track:\n${gpx}`,
   );
   assert(
-    !gpx.includes('<qf:routeFidelity track="EveningA"'),
-    'routeFidelity reported the transient SOFT lock track instead of the settled one',
+    !gpx.includes('<qf:wayFidelity track="EveningA"'),
+    'wayFidelity reported the transient SOFT lock track instead of the settled one',
   );
 });
 
@@ -632,7 +632,7 @@ test('gpx+: cycle 025 — relaunches block carries one timestamped child per rel
   assert(!plain.includes('qf:'), 'standard exportGpx leaked qf: content');
 });
 
-test('gpx+: cycle 025 — every lock event is exported in sidecar order with its lockKind; routeDistanceM still keyed to the first lock', async () => {
+test('gpx+: cycle 025 — every lock event is exported in sidecar order with its lockKind; wayDistanceM still keyed to the first lock', async () => {
   const { storage, clock } = makeEnv();
   const rideId = await storage.startRide();
   clock.t += 1000;
@@ -649,13 +649,13 @@ test('gpx+: cycle 025 — every lock event is exported in sidecar order with its
   });
   await storage.endRide(rideId);
   const gpx = await storage.exportGpxPlus(rideId);
-  const locks = gpx.match(/<qf:routeLock /g) ?? [];
-  assert(locks.length === 3, `${locks.length} qf:routeLock elements, want 3`);
-  assert(/<qf:routeLock track="Morning" atChainageM="10"[^>]*lockKind="soft"/.test(gpx), 'soft lock missing/wrong');
-  assert(/<qf:routeLock track="Morning" atChainageM="120"[^>]*lockKind="verified"/.test(gpx), 'verified lock missing/wrong');
-  assert(/<qf:routeLock track="Morning" atChainageM="300" atT="[^"]+"\/>/.test(gpx), 'kindless lock must omit the lockKind attribute');
+  const locks = gpx.match(/<qf:wayLock /g) ?? [];
+  assert(locks.length === 3, `${locks.length} qf:wayLock elements, want 3`);
+  assert(/<qf:wayLock track="Morning" atChainageM="10"[^>]*lockKind="soft"/.test(gpx), 'soft lock missing/wrong');
+  assert(/<qf:wayLock track="Morning" atChainageM="120"[^>]*lockKind="verified"/.test(gpx), 'verified lock missing/wrong');
+  assert(/<qf:wayLock track="Morning" atChainageM="300" atT="[^"]+"\/>/.test(gpx), 'kindless lock must omit the lockKind attribute');
   assert(gpx.indexOf('atChainageM="10"') < gpx.indexOf('atChainageM="120"'), 'locks out of sidecar order');
-  assert(gpx.includes('<qf:routeDistanceM>5325</qf:routeDistanceM>'), 'routeDistanceM missing (first lock, Morning)');
+  assert(gpx.includes('<qf:wayDistanceM>5325</qf:wayDistanceM>'), 'wayDistanceM missing (first lock, Morning)');
 });
 
 // ---------------------------------------------------------------- (q) cycle 025: stale-first-fix cleanup
@@ -760,7 +760,7 @@ test('gpx+: N9 — <qf:pick> renders right after startPressedAt, every recorded 
     await storage.appendEvent(rideId, {
       kind: 'pick', tUnixMs: clock.t, mode: 'route',
       from: 'lm:a', to: 'lm:b', fromLabel: 'Home & <Away>', toLabel: 'Work',
-      routeId: 'route:x', pickSource: 'picked',
+      wayId: 'route:x', pickSource: 'picked',
     });
     await storage.endRide(rideId);
     const gpx = await storage.exportGpxPlus(rideId);
@@ -768,7 +768,7 @@ test('gpx+: N9 — <qf:pick> renders right after startPressedAt, every recorded 
       'qf:pick is not immediately after qf:startPressedAt');
     assert(
       gpx.includes(
-        '<qf:pick mode="route" from="lm:a" fromLabel="Home &amp; &lt;Away&gt;" to="lm:b" toLabel="Work" routeId="route:x" pickSource="picked" t="',
+        '<qf:pick mode="route" from="lm:a" fromLabel="Home &amp; &lt;Away&gt;" to="lm:b" toLabel="Work" wayId="route:x" pickSource="picked" t="',
       ),
       'route/picked qf:pick attributes wrong/missing/mis-escaped',
     );
@@ -783,17 +783,17 @@ test('gpx+: N9 — <qf:pick> renders right after startPressedAt, every recorded 
     await storage.appendEvent(rideId, {
       kind: 'pick', tUnixMs: clock.t, mode: 'free',
       from: 'lm:a', to: '~new', fromLabel: 'Home', toLabel: 'new',
-      pickSource: 'none', routeIds: ['route:a', 'route:b'],
+      pickSource: 'none', wayIds: ['route:a', 'route:b'],
     });
     await storage.endRide(rideId);
     const gpx = await storage.exportGpxPlus(rideId);
     assert(
       gpx.includes(
-        '<qf:pick mode="free" from="lm:a" fromLabel="Home" to="~new" toLabel="new" pickSource="none" routeIds="route:a route:b" t="',
+        '<qf:pick mode="free" from="lm:a" fromLabel="Home" to="~new" toLabel="new" pickSource="none" wayIds="route:a route:b" t="',
       ),
       'free-with-routeIds qf:pick attributes wrong/missing',
     );
-    assert(!gpx.includes('routeId="'), 'a free ride with no chosen route must not render a routeId attribute');
+    assert(!gpx.includes('wayId="'), 'a free ride with no chosen route must not render a wayId attribute');
   }
 
   // (c) free ride, both ends unknown — unfiltered, no routeIds attribute
@@ -812,7 +812,7 @@ test('gpx+: N9 — <qf:pick> renders right after startPressedAt, every recorded 
       gpx.includes('<qf:pick mode="free" from="~new" fromLabel="new" to="~new" toLabel="new" pickSource="none" t="'),
       'free/none qf:pick attributes wrong/missing',
     );
-    assert(!gpx.includes('routeIds="'), 'both-ends-unknown free ride must not render a routeIds attribute');
+    assert(!gpx.includes('wayIds="'), 'both-ends-unknown free ride must not render a wayIds attribute');
   }
 
   // (d) minimal pick — mode only, nothing else recorded (an old/degenerate sidecar)
@@ -842,7 +842,7 @@ test('gpx+: N9 — <qf:pick> renders right after startPressedAt, every recorded 
 
 // ---------------------------------------------------------------- (q) N9: <qf:lockChange>
 
-test('gpx+: N9 — <qf:lockChanges> lists every transition in sidecar order with reason+pick, omitted when none; <qf:routeLock> renders the persisted pick', async () => {
+test('gpx+: N9 — <qf:lockChanges> lists every transition in sidecar order with reason+pick, omitted when none; <qf:wayLock> renders the persisted pick', async () => {
   // (a) two transitions, in sidecar order, pick carried on both the lock and each lockChange
   {
     const t0 = 1755167000000;
@@ -864,8 +864,8 @@ test('gpx+: N9 — <qf:lockChanges> lists every transition in sidecar order with
     await storage.endRide(rideId);
     const gpx = await storage.exportGpxPlus(rideId);
     assert(
-      /<qf:routeLock track="Morning" atChainageM="400"[^>]*lockKind="soft"[^>]*pick="Morning"\/>/.test(gpx),
-      'routeLock did not carry the persisted pick',
+      /<qf:wayLock track="Morning" atChainageM="400"[^>]*lockKind="soft"[^>]*pick="Morning"\/>/.test(gpx),
+      'wayLock did not carry the persisted pick',
     );
     const changes = gpx.match(/<qf:lockChange [^\/]+\/>/g) ?? [];
     assert(changes.length === 2, `${changes.length} qf:lockChange elements, want 2`);
@@ -881,7 +881,7 @@ test('gpx+: N9 — <qf:lockChanges> lists every transition in sidecar order with
   }
 
   // (b) no transitions at all — the wrapper must be omitted entirely even
-  // though the ride carries a routeLock with no persisted pick.
+  // though the ride carries a wayLock with no persisted pick.
   {
     const { storage, clock } = makeEnv();
     const rideId = await storage.startRide();
@@ -892,8 +892,8 @@ test('gpx+: N9 — <qf:lockChanges> lists every transition in sidecar order with
     await storage.endRide(rideId);
     const gpx = await storage.exportGpxPlus(rideId);
     assert(!gpx.includes('<qf:lockChanges'), 'lockChanges wrapper rendered with no lockChange events on the sidecar');
-    const rl = (gpx.match(/<qf:routeLock[^>]*\/>/) ?? [''])[0];
-    assert(!rl.includes('pick='), 'routeLock rendered a pick attribute although the lock event carried none');
+    const rl = (gpx.match(/<qf:wayLock[^>]*\/>/) ?? [''])[0];
+    assert(!rl.includes('pick='), 'wayLock rendered a pick attribute although the lock event carried none');
   }
 });
 
@@ -903,7 +903,7 @@ test('gpx+: N9 — decoder rejects malformed pick/lockChange lines, keeps well-f
   const lines = [
     JSON.stringify({ kind: 'pick', tUnixMs: 1000, mode: 'bogus' }), // mode not route|free
     JSON.stringify({ kind: 'pick', tUnixMs: 1000, mode: 'route', pickSource: 'bogus' }), // bad pickSource literal
-    JSON.stringify({ kind: 'pick', tUnixMs: 1000, mode: 'route', routeIds: ['a', 2] }), // non-string in routeIds
+    JSON.stringify({ kind: 'pick', tUnixMs: 1000, mode: 'route', wayIds: ['a', 2] }), // non-string in routeIds
     JSON.stringify({ kind: 'pick', tUnixMs: 1000, mode: 'route', from: 5 }), // from not a string
     JSON.stringify({
       kind: 'lockChange', tUnixMs: 1000, track: 'Morning', from: 'bogus', to: 'soft',
@@ -924,7 +924,7 @@ test('gpx+: N9 — decoder rejects malformed pick/lockChange lines, keeps well-f
     // well-formed control lines: must survive
     JSON.stringify({
       kind: 'pick', tUnixMs: 1000, mode: 'route', from: 'lm:a', to: 'lm:b',
-      fromLabel: 'Home', toLabel: 'Work', routeId: 'route:x', pickSource: 'picked', routeIds: ['route:x'],
+      fromLabel: 'Home', toLabel: 'Work', wayId: 'route:x', pickSource: 'picked', wayIds: ['route:x'],
     }),
     JSON.stringify({ kind: 'pick', tUnixMs: 1000, mode: 'free' }),
     JSON.stringify({

@@ -83,19 +83,19 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Image, LayoutChangeEvent, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import manifest from '../../assets/routes/routes.json';
-import { cropFor, gateTickPx, offRouteM, projectToPixel, type RouteAsset } from './routeMapMath.ts';
+import manifest from '../../assets/ways/ways.json';
+import { cropFor, gateTickPx, offWayM, projectToPixel, type WayAsset } from './wayMapMath.ts';
 import { currentCatalog } from '../store/catalogStore.ts';
 import { SEED_MODE, bundledForSeedMode } from '../store/seed.ts';
 import { refFor } from '../live/refs.ts';
-import { allRouteAssets, resolveRouteAsset, type RouteAssetDeps } from './routeAssetRuntime.ts';
+import { allWayAssets, resolveWayAsset, type WayAssetDeps } from './wayAssetRuntime.ts';
 import {
   allGatesBounds, allGatesFeatureCollection, bearingBetween, cameraTargetFor,
-  gateTicksFeatureCollection, metresBetween, nearestOnPath, riderFeature, rotateEnabledFor, routeBounds,
-  routeLineFeature, sectorSpansFeatureCollection, trailBounds,
-} from './routeMapGeo.ts';
+  gateTicksFeatureCollection, metresBetween, nearestOnPath, riderFeature, rotateEnabledFor, wayBounds,
+  wayLineFeature, sectorSpansFeatureCollection, trailBounds,
+} from './wayMapGeo.ts';
 import { trailLineFeature, type TrailPoint } from './trailModel.ts';
-import { patchMapStyle } from './routeMapStyle.ts';
+import { patchMapStyle } from './wayMapStyle.ts';
 import { colors, radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
 import type { CameraRef, CameraStop } from '@maplibre/maplibre-react-native';
@@ -135,34 +135,34 @@ try {
 /** WP-E: the bundled manifest — `{}` on an empty-seed (virgin) build, so
  * resolveRouteAsset()/allRouteAssets() (via assetDeps()) and every other
  * reader see no shipped route at all. Policy lives in store/seed.ts. */
-const ASSETS: Record<string, RouteAsset> = bundledForSeedMode(
-  SEED_MODE, (manifest as unknown as { routes: Record<string, RouteAsset> }).routes,
+const ASSETS: Record<string, WayAsset> = bundledForSeedMode(
+  SEED_MODE, (manifest as unknown as { ways: Record<string, WayAsset> }).ways,
 );
 /** live/refs.ts's refFor() throws on an unknown track rather than returning
  * null (userRefs.ts's own fallback inside it already returns null there) —
  * swallow to null here so routeAssetRuntime's injected-deps contract can
  * report "no ref" uniformly, without a try/catch at every call site. */
 const safeRefFor = (id: string) => { try { return refFor(id); } catch { return null; } };
-function assetDeps(): RouteAssetDeps {
+function assetDeps(): WayAssetDeps {
   return { manifest: ASSETS, catalog: currentCatalog(), refFor: safeRefFor };
 }
 /** WP-C: resolves an id to a RouteAsset — bundled manifest first, a
  * runtime-built asset from the route's ref + gate chainages second. null
  * when neither exists (unknown id, or a user route with no ref/gate set
  * yet). */
-function assetFor(id: string | null): RouteAsset | null {
-  return id === null ? null : resolveRouteAsset(id, assetDeps());
+function assetFor(id: string | null): WayAsset | null {
+  return id === null ? null : resolveWayAsset(id, assetDeps());
 }
 /** WP-E: same guard as ASSETS — a virgin build has no route PNGs either;
  * the PNG rung then draws `asset.path` (its existing no-image fallback). */
 const IMAGES: Record<string, number> = bundledForSeedMode(SEED_MODE, {
-  Morning: require('../../assets/routes/Morning.png'),
-  EveningA: require('../../assets/routes/EveningA.png'),
-  EveningB: require('../../assets/routes/EveningB.png'),
+  Morning: require('../../assets/ways/Morning.png'),
+  EveningA: require('../../assets/ways/EveningA.png'),
+  EveningB: require('../../assets/ways/EveningB.png'),
 });
 
 /** Beyond this the rider is drawn as off-route rather than on the line. */
-const OFF_ROUTE_M = 120;
+const OFF_WAY_M = 120;
 
 /** D-031 light-basemap palette — must match 08_build_route_assets.py.
  * GROUND_FILL (the old gate-circle unscored fill, '#E8E4DA') is gone with
@@ -181,22 +181,22 @@ const MAP_STYLE_DAY = 'https://tiles.openfreemap.org/styles/positron';
  * jitter guard against a GPS fix wobbling the heading while stationary. */
 const BEARING_MIN_MOVE_M = 8;
 
-type RouteMapVariant = 'live' | 'browse';
+type WayMapVariant = 'live' | 'browse';
 type LiveMapState = 'prestart' | 'moving' | 'stopped' | 'finished';
 
-type RouteMapProps = {
+type WayMapProps = {
   /** The route whose line/ticks to draw. null = NO route line: a live surface renders
    * rider-only (WP-D), a browse surface renders trail-only (WP-H). There is no
    * catalog-wide fallback any more (cycle-2 WP-A, Nathan 2026-09-04: a null pick must
    * never draw "whichever route happens to be first in the catalog"). */
-  routeId: string | null;
+  wayId: string | null;
   /** WP-E: a caller-OWNED drawable. When set, both rungs draw THIS asset and
    * skip the id -> asset lookup entirely — neither the bundled manifest nor
    * the runtime resolver is consulted, and `routeId` is used only as the
    * zoom-reset/PNG key. Only DemoScreen passes it (its scripted fixture is
    * not a catalog route and must never be resolvable as one). Ignored when
    * `gatesOnly`. */
-  asset?: RouteAsset;
+  asset?: WayAsset;
   lat: number | null;
   lon: number | null;
   /** 1 = whole route, 4 = tight live crop */
@@ -228,7 +228,7 @@ type RouteMapProps = {
   leadColour?: string;
   /** 'live' (default) = the recording ribbon; 'browse' = a free-standing
    * pannable map with no live semantics (Routes list, Result "view trace"). */
-  variant?: RouteMapVariant;
+  variant?: WayMapVariant;
   /** Only meaningful for variant 'live'. Default 'moving' — today's locked
    * ribbon. 'prestart'/'finished' unlock the map like 'browse' does;
    * 'stopped' keeps it locked but dims it (a red light is not a finish). */
@@ -245,12 +245,12 @@ type RouteMapProps = {
   /** gatesOnly only: which gate a fix has crossed, `{routeId, gateIndex}` —
    * mirrors LiveEngineState.freeCrossings. Gets `colors.neutral`, the same
    * "crossed" convention gateColours uses elsewhere. */
-  crossedGates?: { routeId: string; gateIndex: number }[];
+  crossedGates?: { wayId: string; gateIndex: number }[];
   /** gatesOnly only: restricts which routes' gates are drawn/fit — the WP-B
    * coordinator addendum's directional filter (store/catalog.ts's
    * freeRideRouteIds()). undefined/null = every catalog route (the
    * deliberately-unfiltered both-ends-unknown free ride). */
-  gateRouteIds?: string[] | null;
+  gateWayIds?: string[] | null;
   /** WP-J (breadcrumb trail): the rider's own ridden line, decimated GPS
    * fixes accumulated by RecordScreen (trailModel.ts). Rendered behind the
    * rider dot, casing+core styled the same as the route line. Only the
@@ -266,10 +266,10 @@ type RouteMapProps = {
   gateSelect?: { selected: number | null; onPress: (gateIndex: number) => void };
 };
 
-export default function RouteMapView(props: RouteMapProps) {
+export default function WayMapView(props: WayMapProps) {
   const [mapFailed, setMapFailed] = useState(false);
-  if (ML === null || mapFailed) return <PngRouteMap {...props} />;
-  return <MapLibreRouteMap {...props} maplibre={ML} onMapFailed={() => setMapFailed(true)} />;
+  if (ML === null || mapFailed) return <PngWayMap {...props} />;
+  return <MapLibreWayMap {...props} maplibre={ML} onMapFailed={() => setMapFailed(true)} />;
 }
 
 // --------------------------------------------------------------- attribution
@@ -326,7 +326,7 @@ function Credit(props: { rung: 'maplibre' | 'png'; interactive: boolean }) {
 
 // -------------------------------------------------------------- MapLibre rung
 
-function MapLibreRouteMap(props: RouteMapProps & {
+function MapLibreWayMap(props: WayMapProps & {
   maplibre: NonNullable<typeof ML>;
   onMapFailed: () => void;
 }) {
@@ -334,7 +334,7 @@ function MapLibreRouteMap(props: RouteMapProps & {
   const { t, mode: themeMode } = useTheme();
   const styleUrl = themeMode === 'night' ? MAP_STYLE_NIGHT : MAP_STYLE_DAY;
   const gatesOnly = props.gatesOnly ?? false;
-  const id = props.routeId;
+  const id = props.wayId;
   const asset = !gatesOnly ? props.asset ?? assetFor(id) ?? undefined : undefined;
   const h = props.height ?? 190;
 
@@ -370,7 +370,7 @@ function MapLibreRouteMap(props: RouteMapProps & {
   useEffect(() => {
     setMode(initialMode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.zoom, variant, phaseKey, props.routeId]);
+  }, [props.zoom, variant, phaseKey, props.wayId]);
 
   const [camZoom, setCamZoom] = useState(16);
 
@@ -480,9 +480,9 @@ function MapLibreRouteMap(props: RouteMapProps & {
   // guard) so this hook keeps a stable call order regardless of
   // gatesOnly/asset on any render — Rules of Hooks: it must run
   // unconditionally, before the guard below.
-  const routeFC = useMemo(() => {
+  const wayFC = useMemo(() => {
     if (gatesOnly || !asset) return null;
-    const feature = routeLineFeature(asset);
+    const feature = wayLineFeature(asset);
     return feature ? { type: 'FeatureCollection' as const, features: [feature] } : null;
   }, [asset, gatesOnly]);
 
@@ -530,7 +530,7 @@ function MapLibreRouteMap(props: RouteMapProps & {
   // below is suppressed the same way — there is nothing honest to measure
   // against).
   const off = !gatesOnly && here && asset
-    ? offRouteM(asset, props.lat as number, props.lon as number) > OFF_ROUTE_M
+    ? offWayM(asset, props.lat as number, props.lon as number) > OFF_WAY_M
     : false;
 
   // gatesOnly (WP-B, postdates this WP's brief): still one gate-rings circle
@@ -544,9 +544,9 @@ function MapLibreRouteMap(props: RouteMapProps & {
   // resolver assetFor() uses, seed routes included (manifest wins on those
   // by identity); on a virgin build the manifest is `{}` (WP-E). Only built
   // when gatesOnly is actually true.
-  const drawable = gatesOnly ? allRouteAssets(assetDeps()) : null;
+  const drawable = gatesOnly ? allWayAssets(assetDeps()) : null;
   const gatesFC = gatesOnly && drawable
-    ? allGatesFeatureCollection(drawable, props.crossedGates, colors.neutral, props.gateRouteIds)
+    ? allGatesFeatureCollection(drawable, props.crossedGates, colors.neutral, props.gateWayIds)
     : null;
   const gateTicksFC = !gatesOnly && asset ? gateTicksFeatureCollection(asset, props.gateColours) : null;
   // WP-sector-coloured-trail P1: null unless the caller supplied sector
@@ -557,8 +557,8 @@ function MapLibreRouteMap(props: RouteMapProps & {
     ? sectorSpansFeatureCollection(asset, props.sectorColours, props.leadColour)
     : null;
   const bounds = gatesOnly && drawable
-    ? allGatesBounds(drawable, props.gateRouteIds)
-    : asset ? routeBounds(asset)
+    ? allGatesBounds(drawable, props.gateWayIds)
+    : asset ? wayBounds(asset)
     : hasTrail ? trailBounds(props.trail!) : null;
 
   // WP-D §3.1c: the camera-target rule itself lives in routeMapGeo.ts
@@ -640,8 +640,8 @@ function MapLibreRouteMap(props: RouteMapProps & {
         {/* Reverted 2026-08-24: one solid line, casing beneath a yellow
             core, the whole route — see the routeFC comment above for why
             the dotted-ahead split was pulled back out. */}
-        {routeFC ? (
-          <M.GeoJSONSource key="route" id="route" data={routeFC}>
+        {wayFC ? (
+          <M.GeoJSONSource key="route" id="route" data={wayFC}>
             <M.Layer id="route-casing" type="line"
               paint={{ 'line-color': CASING, 'line-width': 7 }}
               layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
@@ -859,7 +859,7 @@ function MapLibreRouteMap(props: RouteMapProps & {
  */
 const ATTRIBUTION = 'Esri, HERE, Garmin, © OpenStreetMap contributors';
 
-function PngRouteMap(props: RouteMapProps) {
+function PngWayMap(props: WayMapProps) {
   const { t } = useTheme();
   const [box, setBox] = useState({ w: 0, h: 0 });
   // Zoom is the rider's, not the app's: +/- step it, FIT drops back to the
@@ -869,7 +869,7 @@ function PngRouteMap(props: RouteMapProps) {
   // say so and draw the route from `path` instead of showing black.
   const [imgFailed, setImgFailed] = useState(false);
   useEffect(() => { setZoom(props.zoom ?? 4); }, [props.zoom]);
-  const id = props.routeId;
+  const id = props.wayId;
   const asset = props.asset ?? assetFor(id) ?? undefined;
   const img = id !== null ? IMAGES[id] : undefined;
   const h = props.height ?? 190;
@@ -939,7 +939,7 @@ function PngRouteMap(props: RouteMapProps) {
     ? projectToPixel(asset, props.lat, props.lon)
     : null;
   const off = here && props.lat !== null && props.lon !== null
-    ? offRouteM(asset, props.lat, props.lon) > OFF_ROUTE_M
+    ? offWayM(asset, props.lat, props.lon) > OFF_WAY_M
     : false;
 
   // WP-E dotted-ahead, PNG rung: the route line is BAKED into the PNG, so
@@ -949,8 +949,8 @@ function PngRouteMap(props: RouteMapProps) {
   // ahead, mirroring the MapLibre rung's earned-position rule: only when
   // live/active and genuinely on-route (never invent a "behind" claim off-
   // route or when browsing/finished — same honesty rule as routeSplitFeatures).
-  const routeActive = variant === 'live' && liveState !== 'finished';
-  const splitSeg = imgFailed && routeActive && !off && asset.path
+  const wayActive = variant === 'live' && liveState !== 'finished';
+  const splitSeg = imgFailed && wayActive && !off && asset.path
     && props.lat !== null && props.lon !== null
     ? nearestOnPath(asset.path, props.lat, props.lon)?.seg ?? null
     : null;

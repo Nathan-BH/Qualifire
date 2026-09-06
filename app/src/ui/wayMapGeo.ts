@@ -8,7 +8,7 @@
  * does that swap; get it backwards and the route silently draws in the
  * Gulf of Guinea.
  */
-import type { RouteAsset } from './routeMapMath.ts';
+import type { WayAsset } from './wayMapMath.ts';
 
 // Minimal local GeoJSON shapes — the app's tsconfig (expo/tsconfig.base)
 // does not pull in @types/geojson globals by default in this file's
@@ -40,7 +40,7 @@ export interface GeoFeatureCollection<G, P = Record<string, unknown>> {
 }
 
 /** The ridden line, or null if the asset has no path (or too short to draw). */
-export function routeLineFeature(a: RouteAsset): GeoFeature<LineStringGeometry> | null {
+export function wayLineFeature(a: WayAsset): GeoFeature<LineStringGeometry> | null {
   if (!a.path || a.path.length < 2) return null;
   return {
     type: 'Feature',
@@ -63,7 +63,7 @@ export interface GateProperties {
  * "not scored" from "scored transparent".
  */
 export function gatesFeatureCollection(
-  a: RouteAsset, gateColours?: (string | null)[],
+  a: WayAsset, gateColours?: (string | null)[],
 ): GeoFeatureCollection<PointGeometry, GateProperties> {
   return {
     type: 'FeatureCollection',
@@ -87,7 +87,7 @@ export function gatesFeatureCollection(
 
 export interface AllGateProperties {
   name: string;
-  routeId: string;
+  wayId: string;
   colour?: string;
 }
 
@@ -103,21 +103,21 @@ export interface AllGateProperties {
  * metres apart (accepted, per the brief's pre-resolved ambiguities).
  */
 export function allGatesFeatureCollection(
-  assets: Record<string, RouteAsset>,
-  crossed: { routeId: string; gateIndex: number }[] | undefined,
+  assets: Record<string, WayAsset>,
+  crossed: { wayId: string; gateIndex: number }[] | undefined,
   crossedColour: string,
-  routeIds?: string[] | null,
+  wayIds?: string[] | null,
 ): GeoFeatureCollection<PointGeometry, AllGateProperties> {
-  const crossedSet = new Set((crossed ?? []).map((c) => `${c.routeId}:${c.gateIndex}`));
-  const ids = routeIds ?? Object.keys(assets);
+  const crossedSet = new Set((crossed ?? []).map((c) => `${c.wayId}:${c.gateIndex}`));
+  const ids = wayIds ?? Object.keys(assets);
   const features: GeoFeature<PointGeometry, AllGateProperties>[] = [];
-  for (const routeId of ids) {
-    const asset = assets[routeId];
+  for (const wayId of ids) {
+    const asset = assets[wayId];
     if (!asset) continue; // defensive: an id with no asset (should not happen post-WP-D1/build) is just skipped
     asset.gates.forEach((g, i) => {
-      const properties: AllGateProperties = crossedSet.has(`${routeId}:${i}`)
-        ? { name: g.name, routeId, colour: crossedColour }
-        : { name: g.name, routeId };
+      const properties: AllGateProperties = crossedSet.has(`${wayId}:${i}`)
+        ? { name: g.name, wayId, colour: crossedColour }
+        : { name: g.name, wayId };
       features.push({
         type: 'Feature',
         geometry: { type: 'Point', coordinates: [g.lon, g.lat] },
@@ -133,13 +133,13 @@ export function allGatesFeatureCollection(
  * single route's `routeBounds()` to fit to. Null only when nothing matched
  * (an empty/all-unresolved `routeIds`). */
 export function allGatesBounds(
-  assets: Record<string, RouteAsset>, routeIds?: string[] | null,
+  assets: Record<string, WayAsset>, wayIds?: string[] | null,
 ): LonLatBoundsBox | null {
-  const ids = routeIds ?? Object.keys(assets);
+  const ids = wayIds ?? Object.keys(assets);
   let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity;
   let any = false;
-  for (const routeId of ids) {
-    const asset = assets[routeId];
+  for (const wayId of ids) {
+    const asset = assets[wayId];
     if (!asset) continue;
     for (const g of asset.gates) {
       any = true;
@@ -164,7 +164,7 @@ export interface LonLatBoundsBox { minLon: number; minLat: number; maxLon: numbe
 
 /** Bounding box over `path` if present, else over the gates. Null only if
  * both are absent/empty. */
-export function routeBounds(a: RouteAsset): LonLatBoundsBox | null {
+export function wayBounds(a: WayAsset): LonLatBoundsBox | null {
   const points: [number, number][] = a.path && a.path.length > 0
     ? a.path.map(([lat, lon]) => [lon, lat])
     : a.gates.map((g) => [g.lon, g.lat]);
@@ -268,7 +268,7 @@ export function nearestOnPath(
  * routeSplitFeatures below; the caller-supplied `opts.offRoute` is still the
  * primary signal (it may reflect a stricter/richer off-route test than the
  * plain nearest-path distance computed here). */
-const SPLIT_OFF_ROUTE_M = 120;
+const SPLIT_OFF_WAY_M = 120;
 
 /**
  * WP-E ("dotted ahead / solid behind"): splits the ridden line into a
@@ -278,9 +278,9 @@ const SPLIT_OFF_ROUTE_M = 120;
  * off-route all fall back to a single whole-line feature (never invent a
  * "behind" claim the honesty rule (D-025) hasn't earned).
  */
-export function routeSplitFeatures(
-  a: RouteAsset, rider: { lat: number; lon: number } | null,
-  opts: { active: boolean; offRoute: boolean },
+export function waySplitFeatures(
+  a: WayAsset, rider: { lat: number; lon: number } | null,
+  opts: { active: boolean; offWay: boolean },
 ): GeoFeatureCollection<LineStringGeometry, { seg: 'behind' | 'ahead' }> | null {
   if (!a.path || a.path.length < 2) return null;
   const path = a.path;
@@ -297,7 +297,7 @@ export function routeSplitFeatures(
   if (!opts.active) return whole('behind');
 
   const nearest = rider ? nearestOnPath(path, rider.lat, rider.lon) : null;
-  if (rider === null || opts.offRoute || nearest === null || nearest.distM > SPLIT_OFF_ROUTE_M) {
+  if (rider === null || opts.offWay || nearest === null || nearest.distM > SPLIT_OFF_WAY_M) {
     return whole('ahead');
   }
 
@@ -331,7 +331,7 @@ export function routeSplitFeatures(
  * side of the gate); else the chord between the adjacent gates.
  */
 export function gateTicksFeatureCollection(
-  a: RouteAsset, gateColours?: (string | null)[], halfLenM = 15,
+  a: WayAsset, gateColours?: (string | null)[], halfLenM = 15,
 ): GeoFeatureCollection<LineStringGeometry, GateProperties> {
   const n = a.gates.length;
   return {
@@ -496,7 +496,7 @@ export interface SectorSpanProperties {
  * caller falls back to the plain single-colour line.
  */
 export function sectorSpansFeatureCollection(
-  a: RouteAsset, sectorColours?: (string | null)[],
+  a: WayAsset, sectorColours?: (string | null)[],
   leadColour?: string | null,
 ): GeoFeatureCollection<LineStringGeometry, SectorSpanProperties> | null {
   if (!a.path || a.path.length < 2) return null;

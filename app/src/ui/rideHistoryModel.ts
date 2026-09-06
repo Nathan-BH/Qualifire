@@ -20,13 +20,13 @@
  */
 import type { RideMeta } from '../storage/types.ts';
 import type { RideResult } from '../store/types.ts';
-import { routeLabel } from '../store/defaultRoute.ts';
+import { wayLabel } from '../store/defaultWay.ts';
 import { MIN_HISTORY, fmt, positionAmong, tierFor, type UiTier } from './colourModel.ts';
 import { towerDate } from './towerModel.ts';
 import { ranks } from '../store/results.ts';
 import { scoredS } from '../store/timing.ts';
 
-export { routeLabel };
+export { wayLabel };
 
 /**
  * The lap-time cell rule, shared by RIDES (buildRideRows below) and RESULT
@@ -60,8 +60,8 @@ export interface RideRowModel {
   rideId: string;
   startMs: number;
   dateLabel: string;
-  routeId: string | null;
-  routeName: string | null;
+  wayId: string | null;
+  wayName: string | null;
   lapS: number | null;
   lapLabel: string;
   /** null when the lap is clean (nothing worth flagging) or when there is no
@@ -89,28 +89,28 @@ export interface RideRowModel {
 export function buildRideRows(
   metas: RideMeta[],
   resultFor: (rideId: string) => RideResult | null,
-  laps: (routeId: string, excl: string) => number[],
-  labelFor: (id: string) => string = routeLabel,
+  laps: (wayId: string, excl: string) => number[],
+  labelFor: (id: string) => string = wayLabel,
 ): RideRowModel[] {
   return [...metas]
     .sort((a, b) => b.startMs - a.startMs)
     .map((m): RideRowModel => {
       const dateLabel = dateTimeLabel(m.startMs);
       const result = resultFor(m.rideId);
-      if (result === null || result.routeId === null) {
+      if (result === null || result.wayId === null) {
         return {
           rideId: m.rideId,
           startMs: m.startMs,
           dateLabel,
-          routeId: null,
-          routeName: null,
+          wayId: null,
+          wayName: null,
           lapS: null,
           lapLabel: 'no lap',
           quality: null,
           rank: null,
         };
       }
-      const routeId = result.routeId;
+      const wayId = result.wayId;
       const { lap } = result;
       const lapS = scoredS(lap);
       const lapLabel = lapCellLabel(lapS, lap.quality === 'estimated', lap.rawS);
@@ -121,7 +121,7 @@ export function buildRideRows(
       // not take a position. The history side was already ranks()-filtered
       // via ghostsFor; this closes the judged-ride side.
       if (lapS !== null && ranks(result)) {
-        const hist = laps(routeId, m.rideId);
+        const hist = laps(wayId, m.rideId);
         // D-008/D-028: too little comparable history is NO verdict, not a
         // generous one — an estimated lap never reaches here at all (lapS is
         // null for 'estimated'/'missed' quality by construction).
@@ -131,8 +131,8 @@ export function buildRideRows(
         rideId: m.rideId,
         startMs: m.startMs,
         dateLabel,
-        routeId,
-        routeName: labelFor(routeId),
+        wayId,
+        wayName: labelFor(wayId),
         lapS,
         lapLabel,
         quality,
@@ -186,8 +186,8 @@ export function buildSectorRows(
 // ------------------------------------------------------------------- RESULT
 
 export interface PbRowModel {
-  routeId: string;
-  routeName: string;
+  wayId: string;
+  wayName: string;
   pbLabel: string;
   nOnFile: number;
 }
@@ -198,19 +198,19 @@ export interface PbRowModel {
  * every existing caller/test); RESULT passes
  * `(id) => routeLabelIn(currentCatalog(), id)`. */
 export function buildPbRows(
-  routeIds: string[],
+  wayIds: string[],
   pb: (r: string) => number | null,
   count: (r: string) => number,
-  labelFor: (id: string) => string = routeLabel,
+  labelFor: (id: string) => string = wayLabel,
 ): PbRowModel[] {
-  return routeIds
-    .map((routeId): PbRowModel => {
-      const best = pb(routeId);
+  return wayIds
+    .map((wayId): PbRowModel => {
+      const best = pb(wayId);
       return {
-        routeId,
-        routeName: labelFor(routeId),
+        wayId,
+        wayName: labelFor(wayId),
         pbLabel: best !== null ? fmt(best, 1) : '–',
-        nOnFile: count(routeId),
+        nOnFile: count(wayId),
       };
     })
     .filter((r) => r.nOnFile > 0);

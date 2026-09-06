@@ -61,15 +61,15 @@ test('recordFlow: statusItemsFor never mentions a raw fixes COUNT and orders tro
   const fixesCountPattern = /\d+\s*fixes\b/i;
   const gpsLine = 'GPS live';
   const troubleLine = 'last fix 9s ago — GPS struggling?';
-  const routeLine = 'Morning · route locked';
+  const wayLine = 'Morning · route locked';
 
-  const calm = statusItemsFor({ gpsTrouble: false, gpsLine, routeLine });
+  const calm = statusItemsFor({ gpsTrouble: false, gpsLine, wayLine });
   assert(calm.length > 0, 'statusItemsFor must return non-empty items');
   assert(calm.every((s) => typeof s === 'string' && s.length > 0), 'every item must be a non-empty string');
   assert(!calm.some((s) => fixesCountPattern.test(s)), `no calm item may carry a raw fixes count: ${JSON.stringify(calm)}`);
-  assert(calm[0] === routeLine, 'calm order must lead with the route line');
+  assert(calm[0] === wayLine, 'calm order must lead with the route line');
 
-  const trouble = statusItemsFor({ gpsTrouble: true, gpsLine: troubleLine, routeLine });
+  const trouble = statusItemsFor({ gpsTrouble: true, gpsLine: troubleLine, wayLine });
   assert(trouble.length > 0, 'statusItemsFor must return non-empty items under trouble too');
   assert(!trouble.some((s) => fixesCountPattern.test(s)), `no trouble item may carry a raw fixes count: ${JSON.stringify(trouble)}`);
   assert(trouble[0] === troubleLine, 'trouble must jump the queue — GPS line leads');
@@ -132,30 +132,30 @@ test('effectiveFromId: tapping `new` in auto mode now takes hold (was previously
 });
 
 test('liveMapOverlayFor: free ride (new>>new) -> no route line, trail shown, regardless of track/hint', () => {
-  const a = liveMapOverlayFor({ mode: 'free', track: null, routeHint: null });
-  assert(a.routeId === null && a.showTrail === true, `free + no track/hint expected {routeId:null, showTrail:true}, got ${JSON.stringify(a)}`);
+  const a = liveMapOverlayFor({ mode: 'free', track: null, wayHint: null });
+  assert(a.wayId === null && a.showTrail === true, `free + no track/hint expected {routeId:null, showTrail:true}, got ${JSON.stringify(a)}`);
   // belt-and-braces: free mode never locks, but the rule must not depend on that
-  const b = liveMapOverlayFor({ mode: 'free', track: 'HomeWork', routeHint: 'HomeWork' });
-  assert(b.routeId === null && b.showTrail === true, `free mode must ignore track/hint entirely, got ${JSON.stringify(b)}`);
+  const b = liveMapOverlayFor({ mode: 'free', track: 'HomeWork', wayHint: 'HomeWork' });
+  assert(b.wayId === null && b.showTrail === true, `free mode must ignore track/hint entirely, got ${JSON.stringify(b)}`);
 });
 
 test('liveMapOverlayFor: route mode, nothing picked, nothing locked -> no route line, trail shown (writing history)', () => {
-  const r = liveMapOverlayFor({ mode: 'route', track: null, routeHint: null });
-  assert(r.routeId === null && r.showTrail === true, `expected {routeId:null, showTrail:true}, got ${JSON.stringify(r)}`);
+  const r = liveMapOverlayFor({ mode: 'route', track: null, wayHint: null });
+  assert(r.wayId === null && r.showTrail === true, `expected {routeId:null, showTrail:true}, got ${JSON.stringify(r)}`);
 });
 
 test('liveMapOverlayFor: a picked known route shows its line and hides the trail from the first frame', () => {
-  const r = liveMapOverlayFor({ mode: 'route', track: null, routeHint: 'HomeWork' });
-  assert(r.routeId === 'HomeWork' && r.showTrail === false, `expected {routeId:'HomeWork', showTrail:false}, got ${JSON.stringify(r)}`);
+  const r = liveMapOverlayFor({ mode: 'route', track: null, wayHint: 'HomeWork' });
+  assert(r.wayId === 'HomeWork' && r.showTrail === false, `expected {routeId:'HomeWork', showTrail:false}, got ${JSON.stringify(r)}`);
 });
 
 test('liveMapOverlayFor: a lock outranks the pick hint and hides the trail', () => {
-  const r = liveMapOverlayFor({ mode: 'route', track: 'HomeWork', routeHint: null });
-  assert(r.routeId === 'HomeWork' && r.showTrail === false, `expected {routeId:'HomeWork', showTrail:false}, got ${JSON.stringify(r)}`);
+  const r = liveMapOverlayFor({ mode: 'route', track: 'HomeWork', wayHint: null });
+  assert(r.wayId === 'HomeWork' && r.showTrail === false, `expected {routeId:'HomeWork', showTrail:false}, got ${JSON.stringify(r)}`);
   // documents existing precedence (track wins over hint) — the engine's hard-pick
   // rule never actually produces a differing pair, but the derivation must be total
-  const r2 = liveMapOverlayFor({ mode: 'route', track: 'EveningA', routeHint: 'HomeWork' });
-  assert(r2.routeId === 'EveningA', `track must outrank routeHint, got ${JSON.stringify(r2)}`);
+  const r2 = liveMapOverlayFor({ mode: 'route', track: 'EveningA', wayHint: 'HomeWork' });
+  assert(r2.wayId === 'EveningA', `track must outrank routeHint, got ${JSON.stringify(r2)}`);
 });
 
 test('liveMapOverlayFor: trail and route line are mutually exclusive in every reachable state', () => {
@@ -164,11 +164,11 @@ test('liveMapOverlayFor: trail and route line are mutually exclusive in every re
   const hints: Array<string | null> = [null, 'B'];
   for (const mode of modes) {
     for (const track of tracks) {
-      for (const routeHint of hints) {
-        const r = liveMapOverlayFor({ mode, track, routeHint });
+      for (const wayHint of hints) {
+        const r = liveMapOverlayFor({ mode, track, wayHint });
         assert(
-          r.showTrail === (r.routeId === null),
-          `mutual exclusivity violated for mode=${mode} track=${track} routeHint=${routeHint}: ${JSON.stringify(r)}`,
+          r.showTrail === (r.wayId === null),
+          `mutual exclusivity violated for mode=${mode} track=${track} routeHint=${wayHint}: ${JSON.stringify(r)}`,
         );
       }
     }

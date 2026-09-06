@@ -33,7 +33,7 @@ function ride(movingS: number, startedAtMs: number, source: 'app' | 'archive' = 
     schemaVersion: 1,
     rideId: `test:${startedAtMs}`,
     startedAtMs,
-    routeId: 'Morning',
+    wayId: 'Morning',
     source,
     lap: { rawS: movingS, movingS, quality: 'clean' },
     sectors: [],

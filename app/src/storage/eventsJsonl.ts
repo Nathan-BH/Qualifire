@@ -3,7 +3,7 @@ import type { DecodedEvents, RideEvent } from './types.ts';
 
 const KINDS = new Set([
   'meta', 'button', 'lock', 'gate', 'storageError', 'relaunch', 'remount',
-  'routeMatchDiagnostic', 'elevationOutlier',
+  'wayMatchDiagnostic', 'elevationOutlier',
   // N9 (2026-09-02, GPX+ pick/lock-change logging):
   'pick', 'lockChange',
 ]);
@@ -74,7 +74,7 @@ function isValidEvent(rec: unknown): rec is RideEvent {
       return r.downS === undefined || Number.isFinite(r.downS);
     case 'remount':
       return true; // no fields beyond kind/tUnixMs
-    case 'routeMatchDiagnostic':
+    case 'wayMatchDiagnostic':
       return (
         typeof r.track === 'string' &&
         (r.phase === 'anchor' || r.phase === 'retry' || r.phase === 'lock') &&
@@ -95,10 +95,10 @@ function isValidEvent(rec: unknown): rec is RideEvent {
       return (
         (r.mode === 'route' || r.mode === 'free') &&
         optStr(r.from) && optStr(r.to) && optStr(r.fromLabel) && optStr(r.toLabel) &&
-        (r.routeId === undefined || r.routeId === null || typeof r.routeId === 'string') &&
+        (r.wayId === undefined || r.wayId === null || typeof r.wayId === 'string') &&
         (r.pickSource === undefined || r.pickSource === 'picked' || r.pickSource === 'default' || r.pickSource === 'none') &&
-        (r.routeIds === undefined || r.routeIds === null ||
-          (Array.isArray(r.routeIds) && r.routeIds.every((x) => typeof x === 'string')))
+        (r.wayIds === undefined || r.wayIds === null ||
+          (Array.isArray(r.wayIds) && r.wayIds.every((x) => typeof x === 'string')))
       );
     }
     case 'lockChange':
@@ -109,7 +109,7 @@ function isValidEvent(rec: unknown): rec is RideEvent {
         Number.isFinite(r.atChainageM) &&
         typeof r.atT === 'number' && isFiniteMsTime(r.atT * 1000) &&
         (r.reason === 'pickAdvance' || r.reason === 'unblockedLeader' ||
-          r.reason === 'routeCompleted' || r.reason === 'rideEndPromotion') &&
+          r.reason === 'wayCompleted' || r.reason === 'rideEndPromotion') &&
         (r.pick === undefined || r.pick === null || typeof r.pick === 'string')
       );
     default:

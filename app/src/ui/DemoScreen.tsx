@@ -34,10 +34,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, Vibration, View } from 'react-native';
 import { tierLineColour, type Tier } from './chips';
 import { buildDemoScript, demoSectorColours, demoTier, type DemoMode } from './demoModel.ts';
-import { DEMO_ROUTE_ASSET, DEMO_ROUTE_ID } from './demoRouteFixture.ts';
+import { DEMO_WAY_ASSET, DEMO_WAY_ID } from './demoWayFixture.ts';
 import { LiveSectorPane, type LiveViewModel } from './liveView';
-import RouteMapView from './routeMapView';
-import { positionAtTime } from './routeMapMath';
+import WayMapView from './wayMapView';
+import { positionAtTime } from './wayMapMath';
 import { useSettings } from './settings';
 import { colors, PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
@@ -59,7 +59,7 @@ const TICK_MS = 33;           // ~30 fps redraw; sim time is wall-clock anchored
 const DEMO_FIRST_RIDE_ID = 'demo:first-ride';
 const FIRST_RIDE_STATUS = 'writing history · no known route here';
 
-const ASSET = DEMO_ROUTE_ASSET;
+const ASSET = DEMO_WAY_ASSET;
 
 export default function DemoScreen() {
   const { t } = useTheme();
@@ -190,10 +190,10 @@ export default function DemoScreen() {
           {/* browse = pannable/zoomable preview with the zoom bar (Nathan
               2026-08-18); the rider dot still rides the real line. */}
           {mode === 'second' ? (
-            <RouteMapView routeId={DEMO_ROUTE_ID} asset={DEMO_ROUTE_ASSET} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
+            <WayMapView wayId={DEMO_WAY_ID} asset={DEMO_WAY_ASSET} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
               zoom={4} sectorColours={sectorColours} leadColour={colors.grey} variant="browse" />
           ) : (
-            <RouteMapView routeId={DEMO_FIRST_RIDE_ID} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
+            <WayMapView wayId={DEMO_FIRST_RIDE_ID} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
               zoom={4} trail={trail} variant="browse" />
           )}
         </View>

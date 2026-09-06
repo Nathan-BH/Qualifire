@@ -25,7 +25,7 @@ import type { RefLine, RidePoints } from '../../core/src/index.ts';
 import {
   buildReference, collapseStationaryRuns, cumdist, meanOrigin, nearestOnSegments,
 } from '../../core/src/index.ts';
-import { MIN_TRACK_LENGTH_M } from '../store/wayCreation.ts';
+import { MIN_TRACK_LENGTH_M } from '../store/routeCreation.ts';
 import type { FsAdapter } from '../storage/fsAdapter.ts';
 
 export const USER_REFS_FILE = 'refs.user.json';

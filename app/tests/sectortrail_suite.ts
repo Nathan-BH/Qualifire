@@ -15,8 +15,8 @@ import { fileURLToPath } from 'node:url';
 import * as nodeFs from 'node:fs';
 import * as path from 'node:path';
 import { assert, loadJson, test, TESTS_DIR } from './lib.ts';
-import type { RouteAsset } from '../src/ui/routeMapMath.ts';
-import { sectorSpansFeatureCollection } from '../src/ui/routeMapGeo.ts';
+import type { WayAsset } from '../src/ui/wayMapMath.ts';
+import { sectorSpansFeatureCollection } from '../src/ui/wayMapGeo.ts';
 import type { LiveSector } from '../src/live/engine.ts';
 
 registerHooks({
@@ -35,8 +35,8 @@ const { MIN_HISTORY } = await import('../src/ui/colourModel.ts');
 
 // ------------------------------------------------------------------ fixtures
 
-interface Manifest { schemaVersion: number; projection: string; routes: Record<string, RouteAsset> }
-const manifest = loadJson<Manifest>(path.join(TESTS_DIR, '..', 'assets', 'routes', 'routes.json'));
+interface Manifest { schemaVersion: number; projection: string; ways: Record<string, WayAsset> }
+const manifest = loadJson<Manifest>(path.join(TESTS_DIR, '..', 'assets', 'ways', 'ways.json'));
 
 // n = MIN_HISTORY, best 100, mean 120 — enough comparable history to earn a tier.
 const RICH = Array.from({ length: MIN_HISTORY }, (_, i) => 100 + i * 10);
@@ -213,7 +213,7 @@ test('sectortrail: live — hist index is k+1', () => {
 // ------------------------------------------------------- sentinel + geo integration
 
 test('sectortrail: ALL_YELLOW is a truthy no-op for the span builder, never mutated', () => {
-  const fc = sectorSpansFeatureCollection(manifest.routes.Morning, ALL_YELLOW);
+  const fc = sectorSpansFeatureCollection(manifest.ways.Morning, ALL_YELLOW);
   assert(fc !== null, 'expected a non-null feature collection for Morning');
   assert(fc!.features.length === 4, `expected 4 features, got ${fc!.features.length}`);
   for (const f of fc!.features) {
@@ -230,7 +230,7 @@ test('sectortrail: storedSectorColours output feeds sectorSpansFeatureCollection
     { index: 4, rawS: 95, movingS: 95, quality: 'interrupted' }, // null
   ]);
   const out = storedSectorColours(ride, () => RICH, paintAll);
-  const fc = sectorSpansFeatureCollection(manifest.routes.Morning, out);
+  const fc = sectorSpansFeatureCollection(manifest.ways.Morning, out);
   assert(fc !== null, 'expected a non-null feature collection');
   assert(fc!.features.length === 4, `expected 4 features, got ${fc!.features.length}`);
   for (const f of fc!.features) {

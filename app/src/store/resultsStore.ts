@@ -40,6 +40,7 @@ import { gateSetFor } from './catalog.ts';
 import { currentCatalog } from './catalogStore.ts';
 import { deriveRideResult } from './derive.ts';
 import { emptyResultsIndex, rebuildIndex, removeResult, upsertResult } from './results.ts';
+import { upgradeResult } from './migrations.ts';
 import type { ResultsIndex, RideResult } from './types.ts';
 import { catalogTrackSpecs } from '../live/tracks.ts';
 import type { FsAdapter } from '../storage/fsAdapter.ts';
@@ -74,7 +75,7 @@ export function isValidRideResult(v: unknown): v is RideResult {
   if (v.kind !== 'rideResult') return false;
   if (typeof v.rideId !== 'string') return false;
   if (typeof v.startedAtMs !== 'number' || !Number.isFinite(v.startedAtMs)) return false;
-  if (!(v.routeId === null || typeof v.routeId === 'string')) return false;
+  if (!(v.wayId === null || typeof v.wayId === 'string')) return false;
   const lap = v.lap;
   if (!isNonNullObject(lap)) return false;
   if (typeof lap.rawS !== 'number') return false;
@@ -183,9 +184,9 @@ export async function initResultsStore(fs: FsAdapter): Promise<RideResult[]> {
     try {
       const text = await fs.readText(`${RESULTS_DIR}/${rideId}.json`);
       if (text === null) continue;
-      const parsed = JSON.parse(text) as unknown;
-      if (!isValidRideResult(parsed)) continue;
-      store.set(parsed.rideId, parsed);
+      const up = upgradeResult(JSON.parse(text) as unknown);
+      if (up === null || !isValidRideResult(up)) continue;
+      store.set(up.rideId, up);
     } catch { /* one corrupt result file must not take its siblings down */ }
   }
 
@@ -220,8 +221,8 @@ export function getStoredResult(rideId: string): RideResult | null {
  * over the in-memory map, no I/O. The caller (RoutesScreen, on route/way
  * delete) then removes each hit through removeStoredResult — this never
  * bypasses that single deletion mechanism. */
-export function storedResultsForRoute(routeId: string): RideResult[] {
-  return storedResults().filter((r) => r.routeId === routeId);
+export function storedResultsForWay(wayId: string): RideResult[] {
+  return storedResults().filter((r) => r.wayId === wayId);
 }
 
 // ---------------------------------------------------------------- write
@@ -449,12 +450,12 @@ export async function backfillMissingResults(fs: FsAdapter, rideIds: string[]): 
           t, lat, lon,
           ref: spec.ref,
           gates: spec.gates,
-          routeId: spec.id,
+          wayId: spec.id,
           gateSetVersion,
           engineVersion: BACKFILL_ENGINE_VERSION,
           source: 'app',
         });
-        if (result.routeId === null) continue;
+        if (result.wayId === null) continue;
         if (result.lap.quality !== 'clean' && result.lap.quality !== 'interrupted') continue;
         // Only the quality-passing candidates pay for a projection — one per
         // accepted-so-far route, not one per catalog route per ride.

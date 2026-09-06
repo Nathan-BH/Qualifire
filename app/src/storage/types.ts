@@ -133,9 +133,9 @@ export interface PickEvent {
   to?: string;
   fromLabel?: string;
   toLabel?: string;
-  routeId?: string | null;
+  wayId?: string | null;
   pickSource?: 'picked' | 'default' | 'none';
-  routeIds?: string[] | null;
+  wayIds?: string[] | null;
 }
 /** N9: one per `live/engine.ts` LockKind transition (LiveEngine.noteLockChange) —
  * closes the two transitions (soft->verified promotion, soft/none->finalized
@@ -151,7 +151,7 @@ export interface LockChangeEvent {
   to: 'soft' | 'verified' | 'finalized';
   atChainageM: number;
   atT: number;
-  reason: 'pickAdvance' | 'unblockedLeader' | 'routeCompleted' | 'rideEndPromotion';
+  reason: 'pickAdvance' | 'unblockedLeader' | 'wayCompleted' | 'rideEndPromotion';
   pick?: string | null;
 }
 export interface GateFireEvent {
@@ -197,8 +197,8 @@ export interface RemountEvent {
  * live/engine.ts's DiagnosticEvent verbatim (track narrowed to string, same
  * as LockEvent/GateFireEvent above, since this is the persisted/replayable
  * shape rather than the in-memory TrackId-typed one). */
-export interface RouteMatchDiagnosticEvent {
-  kind: 'routeMatchDiagnostic';
+export interface WayMatchDiagnosticEvent {
+  kind: 'wayMatchDiagnostic';
   tUnixMs: number;
   track: string;
   /** 'anchor' = this candidate's chainage was (re-)seeded from this fix;
@@ -228,7 +228,7 @@ export interface ElevationOutlierEvent {
 export type RideEvent =
   | MetaEvent | ButtonEvent | LockEvent | GateFireEvent | StorageErrorEvent | RelaunchEvent
   | RemountEvent
-  | RouteMatchDiagnosticEvent | ElevationOutlierEvent
+  | WayMatchDiagnosticEvent | ElevationOutlierEvent
   | PickEvent | LockChangeEvent;
 
 export interface DecodedEvents {

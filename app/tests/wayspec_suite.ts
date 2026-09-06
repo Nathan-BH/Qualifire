@@ -11,10 +11,10 @@ import {
   specSuggestions,
   specVocabulary,
   type SpecPickRow,
-} from '../src/store/routeSpecs.ts';
-import { isUserMintedRouteId, routeLabel, routeLabelIn, routeVariantLabel } from '../src/store/defaultRoute.ts';
+} from '../src/store/waySpecs.ts';
+import { isUserMintedWayId, wayLabel, wayLabelIn, wayVariantLabel } from '../src/store/defaultWay.ts';
 import { emptyCatalog } from '../src/store/catalog.ts';
-import type { Catalog, Route, Way } from '../src/store/types.ts';
+import type { Catalog, Way, Route } from '../src/store/types.ts';
 
 interface R { id: string; specs?: string[] }
 const A: R = { id: 'A', specs: ['Dry', 'Fast'] };
@@ -28,7 +28,7 @@ function depths(rows: SpecPickRow<R>[]): number[] {
   return rows.map((r) => r.depth);
 }
 function optIds(row: SpecPickRow<R> | undefined): { id: string; on: boolean }[] {
-  return (row?.options ?? []).map((o) => ({ id: o.route.id, on: o.on }));
+  return (row?.options ?? []).map((o) => ({ id: o.way.id, on: o.on }));
 }
 
 test('WP-G routespec 1: hasSpecs', () => {
@@ -43,8 +43,8 @@ test('WP-G routespec 2: flat two-way fork', () => {
   assert(rows.length === 1 && rows[0].depth === 0, 'one row, depth 0');
   const opts = rows[0].options;
   assert(opts.length === 2, 'two options');
-  assert(opts[0].label === 'Wet' && opts[0].route.id === 'C' && opts[0].on === true, 'Wet (C) on, first-appearance order');
-  assert(opts[1].label === 'Dry' && opts[1].route.id === 'E' && opts[1].on === false, 'Dry (E) off');
+  assert(opts[0].label === 'Wet' && opts[0].way.id === 'C' && opts[0].on === true, 'Wet (C) on, first-appearance order');
+  assert(opts[1].label === 'Dry' && opts[1].way.id === 'E' && opts[1].on === false, 'Dry (E) off');
   assert(!opts.some((o) => o.label === PLAIN_SPEC_LABEL), 'no plain option — both routes carry a spec');
 });
 
@@ -78,7 +78,7 @@ test('WP-G routespec 5: plain beside variants', () => {
   const pickedP = specPickRows([P, C], 'P', first);
   assert(JSON.stringify(depths(pickedP)) === JSON.stringify([0]), 'one row at depth 0');
   assert(pickedP[0].options[0].label === PLAIN_SPEC_LABEL && pickedP[0].options[0].on === true, 'plain (P) on, listed first');
-  assert(pickedP[0].options[1].label === 'Wet' && pickedP[0].options[1].route.id === 'C', 'Wet (C) second');
+  assert(pickedP[0].options[1].label === 'Wet' && pickedP[0].options[1].way.id === 'C', 'Wet (C) second');
 
   const pickedD = specPickRows([D, A], 'D', first);
   assert(JSON.stringify(depths(pickedD)) === JSON.stringify([1]), 'no depth-0 row (single group "dry"), then depth 1');
@@ -124,45 +124,45 @@ test('WP-G routespec 8: degenerate — one route => []; pickWithin never called 
 });
 
 test('WP-G routespec 9: specSuggestions', () => {
-  const wayLists = [['Dry', 'Fast'], ['Dry', 'Slow'], ['Wet']];
+  const routeLists = [['Dry', 'Fast'], ['Dry', 'Slow'], ['Wet']];
   const vocabulary = ['Dry', 'Fast', 'Slow', 'Wet', 'Alt'];
-  assert(JSON.stringify(specSuggestions(wayLists, vocabulary, [])) === JSON.stringify(['Dry', 'Wet', 'Fast', 'Slow', 'Alt']),
+  assert(JSON.stringify(specSuggestions(routeLists, vocabulary, [])) === JSON.stringify(['Dry', 'Wet', 'Fast', 'Slow', 'Alt']),
     'typed=[]: this-way position-0 values first (Dry, Wet), then the rest of the vocabulary, deduped');
-  assert(JSON.stringify(specSuggestions(wayLists, vocabulary, ['Dry'])) === JSON.stringify(['Fast', 'Slow', 'Wet', 'Alt']),
+  assert(JSON.stringify(specSuggestions(routeLists, vocabulary, ['Dry'])) === JSON.stringify(['Fast', 'Slow', 'Wet', 'Alt']),
     'typed=[Dry]: Dry excluded; Fast/Slow are the prefix-matching continuations, then the rest');
-  assert(JSON.stringify(specSuggestions(wayLists, vocabulary, ['dry'])) === JSON.stringify(['Fast', 'Slow', 'Wet', 'Alt']),
+  assert(JSON.stringify(specSuggestions(routeLists, vocabulary, ['dry'])) === JSON.stringify(['Fast', 'Slow', 'Wet', 'Alt']),
     'typed matches case-insensitively');
-  assert(JSON.stringify(specSuggestions(wayLists, vocabulary, [], 2)) === JSON.stringify(['Dry', 'Wet']),
+  assert(JSON.stringify(specSuggestions(routeLists, vocabulary, [], 2)) === JSON.stringify(['Dry', 'Wet']),
     'max truncates');
 });
 
 test('WP-G routespec 10: specVocabulary', () => {
-  const routes: R[] = [{ id: 'x', specs: ['Dry', 'Fast'] }, { id: 'y', specs: ['dry'] }, { id: 'z', specs: ['Wet'] }, P];
-  assert(JSON.stringify(specVocabulary(routes)) === JSON.stringify(['Dry', 'Fast', 'Wet']),
+  const ways: R[] = [{ id: 'x', specs: ['Dry', 'Fast'] }, { id: 'y', specs: ['dry'] }, { id: 'z', specs: ['Wet'] }, P];
+  assert(JSON.stringify(specVocabulary(ways)) === JSON.stringify(['Dry', 'Fast', 'Wet']),
     'first-used casing, catalog order, dedupe (Dry/dry collapse to Dry)');
 });
 
 test('WP-G routespec 11: labels — routeVariantLabel / routeLabelIn', () => {
-  const way = { startLandmarkId: 'home', endLandmarkId: 'work' };
-  assert(routeVariantLabel('route:x', way, ['Dry', 'Fast']) === 'Dry · Fast', 'specs join with the app separator');
-  assert(routeVariantLabel('route:x', way) === PLAIN_SPEC_LABEL, 'no specs, user-minted id => plain');
-  assert(routeVariantLabel('Morning', way) === 'Dry', 'a seed id keeps its existing derived label, unchanged');
-  assert(isUserMintedRouteId('route:2026090109') === true, 'route: prefix is user-minted');
-  assert(isUserMintedRouteId('Morning') === false, 'a seed id is not');
+  const route = { startLandmarkId: 'home', endLandmarkId: 'work' };
+  assert(wayVariantLabel('route:x', route, ['Dry', 'Fast']) === 'Dry · Fast', 'specs join with the app separator');
+  assert(wayVariantLabel('route:x', route) === PLAIN_SPEC_LABEL, 'no specs, user-minted id => plain');
+  assert(wayVariantLabel('Morning', route) === 'Dry', 'a seed id keeps its existing derived label, unchanged');
+  assert(isUserMintedWayId('route:2026090109') === true, 'route: prefix is user-minted');
+  assert(isUserMintedWayId('Morning') === false, 'a seed id is not');
 
-  const homeWorkWayId = 'home>work';
-  const seedWay: Way = { id: homeWorkWayId, startLandmarkId: 'home', endLandmarkId: 'work', routeIds: ['Morning'] };
-  const seedRoute: Route = { id: 'Morning', wayId: homeWorkWayId, refLineId: 'Morning', gateSetVersion: 1, seeded: true };
+  const homeWorkRouteId = 'home>work';
+  const seedRoute: Route = { id: homeWorkRouteId, startLandmarkId: 'home', endLandmarkId: 'work', wayIds: ['Morning'] };
+  const seedWay: Way = { id: 'Morning', routeId: homeWorkRouteId, refLineId: 'Morning', gateSetVersion: 1, seeded: true };
   const seedCat: Catalog = { ...emptyCatalog(), landmarks: [
     { id: 'home', label: 'Home', lat: 0, lon: 0, radiusM: 1, activeFromMs: 0, activeUntilMs: null, offerAtStart: true },
     { id: 'work', label: 'Work', lat: 0, lon: 0, radiusM: 1, activeFromMs: 0, activeUntilMs: null, offerAtStart: true },
-  ], ways: [seedWay], routes: [seedRoute] };
-  assert(routeLabelIn(seedCat, 'Morning') === routeLabel('Morning'), 'a seed id: routeLabelIn is byte-identical to routeLabel');
+  ], routes: [seedRoute], ways: [seedWay] };
+  assert(wayLabelIn(seedCat, 'Morning') === wayLabel('Morning'), 'a seed id: routeLabelIn is byte-identical to routeLabel');
 
-  const userRoute: Route = { id: 'route:x', wayId: homeWorkWayId, refLineId: 'route:x', gateSetVersion: 1, seeded: false, specs: ['Dry', 'Fast'] };
-  const userRoutePlain: Route = { id: 'route:y', wayId: homeWorkWayId, refLineId: 'route:y', gateSetVersion: 1, seeded: false };
-  const userCat: Catalog = { ...seedCat, routes: [...seedCat.routes, userRoute, userRoutePlain] };
-  assert(routeLabelIn(userCat, 'route:x') === 'Home → Work · Dry · Fast', 'user-minted route with specs: way + specs');
-  assert(routeLabelIn(userCat, 'route:y') === 'Home → Work', 'user-minted route without specs: just the way');
-  assert(routeLabelIn(userCat, 'route:not-there') === routeLabel('route:not-there'), 'unknown id: falls back to routeLabel byte-identical');
+  const userWay: Way = { id: 'route:x', routeId: homeWorkRouteId, refLineId: 'route:x', gateSetVersion: 1, seeded: false, specs: ['Dry', 'Fast'] };
+  const userWayPlain: Way = { id: 'route:y', routeId: homeWorkRouteId, refLineId: 'route:y', gateSetVersion: 1, seeded: false };
+  const userCat: Catalog = { ...seedCat, ways: [...seedCat.ways, userWay, userWayPlain] };
+  assert(wayLabelIn(userCat, 'route:x') === 'Home → Work · Dry · Fast', 'user-minted route with specs: way + specs');
+  assert(wayLabelIn(userCat, 'route:y') === 'Home → Work', 'user-minted route without specs: just the way');
+  assert(wayLabelIn(userCat, 'route:not-there') === wayLabel('route:not-there'), 'unknown id: falls back to routeLabel byte-identical');
 });

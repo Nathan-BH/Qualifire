@@ -13,7 +13,7 @@ import type { RideMeta } from '../storage/types';
 import { decodeIndex } from '../storage/rideIndex';
 import { backfillMissingResults, getStoredResult } from '../store/resultsStore';
 import { currentCatalog } from '../store/catalogStore';
-import { routeLabelIn } from '../store/defaultRoute';
+import { wayLabelIn } from '../store/defaultWay';
 import { createExpoFsAdapter } from '../storage/expoFsAdapter';
 import { buildRideRows } from './rideHistoryModel';
 import { lapValues } from './colourModel';
@@ -94,8 +94,8 @@ export default function RidesScreen() {
 
   const rows = useMemo(
     // WP-G: labelFor is routeLabelIn so a user-minted route shows its way + specs, not the raw route:<rideId> id.
-    () => buildRideRows(rides ?? [], getStoredResult, (routeId, excl) => lapValues(routeId, excl),
-      (id) => routeLabelIn(currentCatalog(), id)),
+    () => buildRideRows(rides ?? [], getStoredResult, (wayId, excl) => lapValues(wayId, excl),
+      (id) => wayLabelIn(currentCatalog(), id)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rides, resultsTick, s.timing],
   );
@@ -107,7 +107,7 @@ export default function RidesScreen() {
           <Text style={styles.refreshText}>Refresh</Text>
         </Pressable>
       </View>
-      {backfilling ? <Text style={styles.sub}>matching routes…</Text> : null}
+      {backfilling ? <Text style={styles.sub}>matching ways…</Text> : null}
       {rides == null ? (
         <Text style={styles.sub}>Loading…</Text>
       ) : rides.length === 0 ? (
@@ -123,7 +123,7 @@ export default function RidesScreen() {
                 onPress={() => tabNav.openRide({ rideId: item.rideId, source: 'rides', startedAtMs: item.startMs })}
               >
                 <View style={styles.rowInfo}>
-                  <Text style={styles.rowTitle}>{item.routeName ?? 'no route — recorded only'}</Text>
+                  <Text style={styles.rowTitle}>{item.wayName ?? 'no way — recorded only'}</Text>
                   <Text style={styles.sub}>
                     {item.dateLabel} · {item.lapLabel}
                     {item.quality ? ` · ${item.quality}` : ''}

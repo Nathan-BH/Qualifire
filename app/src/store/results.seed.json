@@ -1,10 +1,9 @@
 [
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260731-1034-home2work-19539495549",
   "startedAtMs": 1785486893000,
-  "routeId": "Morning",
   "source": "archive",
   "lap": {
    "rawS": 857.8438391685486,
@@ -48,15 +47,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "Morning"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260804-0944-home2work-19593459794",
   "startedAtMs": 1785829491000,
-  "routeId": "Morning",
   "source": "archive",
   "lap": {
    "rawS": 858.1811189651489,
@@ -100,15 +99,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "Morning"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260805-1034-home2work-19609112346",
   "startedAtMs": 1785918893000,
-  "routeId": null,
   "source": "archive",
   "lap": {
    "rawS": 0,
@@ -152,15 +151,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": null
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260806-0857-home2work-19622830015",
   "startedAtMs": 1785999444000,
-  "routeId": "Morning",
   "source": "archive",
   "lap": {
    "rawS": 829.3025553226471,
@@ -204,15 +203,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "Morning"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260807-1732-home2work-19642526095",
   "startedAtMs": 1786116730000,
-  "routeId": "Morning",
   "source": "archive",
   "lap": {
    "rawS": 828.7084422111511,
@@ -256,15 +255,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "Morning"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260808-0848-home2work-19649577531",
   "startedAtMs": 1786171680000,
-  "routeId": "Morning",
   "source": "archive",
   "lap": {
    "rawS": 816.6750566959381,
@@ -308,15 +307,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "Morning"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260810-0923-home2work-19677438031",
   "startedAtMs": 1786346583000,
-  "routeId": "Morning",
   "source": "archive",
   "lap": {
    "rawS": 835.6328139305115,
@@ -360,15 +359,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "Morning"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260811-0828-home2work-19691203692",
   "startedAtMs": 1786429691000,
-  "routeId": "Morning",
   "source": "archive",
   "lap": {
    "rawS": 835.8065423965454,
@@ -412,15 +411,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "Morning"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260812-1445-home2work-19710858960",
   "startedAtMs": 1786538712000,
-  "routeId": "Morning",
   "source": "archive",
   "lap": {
    "rawS": 843.128705739975,
@@ -464,15 +463,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "Morning"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260813-0831-home2work-19720913908",
   "startedAtMs": 1786602677000,
-  "routeId": "Morning",
   "source": "archive",
   "lap": {
    "rawS": 902.9439895153046,
@@ -516,15 +515,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "Morning"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260728-1619-work2home-19501080034",
   "startedAtMs": 1785248354000,
-  "routeId": "EveningA",
   "source": "archive",
   "lap": {
    "rawS": 1277.9736936092377,
@@ -568,15 +567,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "EveningA"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260730-1834-work2home-19531457200",
   "startedAtMs": 1785429258000,
-  "routeId": "EveningA",
   "source": "archive",
   "lap": {
    "rawS": 964.3984088897705,
@@ -620,15 +619,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "EveningA"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260731-1851-work2home-19545118665",
   "startedAtMs": 1785516668000,
-  "routeId": "EveningA",
   "source": "archive",
   "lap": {
    "rawS": 836.063467502594,
@@ -672,15 +671,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "EveningA"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260803-2005-work2home-19586484852",
   "startedAtMs": 1785780300000,
-  "routeId": "EveningA",
   "source": "archive",
   "lap": {
    "rawS": 831.3945915699005,
@@ -724,15 +723,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "EveningA"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260804-1859-work2home-19608991543",
   "startedAtMs": 1785862783000,
-  "routeId": "EveningA",
   "source": "archive",
   "lap": {
    "rawS": 845.3995020389557,
@@ -776,15 +775,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "EveningA"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260805-1852-work2home-19615380701",
   "startedAtMs": 1785948775000,
-  "routeId": "EveningA",
   "source": "archive",
   "lap": {
    "rawS": 868.6008019447327,
@@ -828,15 +827,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "EveningA"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260806-1516-work2home-19627136592",
   "startedAtMs": 1786022167000,
-  "routeId": "EveningA",
   "source": "archive",
   "lap": {
    "rawS": 812.5497715473175,
@@ -880,15 +879,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "EveningA"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260807-1847-work2home-19643453356",
   "startedAtMs": 1786121222000,
-  "routeId": "EveningA",
   "source": "archive",
   "lap": {
    "rawS": 818.4107210636139,
@@ -932,15 +931,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "EveningA"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260808-1955-work2home-19658451877",
   "startedAtMs": 1786211714000,
-  "routeId": "EveningA",
   "source": "archive",
   "lap": {
    "rawS": 816.7490818500519,
@@ -984,15 +983,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "EveningA"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260813-1618-work2home-19726172105",
   "startedAtMs": 1786630738000,
-  "routeId": "EveningA",
   "source": "archive",
   "lap": {
    "rawS": 810.00412774086,
@@ -1036,15 +1035,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "EveningA"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260615-2359-work2home-18935332720",
   "startedAtMs": 1781560799000,
-  "routeId": "EveningB",
   "source": "archive",
   "lap": {
    "rawS": 778.1300668716431,
@@ -1088,15 +1087,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "EveningB"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260616-2230-work2home-18949259562",
   "startedAtMs": 1781641822000,
-  "routeId": "EveningB",
   "source": "archive",
   "lap": {
    "rawS": 760.6936824321747,
@@ -1140,15 +1139,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "EveningB"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260617-2220-work2home-18963316789",
   "startedAtMs": 1781727600000,
-  "routeId": "EveningB",
   "source": "archive",
   "lap": {
    "rawS": 799.7118661403656,
@@ -1192,15 +1191,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "EveningB"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260618-2310-work2home-18976919847",
   "startedAtMs": 1781817023000,
-  "routeId": "EveningB",
   "source": "archive",
   "lap": {
    "rawS": 886.4148910045624,
@@ -1244,15 +1243,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "EveningB"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260620-0001-work2home-18989339700",
   "startedAtMs": 1781906477000,
-  "routeId": "EveningB",
   "source": "archive",
   "lap": {
    "rawS": 773.4628672599792,
@@ -1296,15 +1295,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "EveningB"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260715-0020-work2home-19315592710",
   "startedAtMs": 1784067623000,
-  "routeId": "EveningB",
   "source": "archive",
   "lap": {
    "rawS": 813.0849921703339,
@@ -1348,15 +1347,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "EveningB"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260717-2332-work2home-19354821638",
   "startedAtMs": 1784323948000,
-  "routeId": "EveningB",
   "source": "archive",
   "lap": {
    "rawS": 774.6625580787659,
@@ -1400,15 +1399,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "EveningB"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260723-2147-work2home-19436961849",
   "startedAtMs": 1784836034000,
-  "routeId": "EveningB",
   "source": "archive",
   "lap": {
    "rawS": 757.6524665355682,
@@ -1452,15 +1451,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "EveningB"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260727-2325-work2home-19491419206",
   "startedAtMs": 1785187529000,
-  "routeId": "EveningB",
   "source": "archive",
   "lap": {
    "rawS": 772.4626348018646,
@@ -1504,15 +1503,15 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "EveningB"
  },
  {
   "kind": "rideResult",
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "rideId": "seed:20260809-1900-work2home-19677298540",
   "startedAtMs": 1786294833000,
-  "routeId": "EveningB",
   "source": "archive",
   "lap": {
    "rawS": 804.5202538967133,
@@ -1556,7 +1555,8 @@
   "derivedBy": {
    "engineVersion": "core-2026-08-15",
    "gateSetVersion": 1,
-   "resultSchemaVersion": 1
-  }
+   "resultSchemaVersion": 2
+  },
+  "wayId": "EveningB"
  }
 ]

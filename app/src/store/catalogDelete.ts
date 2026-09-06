@@ -27,12 +27,12 @@
  *     catalog order) — one cascade, not two; the way and its landmarks come
  *     free on the last route.
  */
-import type { Catalog, Landmark, Route, Way } from './types.ts';
+import type { Catalog, Landmark, Way, Route } from './types.ts';
 
 export interface CatalogDeletion {
   next: Catalog;
-  removedRouteIds: string[];
   removedWayIds: string[];
+  removedRouteIds: string[];
   removedLandmarkIds: string[];
   /** refLineIds whose refs.user.json entry should go (one per removed route). */
   removedRefLineIds: string[];
@@ -41,8 +41,8 @@ export interface CatalogDeletion {
 function unchanged(userCat: Catalog): CatalogDeletion {
   return {
     next: userCat,
-    removedRouteIds: [],
     removedWayIds: [],
+    removedRouteIds: [],
     removedLandmarkIds: [],
     removedRefLineIds: [],
   };
@@ -53,12 +53,12 @@ function unchanged(userCat: Catalog): CatalogDeletion {
  * touches userCat, so a seed id is simply never found there). */
 export function isSeedOwned(seedCat: Catalog, kind: 'landmark' | 'way' | 'route', id: string): boolean {
   if (kind === 'landmark') return seedCat.landmarks.some((l) => l.id === id);
-  if (kind === 'way') return seedCat.ways.some((w) => w.id === id);
-  return seedCat.routes.some((r) => r.id === id);
+  if (kind === 'route') return seedCat.routes.some((w) => w.id === id);
+  return seedCat.ways.some((r) => r.id === id);
 }
 
-function wayReferences(ways: readonly Way[], landmarkId: string): boolean {
-  return ways.some((w) => w.startLandmarkId === landmarkId || w.endLandmarkId === landmarkId);
+function routeReferences(routes: readonly Route[], landmarkId: string): boolean {
+  return routes.some((w) => w.startLandmarkId === landmarkId || w.endLandmarkId === landmarkId);
 }
 
 /** Landmarks that were endpoints of `droppedWays` and are, after the drop,
@@ -67,21 +67,21 @@ function wayReferences(ways: readonly Way[], landmarkId: string): boolean {
  * id exactly once (a loop's single landmark is both endpoints of its way). */
 function orphanedLandmarkIds(
   userLandmarks: readonly Landmark[],
-  remainingUserWays: readonly Way[],
-  seedWays: readonly Way[],
-  droppedWays: readonly Way[],
+  remainingUserRoutes: readonly Route[],
+  seedRoutes: readonly Route[],
+  droppedRoutes: readonly Route[],
 ): string[] {
-  if (droppedWays.length === 0) return [];
+  if (droppedRoutes.length === 0) return [];
   const candidates = new Set<string>();
-  for (const w of droppedWays) {
+  for (const w of droppedRoutes) {
     candidates.add(w.startLandmarkId);
     candidates.add(w.endLandmarkId);
   }
   const out: string[] = [];
   for (const l of userLandmarks) {
     if (!candidates.has(l.id)) continue;
-    if (wayReferences(remainingUserWays, l.id)) continue;
-    if (wayReferences(seedWays, l.id)) continue;
+    if (routeReferences(remainingUserRoutes, l.id)) continue;
+    if (routeReferences(seedRoutes, l.id)) continue;
     out.push(l.id);
   }
   return out;
@@ -90,65 +90,65 @@ function orphanedLandmarkIds(
 /** Removes one route. If it was its way's only route the way goes too, and
  * any landmark left unreferenced by every remaining user way AND every seed
  * way goes with it. All gate-set versions for the route are removed. */
-export function removeRoute(userCat: Catalog, seedCat: Catalog, routeId: string): CatalogDeletion {
-  const route = userCat.routes.find((r) => r.id === routeId);
-  if (!route) return unchanged(userCat);
+export function removeWay(userCat: Catalog, seedCat: Catalog, wayId: string): CatalogDeletion {
+  const way = userCat.ways.find((r) => r.id === wayId);
+  if (!way) return unchanged(userCat);
 
-  const routes = userCat.routes.filter((r) => r.id !== routeId);
-  const gateSets = userCat.gateSets.filter((g) => g.routeId !== routeId);
+  const ways = userCat.ways.filter((r) => r.id !== wayId);
+  const gateSets = userCat.gateSets.filter((g) => g.wayId !== wayId);
 
-  const way = userCat.ways.find((w) => w.id === route.wayId);
-  let ways = userCat.ways;
-  const removedWayIds: string[] = [];
-  const droppedWays: Way[] = [];
-  if (way) {
-    const prunedRouteIds = way.routeIds.filter((rid) => rid !== routeId);
-    if (prunedRouteIds.length === 0) {
-      ways = userCat.ways.filter((w) => w.id !== way.id);
-      removedWayIds.push(way.id);
-      droppedWays.push(way);
+  const route = userCat.routes.find((w) => w.id === way.routeId);
+  let routes = userCat.routes;
+  const removedRouteIds: string[] = [];
+  const droppedRoutes: Route[] = [];
+  if (route) {
+    const prunedWayIds = route.wayIds.filter((rid) => rid !== wayId);
+    if (prunedWayIds.length === 0) {
+      routes = userCat.routes.filter((w) => w.id !== route.id);
+      removedRouteIds.push(route.id);
+      droppedRoutes.push(route);
     } else {
-      ways = userCat.ways.map((w) => (w.id === way.id ? { ...w, routeIds: prunedRouteIds } : w));
+      routes = userCat.routes.map((w) => (w.id === route.id ? { ...w, wayIds: prunedWayIds } : w));
     }
   }
 
-  const removedLandmarkIds = orphanedLandmarkIds(userCat.landmarks, ways, seedCat.ways, droppedWays);
+  const removedLandmarkIds = orphanedLandmarkIds(userCat.landmarks, routes, seedCat.routes, droppedRoutes);
   const landmarks =
     removedLandmarkIds.length === 0
       ? userCat.landmarks
       : userCat.landmarks.filter((l) => !removedLandmarkIds.includes(l.id));
 
-  const next: Catalog = { schemaVersion: userCat.schemaVersion, landmarks, ways, routes, gateSets };
+  const next: Catalog = { schemaVersion: userCat.schemaVersion, landmarks, routes, ways, gateSets };
   return {
     next,
-    removedRouteIds: [routeId],
-    removedWayIds,
+    removedWayIds: [wayId],
+    removedRouteIds,
     removedLandmarkIds,
-    removedRefLineIds: [route.refLineId],
+    removedRefLineIds: [way.refLineId],
   };
 }
 
 /** Removes a way and every route on it (same cascades as removeRoute,
  * applied to all, in the way's own routeIds order) — one cascade, not two:
  * the way and its landmarks come free on the last route removed. */
-export function removeWay(userCat: Catalog, seedCat: Catalog, wayId: string): CatalogDeletion {
-  const way = userCat.ways.find((w) => w.id === wayId);
-  if (!way) return unchanged(userCat);
+export function removeRoute(userCat: Catalog, seedCat: Catalog, routeId: string): CatalogDeletion {
+  const route = userCat.routes.find((w) => w.id === routeId);
+  if (!route) return unchanged(userCat);
 
   let current = userCat;
-  const removedRouteIds: string[] = [];
   const removedWayIds: string[] = [];
+  const removedRouteIds: string[] = [];
   const removedLandmarkIds: string[] = [];
   const removedRefLineIds: string[] = [];
-  for (const routeId of way.routeIds) {
-    const d = removeRoute(current, seedCat, routeId);
+  for (const wayId of route.wayIds) {
+    const d = removeWay(current, seedCat, wayId);
     current = d.next;
-    removedRouteIds.push(...d.removedRouteIds);
+    removedWayIds.push(...d.removedWayIds);
     removedRefLineIds.push(...d.removedRefLineIds);
-    for (const id of d.removedWayIds) if (!removedWayIds.includes(id)) removedWayIds.push(id);
+    for (const id of d.removedRouteIds) if (!removedRouteIds.includes(id)) removedRouteIds.push(id);
     for (const id of d.removedLandmarkIds) if (!removedLandmarkIds.includes(id)) removedLandmarkIds.push(id);
   }
-  return { next: current, removedRouteIds, removedWayIds, removedLandmarkIds, removedRefLineIds };
+  return { next: current, removedWayIds, removedRouteIds, removedLandmarkIds, removedRefLineIds };
 }
 
 /** Removes a landmark ONLY if no user way and no seed way references it;
@@ -157,15 +157,15 @@ export function removeWay(userCat: Catalog, seedCat: Catalog, wayId: string): Ca
 export function removeLandmark(userCat: Catalog, seedCat: Catalog, landmarkId: string): CatalogDeletion {
   const landmark = userCat.landmarks.find((l) => l.id === landmarkId);
   if (!landmark) return unchanged(userCat);
-  if (wayReferences(userCat.ways, landmarkId) || wayReferences(seedCat.ways, landmarkId)) {
+  if (routeReferences(userCat.routes, landmarkId) || routeReferences(seedCat.routes, landmarkId)) {
     return unchanged(userCat);
   }
   const landmarks = userCat.landmarks.filter((l) => l.id !== landmarkId);
   const next: Catalog = { ...userCat, landmarks };
   return {
     next,
-    removedRouteIds: [],
     removedWayIds: [],
+    removedRouteIds: [],
     removedLandmarkIds: [landmarkId],
     removedRefLineIds: [],
   };
@@ -173,4 +173,4 @@ export function removeLandmark(userCat: Catalog, seedCat: Catalog, landmarkId: s
 
 // Re-exported only so the QA suite can type its own fixtures without a
 // second import line; never used by this module's own logic.
-export type { Catalog, Landmark, Route, Way };
+export type { Catalog, Landmark, Way, Route };

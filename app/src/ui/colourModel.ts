@@ -48,9 +48,9 @@ const GHOSTS: RideResult[] = shippedResults();
 /** All rankable history for a route, ascending startedAtMs, unwindowed.
  * Filtered by the store's own `ranks()` — not a local lookalike — so an
  * estimated lap or a tripwire-demoted seed can never sneak in (D-024/D-028). */
-function rankedFor(routeId: string): RideResult[] {
+function rankedFor(wayId: string): RideResult[] {
   return [...GHOSTS, ...recordedResults()]
-    .filter((r) => r.routeId === routeId && ranks(r))
+    .filter((r) => r.wayId === wayId && ranks(r))
     .sort((a, b) => a.startedAtMs - b.startedAtMs);
 }
 
@@ -61,15 +61,15 @@ function rankedFor(routeId: string): RideResult[] {
  * yet stored needs no exclusion and gets the same 9. Judged ride + this
  * window = the pool of WINDOW_N.
  */
-export function ghostsFor(routeId: string, excludeRideId?: string): RideResult[] {
-  return rankedFor(routeId).filter((r) => r.rideId !== excludeRideId).slice(-WINDOW_PREV);
+export function ghostsFor(wayId: string, excludeRideId?: string): RideResult[] {
+  return rankedFor(wayId).filter((r) => r.rideId !== excludeRideId).slice(-WINDOW_PREV);
 }
 
 /** True count of rankable rides on file for a route — NOT windowed. The only
  * honest source for an "N rides on file" caption (cycle 025: the old caption
  * showed the window size capped at 10 and could contradict the header). */
-export function rankedCountFor(routeId: string): number {
-  return rankedFor(routeId).length;
+export function rankedCountFor(wayId: string): number {
+  return rankedFor(wayId).length;
 }
 
 /**
@@ -81,8 +81,8 @@ export function rankedCountFor(routeId: string): number {
  * ranked rides (pure display). The RESULT header's rank line and the PB
  * ranking list both derive from this one shape — they cannot disagree again.
  */
-export function rankingPoolFor(routeId: string, currentRideId: string | null): RideResult[] {
-  const all = rankedFor(routeId);
+export function rankingPoolFor(wayId: string, currentRideId: string | null): RideResult[] {
+  const all = rankedFor(wayId);
   const current = currentRideId === null ? undefined : all.find((r) => r.rideId === currentRideId);
   if (current === undefined) return all.slice(-WINDOW_N);
   return [...all.filter((r) => r.rideId !== currentRideId).slice(-WINDOW_PREV), current]
@@ -94,9 +94,9 @@ export function rankingPoolFor(routeId: string, currentRideId: string | null): R
  * such a lap must not be ranked by a local scored-time-only lookalike rule.
  * False when no stored result exists at all: an in-session lap that never
  * reached the store still ranks by its live numbers, as before. */
-export function ownLapBarredFromRanking(routeId: string, rideId: string): boolean {
+export function ownLapBarredFromRanking(wayId: string, rideId: string): boolean {
   const own = [...GHOSTS, ...recordedResults()]
-    .find((r) => r.routeId === routeId && r.rideId === rideId);
+    .find((r) => r.wayId === wayId && r.rideId === rideId);
   return own !== undefined && !ranks(own);
 }
 
@@ -109,8 +109,8 @@ function stats(values: number[]) {
   return { best, mean, sd, n };
 }
 
-export function lapValues(routeId: string, excludeRideId?: string): number[] {
-  return ghostsFor(routeId, excludeRideId).map((r) => scoredS(r.lap) as number);
+export function lapValues(wayId: string, excludeRideId?: string): number[] {
+  return ghostsFor(wayId, excludeRideId).map((r) => scoredS(r.lap) as number);
 }
 
 /**
@@ -119,9 +119,9 @@ export function lapValues(routeId: string, excludeRideId?: string): number[] {
  * best read green (EveningA S1: best 174.9 s, mean 226.7 s). They still RANK
  * as laps (D-028); they just do not define what "average" means.
  */
-export function sectorValues(routeId: string, index: number, excludeRideId?: string): number[] {
+export function sectorValues(wayId: string, index: number, excludeRideId?: string): number[] {
   const out: number[] = [];
-  for (const r of ghostsFor(routeId, excludeRideId)) {
+  for (const r of ghostsFor(wayId, excludeRideId)) {
     const s = r.sectors.find((x) => x.index === index);
     if (s && s.quality === 'clean') {
       const v = scoredS(s);
@@ -149,10 +149,10 @@ export function tierFor(value: number | null, history: number[]): UiTier {
 /** All-time best scored lap (store/timing.ts) for a route — NOT window-limited: every seed and
  * session result that passes ranks() counts. Feeds the tower's PB ● (D-007),
  * which marks the all-time best, not merely the best of the last N. */
-export function allTimeBestLapS(routeId: string): number | null {
+export function allTimeBestLapS(wayId: string): number | null {
   let best: number | null = null;
   for (const r of [...GHOSTS, ...recordedResults()]) {
-    if (r.routeId !== routeId || !ranks(r)) continue;
+    if (r.wayId !== wayId || !ranks(r)) continue;
     const v = scoredS(r.lap) as number;
     if (best === null || v < best) best = v;
   }

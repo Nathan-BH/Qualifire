@@ -19,7 +19,7 @@
  * confirm the band boundaries are the intended ones.
  */
 import { assert, test } from './lib.ts';
-import { patchMapStyle } from '../src/ui/routeMapStyle.ts';
+import { patchMapStyle } from '../src/ui/wayMapStyle.ts';
 
 function buildStyle() {
   return {

@@ -1,7 +1,7 @@
 /**
  * WP-E (2026-09-03): the DEMO tab's own scripted route — a frozen copy of the
  * geometry the demo has always replayed (the archived Morning lap: path,
- * gates, gateIdx, renderer transform), decoupled from assets/routes/
+ * gates, gateIdx, renderer transform), decoupled from assets/ways/
  * routes.json so the demo keeps working on a virgin build, where the bundled
  * manifest is emptied by store/seed.ts's bundledForSeedMode(). No PNG: the
  * PNG rung draws the path polyline. Not a catalog route, never resolvable by
@@ -12,13 +12,13 @@
  * re-running that snippet, not by hand. tests/virginmanifest_suite.ts pins
  * its shape (5 gates, gateIdx monotonic and on the path).
  */
-import type { RouteAsset } from './routeMapMath.ts';
+import type { WayAsset } from './wayMapMath.ts';
 
 /** Not a manifest key and not a catalog id — mirrors DemoScreen's
  * 'demo:first-ride'. Used only as RouteMapView's zoom-reset/PNG key. */
-export const DEMO_ROUTE_ID = 'demo:second-ride';
+export const DEMO_WAY_ID = 'demo:second-ride';
 
-export const DEMO_ROUTE_ASSET: RouteAsset = {
+export const DEMO_WAY_ASSET: WayAsset = {
   image: '',
   w: 900,
   h: 1400,

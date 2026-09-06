@@ -79,14 +79,14 @@ export function effectiveFromId(input: {
  * "two yellow lines overlap" bug), never neither. `track` (the engine's locked
  * route) outranks `routeHint` (the pick), same precedence the map already
  * used; a lock appearing or dropping mid-ride flips the state live. */
-export type LiveMapOverlay = { routeId: string | null; showTrail: boolean };
+export type LiveMapOverlay = { wayId: string | null; showTrail: boolean };
 export function liveMapOverlayFor(input: {
   mode: 'route' | 'free';
   track: string | null;
-  routeHint: string | null;
+  wayHint: string | null;
 }): LiveMapOverlay {
-  const routeId = input.mode === 'free' ? null : (input.track ?? input.routeHint);
-  return { routeId, showTrail: routeId === null };
+  const wayId = input.mode === 'free' ? null : (input.track ?? input.wayHint);
+  return { wayId, showTrail: wayId === null };
 }
 
 /** The rotating status-line items (IDEAS §24) while running — WITHOUT any
@@ -97,9 +97,9 @@ export function liveMapOverlayFor(input: {
 export function statusItemsFor(input: {
   gpsTrouble: boolean;
   gpsLine: string;
-  routeLine: string;
+  wayLine: string;
 }): string[] {
   return input.gpsTrouble
-    ? [input.gpsLine, input.routeLine]
-    : [input.routeLine, input.gpsLine];
+    ? [input.gpsLine, input.wayLine]
+    : [input.wayLine, input.gpsLine];
 }

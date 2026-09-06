@@ -5,7 +5,7 @@
  * logic verbatim (rankLineFor, lapTier, resultSectorColours) and adds the
  * WP-H facts (ignored, referenceOf, canOfferReference, promoteTarget).
  */
-import type { RideResult, Route } from '../store/types.ts';
+import type { RideResult, Way } from '../store/types.ts';
 import type { FreeRideRecord } from '../store/freeRides.ts';
 import { ranks } from '../store/results.ts';
 import { scoredS } from '../store/timing.ts';
@@ -21,7 +21,7 @@ export interface RideDetailModel {
   rideId: string;
   startedAtMs: number;
   /** null for 'free' and 'none' */
-  routeId: string | null;
+  wayId: string | null;
   lapLabel: string;
   lapTier: UiTier;
   rankLine: string;
@@ -30,13 +30,13 @@ export interface RideDetailModel {
    * lap that ranks() would accept if the flag were off. */
   canToggleIgnore: boolean;
   /** the route this ride is the reference of, or null */
-  referenceOf: Route | null;
+  referenceOf: Way | null;
   /** WP-H addendum 2026-09-04 (§3.3b): the USER route this ride is matched
    * to and could become the reference of — null when the ride is already
    * its reference, when the route is seed-owned (absent from userRoutes), or
    * when the ride has no route result. Drives the "make this the reference
    * of this route" button. */
-  promoteTarget: Route | null;
+  promoteTarget: Way | null;
   sectorRows: SectorRowModel[];
   /** gate-indexed, index 0 null — RouteMapView's sectorColours contract */
   sectorColours: (string | null)[];
@@ -46,15 +46,15 @@ export interface RideDetailModel {
 export interface RideDetailDeps {
   result: RideResult | null;
   free: FreeRideRecord | null;
-  routes: readonly Route[];
+  ways: readonly Way[];
   /** userCatalog().routes — seed routes are never in it (catalogDelete.ts:51-53's rule) */
-  userRoutes: readonly Route[];
+  userWays: readonly Way[];
   /** lapValues(routeId, rideId) — history EXCLUDING this ride */
-  laps: (routeId: string) => number[];
+  laps: (wayId: string) => number[];
   /** sectorValues(routeId, index, rideId) — history EXCLUDING this ride */
-  sectors: (routeId: string, index: number) => number[];
+  sectors: (wayId: string, index: number) => number[];
   /** ownLapBarredFromRanking(routeId, rideId) */
-  barred: (routeId: string) => boolean;
+  barred: (wayId: string) => boolean;
 }
 
 /** ResultScreen.tsx's rankLineFor, verbatim, plus the WP-H 'ignored' branch
@@ -70,7 +70,7 @@ export function rankLineFor(
     if (barred) return 'no rank — this lap is excluded from the comparison';
     if (hist.length >= MIN_HISTORY) {
       const { pos, of } = positionAmong(r.lapS, hist);
-      return `P${pos} of ${of} on this route`;
+      return `P${pos} of ${of} on this way`;
     }
     return `${hist.length} rides of history — too few to rank`;
   }
@@ -93,34 +93,34 @@ export function sectorColoursFor(result: RideResult, hist: (index: number) => nu
 }
 
 export function rideDetailFor(rideId: string, startedAtMs: number, d: RideDetailDeps): RideDetailModel {
-  const referenceOf = d.routes.find((r) => r.referenceRideId === rideId) ?? null;
+  const referenceOf = d.ways.find((r) => r.referenceRideId === rideId) ?? null;
   const base = { rideId, startedAtMs, referenceOf, free: d.free };
   const res = d.result;
-  if (res === null || res.routeId === null) {
+  if (res === null || res.wayId === null) {
     // WP-B precedence: a free-ride record wins over "nothing on file".
     const kind: RideDetailKind = d.free ? 'free' : 'none';
-    return { ...base, kind, routeId: null, lapLabel: '–', lapTier: 'neutral', rankLine: '',
+    return { ...base, kind, wayId: null, lapLabel: '–', lapTier: 'neutral', rankLine: '',
       ignored: false, canToggleIgnore: false, promoteTarget: null, sectorRows: [], sectorColours: [] };
   }
-  const routeId = res.routeId;
+  const wayId = res.wayId;
   const ignored = res.ignoredFromRanking === true;
   const estimated = res.lap.quality === 'estimated';
-  const hist = d.laps(routeId);
+  const hist = d.laps(wayId);
   const lapS = scoredS(res.lap);
   // While ignored, the ride's OWN verdicts go neutral too (D-013 in spirit:
   // a ride withdrawn from judging others is not judged either).
-  const secHist = ignored ? () => [] : (i: number) => d.sectors(routeId, i);
+  const secHist = ignored ? () => [] : (i: number) => d.sectors(wayId, i);
   return {
     ...base,
     kind: 'route',
-    routeId,
+    wayId,
     lapLabel: lapCellLabel(lapS, estimated, res.lap.rawS),
     lapTier: ignored ? 'neutral' : tierFor(lapS, hist),
-    rankLine: rankLineFor({ lapS, estimated, ignored }, hist, d.barred(routeId)),
+    rankLine: rankLineFor({ lapS, estimated, ignored }, hist, d.barred(wayId)),
     ignored,
     canToggleIgnore: ranks({ ...res, ignoredFromRanking: false }),
     // §3.3b: promotable iff matched to a user-owned route it is not already the reference of.
-    promoteTarget: d.userRoutes.find((r) => r.id === routeId && r.referenceRideId !== rideId) ?? null,
+    promoteTarget: d.userWays.find((r) => r.id === wayId && r.referenceRideId !== rideId) ?? null,
     sectorRows: buildSectorRows(res, secHist),
     sectorColours: sectorColoursFor(res, secHist),
   };

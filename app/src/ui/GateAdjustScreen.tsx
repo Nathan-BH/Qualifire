@@ -22,10 +22,10 @@ import { useTabNav, type GateAdjustRequest } from './tabNav.tsx';
 import { useTheme } from './themeContext.tsx';
 import { GateAdjustCard } from './gateAdjustCard.tsx';
 import { currentCatalog } from '../store/catalogStore.ts';
-import { routeLabelIn } from '../store/defaultRoute.ts';
-import { getStoredResult, storedResultsForRoute } from '../store/resultsStore.ts';
+import { wayLabelIn } from '../store/defaultWay.ts';
+import { getStoredResult, storedResultsForWay } from '../store/resultsStore.ts';
 import { clearLastRide, dropRecorded, getLastRide, replaceRecorded } from './lastRide.ts';
-import { editRouteGates, gateEditDraftFor } from '../store/wayFromRide.ts';
+import { editWayGates, gateEditDraftFor } from '../store/routeFromRide.ts';
 import { createExpoFsAdapter } from '../storage/expoFsAdapter.ts';
 
 export default function GateAdjustScreen({ request }: { request: GateAdjustRequest }) {
@@ -36,10 +36,10 @@ export default function GateAdjustScreen({ request }: { request: GateAdjustReque
 
   // Pure read, resolved once per request — the card copies it into its own
   // state on mount, so re-resolving on every render would be pointless.
-  const draft = useMemo(() => gateEditDraftFor(request.routeId), [request.routeId]);
+  const draft = useMemo(() => gateEditDraftFor(request.wayId), [request.wayId]);
   // The full "Home → Work · Dry" name — there is no way header for context on
   // this screen, so NOT routeVariantLabel, which would print just "plain"/"Dry".
-  const label = routeLabelIn(currentCatalog(), request.routeId);
+  const label = wayLabelIn(currentCatalog(), request.wayId);
   // Half the window, floor = the inline default (280) — on a ~780-dp phone
   // that is ~390 px vs 280 inline; the ScrollView keeps the chips/pad/
   // buttons reachable on any phone. A non-scrolling `fill` layout was
@@ -53,13 +53,13 @@ export default function GateAdjustScreen({ request }: { request: GateAdjustReque
   // exit changed to tabNav.closeGateAdjust() — RoutesScreen no longer keeps
   // any editing state to clear or bump().
   function confirmEditGates(chainageM: number[]) {
-    const n = storedResultsForRoute(request.routeId).length;
+    const n = storedResultsForWay(request.wayId).length;
     const ghosts = n === 0
-      ? 'There are no past results on this route yet.'
+      ? 'There are no past results on this way yet.'
       : `Its ${n} past result${n === 1 ? ' is' : 's are'} discarded and re-timed from the recordings against the new gates — old times and ranks do not survive.`;
     Alert.alert(
-      `Move the gates of "${routeLabelIn(currentCatalog(), request.routeId)}"?`,
-      `This route's history will be reset and past ghosts will be lost.\n\n${ghosts} The reference line and ride recordings are kept.`,
+      `Move the gates of "${wayLabelIn(currentCatalog(), request.wayId)}"?`,
+      `This way's history will be reset and past ghosts will be lost.\n\n${ghosts} The reference line and ride recordings are kept.`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Save & reset', style: 'destructive', onPress: () => void onEditGates(chainageM) },
@@ -70,14 +70,14 @@ export default function GateAdjustScreen({ request }: { request: GateAdjustReque
   async function onEditGates(chainageM: number[]) {
     setBusy(true);
     try {
-      const out = await editRouteGates(request.routeId, chainageM, createExpoFsAdapter());
+      const out = await editWayGates(request.wayId, chainageM, createExpoFsAdapter());
       if (!out.ok) {
         Alert.alert('Could not save the gates', out.errors.join('\n'));
         return;
       }
       if (out.moved) {
         for (const id of out.clearedRideIds) dropRecorded(id);
-        if (getLastRide()?.routeId === request.routeId) clearLastRide();
+        if (getLastRide()?.wayId === request.wayId) clearLastRide();
         for (const id of out.clearedRideIds) {
           const r = getStoredResult(id);
           if (r) replaceRecorded(r);
@@ -102,19 +102,19 @@ export default function GateAdjustScreen({ request }: { request: GateAdjustReque
       </View>
       {draft === null ? (
         <Text style={{ color: t.textDim, fontSize: 13 }}>
-          This route's gates cannot be edited — it has no reference line or gate set on file.
+          This way's gates cannot be edited — it has no reference line or gate set on file.
         </Text>
       ) : (
         <GateAdjustCard
-          key={request.routeId}
-          routeId={request.routeId}
+          key={request.wayId}
+          wayId={request.wayId}
           refLine={draft.ref}
           refLengthM={draft.refLengthM}
           initialChainageM={draft.chainageM}
           busy={busy}
           mapHeight={mapHeight}
           title={`Sector gates — ${label}`}
-          subtitle="Tap a gate on the map or below to nudge it — start and finish too. Saving moved gates resets this route's history: past results are re-timed from their recordings against the new gates, old times and ranks do not survive."
+          subtitle="Tap a gate on the map or below to nudge it — start and finish too. Saving moved gates resets this way's history: past results are re-timed from their recordings against the new gates, old times and ranks do not survive."
           discardLabel="discard nudges — keep the current gates"
           onKeep={() => tabNav.closeGateAdjust()}
           onSave={(ch) => confirmEditGates(ch)}

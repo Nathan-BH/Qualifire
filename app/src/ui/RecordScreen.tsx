@@ -38,8 +38,8 @@ import { LiveSectorPane, realTimebase, viewModelFromEngine } from './liveView';
 import { LaunchAnimation } from './launchAnimation';
 import { effectiveFromId, isFullscreen, liveMapOverlayFor, statusItemsFor, type RecordPhase } from './recordFlow';
 import { useTabNav } from './tabNav';
-import RouteMapView from './routeMapView';
-import { metresBetween } from './routeMapGeo';
+import WayMapView from './wayMapView';
+import { metresBetween } from './wayMapGeo';
 import { appendTrailPoint, type TrailPoint } from './trailModel';
 import { useSettings } from './settings';
 import { chipColors, tierLineColour, type Tier } from './chips';
@@ -47,29 +47,29 @@ import { ALL_YELLOW, liveSectorColours } from './sectorTrailModel.ts';
 import { fmt, ghostsFor, lapValues, sectorValues, tierFor } from './colourModel';
 import { dropRecorded, rememberRide } from './lastRide';
 import { rememberFreeRide } from '../store/freeRides';
-import { findRouteWithSpecs, type WayCreationDraft, type WayNames } from '../store/wayCreation';
-import { hasSpecs, specPickRows, specVocabulary } from '../store/routeSpecs';
+import { findWayWithSpecs, type RouteCreationDraft, type RouteNames } from '../store/routeCreation';
+import { hasSpecs, specPickRows, specVocabulary } from '../store/waySpecs';
 import { createExpoFsAdapter } from '../storage/expoFsAdapter';
 // WP-H (§4.9/§4.11): the create-way bodies live in store/wayFromRide.ts now,
 // shared with the ride detail's retroactive offer; this screen keeps only
 // state + Alerts + phase/animation choreography.
 import {
-  createWayFromDraft,
-  draftWayFromRide,
+  createRouteFromDraft,
+  draftRouteFromRide,
   existingLandmarkLabel,
-  existingWayProps,
+  existingRouteProps,
   readRideFixes,
   saveAdjustedGates,
   type GateAdjustDraft,
-} from '../store/wayFromRide';
+} from '../store/routeFromRide';
 import { GateAdjustCard } from './gateAdjustCard';
-import { WayNamingCard } from './wayNamingCard';
+import { RouteNamingCard } from './routeNamingCard';
 import { deleteRide } from '../storage';
 import { removeStoredResult } from '../store/resultsStore';
 import { currentCatalog } from '../store/catalogStore';
-import { freeRideRouteIds, landmarkAt } from '../store/catalog';
-import { defaultEndpoints, routeLabelIn, routeVariantLabel, sortRoutesForDisplay } from '../store/defaultRoute';
-import type { Route } from '../store/types';
+import { freeRideWayIds, landmarkAt } from '../store/catalog';
+import { defaultEndpoints, wayLabelIn, wayVariantLabel, sortWaysForDisplay } from '../store/defaultWay';
+import type { Way } from '../store/types';
 import { PaddockTheme, colors, radius } from './theme';
 import { useTheme } from './themeContext';
 
@@ -112,11 +112,11 @@ function fmtElapsed(ms: number): string {
 /** §8a default: the most-ridden recent route on the way — most ghost rides in
  * the recent window (ghostsFor = last WINDOW_N ranked rides, ascending by
  * startedAtMs), tie -> the one ridden most recently, tie -> catalog order. */
-function defaultRouteFor(routes: Route[]): Route | null {
-  let best: Route | null = null;
+function defaultWayFor(ways: Way[]): Way | null {
+  let best: Way | null = null;
   let bestN = -1;
   let bestLast = -Infinity;
-  for (const r of routes) {
+  for (const r of ways) {
     const g = ghostsFor(r.id);
     const n = g.length;
     const last = n > 0 ? g[n - 1].startedAtMs : -Infinity;
@@ -169,9 +169,9 @@ export default function RecordScreen({
   // that diverge >MATCHED_ENDPOINT_SLACK_M from the ride's own matched route
   // (null = no offer). While non-null the 'ending' phase shows the naming
   // card and holds the reversed launch mark.
-  const [naming, setNaming] = useState<WayCreationDraft | null>(null);
+  const [naming, setNaming] = useState<RouteCreationDraft | null>(null);
   // Mirror for the [] useCallback closures below, same reason as sessionRef.
-  const namingRef = useRef<WayCreationDraft | null>(null);
+  const namingRef = useRef<RouteCreationDraft | null>(null);
   namingRef.current = naming;
   // OPEN-ITEMS item 3 (Part B): the seeded-gates adjustment step, shown by
   // 'ending' after a CREATE WAY whose reference line + gate seed were built
@@ -216,17 +216,17 @@ export default function RecordScreen({
   // pair silently falls back to the §8a default. A hard lock (Nathan
   // 2026-08-29): the engine scores this route or nothing — it never
   // reassigns the ride to the road actually ridden.
-  const [routePick, setRoutePick] = useState<{ wayId: string; routeId: string } | null>(null);
+  const [wayPick, setWayPick] = useState<{ routeId: string; wayId: string } | null>(null);
   // The pick frozen at START — the pre-lock candidate for the LIVE map. Frozen
   // because `fromId` can drift mid-ride in auto mode (detected landmark goes
   // null once you leave the disc) while nothing has been tapped (N5), which
   // would silently change `way`.
-  const [rideRouteHint, setRideRouteHint] = useState<string | null>(null);
+  const [rideWayHint, setRideWayHint] = useState<string | null>(null);
   // WP-B: the directional route-id filter (coordinator addendum) frozen at
   // START, same reason rideRouteHint is frozen — the gates-only map during
   // the ride must show the SAME filtered set the engine was actually started
   // with, not whatever from/to happen to read on the (unmounted) setup form.
-  const [rideFreeRouteIds, setRideFreeRouteIds] = useState<string[] | null>(null);
+  const [rideFreeWayIds, setRideFreeWayIds] = useState<string[] | null>(null);
   // WP-J (breadcrumb trail): the rider's own ridden line, accumulated from
   // the live fix feed below (min-distance decimated — trailModel.ts) and
   // passed to the RUNNING map only (setup/armed never draw it — nothing
@@ -438,17 +438,17 @@ export default function RecordScreen({
       if (freeRideRef.current) {
         // WP-B: free ride — no route pick, gates-only map, the directional
         // filter (coordinator addendum) frozen for the whole ride.
-        setRideRouteHint(null);
-        setRideFreeRouteIds(freeRouteIdsRef.current);
+        setRideWayHint(null);
+        setRideFreeWayIds(freeWayIdsRef.current);
         s = await startTracking({
-          routePick: null, mode: 'free', routeIds: freeRouteIdsRef.current,
+          wayPick: null, mode: 'free', wayIds: freeWayIdsRef.current,
           startContext: startContextRef.current ?? undefined,
         });
       } else {
-        setRideRouteHint(pickedRouteRef.current?.refLineId ?? null);
-        setRideFreeRouteIds(null);
+        setRideWayHint(pickedWayRef.current?.refLineId ?? null);
+        setRideFreeWayIds(null);
         s = await startTracking({
-          routePick: pickedRouteRef.current?.id ?? null,
+          wayPick: pickedWayRef.current?.id ?? null,
           startContext: startContextRef.current ?? undefined,
         });
       }
@@ -499,7 +499,7 @@ export default function RecordScreen({
       // longer a null-offer either — it comes back with existingWayId set (a
       // second Route on that Way). Null (no offer) now covers: short rides,
       // read failures.
-      const draft = s ? await draftWayFromRide(s.rideId, s.startedAtMs, finalState.track, createExpoFsAdapter()) : null;
+      const draft = s ? await draftRouteFromRide(s.rideId, s.startedAtMs, finalState.track, createExpoFsAdapter()) : null;
       // Cycle 024 (WP-A2, Nathan 2026-08-19): "at the end when you press
       // stop it would be nice to show the animation again — but reversed."
       // session clears and phase flips to 'ending' TOGETHER, after the ride
@@ -542,14 +542,14 @@ export default function RecordScreen({
     setShowAnim('rev');
   }, []);
 
-  const onNamingSave = useCallback(async (names: WayNames) => {
+  const onNamingSave = useCallback(async (names: RouteNames) => {
     const draft = namingRef.current;
     if (!draft) return;
     // WP-G: belt to the card's own braces — the card already disables ADD
     // ROUTE on a duplicate, but the pick could have gone stale between
     // renders (another ride landed the same specs in the meantime).
-    if (draft.existingWayId && findRouteWithSpecs(currentCatalog(), draft.existingWayId, names.specs ?? [])) {
-      Alert.alert('That route already exists', 'Pick it on RECORD next time instead of adding it again.');
+    if (draft.existingRouteId && findWayWithSpecs(currentCatalog(), draft.existingRouteId, names.specs ?? [])) {
+      Alert.alert('That way already exists', 'Pick it on RECORD next time instead of adding it again.');
       return;
     }
     setBusy(true);
@@ -559,11 +559,11 @@ export default function RecordScreen({
       // => the way saves exactly as before (unresolvable refLineId). Part B:
       // with a real line the v1 gate set is born fully seeded. Both live in
       // store/wayFromRide.ts's createWayFromDraft (WP-H §4.9).
-      const out = await createWayFromDraft(draft, names, createExpoFsAdapter());
+      const out = await createRouteFromDraft(draft, names, createExpoFsAdapter());
       if (!out.ok) {
         // saveUserCatalog refused (the MERGED catalog would not validate)
         // and changed nothing — surface WHY, keep the card up; SKIP remains.
-        Alert.alert('Could not create the way', out.errors.join('\n'));
+        Alert.alert('Could not create the route', out.errors.join('\n'));
         return;
       }
       setNaming(null);
@@ -575,7 +575,7 @@ export default function RecordScreen({
         setShowAnim('rev');
       }
     } catch (e) {
-      Alert.alert('Could not create the way', e instanceof Error ? e.message : String(e));
+      Alert.alert('Could not create the route', e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
@@ -702,17 +702,17 @@ export default function RecordScreen({
       : lastFixAgeS != null && lastFixAgeS > 5
         ? `last fix ${lastFixAgeS}s ago — GPS struggling?`
         : 'GPS live';
-  const routeLocked = live.phase === 'locked' || live.phase === 'finished';
+  const wayLocked = live.phase === 'locked' || live.phase === 'finished';
   // "Writing history" (Nathan 2026-09-01, ride 2): a few fixes in and no
   // candidate has anchored at its own start => nothing known is being
   // recognised so far — say so instead of "detecting route…" for the whole
   // ride. A "so far" indicator, not a verdict: a later lock replaces it.
-  const writingHistory = live.mode !== 'free' && !routeLocked
+  const writingHistory = live.mode !== 'free' && !wayLocked
     && live.fixesFed >= WRITING_HISTORY_AFTER_FIXES && !live.anyAnchored;
   // Cycle-2 WP-A: reference line vs live trail, mutually exclusive — see
   // recordFlow.ts liveMapOverlayFor. Derived per render (no effect/state):
   // live.track (lock) outranks the START-frozen pick hint; free mode = neither.
-  const mapOverlay = liveMapOverlayFor({ mode: live.mode, track: live.track, routeHint: rideRouteHint });
+  const mapOverlay = liveMapOverlayFor({ mode: live.mode, track: live.track, wayHint: rideWayHint });
   // Cycle 024 (WP-D2): a soft lock is displayed and scored, but it is not yet
   // corridor-confirmed — say so. Verified/finalized keep today's wording.
   // Before the soft lock, under a pick, nothing is being *detected* (hard
@@ -720,33 +720,33 @@ export default function RecordScreen({
   // name the pick and say so, never imply another route might be found.
   // WP-B: a free ride never locks (phase stays 'detecting' the whole ride) —
   // say so plainly rather than showing "detecting route…" forever.
-  const routeLine = live.mode === 'free'
+  const wayLine = live.mode === 'free'
     ? 'free ride · gates only'
-    : routeLocked
+    : wayLocked
       ? live.lockKind === 'soft'
-        ? `${live.track ? routeLabelIn(CATALOG, live.track) : ''} · route locked (your pick) · verifying${live.onRoute ? '' : ' · off route'}`
-        : `${live.track ? routeLabelIn(CATALOG, live.track) : ''} · route locked${live.onRoute ? '' : ' · off route'}`
+        ? `${live.track ? wayLabelIn(CATALOG, live.track) : ''} · way locked (your pick) · verifying${live.onWay ? '' : ' · off route'}`
+        : `${live.track ? wayLabelIn(CATALOG, live.track) : ''} · way locked${live.onWay ? '' : ' · off route'}`
       : writingHistory
-        ? (rideRouteHint ? `writing history · not on ${routeLabelIn(CATALOG, rideRouteHint)} yet` : 'writing history · no known route here')
-        : rideRouteHint ? `${routeLabelIn(CATALOG, rideRouteHint)} · your pick · confirming…` : 'detecting route…';
+        ? (rideWayHint ? `writing history · not on ${wayLabelIn(CATALOG, rideWayHint)} yet` : 'writing history · no known route here')
+        : rideWayHint ? `${wayLabelIn(CATALOG, rideWayHint)} · your pick · confirming…` : 'detecting route…';
   // Cycle 024 (WP-A2, Nathan 2026-08-19): "I don't know what 'fixes' are" —
   // the raw count is gone from every user-facing status line; it still lives
   // in the GPX+ sidecar for diagnostics. recordFlow.ts owns the pure rule so
   // it is tested without RN.
-  const statusItems = statusItemsFor({ gpsTrouble, gpsLine, routeLine });
+  const statusItems = statusItemsFor({ gpsTrouble, gpsLine, wayLine });
 
   // A line that CHANGES claims the slot for PIN_MS instead of waiting its turn.
   // Without this the carousel can rotate the route lock away ~2 s after it
   // fires — and the lock (~400 m in) is the one line the rider is told to
   // look for. Rotation resumes when the pin expires; nothing is hidden either
   // way, and the pin only ever *delays* the other items.
-  const [pinned, setPinned] = useState<'route' | 'gps' | null>(null);
+  const [pinned, setPinned] = useState<'way' | 'gps' | null>(null);
   useEffect(() => {
-    if (!recording || !routeLocked) return;
-    setPinned('route');
+    if (!recording || !wayLocked) return;
+    setPinned('way');
     const id = setTimeout(() => setPinned(null), PIN_MS);
     return () => clearTimeout(id);
-  }, [recording, routeLocked, live.track]);
+  }, [recording, wayLocked, live.track]);
   useEffect(() => {
     if (!recording || !gpsTrouble) return;
     setPinned('gps'); // trouble outranks the lock — it is the actionable one
@@ -754,7 +754,7 @@ export default function RecordScreen({
     return () => clearTimeout(id);
   }, [recording, gpsTrouble]);
   const statusLine =
-    pinned === 'gps' ? gpsLine : pinned === 'route' ? routeLine : statusItems[statusIdx % statusItems.length];
+    pinned === 'gps' ? gpsLine : pinned === 'way' ? wayLine : statusItems[statusIdx % statusItems.length];
 
   // Colour comes from the ghost history for the LOCKED route only: before the
   // lock there is nothing honest to compare against, so everything stays
@@ -814,39 +814,39 @@ export default function RecordScreen({
   // to the ways that actually run that direction; both ends unknown (or, in
   // principle, both known — not reachable when freeRide is true) => null =
   // unfiltered, the brief's original full-catalog behaviour.
-  const freeRouteIds: string[] | null = freeRide
-    ? freeRideRouteIds(CATALOG, fromId === NEW_ID ? null : fromId, to === NEW_ID ? null : to)
+  const freeWayIds: string[] | null = freeRide
+    ? freeRideWayIds(CATALOG, fromId === NEW_ID ? null : fromId, to === NEW_ID ? null : to)
     : null;
 
   // The way the rider picked, and the routes on it -- so the ghost count is
   // THIS way's, not always Morning's.
-  const way = CATALOG.ways.find(
+  const route = CATALOG.routes.find(
     (w) => w.startLandmarkId === fromId && w.endLandmarkId === to,
   );
-  const wayRoutes = way ? sortRoutesForDisplay(CATALOG.routes.filter((r) => r.wayId === way.id)) : [];
-  const ghostCount = wayRoutes.reduce((n, r) => n + ghostsFor(r.id).length, 0);
-  const pickedRoute: Route | null = way
-    ? (routePick && routePick.wayId === way.id
-        ? (wayRoutes.find((r) => r.id === routePick.routeId) ?? defaultRouteFor(wayRoutes))
-        : defaultRouteFor(wayRoutes))
+  const routeWays = route ? sortWaysForDisplay(CATALOG.ways.filter((r) => r.routeId === route.id)) : [];
+  const ghostCount = routeWays.reduce((n, r) => n + ghostsFor(r.id).length, 0);
+  const pickedWay: Way | null = route
+    ? (wayPick && wayPick.routeId === route.id
+        ? (routeWays.find((r) => r.id === wayPick.wayId) ?? defaultWayFor(routeWays))
+        : defaultWayFor(routeWays))
     : null;
   // N9 (2026-09-02, GPX+ pick/lock-change logging): was the pick rendered
   // above an explicit RECORD-tab tap, or the silent §8a default? A free ride
   // (no `way`) or a way with no pickable route both say 'none' — there is
   // nothing a rider could have tapped.
-  const pickSource: StartContext['pickSource'] = freeRide || !pickedRoute
+  const pickSource: StartContext['pickSource'] = freeRide || !pickedWay
     ? 'none'
-    : routePick !== null && routePick.wayId === way?.id && wayRoutes.some((r) => r.id === routePick.routeId)
+    : wayPick !== null && wayPick.routeId === route?.id && routeWays.some((r) => r.id === wayPick.wayId)
       ? 'picked'
       : 'default';
   // Mirror for onStart's [] useCallback closure (it must read the CURRENT pick).
-  const pickedRouteRef = useRef<Route | null>(null);
-  pickedRouteRef.current = pickedRoute;
+  const pickedWayRef = useRef<Way | null>(null);
+  pickedWayRef.current = pickedWay;
   // Mirrors for onStart's [] useCallback closure, same reason as pickedRouteRef.
   const freeRideRef = useRef(false);
   freeRideRef.current = freeRide;
-  const freeRouteIdsRef = useRef<string[] | null>(null);
-  freeRouteIdsRef.current = freeRouteIds;
+  const freeWayIdsRef = useRef<string[] | null>(null);
+  freeWayIdsRef.current = freeWayIds;
 
   // Cycle 024 (WP-A2): the armed screen's readytag line names from/to by
   // their catalog label (mirrors the mockup's `lm()` helper), not their id.
@@ -906,13 +906,13 @@ export default function RecordScreen({
       <View style={styles.raceColumn}>
         <Text style={styles.trackLine}>
           {landmarkLabel(fromId)} → {landmarkLabel(to)}
-          {way && pickedRoute ? ` · ${routeVariantLabel(pickedRoute.id, way, pickedRoute.specs)}` : ''} · ready — not started
+          {route && pickedWay ? ` · ${wayVariantLabel(pickedWay.id, route, pickedWay.specs)}` : ''} · ready — not started
         </Text>
         {problemStates}
         {settings.liveMap ? (
           <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch' }}>
-            <RouteMapView
-              routeId={pickedRoute?.refLineId ?? null}
+            <WayMapView
+              wayId={pickedWay?.refLineId ?? null}
               lat={status.lastLat}
               lon={status.lastLon}
               zoom={1}
@@ -951,7 +951,7 @@ export default function RecordScreen({
         </Text>
         {adjust !== null ? (
           <GateAdjustCard
-            routeId={adjust.routeId}
+            wayId={adjust.wayId}
             refLine={adjust.ref}
             refLengthM={adjust.refLengthM}
             initialChainageM={adjust.chainageM}
@@ -960,14 +960,14 @@ export default function RecordScreen({
             onSave={onAdjustSave}
           />
         ) : naming !== null ? (
-          <WayNamingCard
+          <RouteNamingCard
             startExistingLabel={existingLandmarkLabel(naming.start)}
             endExistingLabel={existingLandmarkLabel(naming.end)}
             loop={naming.loop}
             busy={busy}
-            matchedRouteLabel={naming.matchedRouteId ? routeLabelIn(currentCatalog(), naming.matchedRouteId) : null}
-            existingWay={naming.existingWayId ? existingWayProps(naming.existingWayId) : null}
-            vocabulary={specVocabulary(currentCatalog().routes)}
+            matchedWayLabel={naming.matchedWayId ? wayLabelIn(currentCatalog(), naming.matchedWayId) : null}
+            existingRoute={naming.existingRouteId ? existingRouteProps(naming.existingRouteId) : null}
+            vocabulary={specVocabulary(currentCatalog().ways)}
             onSave={onNamingSave}
             onSkip={onNamingSkip}
           />
@@ -1019,8 +1019,8 @@ export default function RecordScreen({
             to the bottom even when the map is switched off. */}
         {settings.liveMap ? (
           <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch' }}>
-            <RouteMapView
-              routeId={mapOverlay.routeId}
+            <WayMapView
+              wayId={mapOverlay.wayId}
               lat={status.lastLat}
               lon={status.lastLon}
               zoom={4}
@@ -1028,7 +1028,7 @@ export default function RecordScreen({
               sectorColours={sectorColours}
               gatesOnly={live.mode === 'free'}
               crossedGates={live.freeCrossings}
-              gateRouteIds={rideFreeRouteIds}
+              gateWayIds={rideFreeWayIds}
               trail={mapOverlay.showTrail ? trail : undefined}
               variant="live"
               liveState={live.phase === 'finished' ? 'finished' : (stationary ? 'stopped' : 'moving')}
@@ -1065,7 +1065,7 @@ export default function RecordScreen({
             <ScrollView style={{ maxHeight: 120 }}>
               {[...live.freeSectors].reverse().map((sec, i) => (
                 <Text key={i} style={styles.freeSectorRow}>
-                  {routeLabelIn(CATALOG, sec.routeId)} S{sec.index} — {fmt(sec.rawS, 1)}
+                  {wayLabelIn(CATALOG, sec.wayId)} S{sec.index} — {fmt(sec.rawS, 1)}
                 </Text>
               ))}
             </ScrollView>
@@ -1177,8 +1177,8 @@ export default function RecordScreen({
             catalog holds drawable routes. */}
         {settings.liveMap ? (
           <View style={{ alignSelf: 'stretch' }}>
-            <RouteMapView
-              routeId={pickedRoute?.refLineId ?? null}
+            <WayMapView
+              wayId={pickedWay?.refLineId ?? null}
               lat={status.lastLat}
               lon={status.lastLon}
               zoom={1}
@@ -1233,14 +1233,14 @@ export default function RecordScreen({
           {/* WP-B: freeRide never has a `way` (NEW_ID matches no catalog
               landmark), so this is already hidden by construction; !freeRide
               is stated explicitly too — belt and braces, per the brief. */}
-          {!freeRide && way && wayRoutes.length > 1 ? (
+          {!freeRide && route && routeWays.length > 1 ? (
             <>
-              <Text style={styles.flowLabel}>WHICH ROUTE TODAY?</Text>
-              {hasSpecs(wayRoutes)
-                ? specPickRows(wayRoutes, pickedRoute?.id ?? null, defaultRouteFor).map((row) => (
+              <Text style={styles.flowLabel}>WHICH WAY TODAY?</Text>
+              {hasSpecs(routeWays)
+                ? specPickRows(routeWays, pickedWay?.id ?? null, defaultWayFor).map((row) => (
                     <View key={row.depth} style={styles.pillRow}>
                       {row.options.map((o) => (
-                        <Pressable key={`${row.depth}:${o.label}`} onPress={() => setRoutePick({ wayId: way.id, routeId: o.route.id })}
+                        <Pressable key={`${row.depth}:${o.label}`} onPress={() => setWayPick({ routeId: route.id, wayId: o.way.id })}
                           style={[styles.pill, o.on && styles.pillOn]}>
                           <Text style={[styles.pillText, o.on && styles.pillTextOn]}>{o.label}</Text>
                         </Pressable>
@@ -1249,11 +1249,11 @@ export default function RecordScreen({
                   ))
                 : (
                   <View style={styles.pillRow}>
-                    {wayRoutes.map((r) => (
-                      <Pressable key={r.id} onPress={() => setRoutePick({ wayId: way.id, routeId: r.id })}
-                        style={[styles.pill, pickedRoute?.id === r.id && styles.pillOn]}>
-                        <Text style={[styles.pillText, pickedRoute?.id === r.id && styles.pillTextOn]}>
-                          {routeVariantLabel(r.id, way, r.specs)}
+                    {routeWays.map((r) => (
+                      <Pressable key={r.id} onPress={() => setWayPick({ routeId: route.id, wayId: r.id })}
+                        style={[styles.pill, pickedWay?.id === r.id && styles.pillOn]}>
+                        <Text style={[styles.pillText, pickedWay?.id === r.id && styles.pillTextOn]}>
+                          {wayVariantLabel(r.id, route, r.specs)}
                         </Text>
                       </Pressable>
                     ))}

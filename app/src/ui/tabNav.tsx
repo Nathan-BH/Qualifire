@@ -37,13 +37,13 @@ export interface RideDetailRequest {
  * resolves the draft itself (store/wayFromRide.ts gateEditDraftFor) so the
  * request stays a plain id, like RideDetailRequest. */
 export interface GateAdjustRequest {
-  routeId: string;
+  wayId: string;
 }
 
 /** WP-K (cycle 2): who to show the full-screen catalog detail for — a place
  * or a way (a route never gets its own screen; a way's routes are its
  * variants, shown inside the way detail). */
-export type CatalogDetailRequest = { kind: 'place'; id: string } | { kind: 'way'; id: string };
+export type CatalogDetailRequest = { kind: 'place'; id: string } | { kind: 'route'; id: string };
 
 export interface TabNav {
   go(tab: Tab): void;

@@ -15,7 +15,7 @@ import * as nodeFs from 'node:fs';
 import { assert, test } from './lib.ts';
 import { colors } from '../src/ui/theme.ts';
 import { freeRideNear, type FreeRideRecord } from '../src/store/freeRides.ts';
-import { RESULT_SCHEMA_VERSION, type RideResult, type Route } from '../src/store/types.ts';
+import { RESULT_SCHEMA_VERSION, type RideResult, type Way } from '../src/store/types.ts';
 import type { RideDetailDeps } from '../src/ui/rideDetailModel.ts';
 
 registerHooks({
@@ -34,7 +34,7 @@ function mkResult(o: Partial<RideResult> & { rideId: string; startedAtMs: number
   return {
     kind: 'rideResult',
     schemaVersion: RESULT_SCHEMA_VERSION,
-    routeId: 'RouteA',
+    wayId: 'RouteA',
     source: 'app',
     lap: { rawS: 900, movingS: 880, quality: 'clean' },
     sectors: [
@@ -46,12 +46,12 @@ function mkResult(o: Partial<RideResult> & { rideId: string; startedAtMs: number
   };
 }
 
-function mkRoute(o: Partial<Route> & { id: string }): Route {
-  return { wayId: 'way:x', refLineId: o.id, gateSetVersion: 1, seeded: false, ...o };
+function mkWay(o: Partial<Way> & { id: string }): Way {
+  return { routeId: 'way:x', refLineId: o.id, gateSetVersion: 1, seeded: false, ...o };
 }
 
 const NOOP_DEPS: RideDetailDeps = {
-  result: null, free: null, routes: [], userRoutes: [],
+  result: null, free: null, ways: [], userWays: [],
   laps: () => [], sectors: () => [], barred: () => false,
 };
 
@@ -60,15 +60,15 @@ test('ridedetail: rideDetailFor — no result, no free → kind none, empty rows
   assert(m.kind === 'none', `expected kind none, got ${m.kind}`);
   assert(m.sectorRows.length === 0 && m.sectorColours.length === 0, 'no result -> no rows');
   assert(!m.canToggleIgnore, 'nothing stored -> nothing to toggle');
-  assert(m.routeId === null && m.promoteTarget === null, 'no route, no promote target');
+  assert(m.wayId === null && m.promoteTarget === null, 'no route, no promote target');
 });
 
 test('ridedetail: rideDetailFor — result with routeId null but a free record → kind free, free carried through', () => {
-  const free: FreeRideRecord = { kind: 'freeRide', schemaVersion: 1, rideId: 'free:1000', startedAtMs: 1000, crossings: [], sectors: [] };
-  const m = rideDetailFor('free:1000', 1000, { ...NOOP_DEPS, result: mkResult({ rideId: 'free:1000', startedAtMs: 1000, routeId: null }), free });
+  const free: FreeRideRecord = { kind: 'freeRide', schemaVersion: 2, rideId: 'free:1000', startedAtMs: 1000, crossings: [], sectors: [] };
+  const m = rideDetailFor('free:1000', 1000, { ...NOOP_DEPS, result: mkResult({ rideId: 'free:1000', startedAtMs: 1000, wayId: null }), free });
   assert(m.kind === 'free', `expected kind free, got ${m.kind}`);
   assert(m.free === free, 'free record carried through unchanged');
-  assert(m.routeId === null, 'a free result carries no routeId');
+  assert(m.wayId === null, 'a free result carries no routeId');
 });
 
 test('ridedetail: rideDetailFor — clean ranked lap, >=MIN_HISTORY → rank line, lapTier from tierFor, rows sized right', () => {
@@ -79,7 +79,7 @@ test('ridedetail: rideDetailFor — clean ranked lap, >=MIN_HISTORY → rank lin
     laps: () => hist, sectors: () => [], barred: () => false,
   });
   assert(m.kind === 'route', `expected route, got ${m.kind}`);
-  assert(/^P\d+ of \d+ on this route$/.test(m.rankLine), `expected "P_ of _ on this route", got "${m.rankLine}"`);
+  assert(/^P\d+ of \d+ on this way$/.test(m.rankLine), `expected "P_ of _ on this way", got "${m.rankLine}"`);
   assert(m.lapTier === 'purple', `expected purple (raw 900 < min of hist), got ${m.lapTier}`);
   assert(m.sectorRows.length === res.sectors.length, `sectorRows length ${m.sectorRows.length} != ${res.sectors.length}`);
   assert(m.sectorColours[0] === null, 'index 0 (START) is always null');
@@ -116,12 +116,12 @@ test('ridedetail: rideDetailFor — tripwireDemoted → barred → excluded-from
 });
 
 test('ridedetail: rideDetailFor — referenceOf resolves the route whose referenceRideId === rideId, null otherwise', () => {
-  const routes = [mkRoute({ id: 'RouteA', referenceRideId: 'r5' }), mkRoute({ id: 'RouteB', referenceRideId: 'other' })];
-  const res = mkResult({ rideId: 'r5', startedAtMs: 9000, routeId: 'RouteA' });
-  const withRef = rideDetailFor('r5', 9000, { ...NOOP_DEPS, result: res, routes });
+  const ways = [mkWay({ id: 'RouteA', referenceRideId: 'r5' }), mkWay({ id: 'RouteB', referenceRideId: 'other' })];
+  const res = mkResult({ rideId: 'r5', startedAtMs: 9000, wayId: 'RouteA' });
+  const withRef = rideDetailFor('r5', 9000, { ...NOOP_DEPS, result: res, ways });
   assert(withRef.referenceOf?.id === 'RouteA', `expected referenceOf RouteA, got ${withRef.referenceOf?.id}`);
-  const res2 = mkResult({ rideId: 'r6', startedAtMs: 9500, routeId: 'RouteB' });
-  const withoutRef = rideDetailFor('r6', 9500, { ...NOOP_DEPS, result: res2, routes });
+  const res2 = mkResult({ rideId: 'r6', startedAtMs: 9500, wayId: 'RouteB' });
+  const withoutRef = rideDetailFor('r6', 9500, { ...NOOP_DEPS, result: res2, ways });
   assert(withoutRef.referenceOf === null, 'r6 is not any route\'s reference');
 });
 
@@ -157,32 +157,32 @@ test('ridedetail: sectorColoursFor — mirrors ResultScreen (clean+movingS colou
 // ---------------------------------------------------- §3.3b promoteTarget
 
 test('ridedetail: rideDetailFor — promoteTarget: user-owned unreferenced route, null when own reference, null when seed-owned, null for free/none', () => {
-  const userA = mkRoute({ id: 'RouteA', referenceRideId: 'someOtherRide' });
-  const resA = mkResult({ rideId: 'r8', startedAtMs: 10_000, routeId: 'RouteA' });
-  const withTarget = rideDetailFor('r8', 10_000, { ...NOOP_DEPS, result: resA, routes: [userA], userRoutes: [userA] });
+  const userA = mkWay({ id: 'RouteA', referenceRideId: 'someOtherRide' });
+  const resA = mkResult({ rideId: 'r8', startedAtMs: 10_000, wayId: 'RouteA' });
+  const withTarget = rideDetailFor('r8', 10_000, { ...NOOP_DEPS, result: resA, ways: [userA], userWays: [userA] });
   assert(withTarget.promoteTarget?.id === 'RouteA', `expected promoteTarget RouteA, got ${withTarget.promoteTarget?.id}`);
 
-  const userSelfRef = mkRoute({ id: 'RouteA', referenceRideId: 'r9' });
-  const resSelf = mkResult({ rideId: 'r9', startedAtMs: 10_100, routeId: 'RouteA' });
-  const withSelfRef = rideDetailFor('r9', 10_100, { ...NOOP_DEPS, result: resSelf, routes: [userSelfRef], userRoutes: [userSelfRef] });
+  const userSelfRef = mkWay({ id: 'RouteA', referenceRideId: 'r9' });
+  const resSelf = mkResult({ rideId: 'r9', startedAtMs: 10_100, wayId: 'RouteA' });
+  const withSelfRef = rideDetailFor('r9', 10_100, { ...NOOP_DEPS, result: resSelf, ways: [userSelfRef], userWays: [userSelfRef] });
   assert(withSelfRef.promoteTarget === null, 'a ride that is already the reference must not be its own promote target');
 
   // Seed-owned: the SAME route object is present in `routes` (currentCatalog)
   // but absent from `userRoutes` (userCatalog) — the seed-ownership rule.
-  const seedRoute = mkRoute({ id: 'SeedRoute', referenceRideId: 'someRide' });
-  const resSeed = mkResult({ rideId: 'r10', startedAtMs: 10_200, routeId: 'SeedRoute' });
-  const seedCase = rideDetailFor('r10', 10_200, { ...NOOP_DEPS, result: resSeed, routes: [seedRoute], userRoutes: [] });
+  const seedWay = mkWay({ id: 'SeedRoute', referenceRideId: 'someRide' });
+  const resSeed = mkResult({ rideId: 'r10', startedAtMs: 10_200, wayId: 'SeedRoute' });
+  const seedCase = rideDetailFor('r10', 10_200, { ...NOOP_DEPS, result: resSeed, ways: [seedWay], userWays: [] });
   assert(seedCase.promoteTarget === null, 'a seed-owned route (absent from userRoutes) must never be a promote target');
 
   const freeCase = rideDetailFor('r11', 10_300, {
     ...NOOP_DEPS,
-    result: mkResult({ rideId: 'r11', startedAtMs: 10_300, routeId: null }),
-    free: { kind: 'freeRide', schemaVersion: 1, rideId: 'r11', startedAtMs: 10_300, crossings: [], sectors: [] },
-    routes: [userA], userRoutes: [userA],
+    result: mkResult({ rideId: 'r11', startedAtMs: 10_300, wayId: null }),
+    free: { kind: 'freeRide', schemaVersion: 2, rideId: 'r11', startedAtMs: 10_300, crossings: [], sectors: [] },
+    ways: [userA], userWays: [userA],
   });
   assert(freeCase.promoteTarget === null, 'a free ride (no routeId) has no promote target');
 
-  const noneCase = rideDetailFor('r12', 10_400, { ...NOOP_DEPS, routes: [userA], userRoutes: [userA] });
+  const noneCase = rideDetailFor('r12', 10_400, { ...NOOP_DEPS, ways: [userA], userWays: [userA] });
   assert(noneCase.promoteTarget === null, 'no result at all -> no promote target');
 });
 
@@ -190,7 +190,7 @@ test('ridedetail: rideDetailFor — promoteTarget: user-owned unreferenced route
 
 test('freerides: freeRideNear — exact id hit wins; nearest-within-tolerance otherwise; null beyond tolerance; null on empty', () => {
   const mk = (startedAtMs: number): FreeRideRecord =>
-    ({ kind: 'freeRide', schemaVersion: 1, rideId: `free:${startedAtMs}`, startedAtMs, crossings: [], sectors: [] });
+    ({ kind: 'freeRide', schemaVersion: 2, rideId: `free:${startedAtMs}`, startedAtMs, crossings: [], sectors: [] });
   const records = [mk(1_000_000), mk(1_000_050), mk(2_000_000)];
   assert(freeRideNear(records, 1_000_050)?.rideId === 'free:1000050', 'exact id hit must win');
   assert(freeRideNear(records, 1_000_045)?.rideId === 'free:1000050', 'nearest within tolerance');

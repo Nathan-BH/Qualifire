@@ -12,8 +12,8 @@
  *    unsettled colour model (IDEAS §19 vs D-007/D-008).
  */
 
-export const CATALOG_SCHEMA_VERSION = 1;
-export const RESULT_SCHEMA_VERSION = 1;
+export const CATALOG_SCHEMA_VERSION = 2;
+export const RESULT_SCHEMA_VERSION = 2;
 
 /** A place, in a period of life. Identity — never a timing boundary: the
  * landmark marks where the ride truly ends, while the final gate sits a few
@@ -33,18 +33,25 @@ export interface Landmark {
   offerAtStart: boolean;
 }
 
-export interface Way {
+/** Route — the from→to path between two landmarks; the parent. */
+export interface Route {
   id: string;
   startLandmarkId: string;
   endLandmarkId: string;
   /** required iff start === end (loops are a real category: 78 archived rides) */
   loopDiscriminator?: string;
-  routeIds: string[];
+  wayIds: string[];
 }
 
-export interface Route {
+/** Way — one named way of riding a route (its `specs`, its reference
+ * line, its gate set); rides, gate sets and results are keyed by way.
+ *
+ * WP-3 (2026-09-05) swapped these two names; ids minted before WP-3 carry
+ * the OLD prefixes (`way:<rideId>` on a Route, `route:<rideId>` on a Way)
+ * and never change — see `isUserMintedWayId`. */
+export interface Way {
   id: string;
-  wayId: string;
+  routeId: string;
   refLineId: string;
   gateSetVersion: number;
   seeded: boolean;
@@ -66,7 +73,7 @@ export interface Route {
 }
 
 export interface GateSet {
-  routeId: string;
+  wayId: string;
   version: number;
   chainageM: number[];
   createdAtMs: number;
@@ -82,8 +89,8 @@ export interface GateSet {
 export interface Catalog {
   schemaVersion: number;
   landmarks: Landmark[];
-  ways: Way[];
   routes: Route[];
+  ways: Way[];
   gateSets: GateSet[];
 }
 
@@ -105,7 +112,7 @@ export interface RideResult {
   rideId: string;
   startedAtMs: number;
   /** null = matched no route; stays uncoloured (D-025) */
-  routeId: string | null;
+  wayId: string | null;
   source: 'app' | 'archive';
   lap: { rawS: number; movingS: number | null; quality: SectorQuality };
   sectors: SectorResult[];
@@ -126,7 +133,7 @@ export interface RideResult {
 
 export interface ResultsIndexEntry {
   rideId: string;
-  routeId: string;
+  wayId: string;
   startedAtMs: number;
 }
 

@@ -7,12 +7,12 @@
  */
 import { Alert } from 'react-native';
 import { saveUserCatalog, userCatalog } from '../store/catalogStore.ts';
-import { removeLandmark, removeRoute, removeWay, type CatalogDeletion } from '../store/catalogDelete.ts';
+import { removeLandmark, removeWay, removeRoute, type CatalogDeletion } from '../store/catalogDelete.ts';
 import { removeUserRef } from '../live/userRefs.ts';
-import { removeStoredResult, storedResultsForRoute } from '../store/resultsStore.ts';
+import { removeStoredResult, storedResultsForWay } from '../store/resultsStore.ts';
 import { clearLastRide, dropRecorded, getLastRide } from './lastRide.ts';
-import { routeLabelIn } from '../store/defaultRoute.ts';
-import type { Catalog, Landmark, Route, Way } from '../store/types.ts';
+import { wayLabelIn } from '../store/defaultWay.ts';
+import type { Catalog, Landmark, Way, Route } from '../store/types.ts';
 
 /** "A", "A and B", "A, B and C" — for the "no longer used by any way" clause. */
 function joinLabels(labels: string[]): string {
@@ -35,12 +35,12 @@ async function applyDeletion(deletion: CatalogDeletion, bump: () => void): Promi
     return;
   }
   for (const id of deletion.removedRefLineIds) await removeUserRef(id);
-  for (const routeId of deletion.removedRouteIds) {
-    for (const r of storedResultsForRoute(routeId)) {
+  for (const wayId of deletion.removedWayIds) {
+    for (const r of storedResultsForWay(wayId)) {
       await removeStoredResult(r.rideId);
       dropRecorded(r.rideId);
     }
-    if (getLastRide()?.routeId === routeId) clearLastRide();
+    if (getLastRide()?.wayId === wayId) clearLastRide();
   }
   bump();
 }
@@ -52,39 +52,39 @@ function confirmDelete(title: string, body: string, deletion: CatalogDeletion, b
   ]);
 }
 
-export function onDeleteRoute(
-  CATALOG: Catalog, SEED: Catalog, w: Way, r: Route, bump: () => void,
+export function onDeleteWay(
+  CATALOG: Catalog, SEED: Catalog, w: Route, r: Way, bump: () => void,
 ): void {
-  const deletion = removeRoute(userCatalog(), SEED, r.id);
+  const deletion = removeWay(userCatalog(), SEED, r.id);
   const from = CATALOG.landmarks.find((l) => l.id === w.startLandmarkId);
   const to = CATALOG.landmarks.find((l) => l.id === w.endLandmarkId);
-  const n = storedResultsForRoute(r.id).length;
-  let body = deletion.removedWayIds.length > 0
-    ? `This is the only route on ${from?.label} → ${to?.label}, so the way is removed too.\n`
+  const n = storedResultsForWay(r.id).length;
+  let body = deletion.removedRouteIds.length > 0
+    ? `This is the only way on ${from?.label} → ${to?.label}, so the route is removed too.\n`
     : '';
-  body += `Its gates and reference line go with it. ${n} scored ride${n === 1 ? '' : 's'} on this route will be re-matched against your other routes; the ride recordings themselves are kept.`;
+  body += `Its gates and reference line go with it. ${n} scored ride${n === 1 ? '' : 's'} on this way will be re-matched against your other ways; the ride recordings themselves are kept.`;
   if (deletion.removedLandmarkIds.length > 0) {
     const verb = deletion.removedLandmarkIds.length === 1 ? 'is' : 'are';
-    body += `\n${landmarkLabels(CATALOG, deletion.removedLandmarkIds)} ${verb} no longer used by any way and will be removed as places.`;
+    body += `\n${landmarkLabels(CATALOG, deletion.removedLandmarkIds)} ${verb} no longer used by any route and will be removed as places.`;
   }
-  confirmDelete(`Delete "${routeLabelIn(CATALOG, r.id)}" on ${from?.label} → ${to?.label}?`, body, deletion, bump);
+  confirmDelete(`Delete "${wayLabelIn(CATALOG, r.id)}" on ${from?.label} → ${to?.label}?`, body, deletion, bump);
 }
 
-export function onDeleteWay(CATALOG: Catalog, SEED: Catalog, w: Way, bump: () => void): void {
-  const deletion = removeWay(userCatalog(), SEED, w.id);
+export function onDeleteRoute(CATALOG: Catalog, SEED: Catalog, w: Route, bump: () => void): void {
+  const deletion = removeRoute(userCatalog(), SEED, w.id);
   const from = CATALOG.landmarks.find((l) => l.id === w.startLandmarkId);
   const to = CATALOG.landmarks.find((l) => l.id === w.endLandmarkId);
-  const routeCount = deletion.removedRouteIds.length;
-  const n = deletion.removedRouteIds.reduce((sum, rid) => sum + storedResultsForRoute(rid).length, 0);
-  let body = `${routeCount} route${routeCount === 1 ? '' : 's'}, its gates and reference line${routeCount === 1 ? '' : 's'} go with it. ${n} scored ride${n === 1 ? '' : 's'} will be re-matched against your other routes; the ride recordings themselves are kept.`;
+  const wayCount = deletion.removedWayIds.length;
+  const n = deletion.removedWayIds.reduce((sum, rid) => sum + storedResultsForWay(rid).length, 0);
+  let body = `${wayCount} way${wayCount === 1 ? '' : 's'}, its gates and reference line${wayCount === 1 ? '' : 's'} go with it. ${n} scored ride${n === 1 ? '' : 's'} will be re-matched against your other ways; the ride recordings themselves are kept.`;
   if (deletion.removedLandmarkIds.length > 0) {
     const verb = deletion.removedLandmarkIds.length === 1 ? 'is' : 'are';
-    body += `\n${landmarkLabels(CATALOG, deletion.removedLandmarkIds)} ${verb} no longer used by any way and will be removed as places.`;
+    body += `\n${landmarkLabels(CATALOG, deletion.removedLandmarkIds)} ${verb} no longer used by any route and will be removed as places.`;
   }
-  confirmDelete(`Delete the way ${from?.label} → ${to?.label}?`, body, deletion, bump);
+  confirmDelete(`Delete the route ${from?.label} → ${to?.label}?`, body, deletion, bump);
 }
 
 export function onDeleteLandmark(SEED: Catalog, l: Landmark, bump: () => void): void {
   const deletion = removeLandmark(userCatalog(), SEED, l.id);
-  confirmDelete(`Delete "${l.label}"?`, 'This place is no longer used by any way.', deletion, bump);
+  confirmDelete(`Delete "${l.label}"?`, 'This place is no longer used by any route.', deletion, bump);
 }

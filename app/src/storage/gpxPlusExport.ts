@@ -37,7 +37,7 @@ import type {
   MetaEvent,
   PickEvent,
   RelaunchEvent,
-  RouteMatchDiagnosticEvent,
+  WayMatchDiagnosticEvent,
   StorageErrorEvent,
 } from './types.ts';
 import { escapeXml, isoTime, num } from './gpxExport.ts';
@@ -85,13 +85,13 @@ function gateName(track: string, gateIndex: number): string {
  * unrecognized/unknown persisted track string (an old ride whose track was
  * since renamed or dropped) returns null so the caller omits the field
  * instead of throwing and killing the whole export. */
-function routeDistanceM(track: string): number | null {
+function wayDistanceM(track: string): number | null {
   const gates = PROPOSED_GATES[track as TrackId];
   if (!gates || gates.length === 0) return null;
   return gates[gates.length - 1].chainage - gates[0].chainage;
 }
 
-interface OffRouteSeg {
+interface OffWaySeg {
   fromMs: number;
   toMs: number;
   maxDistM: number;
@@ -100,8 +100,8 @@ interface OffRouteSeg {
 /** WP-G Part 4: maximal runs of fixes whose cross-track deviation exceeds the
  * corridor, lasting >=5 s (a single noisy fix is not "off route"). `fixes`
  * and `xtd` must be index-aligned and `fixes` sorted by tUnixMs. */
-function findOffRouteSegments(fixes: FixRecord[], xtd: Float64Array, corridorM: number): OffRouteSeg[] {
-  const out: OffRouteSeg[] = [];
+function findOffWaySegments(fixes: FixRecord[], xtd: Float64Array, corridorM: number): OffWaySeg[] {
+  const out: OffWaySeg[] = [];
   let i = 0;
   while (i < fixes.length) {
     if (xtd[i] > corridorM) {
@@ -225,9 +225,9 @@ function buildSessionBlock(
       `   <qf:pick mode="${pickEv.mode}"` +
         a('from', pickEv.from) + a('fromLabel', pickEv.fromLabel) +
         a('to', pickEv.to) + a('toLabel', pickEv.toLabel) +
-        a('routeId', pickEv.routeId) +
+        a('wayId', pickEv.wayId) +
         (pickEv.pickSource === undefined ? '' : ` pickSource="${pickEv.pickSource}"`) +
-        (pickEv.routeIds ? ` routeIds="${escapeXml(pickEv.routeIds.join(' '))}"` : '') +
+        (pickEv.wayIds ? ` wayIds="${escapeXml(pickEv.wayIds.join(' '))}"` : '') +
         ` t="${isoTime(pickEv.tUnixMs)}"/>`,
     );
   }
@@ -300,14 +300,14 @@ function buildSessionBlock(
         // persisted since cycle 024 (LockEvent.pick), never shown before.
         const pk = l.pick === undefined || l.pick === null ? '' : ` pick="${escapeXml(l.pick)}"`;
         lines.push(
-          `   <qf:routeLock track="${escapeXml(l.track)}" atChainageM="${num(l.atChainageM)}" atT="${isoTime(l.atT * 1000)}"${lk}${pk}/>`,
+          `   <qf:wayLock track="${escapeXml(l.track)}" atChainageM="${num(l.atChainageM)}" atT="${isoTime(l.atT * 1000)}"${lk}${pk}/>`,
         );
       }
       // Cycle 023 fix 4 (semantics unchanged by P3): distance keyed to the
       // FIRST lock's track; only emitted when that track is recognized — an
       // old/renamed track id degrades to no field, never an export failure.
-      const dist = routeDistanceM(lockEvs[0].track);
-      if (dist !== null) lines.push(`   <qf:routeDistanceM>${num(dist)}</qf:routeDistanceM>`);
+      const dist = wayDistanceM(lockEvs[0].track);
+      if (dist !== null) lines.push(`   <qf:wayDistanceM>${num(dist)}</qf:wayDistanceM>`);
       // WP-G Part 4: session-level route fidelity — only emitted when the
       // ride actually SETTLED on a route, not merely soft-locked (a soft
       // lock is "a display choice, not a narrowing of the evidence" per
@@ -340,12 +340,12 @@ function buildSessionBlock(
             if (xtd[i] <= CORRIDOR_M) onCount += 1;
             if (xtd[i] > maxXtd) maxXtd = xtd[i];
           }
-          const onRoutePct = ((100 * onCount) / nFixes).toFixed(1);
+          const onWayPct = ((100 * onCount) / nFixes).toFixed(1);
           const maxXtdCapped = Math.min(maxXtd, 999).toFixed(1);
-          const segs = findOffRouteSegments(cleanFixes, xtd, CORRIDOR_M).slice(0, 20);
+          const segs = findOffWaySegments(cleanFixes, xtd, CORRIDOR_M).slice(0, 20);
           lines.push(
-            `   <qf:routeFidelity track="${escapeXml(settledLockEv.track)}" corridorM="${num(CORRIDOR_M)}"` +
-              ` onRoutePct="${onRoutePct}" maxXtdM="${maxXtdCapped}">`,
+            `   <qf:wayFidelity track="${escapeXml(settledLockEv.track)}" corridorM="${num(CORRIDOR_M)}"` +
+              ` onRoutePct="${onWayPct}" maxXtdM="${maxXtdCapped}">`,
           );
           for (const s of segs) {
             lines.push(
@@ -353,14 +353,14 @@ function buildSessionBlock(
                 ` maxDistM="${Math.min(s.maxDistM, 999).toFixed(1)}"/>`,
             );
           }
-          lines.push(`   </qf:routeFidelity>`);
+          lines.push(`   </qf:wayFidelity>`);
         }
       } catch {
         /* no refFor injected, no settled lock, or an unrecognized/renamed
            track id: omit the block, no export failure */
       }
     } else {
-      lines.push(`   <qf:routeLock>none</qf:routeLock>`);
+      lines.push(`   <qf:wayLock>none</qf:wayLock>`);
     }
   }
 
@@ -395,10 +395,10 @@ function buildSessionBlock(
 
   // Cycle 023 fix 5b: route-match diagnostics — every candidate's anchor/
   // retry/lock attempts, so a ride that never locked still leaves a trail.
-  const routeMatchEvs = evs.filter((e): e is RouteMatchDiagnosticEvent => e.kind === 'routeMatchDiagnostic');
-  if (routeMatchEvs.length > 0) {
-    lines.push(`   <qf:routeMatchDiagnostics>`);
-    for (const d of routeMatchEvs) {
+  const wayMatchEvs = evs.filter((e): e is WayMatchDiagnosticEvent => e.kind === 'wayMatchDiagnostic');
+  if (wayMatchEvs.length > 0) {
+    lines.push(`   <qf:wayMatchDiagnostics>`);
+    for (const d of wayMatchEvs) {
       const acc = d.accuracyM === null ? '' : ` accuracyM="${num(d.accuracyM)}"`;
       // WP-G Part 2 gap-fill: per-candidate deviation, when known (absent for
       // the 'retry' phase itself, and for events recorded before this field
@@ -410,7 +410,7 @@ function buildSessionBlock(
           ` t="${isoTime(d.tUnixMs)}"/>`,
       );
     }
-    lines.push(`   </qf:routeMatchDiagnostics>`);
+    lines.push(`   </qf:wayMatchDiagnostics>`);
   }
 
   // Cycle 023 fix 3/5b: flagged elevation outliers — the raw <ele> values
@@ -541,7 +541,7 @@ export function buildGpxPlus(
   return (
     `<?xml version="1.0" encoding="UTF-8"?>\n` +
     `<gpx creator="Qualifire" version="1.1" xmlns="http://www.topografix.com/GPX/1/1"` +
-    ` xmlns:qf="https://qualifire.local/gpx/1"` +
+    ` xmlns:qf="https://qualifire.local/gpx/2"` +
     ` xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"` +
     ` xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">\n` +
     ` <metadata>\n  <time>${isoTime(startMs)}</time>\n </metadata>\n` +

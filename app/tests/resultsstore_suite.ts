@@ -51,12 +51,12 @@ function finishedState(track: string, movingS: number): LiveEngineState {
       [doneSector(movingS / 4), doneSector(movingS / 4), doneSector(movingS / 4), doneSector(movingS / 4)],
     currentSector: null, lastDone: 4,
     lap: { rawS: movingS, stoppedS: 0, movingS, estimated: false },
-    gateFires: 5, fixesFed: 900, onRoute: true, anyAnchored: false,
+    gateFires: 5, fixesFed: 900, onWay: true, anyAnchored: false,
   } as LiveEngineState;
 }
 
 function makeResult(
-  rideId: string, routeId: string, startedAtMs: number, movingS: number,
+  rideId: string, wayId: string, startedAtMs: number, movingS: number,
   quality: RideResult['lap']['quality'] = 'clean',
 ): RideResult {
   return {
@@ -64,7 +64,7 @@ function makeResult(
     schemaVersion: RESULT_SCHEMA_VERSION,
     rideId,
     startedAtMs,
-    routeId,
+    wayId,
     source: 'app',
     lap: { rawS: movingS, movingS: quality === 'clean' || quality === 'interrupted' ? movingS : null, quality },
     sectors: [
@@ -103,7 +103,7 @@ test('resultsstore: save -> simulated restart -> rehydrates, and feeds recordedR
   const rehydrated = await resultsStore.initResultsStore(fs);
   assert(rehydrated.length === 1, `expected 1 rehydrated result, got ${rehydrated.length}`);
   assert(rehydrated[0].rideId === 'realride1', `rideId ${rehydrated[0].rideId}`);
-  assert(rehydrated[0].routeId === 'Morning', `routeId ${rehydrated[0].routeId}`);
+  assert(rehydrated[0].wayId === 'Morning', `routeId ${rehydrated[0].wayId}`);
   assert(rehydrated[0].lap.movingS === 850, `movingS ${rehydrated[0].lap.movingS}`);
 
   // initRideHistory puts a rankable stored result into recordedResults().
@@ -124,11 +124,11 @@ test('resultsstore (WP-Q): storedResultsForRoute filters to one route, ascending
   await resultsStore.saveResult(makeResult('e1', 'EveningA', 1500, 700));
   await resultsStore.flushResultWrites();
 
-  const morning = resultsStore.storedResultsForRoute('Morning');
+  const morning = resultsStore.storedResultsForWay('Morning');
   assert(morning.length === 2, `expected 2 Morning results, got ${morning.length}`);
   assert(morning[0].rideId === 'm1' && morning[1].rideId === 'm2', `expected ascending startedAtMs order, got ${morning.map((r) => r.rideId)}`);
-  assert(morning.every((r) => r.routeId === 'Morning'), 'every hit is really Morning');
-  assert(resultsStore.storedResultsForRoute('NoSuchRoute').length === 0, 'unknown route: []');
+  assert(morning.every((r) => r.wayId === 'Morning'), 'every hit is really Morning');
+  assert(resultsStore.storedResultsForWay('NoSuchRoute').length === 0, 'unknown route: []');
 });
 
 test('resultsstore: corrupt result file and corrupt index.json each degrade silently; valid siblings survive (supersedes B-40 corrupt-cache case)', async () => {
@@ -226,12 +226,12 @@ test('resultsstore: backfill derives a result matching a direct deriveRideResult
 
   const stored = resultsStore.getStoredResult(rideId);
   assert(stored !== null, 'expected the backfill to produce a stored result');
-  assert(stored!.routeId === 'Morning', `routeId ${stored!.routeId}`);
+  assert(stored!.wayId === 'Morning', `routeId ${stored!.wayId}`);
 
   const direct = deriveRideResult({
     rideId, t: fx.fixes.t, lat: fx.fixes.lat, lon: fx.fixes.lon,
     ref: fixtureRefFor('Morning'), gates: gateChainages('Morning'),
-    routeId: 'Morning', gateSetVersion: 1,
+    wayId: 'Morning', gateSetVersion: 1,
     engineVersion: resultsStore.BACKFILL_ENGINE_VERSION, source: 'app',
   });
   assert(stored!.lap.quality === direct.lap.quality, `lap quality ${stored!.lap.quality} != ${direct.lap.quality}`);
@@ -285,12 +285,12 @@ test('resultsstore: backfill of a scrambled-on-disk copy of the same ride yields
 
   const stored = resultsStore.getStoredResult(rideId);
   assert(stored !== null, 'expected the backfill to produce a stored result from a scrambled-on-disk ride');
-  assert(stored!.routeId === 'Morning', `routeId ${stored!.routeId}`);
+  assert(stored!.wayId === 'Morning', `routeId ${stored!.wayId}`);
 
   const direct = deriveRideResult({
     rideId, t: fx.fixes.t, lat: fx.fixes.lat, lon: fx.fixes.lon,
     ref: fixtureRefFor('Morning'), gates: gateChainages('Morning'),
-    routeId: 'Morning', gateSetVersion: 1,
+    wayId: 'Morning', gateSetVersion: 1,
     engineVersion: resultsStore.BACKFILL_ENGINE_VERSION, source: 'app',
   });
   assert(stored!.lap.quality === direct.lap.quality, `lap quality ${stored!.lap.quality} != ${direct.lap.quality}`);
@@ -316,9 +316,9 @@ test('lastRide: WP-B fix B2 — initRideHistory excludes mode:"free" index entri
   // broken, BOTH rides get backfilled and freeRideId ends up with a
   // 'Morning' result — exactly the leak the inspector flagged as HIGH.
   const freeRideId = 'freeride-b2';
-  const routeRideId = 'routeride-b2';
+  const wayRideId = 'routeride-b2';
   await writeRideFile(fs, freeRideId, fx.fixes.t, fx.fixes.lat, fx.fixes.lon);
-  await writeRideFile(fs, routeRideId, fx.fixes.t, fx.fixes.lat, fx.fixes.lon);
+  await writeRideFile(fs, wayRideId, fx.fixes.t, fx.fixes.lat, fx.fixes.lon);
   await fs.writeText('index.json', JSON.stringify({
     schemaVersion: 1,
     rides: [
@@ -328,7 +328,7 @@ test('lastRide: WP-B fix B2 — initRideHistory excludes mode:"free" index entri
       // No `mode` field at all — the back-compat case (every ride recorded
       // before B2, and B2's own rebuildIndex() recovery path) must still
       // backfill exactly as before.
-      { rideId: routeRideId, file: `${routeRideId}.jsonl`, startMs: fx.fixes.t[0] * 1000,
+      { rideId: wayRideId, file: `${wayRideId}.jsonl`, startMs: fx.fixes.t[0] * 1000,
         endMs: fx.fixes.t[fx.fixes.t.length - 1] * 1000, nFixes: fx.fixes.t.length,
         status: 'ended' },
     ],
@@ -348,9 +348,9 @@ test('lastRide: WP-B fix B2 — initRideHistory excludes mode:"free" index entri
 
   assert(resultsStore.getStoredResult(freeRideId) === null,
     'a free-mode ended ride must never be backfilled into a stored (route) result');
-  const routeStored = resultsStore.getStoredResult(routeRideId);
-  assert(routeStored !== null, 'a mode-less (back-compat) ended ride must still backfill normally');
-  assert(routeStored!.routeId === 'Morning', `routeId ${routeStored!.routeId}`);
+  const wayStored = resultsStore.getStoredResult(wayRideId);
+  assert(wayStored !== null, 'a mode-less (back-compat) ended ride must still backfill normally');
+  assert(wayStored!.wayId === 'Morning', `routeId ${wayStored!.wayId}`);
   assert(!lastRide.recordedResults().some((x) => x.rideId === freeRideId),
     'a free ride must never enter the RECORD-tab comparison window (D-025)');
 
@@ -385,11 +385,11 @@ test('resultsstore: a jump-manufactured lap is rejected — detour_eveningb must
   // 1. The trap: quality alone (the brief's original rule) accepts this.
   const bait = deriveRideResult({
     rideId: 'detourbait', t: fx.fixes.t, lat: fx.fixes.lat, lon: fx.fixes.lon,
-    ref: eveningA!.ref, gates: eveningA!.gates, routeId: 'EveningA', gateSetVersion: 1,
+    ref: eveningA!.ref, gates: eveningA!.gates, wayId: 'EveningA', gateSetVersion: 1,
     engineVersion: resultsStore.BACKFILL_ENGINE_VERSION, source: 'app',
   });
   assert(
-    bait.routeId !== null && (bait.lap.quality === 'clean' || bait.lap.quality === 'interrupted'),
+    bait.wayId !== null && (bait.lap.quality === 'clean' || bait.lap.quality === 'interrupted'),
     `the quality-only rule no longer accepts this ride (quality ${bait.lap.quality}) — ` +
     'the regression this test guards has moved; re-derive the fixture before relaxing the gate',
   );
@@ -413,7 +413,7 @@ test('resultsstore: a jump-manufactured lap is rejected — detour_eveningb must
   const stored = resultsStore.getStoredResult(rideId);
   assert(
     stored === null,
-    `a detoured ride must not be stored against any route, got ${stored?.routeId} ` +
+    `a detoured ride must not be stored against any route, got ${stored?.wayId} ` +
     `lap ${stored?.lap.rawS.toFixed(1)} s (${stored?.lap.quality})`,
   );
   assert(fs.files.has('results/unmatched.json'), 'expected an unmatched.json marker');
@@ -446,10 +446,10 @@ test('resultsstore: the corridor-coverage gate leaves genuine backfill matches u
 
     const stored = resultsStore.getStoredResult(rideId);
     assert(stored !== null, `${fixture}: the coverage gate must not reject a genuine ride`);
-    assert(stored!.routeId === track, `${fixture}: routeId ${stored!.routeId}, expected ${track}`);
+    assert(stored!.wayId === track, `${fixture}: routeId ${stored!.wayId}, expected ${track}`);
     const direct = deriveRideResult({
       rideId, t: fx.fixes.t, lat: fx.fixes.lat, lon: fx.fixes.lon,
-      ref: spec!.ref, gates: spec!.gates, routeId: track, gateSetVersion: 1,
+      ref: spec!.ref, gates: spec!.gates, wayId: track, gateSetVersion: 1,
       engineVersion: resultsStore.BACKFILL_ENGINE_VERSION, source: 'app',
     });
     assert(stored!.lap.quality === direct.lap.quality, `${fixture}: lap quality ${stored!.lap.quality}`);

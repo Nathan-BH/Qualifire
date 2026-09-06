@@ -25,7 +25,7 @@ import { useTabNav } from './tabNav.tsx';
 import { useTheme } from './themeContext.tsx';
 import { useSettings } from './settings.tsx';
 import { PaddockTheme, colors, radius } from './theme.ts';
-import RouteMapView from './routeMapView.tsx';
+import WayMapView from './wayMapView.tsx';
 import { appendTrailPoint, type TrailPoint } from './trailModel.ts';
 import { chipColors } from './chips.tsx';
 import { dateTimeLabel, buildPbDetail } from './rideHistoryModel.ts';
@@ -35,21 +35,21 @@ import {
 import { rideDetailFor } from './rideDetailModel.ts';
 import { ALL_YELLOW } from './sectorTrailModel.ts';
 import { currentCatalog, userCatalog } from '../store/catalogStore.ts';
-import { routeLabelIn } from '../store/defaultRoute.ts';
+import { wayLabelIn } from '../store/defaultWay.ts';
 import {
-  getStoredResult, removeStoredResult, setIgnoredFromRanking, storedResultsForRoute,
+  getStoredResult, removeStoredResult, setIgnoredFromRanking, storedResultsForWay,
 } from '../store/resultsStore.ts';
 import { freeRideNear, freeRideResults } from '../store/freeRides.ts';
 import {
   clearLastRide, dropRecorded, getLastRide, replaceRecorded,
 } from './lastRide.ts';
 import {
-  createWayFromDraft, draftWayFromRide, existingLandmarkLabel, existingWayProps,
+  createRouteFromDraft, draftRouteFromRide, existingLandmarkLabel, existingRouteProps,
   promoteRideToReference, readRideFixes, saveAdjustedGates, type GateAdjustDraft,
-} from '../store/wayFromRide.ts';
-import { findRouteWithSpecs, type WayCreationDraft, type WayNames } from '../store/wayCreation.ts';
-import { specVocabulary } from '../store/routeSpecs.ts';
-import { WayNamingCard } from './wayNamingCard.tsx';
+} from '../store/routeFromRide.ts';
+import { findWayWithSpecs, type RouteCreationDraft, type RouteNames } from '../store/routeCreation.ts';
+import { specVocabulary } from '../store/waySpecs.ts';
+import { RouteNamingCard } from './routeNamingCard.tsx';
 import { GateAdjustCard } from './gateAdjustCard.tsx';
 import { createExpoFsAdapter } from '../storage/expoFsAdapter.ts';
 import { deleteRide, exportGpxPlus, listRides } from '../storage';
@@ -80,14 +80,14 @@ function fmtDur(ms: number): string {
 
 /** ResultScreen.tsx's PbDetail, lifted in verbatim — the ride-detail's own
  * "ON THIS ROUTE" section, scoped to this ride's route (§3.4). */
-function PbDetail(props: { routeId: string; lastRideId: string | null; showRanking: boolean; t: PaddockTheme }) {
-  const { routeId, lastRideId, showRanking, t } = props;
-  const detail = buildPbDetail(rankingPoolFor(routeId, lastRideId), lastRideId);
+function PbDetail(props: { wayId: string; lastRideId: string | null; showRanking: boolean; t: PaddockTheme }) {
+  const { wayId, lastRideId, showRanking, t } = props;
+  const detail = buildPbDetail(rankingPoolFor(wayId, lastRideId), lastRideId);
   return (
     <View style={st.pbDetail}>
       {detail.ranking.length > 0 ? (
         <>
-          <Text style={[st.hint, { color: t.textDim }]}>last {detail.ranking.length} on this route</Text>
+          <Text style={[st.hint, { color: t.textDim }]}>last {detail.ranking.length} on this way</Text>
           {showRanking
             ? detail.ranking.map((row) => (
               <View key={row.posLabel} style={st.pbRow}>
@@ -131,7 +131,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
   const [exporting, setExporting] = useState(false);
   const [meta, setMeta] = useState<RideMeta | null>(null);
   // §3.3 offer: 'pending' until the draft resolves; null = no offer.
-  const [draft, setDraft] = useState<WayCreationDraft | null | 'pending'>('pending');
+  const [draft, setDraft] = useState<RouteCreationDraft | null | 'pending'>('pending');
   const [naming, setNaming] = useState(false);
   const [adjust, setAdjust] = useState<GateAdjustDraft | null>(null);
 
@@ -179,11 +179,11 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
     () => rideDetailFor(request.rideId, request.startedAtMs, {
       result: getStoredResult(request.rideId),
       free: freeRideNear(freeRideResults(), request.startedAtMs),
-      routes: currentCatalog().routes,
-      userRoutes: userCatalog().routes,
-      laps: (routeId) => lapValues(routeId, request.rideId),
-      sectors: (routeId, i) => sectorValues(routeId, i, request.rideId),
-      barred: (routeId) => ownLapBarredFromRanking(routeId, request.rideId),
+      ways: currentCatalog().ways,
+      userWays: userCatalog().ways,
+      laps: (wayId) => lapValues(wayId, request.rideId),
+      sectors: (wayId, i) => sectorValues(wayId, i, request.rideId),
+      barred: (wayId) => ownLapBarredFromRanking(wayId, request.rideId),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [request.rideId, request.startedAtMs, tick, s.timing],
@@ -196,32 +196,32 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
     let cancelled = false;
     setDraft('pending');
     (async () => {
-      const d = await draftWayFromRide(request.rideId, request.startedAtMs, model.routeId, createExpoFsAdapter());
+      const d = await draftRouteFromRide(request.rideId, request.startedAtMs, model.wayId, createExpoFsAdapter());
       if (!cancelled) setDraft(d);
     })();
     return () => {
       cancelled = true;
     };
-  }, [request.rideId, request.startedAtMs, model.routeId]);
+  }, [request.rideId, request.startedAtMs, model.wayId]);
 
   const offer = draft !== 'pending' && draft !== null && model.referenceOf === null ? draft : null;
-  const offerWay = offer?.existingWayId ? existingWayProps(offer.existingWayId) : null;
-  const offerLabel = offer?.existingWayId
-    ? `Save as a new route on ${offerWay?.label ?? 'this way'}`
-    : 'Make this the reference of a new way';
+  const offerRoute = offer?.existingRouteId ? existingRouteProps(offer.existingRouteId) : null;
+  const offerLabel = offer?.existingRouteId
+    ? `Save as a new way on ${offerRoute?.label ?? 'this route'}`
+    : 'Make this the reference of a new route';
 
-  async function onNamingSave(names: WayNames) {
+  async function onNamingSave(names: RouteNames) {
     if (offer === null) return;
     // WP-G: belt to the card's own braces (RecordScreen's onNamingSave, verbatim).
-    if (offer.existingWayId && findRouteWithSpecs(currentCatalog(), offer.existingWayId, names.specs ?? [])) {
-      Alert.alert('That route already exists', 'Pick it on RECORD next time instead of adding it again.');
+    if (offer.existingRouteId && findWayWithSpecs(currentCatalog(), offer.existingRouteId, names.specs ?? [])) {
+      Alert.alert('That way already exists', 'Pick it on RECORD next time instead of adding it again.');
       return;
     }
     setBusy(true);
     try {
-      const out = await createWayFromDraft(offer, names, createExpoFsAdapter());
+      const out = await createRouteFromDraft(offer, names, createExpoFsAdapter());
       if (!out.ok) {
-        Alert.alert('Could not create the way', out.errors.join('\n'));
+        Alert.alert('Could not create the route', out.errors.join('\n'));
         return;
       }
       setNaming(false);
@@ -229,7 +229,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
       setTick((v) => v + 1); // model re-reads: referenceOf = the new route
       if (out.adjust) setAdjust(out.adjust);
     } catch (e) {
-      Alert.alert('Could not create the way', e instanceof Error ? e.message : String(e));
+      Alert.alert('Could not create the route', e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
@@ -314,11 +314,11 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
   }
 
   async function onPromote() {
-    const routeId = model.routeId;
-    if (routeId === null || model.promoteTarget === null) return;
+    const wayId = model.wayId;
+    if (wayId === null || model.promoteTarget === null) return;
     setBusy(true);
     try {
-      const out = await promoteRideToReference(routeId, request.rideId, createExpoFsAdapter());
+      const out = await promoteRideToReference(wayId, request.rideId, createExpoFsAdapter());
       if (!out.ok) {
         Alert.alert('Could not set the reference', out.errors.join('\n'));
         return;
@@ -326,7 +326,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
       // lastRide coherence — RoutesScreen.tsx's delete-route steps, plus
       // replaceRecorded for whatever the immediate re-derive came back with.
       for (const id of out.clearedRideIds) dropRecorded(id);
-      if (getLastRide()?.routeId === routeId) clearLastRide();
+      if (getLastRide()?.wayId === wayId) clearLastRide();
       for (const id of [request.rideId, ...out.clearedRideIds]) {
         const r = getStoredResult(id);
         if (r) replaceRecorded(r);
@@ -340,15 +340,15 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
   }
 
   function confirmPromote() {
-    const routeId = model.routeId;
-    if (routeId === null) return;
-    const n = storedResultsForRoute(routeId).filter((r) => r.rideId !== request.rideId).length;
+    const wayId = model.wayId;
+    if (wayId === null) return;
+    const n = storedResultsForWay(wayId).filter((r) => r.rideId !== request.rideId).length;
     const ghosts = n === 0
-      ? 'There are no past results on this route yet.'
+      ? 'There are no past results on this way yet.'
       : `Its ${n} past result${n === 1 ? ' is' : 's are'} discarded and re-timed from the recordings against the new reference — old times and ranks do not survive.`;
     Alert.alert(
-      `Overwrite the reference of "${routeLabelIn(currentCatalog(), routeId)}"?`,
-      `This route will be overwritten and past ghosts will be lost.\n\nIts reference line and gates are rebuilt from this ride (${dateTimeLabel(request.startedAtMs)}). ${ghosts} Ride recordings are kept.`,
+      `Overwrite the reference of "${wayLabelIn(currentCatalog(), wayId)}"?`,
+      `This way will be overwritten and past ghosts will be lost.\n\nIts reference line and gates are rebuilt from this ride (${dateTimeLabel(request.startedAtMs)}). ${ghosts} Ride recordings are kept.`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Overwrite', style: 'destructive', onPress: () => void onPromote() },
@@ -370,19 +370,19 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
 
       {model.kind === 'route' ? (
         <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder, alignItems: 'center' }]}>
-          <Text style={{ color: t.textDim }}>{routeLabelIn(currentCatalog(), model.routeId as string)}</Text>
+          <Text style={{ color: t.textDim }}>{wayLabelIn(currentCatalog(), model.wayId as string)}</Text>
           <Text style={[st.big, { color: tierColour(model.lapTier, t) }]}>{model.lapLabel}</Text>
           <Text style={{ color: t.textDim, fontSize: 12.5 }}>{model.rankLine}</Text>
           {model.referenceOf ? (
             <Text style={{ color: t.textDim, fontSize: 11.5, marginTop: 4 }}>
-              reference ride of {routeLabelIn(currentCatalog(), model.referenceOf.id)}
+              reference ride of {wayLabelIn(currentCatalog(), model.referenceOf.id)}
             </Text>
           ) : null}
 
           <View style={{ alignSelf: 'stretch', marginTop: 10 }}>
-            <RouteMapView
+            <WayMapView
               variant="browse"
-              routeId={model.routeId}
+              wayId={model.wayId}
               lat={null}
               lon={null}
               zoom={1}
@@ -413,9 +413,9 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
           </View>
 
           <View style={{ alignSelf: 'stretch', marginTop: 14 }}>
-            <Text style={[st.h2, { color: t.textDim }]}>ON THIS ROUTE</Text>
+            <Text style={[st.h2, { color: t.textDim }]}>ON THIS WAY</Text>
             <PbDetail
-              routeId={model.routeId as string}
+              wayId={model.wayId as string}
               lastRideId={request.rideId}
               showRanking={s.tower}
               t={t}
@@ -432,15 +432,15 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
             <View style={{ alignSelf: 'stretch', marginTop: 8 }}>
               {model.free.sectors.map((sec, i) => (
                 <Text key={i} style={[st.freeSectorRow, { color: t.text }]}>
-                  {routeLabelIn(currentCatalog(), sec.routeId)} S{sec.index} — {fmt(sec.rawS, 1)} raw
+                  {wayLabelIn(currentCatalog(), sec.wayId)} S{sec.index} — {fmt(sec.rawS, 1)} raw
                 </Text>
               ))}
             </View>
           ) : null}
           <View style={{ alignSelf: 'stretch', marginTop: 10 }}>
-            <RouteMapView
+            <WayMapView
               variant="browse"
-              routeId={null}
+              wayId={null}
               lat={null}
               lon={null}
               zoom={1}
@@ -452,12 +452,12 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
         </View>
       ) : (
         <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-          <Text style={{ color: t.textDim }}>no route — recorded only</Text>
+          <Text style={{ color: t.textDim }}>no way — recorded only</Text>
           <Text style={{ color: t.textDim, marginTop: 4 }}>sector times not on file for this ride</Text>
           <View style={{ alignSelf: 'stretch', marginTop: 10 }}>
-            <RouteMapView
+            <WayMapView
               variant="browse"
-              routeId={null}
+              wayId={null}
               lat={null}
               lon={null}
               zoom={1}
@@ -494,7 +494,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
             disabled={busy}
             onPress={confirmPromote}
           >
-            <Text style={styles.deleteText}>Make this the reference of this route</Text>
+            <Text style={styles.deleteText}>Make this the reference of this way</Text>
           </Pressable>
         ) : null}
         {offer !== null && !naming && adjust === null ? (
@@ -510,14 +510,14 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
 
       {naming && offer !== null ? (
         <View style={{ marginTop: 12 }}>
-          <WayNamingCard
+          <RouteNamingCard
             startExistingLabel={existingLandmarkLabel(offer.start)}
             endExistingLabel={existingLandmarkLabel(offer.end)}
             loop={offer.loop}
             busy={busy}
-            matchedRouteLabel={offer.matchedRouteId ? routeLabelIn(currentCatalog(), offer.matchedRouteId) : null}
-            existingWay={offerWay}
-            vocabulary={specVocabulary(currentCatalog().routes)}
+            matchedWayLabel={offer.matchedWayId ? wayLabelIn(currentCatalog(), offer.matchedWayId) : null}
+            existingRoute={offerRoute}
+            vocabulary={specVocabulary(currentCatalog().ways)}
             onSave={(names) => void onNamingSave(names)}
             onSkip={() => setNaming(false)}
           />
@@ -526,7 +526,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
       {adjust !== null ? (
         <View style={{ marginTop: 12 }}>
           <GateAdjustCard
-            routeId={adjust.routeId}
+            wayId={adjust.wayId}
             refLine={adjust.ref}
             refLengthM={adjust.refLengthM}
             initialChainageM={adjust.chainageM}

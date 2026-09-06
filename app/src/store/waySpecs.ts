@@ -6,9 +6,9 @@
  * row. Also the naming card's suggestion source. Headless-tested in
  * tests/routespec_suite.ts.
  */
-import type { Route } from './types.ts';
+import type { Way } from './types.ts';
 
-type SpecRoute = Pick<Route, 'id' | 'specs'>;
+type SpecWay = Pick<Way, 'id' | 'specs'>;
 
 /** Label of the "no further spec" option — a way's plain route (the one ride 1
  * made) sitting beside its variants, or ['Dry'] beside ['Dry','Fast']. */
@@ -16,11 +16,11 @@ export const PLAIN_SPEC_LABEL = 'plain';
 
 /** True when at least one route carries a spec — RecordScreen's switch between
  * today's flat pill row (kept byte-identical) and the grouped rows. */
-export function hasSpecs(routes: readonly SpecRoute[]): boolean {
-  return routes.some((r) => (r.specs?.length ?? 0) > 0);
+export function hasSpecs(ways: readonly SpecWay[]): boolean {
+  return ways.some((r) => (r.specs?.length ?? 0) > 0);
 }
 
-export interface SpecPickOption<T> { label: string; route: T; on: boolean }
+export interface SpecPickOption<T> { label: string; way: T; on: boolean }
 export interface SpecPickRow<T> { depth: number; options: SpecPickOption<T>[] }
 
 /**
@@ -36,17 +36,17 @@ export interface SpecPickRow<T> { depth: number; options: SpecPickOption<T>[] }
  * (pickedRoute, pickSource, onStart) is untouched. [] for <2 routes or when
  * `pickWithin` yields nothing.
  */
-export function specPickRows<T extends SpecRoute>(
-  routes: readonly T[],
+export function specPickRows<T extends SpecWay>(
+  ways: readonly T[],
   pickedId: string | null,
   pickWithin: (subset: T[]) => T | null,
 ): SpecPickRow<T>[] {
-  if (routes.length < 2) return [];
-  const picked = routes.find((r) => r.id === pickedId) ?? pickWithin([...routes]);
+  if (ways.length < 2) return [];
+  const picked = ways.find((r) => r.id === pickedId) ?? pickWithin([...ways]);
   if (!picked) return [];
   const path = picked.specs ?? [];
   const rows: SpecPickRow<T>[] = [];
-  let subset: T[] = [...routes];
+  let subset: T[] = [...ways];
   for (let d = 0; d <= path.length; d++) {
     const groups = new Map<string, T[]>();
     for (const r of subset) {
@@ -61,7 +61,7 @@ export function specPickRows<T extends SpecRoute>(
           const g = groups.get(k)!;
           const on = g.includes(picked);
           const label = k === '' ? PLAIN_SPEC_LABEL : (g[0].specs ?? [])[d]; // first-used casing
-          return { label, route: on ? picked : (pickWithin(g) ?? g[0]), on };
+          return { label, way: on ? picked : (pickWithin(g) ?? g[0]), on };
         }),
       });
     }
@@ -72,9 +72,9 @@ export function specPickRows<T extends SpecRoute>(
 }
 
 /** Every distinct spec value in the catalog, first-used casing, catalog order. */
-export function specVocabulary(routes: readonly SpecRoute[]): string[] {
+export function specVocabulary(ways: readonly SpecWay[]): string[] {
   const seen = new Map<string, string>(); // lowercase -> first-used casing
-  for (const r of routes) {
+  for (const r of ways) {
     for (const s of r.specs ?? []) {
       const k = s.toLowerCase();
       if (!seen.has(k)) seen.set(k, s);
@@ -92,7 +92,7 @@ export function specVocabulary(routes: readonly SpecRoute[]): string[] {
  * anything already in `typed`, capped at `max`.
  */
 export function specSuggestions(
-  wayLists: readonly (readonly string[])[],
+  routeLists: readonly (readonly string[])[],
   vocabulary: readonly string[],
   typed: readonly string[],
   max = 8,
@@ -110,7 +110,7 @@ export function specSuggestions(
 
   // This-way continuations first: routes whose earlier segments equal `typed`
   // (case-insensitive), offering the value at position typed.length.
-  for (const list of wayLists) {
+  for (const list of routeLists) {
     if (list.length <= typed.length) continue;
     let matches = true;
     for (let i = 0; i < typedLower.length; i++) {
