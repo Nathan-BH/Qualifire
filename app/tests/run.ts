@@ -35,6 +35,8 @@ import './fixflags_suite.ts';
 import './ridehistory_suite.ts';
 import './ridedetail_suite.ts';
 import './catalogdetail_suite.ts';
+import './resultsmodel_suite.ts';
+
 import './trail_suite.ts';
 import './demo_suite.ts';
 import './wayasset_runtime_suite.ts';
