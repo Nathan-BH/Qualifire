@@ -7,10 +7,9 @@
  * screen, so this chrome is copied, not imported, same as
  * CatalogDetailScreen.tsx's own note on RideDetailScreen.tsx.
  *
- * Layout (§3.10): way name -> LAST N RIDES (header, hint, the scatterplot —
- * a 220px placeholder in this phase, wired to ResultsPlot in Phase C) ->
- * ALL N RIDES · fastest first (the unbounded all-time board) -> BACK TO
- * RESULTS. No map (Nathan, Q2) — no WayMapView import.
+ * Layout (§3.10): way name -> LAST N RIDES (header, hint, the ResultsPlot
+ * scatterplot) -> ALL N RIDES · fastest first (the unbounded all-time
+ * board) -> BACK TO RESULTS. No map (Nathan, Q2) — no WayMapView import.
  *
  * The board never colours a time by tier (§3.2): PB is the only marker, a
  * filled purple dot, never a tier colour. Rankings-off (SETTINGS) collapses
@@ -32,6 +31,7 @@ import {
   buildHistoryBoard, boardCaption, windowCaption, type HistoryBoardModel, type HistoryRow,
 } from './resultsListModel.ts';
 import { plotWindow } from './resultsPlotModel.ts';
+import ResultsPlot from './resultsPlot.tsx';
 
 export default function ResultsDetailScreen({ request }: { request: ResultsDetailRequest }) {
   const { t } = useTheme();
@@ -77,12 +77,14 @@ export default function ResultsDetailScreen({ request }: { request: ResultsDetai
       <Text style={[styles.hint, { color: t.textDim }]}>
         purple = fastest of these · green / yellow = faster / slower than their average
       </Text>
-      {/* Phase C replaces this placeholder with <ResultsPlot .../> and its
-          caption row — the arithmetic lives in resultsPlotModel.ts, never
-          here or in the component. */}
-      <View style={[styles.placeholder, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-        <Text style={{ color: t.textDim }}>plot lands in Phase C</Text>
-      </View>
+      <ResultsPlot
+        results={results}
+        boardRows={board.rows}
+        rankingsOn={s.tower}
+        selectedRideId={selectedRideId}
+        onSelect={setSelectedRideId}
+        onOpenRide={(rideId, startedAtMs) => tabNav.openRide({ rideId, source: 'results', startedAtMs })}
+      />
 
       <HistoryBoard
         board={board}
@@ -179,14 +181,6 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
   topDate: { fontSize: 12 },
   wayName: { fontSize: 22, fontWeight: '800', marginTop: 4 },
   hint: { fontSize: 12, marginTop: -4, marginBottom: 10 },
-  placeholder: {
-    height: 220,
-    borderWidth: 1,
-    borderRadius: radius.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
   notRanked: { fontSize: 11, letterSpacing: 1, marginTop: 8, marginBottom: 2 },
   histRow: {
     height: 38,
