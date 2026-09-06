@@ -31,6 +31,8 @@ import RoutesScreen from './src/ui/RoutesScreen';
 import RideDetailScreen from './src/ui/RideDetailScreen';
 import GateAdjustScreen from './src/ui/GateAdjustScreen';
 import CatalogDetailScreen from './src/ui/CatalogDetailScreen';
+import ResultsScreen from './src/ui/ResultsScreen';
+import ResultsDetailScreen from './src/ui/ResultsDetailScreen';
 import SettingsScreen, { SettingsProvider } from './src/ui/settings';
 import DemoScreen from './src/ui/DemoScreen';
 import { PaddockTheme } from './src/ui/theme';
@@ -46,6 +48,7 @@ import {
   type CatalogDetailRequest,
   type GateAdjustRequest,
   type RideDetailRequest,
+  type ResultsDetailRequest,
   type Tab,
   type TabNav,
 } from './src/ui/tabNav';
@@ -81,6 +84,11 @@ function Shell() {
   // detail is what opens both (reference-ride row, edit gates), so their
   // BACK lands on it.
   const [catalogDetail, setCatalogDetail] = useState<CatalogDetailRequest | null>(null);
+  // WP-2: the full-screen RESULTS detail (one way's board + scatterplot),
+  // mount-swapped like catalogDetail. Fifth instance of the "screen owns
+  // intent, Shell owns chrome" split. Sits UNDER rideDetail: opening a board
+  // row's ride detail is what opens it, so its BACK lands back here.
+  const [resultsDetail, setResultsDetail] = useState<ResultsDetailRequest | null>(null);
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomPad = Math.max(insets.bottom, NAV_BAR_MIN_PAD);
@@ -110,6 +118,10 @@ function Shell() {
         setCatalogDetail(null);
         return true;
       }
+      if (resultsDetail !== null) {
+        setResultsDetail(null);
+        return true;
+      }
       if (tab !== 'record') {
         setTab('record');
         return true;
@@ -117,7 +129,7 @@ function Shell() {
       return false;
     });
     return () => sub.remove();
-  }, [tab, rideDetail, gateAdjust, catalogDetail]);
+  }, [tab, rideDetail, gateAdjust, catalogDetail, resultsDetail]);
 
   // Rehydrate the comparison window once per launch, from the persistent
   // results/ store (cycle 024, WP-A1 — replaced B-40's results-cache.json;
@@ -158,7 +170,7 @@ function Shell() {
   // ride detail hides the bar the same way, from any tab. WP-K (cycle 2): so
   // does the catalog detail.
   const tabBarHidden = (tab === 'record' && recFullscreen)
-    || rideDetail !== null || gateAdjust !== null || catalogDetail !== null;
+    || rideDetail !== null || gateAdjust !== null || catalogDetail !== null || resultsDetail !== null;
   // WP-A2 hides the tab bar entirely while fullscreen, which also removes
   // the only thing padding the screen for the device's bottom gesture-nav
   // inset (the bar's own paddingBottom, via bottomPad above) — so content
@@ -179,6 +191,8 @@ function Shell() {
       closeGateAdjust: () => setGateAdjust(null),
       openCatalog: setCatalogDetail,
       closeCatalog: () => setCatalogDetail(null),
+      openResults: setResultsDetail,
+      closeResults: () => setResultsDetail(null),
     }),
     [],
   );
@@ -190,14 +204,17 @@ function Shell() {
           {gateAdjust !== null ? <GateAdjustScreen request={gateAdjust} />
             : rideDetail !== null ? <RideDetailScreen request={rideDetail} />
             : catalogDetail !== null ? <CatalogDetailScreen request={catalogDetail} />
+            : resultsDetail !== null ? <ResultsDetailScreen request={resultsDetail} />
             : tab === 'record' ? <RecordScreen onFullscreenChange={setRecFullscreen} />
             : tab === 'rides' ? <RidesScreen />
             : tab === 'routes' ? <RoutesScreen />
+            : tab === 'results' ? <ResultsScreen />
             : tab === 'settings' ? <SettingsScreen />
             : <DemoScreen />}
         </View>
-        {/* Five tabs (WP-H dropped RESULT) still scroll sideways rather than
-            shrinking — Nathan, 2026-08-16, on the original six. */}
+        {/* Six tabs (WP-2 re-added RESULTS, in RESULT's old slot) still
+            scroll sideways rather than shrinking — Nathan, 2026-08-16, on
+            the original six. */}
         {!tabBarHidden && (
           <ScrollView
             horizontal
@@ -205,7 +222,7 @@ function Shell() {
             style={styles.tabBar}
             contentContainerStyle={styles.tabBarContent}
           >
-            {(['record', 'rides', 'routes', 'settings', 'demo'] as const).map((tb) => (
+            {(['record', 'rides', 'routes', 'results', 'settings', 'demo'] as const).map((tb) => (
               <Pressable
                 key={tb}
                 style={[styles.tab, tab === tb && styles.tabActiveBar]}

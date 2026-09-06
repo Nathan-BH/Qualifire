@@ -6,7 +6,7 @@
  * — screens depend on this module, App owns the implementation (`go:
  * setTab`, `openRide: setRideDetail`, `closeRide`, `openGateAdjust:
  * setGateAdjust`, `closeGateAdjust`, `openCatalog: setCatalogDetail`,
- * `closeCatalog`).
+ * `closeCatalog`, `openResults: setResultsDetail`, `closeResults`).
  *
  * `Tab` is exported from here (not App.tsx) precisely so a screen can import
  * the type without creating a screen -> App -> screen import cycle.
@@ -16,19 +16,20 @@ import { createContext, useContext, type ReactNode } from 'react';
 // 'demo' = the old Preview tab, renamed (IDEAS §26, 2026-08-16). WP-H drops
 // 'result': the RESULT tab is gone (Nathan, Q4 — "Lets drop the results tab
 // entirely"); its job is now the full-screen ride detail overlay below.
-export type Tab = 'record' | 'rides' | 'routes' | 'settings' | 'demo';
+export type Tab = 'record' | 'rides' | 'routes' | 'results' | 'settings' | 'demo';
 
 /** WP-H: who opened the ride detail, and for which ride. `source` decides
  * where CLOSE lands (post-stop → RECORD's idle setup, 'rides' → the RIDES
  * list, 'routes' → the way detail underneath — WP-K (cycle 2)'s reference-
- * ride row) and what the primary button says. `startedAtMs` is the SESSION's
+ * ride row, 'results' → the RESULTS way detail underneath — WP-2) and what
+ * the primary button says. `startedAtMs` is the SESSION's
  * start (location/index.ts:329) when the opener has it — the exact key a
  * free-ride record is filed under (`free:${startedAtMs}`, freeRides.ts:127);
  * RIDES only knows the raw index's startMs (a few ms earlier), so it passes
  * that and rideDetailModel falls back to a tolerance match. */
 export interface RideDetailRequest {
   rideId: string;
-  source: 'post-stop' | 'rides' | 'routes';
+  source: 'post-stop' | 'rides' | 'routes' | 'results';
   startedAtMs: number;
 }
 
@@ -44,6 +45,12 @@ export interface GateAdjustRequest {
  * or a way (a route never gets its own screen; a way's routes are its
  * variants, shown inside the way detail). */
 export type CatalogDetailRequest = { kind: 'place'; id: string } | { kind: 'route'; id: string };
+
+/** WP-2: who to show the full-screen RESULTS detail for — one way's board
+ * plus its last-9 scatterplot. A plain id, like GateAdjustRequest. */
+export interface ResultsDetailRequest {
+  wayId: string;
+}
 
 export interface TabNav {
   go(tab: Tab): void;
@@ -67,6 +74,13 @@ export interface TabNav {
   /** WP-K (cycle 2): dismiss the detail; ROUTES remounts underneath and
    * re-reads the catalog on its own. */
   closeCatalog(): void;
+  /** WP-2: show the full-screen RESULTS detail for one way, over whatever
+   * tab is active (Shell mount-swaps it in and hides the tab bar — the same
+   * chrome rule as the other overlays). Idempotent: re-opening replaces the
+   * request. */
+  openResults(req: ResultsDetailRequest): void;
+  /** WP-2: dismiss the detail; the active tab's screen remounts underneath. */
+  closeResults(): void;
 }
 
 const TabNavContext = createContext<TabNav | null>(null);

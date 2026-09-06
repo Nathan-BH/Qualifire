@@ -366,7 +366,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
     );
   }
 
-  const primaryLabel = request.source === 'post-stop' ? 'RECORD ANOTHER' : request.source === 'routes' ? 'BACK TO ROUTE' : 'BACK TO RIDES';
+  const primaryLabel = request.source === 'post-stop' ? 'RECORD ANOTHER' : request.source === 'routes' ? 'BACK TO ROUTE' : request.source === 'results' ? 'BACK TO RESULTS' : 'BACK TO RIDES';
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>

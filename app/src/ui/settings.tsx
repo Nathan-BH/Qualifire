@@ -578,7 +578,7 @@ export default function SettingsScreen() {
             options={[['raw', 'wall clock'], ['moving', 'moving']]}
             onPick={(v) => set('timing', v)} />
         </Row>
-        <Row label="Rankings" hint="Show where each ride placed against your others on that way." help={help} t={t}>
+        <Row label="Rankings" hint="Show where each ride placed against your others on that way. — in the ride detail and on RESULTS." help={help} t={t}>
           <Switch on={s.tower} onToggle={() => set('tower', !s.tower)} t={t} />
         </Row>
       </View>
