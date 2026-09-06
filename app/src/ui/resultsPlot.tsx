@@ -41,6 +41,7 @@ const DASH_W = 2;
 const DASH_GAP = 4;
 const X_AXIS_H = 16;
 const Y_TICK_LABEL_W = 36;
+const AVG_LABEL_W = 44; // avg label needs more room than a bare tick ("avg 42:07" vs "42:07")
 const X_TICK_LABEL_W = 80;
 const RING_R = 8;
 
@@ -126,7 +127,7 @@ export default function ResultsPlot({
                   numberOfLines={1}
                   style={[
                     styles.avgLabel,
-                    { color: t.textDim, top: model.meanY - 7, width: Y_TICK_LABEL_W },
+                    { color: t.textDim, top: model.meanY - 7, width: AVG_LABEL_W },
                   ]}
                 >
                   {`avg ${fmt(model.meanS)}`}
@@ -246,7 +247,7 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
   },
   emptyWrap: { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center' },
   yTickLabel: { position: 'absolute', fontSize: 10, textAlign: 'right' },
-  avgLabel: { position: 'absolute', fontSize: 11, fontWeight: '600', textAlign: 'right' },
+  avgLabel: { position: 'absolute', fontSize: 10, fontWeight: '600', textAlign: 'right' },
   xTickLabel: {
     position: 'absolute', top: 0, fontSize: 10, width: X_TICK_LABEL_W, textAlign: 'center',
   },
