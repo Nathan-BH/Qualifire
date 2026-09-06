@@ -196,3 +196,32 @@ ever wants Preview to ship Leuven-specific seed data again (unlikely, per Nathan
 framing above, but noted for completeness), both `eas.json`'s `preview.env` and this line
 in `publish-preview.ps1` would need to change together, or they drift out of sync again --
 exactly the class of bug this fix closes.
+
+## 8. Bug found while preparing exact run commands for Nathan: bare `npx` in build4.ps1
+
+While writing out the literal PowerShell commands for Nathan to paste, re-checked
+`build4.ps1` (the shared engine `build7.ps1` delegates to) for the same bare-`npx`
+execution-policy trap already fixed in `publish-preview.ps1` earlier this cycle. Found it,
+still present, in 4 real invocations -- including the one that actually queues the build:
+
+- Step 2 preflight: `Invoke-Native { npx tsc --noEmit }`
+- Step 7 account check: `Invoke-Native { npx eas-cli whoami }`
+- Step 7 login: `npx eas-cli login`
+- **Step 8, the build itself: `npx @easArgs`** (i.e. `npx eas-cli build --platform android
+  --profile $BuildProfile`)
+
+On Nathan's machine, PowerShell resolves a bare `npx` to the `npx.ps1` shim (confirmed
+empirically earlier this cycle, logged in project memory's `nathan-powershell-bypass.md`),
+which the default Restricted execution policy blocks -- even from inside a script itself
+launched with `-ExecutionPolicy Bypass`. Left unfixed, Step 8 specifically would have
+blocked the actual `eas-cli build` invocation, i.e. build7 would fail to ever queue a real
+build. Also confirmed `node_modules\.bin\tsc.cmd`/`tsc.ps1` both exist (same npm-generated
+shim pattern) -- so a manually-typed bare `tsc` from `node_modules\.bin` carries the exact
+same risk, which is why the commands below always use the explicit `.cmd` form.
+
+**Fix:** all 4 invocations plus 4 user-facing suggestion strings (e.g. "run: npx expo
+install $p") changed to `npx.cmd`, mechanical, made directly -- same fix already proven in
+`publish-preview.ps1`. Left `build4.ps1`'s doc comment at line 17 (describing the dev
+client's own `npx expo start` runtime behavior, not an invocation in this script) alone.
+Verified: tests 557/0/3, `tsc --noEmit` exit 0, brace count still balanced (83/83),
+`git status --porcelain` still shows only the expected 4 modified + 3 untracked files.

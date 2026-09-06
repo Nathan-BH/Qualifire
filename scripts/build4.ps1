@@ -120,8 +120,8 @@ try {
     if ($SkipTests) {
         Warn 'skipped by -SkipTests'
     } else {
-        Say 'npx tsc --noEmit'
-        $r = Invoke-Native { npx tsc --noEmit }
+        Say 'npx.cmd tsc --noEmit'
+        $r = Invoke-Native { npx.cmd tsc --noEmit }
         if ($r.Code -ne 0) {
             $r.Output | ForEach-Object { Say $_ }
             throw 'TypeScript errors -- fix before building'
@@ -144,7 +144,7 @@ try {
     $deps = $pkg.dependencies.PSObject.Properties.Name
     foreach ($p in @('expo-audio', 'react-native-safe-area-context', '@maplibre/maplibre-react-native')) {
         if ($deps -notcontains $p) {
-            $problems += "$p missing from package.json -- run: npx expo install $p"
+            $problems += "$p missing from package.json -- run: npx.cmd expo install $p"
         }
     }
     $plugins = @()
@@ -169,7 +169,7 @@ try {
             $problems += "MapLibre installed but version is $($mlPkg.version) -- expected an 11.x release"
         }
     } else {
-        $problems += 'node_modules\@maplibre\maplibre-react-native\package.json missing -- run: npm install (or npx expo install @maplibre/maplibre-react-native) in app/'
+        $problems += 'node_modules\@maplibre\maplibre-react-native\package.json missing -- run: npm install (or npx.cmd expo install @maplibre/maplibre-react-native) in app/'
     }
 
     # The map actually points at the free tiles (B-50) rather than a stale or
@@ -285,18 +285,18 @@ try {
 
     if ($DryRun) {
         Step 'Dry run complete.'
-        Would "run: npx eas-cli build --platform android --profile $BuildProfile"
+        Would "run: npx.cmd eas-cli build --platform android --profile $BuildProfile"
         Say 'Rerun without -DryRun to actually spend the build.'
         return
     }
 
     # ------------------------------------------------------- 7. account + build
     Step '7. Expo account'
-    $r = Invoke-Native { npx eas-cli whoami }
+    $r = Invoke-Native { npx.cmd eas-cli whoami }
     if ($r.Code -ne 0) {
         Say 'not logged in -- opening login'
         $ErrorActionPreference = 'Continue'   # login is interactive; let it talk
-        npx eas-cli login
+        npx.cmd eas-cli login
         $code = $LASTEXITCODE
         $ErrorActionPreference = 'Stop'
         if ($code -ne 0) { throw 'login failed' }
@@ -312,7 +312,7 @@ try {
     # streamed live so you can answer the keystore prompt -- no Invoke-Native
     # here, but stderr still must not be fatal.
     $ErrorActionPreference = 'Continue'
-    npx @easArgs
+    npx.cmd @easArgs
     $code = $LASTEXITCODE
     $ErrorActionPreference = 'Stop'
     if ($code -ne 0) { throw 'eas build reported an error -- check the log link above' }
@@ -328,7 +328,7 @@ try {
     } else {
         Say 'It installs OVER the old preview app (com.nathanbonher.qualifire.preview) and keeps its data.'
     }
-    Say 'Status of past builds:  npx eas-cli build:list'
+    Say 'Status of past builds:  npx.cmd eas-cli build:list'
     Say 'On-device checklist: see BUILD-4-RUNBOOK.md section 5.'
 }
 finally { Pop-Location }
