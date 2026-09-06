@@ -69,6 +69,19 @@ Binding rules:
   freely as work lands, don't let them drift stale.
 - Everything else — normal code-review judgment; no standing per-file owner.
 
+## Where documentation lives (added 2026-09-06 at Nathan's request)
+
+Anything specific to one build or one piece of work — diagnosis, design decisions, what
+shipped, Inspect findings, flags for Nathan — goes in that work's `cycles/<cycle-name>/`
+folder in the repo, not in the device's cross-session project memory. The repo folder is
+versioned with the code, visible to Nathan directly, and survives independent of any one
+chat session. Project memory (the persistent notes tied to Nathan's device) stays for
+durable, cross-cycle *operational* quirks that aren't about any one build — the
+`-ExecutionPolicy Bypass`/`npx.cmd` requirement, the `GIT_OPTIONAL_LOCKS=0` git-lock quirk,
+the never-request-delete-permission rule, this model-tier protocol itself — plus, at most,
+a one-line pointer into the relevant `cycles/` folder so a fresh session can find the detail
+without re-deriving it.
+
 ## Never delete
 
 Move to `safe_to_delete/` (gitignored) instead of `rm`. This mount also sometimes denies

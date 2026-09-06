@@ -49,7 +49,10 @@ param(
     # Preview" APK -- a rebuildable commute build, NOT the final app. Separate
     # from -Force so preflight failures still stop a preview build.
     [switch]$Standalone,
-    [ValidateSet('preview', 'development')]
+    # 2026-09-06 (build 7): 'virgin' -- the standalone "Qualifire Virgin" APK
+    # (B-39 / D-045): own app id, EXPO_PUBLIC_SEED_MODE=empty, for travel or
+    # for another rider. Gated like preview: it freezes the working tree's JS.
+    [ValidateSet('preview', 'development', 'virgin')]
     [string]$BuildProfile = 'development'
 )
 
@@ -91,13 +94,15 @@ try {
     if ($DryRun) { Warn 'DRY RUN -- checks only, no build will be queued' }
 
     # -------------------------------------------- 0. profile gate (Nathan, 2026-08-17)
-    if ($BuildProfile -eq 'preview') {
-        Step '0. Profile gate -- standalone/preview is barred until the app is finalized'
+    # 2026-09-06 (build 7): 'virgin' goes through the same gate as 'preview' --
+    # both are standalone APKs that bake in whatever JS is on disk right now.
+    if ($BuildProfile -in @('preview', 'virgin')) {
+        Step "0. Profile gate -- standalone ($BuildProfile) is barred until the app is finalized"
         if (-not ($Force -or $Standalone)) {
-            Warn "preview/standalone builds need -Standalone (Nathan 2026-08-19: a rebuildable commute APK that bakes in the CURRENT working tree; build 3's stale-JS failure is the precedent -- commit first, rebuild after every change you want on the bike)."
-            $problems += 'BuildProfile preview requires -Standalone (or -Force).'
+            Warn "$BuildProfile/standalone builds need -Standalone (Nathan 2026-08-19: a rebuildable APK that bakes in the CURRENT working tree; build 3's stale-JS failure is the precedent -- commit first, rebuild after every change you want on the phone)."
+            $problems += "BuildProfile $BuildProfile requires -Standalone (or -Force)."
         } else {
-            Warn 'preview requested with -Standalone/-Force -- the APK freezes whatever JS is in app/ RIGHT NOW. Make sure every feature you want is in the working tree (git status clean is the easy check).'
+            Warn "$BuildProfile requested with -Standalone/-Force -- the APK freezes whatever JS is in app/ RIGHT NOW. Make sure every feature you want is in the working tree (git status clean is the easy check)."
         }
     }
 
@@ -169,37 +174,57 @@ try {
 
     # The map actually points at the free tiles (B-50) rather than a stale or
     # placeholder style URL.
-    $mapViewFile = Join-Path $app 'src\ui\routeMapView.tsx'
+    $mapViewFile = Join-Path $app 'src\ui\wayMapView.tsx'
     if (Test-Path $mapViewFile) {
         if ((Get-Content $mapViewFile -Raw) -match 'tiles\.openfreemap\.org') {
-            Ok 'routeMapView.tsx points at tiles.openfreemap.org (OpenFreeMap, no key)'
+            Ok 'wayMapView.tsx points at tiles.openfreemap.org (OpenFreeMap, no key)'
         } else {
-            $problems += 'routeMapView.tsx no longer references tiles.openfreemap.org -- the map style source may have changed'
+            $problems += 'wayMapView.tsx no longer references tiles.openfreemap.org -- the map style source may have changed'
         }
     } else {
-        $problems += 'src\ui\routeMapView.tsx not found'
+        $problems += 'src\ui\wayMapView.tsx not found'
     }
 
-    # ------------------------ 4. preview variant (D-026), only relevant with -Force
-    Step '4. Preview variant keeps its own app id, so it sits BESIDE the dev client'
-    if ($BuildProfile -eq 'preview') {
+    # ------- 4. standalone variant (D-026 preview, D-045 virgin), only with -Standalone/-Force
+    # Each standalone profile must keep its OWN app id so it sits BESIDE the dev
+    # client instead of replacing it. A development build skips this step.
+    Step "4. Variant check -- $BuildProfile must keep its own app id, so it sits BESIDE the dev client"
+    if ($BuildProfile -in @('preview', 'virgin')) {
         $cfg = Join-Path $app 'app.config.js'
         if (Test-Path $cfg) {
             $cfgText = Get-Content $cfg -Raw
             if ($cfgText -match 'APP_VARIANT') {
                 Ok 'app.config.js present and reads APP_VARIANT'
             } else {
-                $problems += 'app.config.js does not read APP_VARIANT -- preview would overwrite the dev client'
+                $problems += "app.config.js does not read APP_VARIANT -- $BuildProfile would overwrite the dev client"
+            }
+            # The virgin branch is its own `if` in app.config.js. Without it,
+            # APP_VARIANT=virgin falls through to the plain config and the APK
+            # would install OVER the dev client.
+            if ($BuildProfile -eq 'virgin' -and $cfgText -notmatch "APP_VARIANT === 'virgin'") {
+                $problems += "app.config.js has no APP_VARIANT === 'virgin' branch -- virgin would overwrite the dev client"
             }
         } else {
-            $problems += 'app.config.js missing -- the preview would overwrite your dev client'
+            $problems += "app.config.js missing -- $BuildProfile would overwrite your dev client"
         }
 
         $eas = Get-Content (Join-Path $app 'eas.json') -Raw | ConvertFrom-Json
-        if ($eas.build.preview.env.APP_VARIANT -eq 'preview') {
-            Ok 'eas.json build.preview sets APP_VARIANT=preview'
+        $profileCfg = $eas.build.$BuildProfile
+        if ($null -eq $profileCfg) {
+            $problems += "eas.json has no build.$BuildProfile profile"
+        } elseif ($profileCfg.env.APP_VARIANT -eq $BuildProfile) {
+            Ok "eas.json build.$BuildProfile sets APP_VARIANT=$BuildProfile"
         } else {
-            $problems += 'eas.json build.preview does not set APP_VARIANT=preview'
+            $problems += "eas.json build.$BuildProfile does not set APP_VARIANT=$BuildProfile"
+        }
+        if ($BuildProfile -eq 'virgin') {
+            # B-39 / D-045: THIS is what empties the catalog (src/store/seed.ts
+            # reads it). APP_VARIANT alone only picks the app id and name.
+            if ($null -ne $profileCfg -and $profileCfg.env.EXPO_PUBLIC_SEED_MODE -eq 'empty') {
+                Ok 'eas.json build.virgin sets EXPO_PUBLIC_SEED_MODE=empty (blank catalog)'
+            } else {
+                $problems += 'eas.json build.virgin does not set EXPO_PUBLIC_SEED_MODE=empty -- the "blank" app would ship the Leuven seed'
+            }
         }
     } else {
         Ok "profile is $BuildProfile -- rebuilds the dev client in place. This IS build 4's expected path (Nathan, 2026-08-17): no standalone/preview APK until the app is finalized."
@@ -229,12 +254,12 @@ try {
 
     # -------------------------------------------------------- 6. route assets
     Step '6. Route map assets (the faked map -- pre-rendered PNGs, no native module)'
-    $routesJson = Join-Path $app 'assets\routes\routes.json'
+    $routesJson = Join-Path $app 'assets\ways\ways.json'
     if (Test-Path $routesJson) {
         $routesDir = Split-Path -Parent $routesJson
         $rj = Get-Content $routesJson -Raw | ConvertFrom-Json
-        $names = @($rj.routes.PSObject.Properties)
-        Ok "$($names.Count) pre-rendered routes in routes.json"
+        $names = @($rj.ways.PSObject.Properties)
+        Ok "$($names.Count) pre-rendered routes in ways.json"
         foreach ($n in $names) {
             if (-not $n.Value.image) { Ok "  $($n.Name) -> (no PNG; MapLibre/path rung only)"; continue }
             $png = Join-Path $routesDir $n.Value.image
@@ -245,7 +270,7 @@ try {
             }
         }
     } else {
-        $problems += 'assets\routes\routes.json missing -- regenerate with python data\analysis\08_build_route_assets.py'
+        $problems += 'assets\ways\ways.json missing -- regenerate with python safe_to_delete\virgin-branch-cut-20260831\data\analysis\08_build_route_assets.py (archived 2026-08-31; move it back into the active tree first)'
     }
 
     # ------------------------------------------------------------- the verdict
@@ -296,6 +321,10 @@ try {
     Say 'Open the printed link on the phone and tap the APK to install.'
     if ($BuildProfile -eq 'development') {
         Say 'It installs OVER the old dev client (com.nathanbonher.qualifire) and keeps its data.'
+    } elseif ($BuildProfile -eq 'virgin') {
+        Say 'It installs as a THIRD app, "Qualifire Virgin" (com.nathanbonher.qualifire.virgin), BESIDE the dev client and the preview -- neither is touched.'
+        Say 'First launch is blank: no pre-seeded routes, gates or sports (EXPO_PUBLIC_SEED_MODE=empty). Add a sport, then record.'
+        Say 'Installing a later virgin APK over it keeps its data; uninstall first if you want a genuinely blank install again.'
     } else {
         Say 'It installs OVER the old preview app (com.nathanbonher.qualifire.preview) and keeps its data.'
     }

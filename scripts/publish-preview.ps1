@@ -108,7 +108,7 @@ try {
         Warn 'skipped by -SkipTests'
     } else {
         Say 'npx tsc --noEmit'
-        $r = Invoke-Native { npx tsc --noEmit }
+        $r = Invoke-Native { npx.cmd tsc --noEmit }
         if ($r.Code -ne 0) {
             $r.Output | ForEach-Object { Say $_ }
             throw 'TypeScript errors -- fix before publishing'
@@ -153,11 +153,11 @@ try {
 
     # --------------------------------------------- 4. account + publish
     Step '4. Expo account'
-    $r = Invoke-Native { npx eas-cli whoami }
+    $r = Invoke-Native { npx.cmd eas-cli whoami }
     if ($r.Code -ne 0) {
         Say 'not logged in -- opening login'
         $ErrorActionPreference = 'Continue'   # login is interactive; let it talk
-        npx eas-cli login
+        npx.cmd eas-cli login
         $code = $LASTEXITCODE
         $ErrorActionPreference = 'Stop'
         if ($code -ne 0) { throw 'login failed' }
@@ -167,9 +167,10 @@ try {
 
     Step '5. Publishing (channel: preview)'
     $env:APP_VARIANT = 'preview'   # must match the build profile env, or the fingerprint drifts
+    $env:EXPO_PUBLIC_SEED_MODE = 'empty'   # Preview ships blank/generic now -- must match eas.json build.preview.env, see cycles/virgin-cycle4
     Say 'bundles locally (npx expo export) then uploads -- ~1-2 min, spends NO build slot.'
     $ErrorActionPreference = 'Continue'
-    npx eas-cli update --channel preview --message "$Message" --environment preview --platform android
+    npx.cmd eas-cli update --channel preview --message "$Message" --environment preview --platform android
     $code = $LASTEXITCODE
     $ErrorActionPreference = 'Stop'
     if ($code -ne 0) { throw 'eas update reported an error -- check the output above' }
