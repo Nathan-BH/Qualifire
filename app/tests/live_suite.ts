@@ -548,6 +548,19 @@ test('live: catalogTrackSpecs — 20 specs, every catalog route resolves ref+gat
   }
 });
 
+test('live (WP-1 C3): start({ wayIds: [] }) arms zero candidates — [] means "nothing", not "unfiltered"', () => {
+  const f = loadFixture('clean_morning');
+  const engine = new LiveEngine(fixtureSpecs());
+  engine.start({ wayIds: [] });
+  for (let i = 0; i < f.fixes.t.length; i += 10) {
+    engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
+  }
+  engine.finalize();
+  const st = engine.getState();
+  assert(st.track === null && st.lap === null, 'an empty wayIds array locks nothing, scores nothing — a real Morning ride included');
+  assert(st.gateFires === 0, 'no candidate exists to fire a gate');
+});
+
 test('live: pick honoured — clean_eveningb with pick=EveningB matches the no-pick lock exactly', () => {
   const f = loadFixture('clean_eveningb');
   const noPick = drive(f);

@@ -68,6 +68,9 @@ import { deleteRide } from '../storage';
 import { removeStoredResult } from '../store/resultsStore';
 import { currentCatalog } from '../store/catalogStore';
 import { freeRideWayIds, landmarkAt } from '../store/catalog';
+import { effectiveRideSportId, setActiveSport, showSportPillRow, wayIdsOfSport } from '../store/sports';
+import { afterSportSwitch } from '../store/sportSwitch';
+import { activeCatalog, activeSportId, currentSports, saveSports } from '../store/sportStore';
 import { defaultEndpoints, wayLabelIn, wayVariantLabel, sortWaysForDisplay } from '../store/defaultWay';
 import type { Way } from '../store/types';
 import { PaddockTheme, colors, radius } from './theme';
@@ -198,18 +201,50 @@ export default function RecordScreen({
   // B-39 (empty-seed install path): the runtime catalog — shipped seed plus
   // this phone's own additions (store/catalogStore.ts) — read per render,
   // never captured at import: it can be empty at boot and grow later.
-  const CATALOG = currentCatalog();
+  // WP-1: sport-scoped view (activeCatalog()) — identity when zero sports
+  // exist (§3.4), so this line changes nothing on a phone that hasn't
+  // created a sport yet. `sportSwitchTick` forces a re-render right after a
+  // same-screen sport switch (C1) so this re-reads the freshly-saved active
+  // sport in the SAME render pass, not one frame later.
+  const [, setSportSwitchTick] = useState(0);
+  const CATALOG = activeCatalog();
+  // Q4: zero sports blocks the whole setup flow (the C0 card further down)
+  // and onRecord (belt-and-braces guard below) — a ride cannot start
+  // without a sport for it to belong to.
+  const noSport = currentSports().sports.length === 0;
+  // onRecord is a []-deps useCallback (mirrors pickedWayRef/freeRideRef's
+  // pattern below): it must read the CURRENT noSport, not the one from the
+  // render it was created in.
+  const noSportRef = useRef(noSport);
+  noSportRef.current = noSport;
   // B-39: data-driven, never literal ids — the first two offerable catalog
   // landmarks (today's seed: home, work), or the 'new' pseudo-landmark when
   // the catalog has none, so a blank install opens on new>>new: the free
   // ride, which needs no catalog at all.
-  const [from, setFrom] = useState(() => defaultEndpoints(currentCatalog()).from ?? NEW_ID);
-  const [to, setTo] = useState(() => defaultEndpoints(currentCatalog()).to ?? NEW_ID);
+  const [from, setFrom] = useState(() => defaultEndpoints(activeCatalog()).from ?? NEW_ID);
+  const [to, setTo] = useState(() => defaultEndpoints(activeCatalog()).to ?? NEW_ID);
   // notes5 N5: true once the rider has tapped a START pill this ride. Reset
   // when a ride ends or is discarded — never on armed→setup cancel, which
   // must keep the rider's choice.
   const [fromExplicit, setFromExplicit] = useState(false);
   const pickFrom = (id: string) => { setFrom(id); setFromExplicit(true); };
+  // WP-1 (C1): tapping a sport pill sets the global active sport, then
+  // resets from/to to the newly-scoped catalog's own defaults and clears any
+  // way pick — a pick from the OTHER sport must never survive a switch.
+  // saveSports() updates the in-memory sport list synchronously (before its
+  // own await), so activeCatalog() below already reflects the new sport by
+  // the time this function returns; the tick bump forces the re-render.
+  const pickSport = (id: string) => {
+    const next = setActiveSport(currentSports(), id);
+    if (Array.isArray(next)) return; // unknown id — defensive, unreachable from the row itself
+    void saveSports(next);
+    const reset = afterSportSwitch(activeCatalog());
+    setFrom(reset.from ?? NEW_ID);
+    setFromExplicit(false);
+    setTo(reset.to ?? NEW_ID);
+    setWayPick(reset.wayPick);
+    setSportSwitchTick((v) => v + 1);
+  };
   // §8a route pick (Nathan 2026-08-16, re-confirmed 2026-08-18): only asked
   // when the way has >1 ratified route. Stored WITH its wayId so a pick can
   // never leak onto a different way when START / GOING TO change — a stale
@@ -396,6 +431,10 @@ export default function RecordScreen({
   }, [phase]);
 
   const onRecord = useCallback(async () => {
+    // Q4 belt-and-braces: the button is not rendered while noSport (the C0
+    // card replaces the whole setup flow), but the guard makes the
+    // invariant explicit rather than relying on render-absence alone.
+    if (noSportRef.current) return;
     setBusy(true);
     try {
       // Permissions move up to RECORD (armed press) so the OS dialogs happen
@@ -434,22 +473,38 @@ export default function RecordScreen({
         return;
       }
       setProblem(outcome === 'foreground-only' ? 'foreground-only' : null);
+      // WP-1: RECORD's setup phase refuses to render the START flow at all
+      // while zero sports exist (Q4, the C0 card), so this is unreachable in
+      // practice — the null check is belt-and-braces, matching engine.ts's
+      // own honest-typing note on the [] fallback below.
+      const sportId = activeSportId();
+      if (sportId === null) {
+        Alert.alert('No sport set up', 'Add a sport in SETTINGS before recording.');
+        return;
+      }
       let s: ActiveSession;
       if (freeRideRef.current) {
         // WP-B: free ride — no route pick, gates-only map, the directional
-        // filter (coordinator addendum) frozen for the whole ride.
+        // filter (coordinator addendum) frozen for the whole ride. Already
+        // sport-scoped (freeWayIds is computed from CATALOG = activeCatalog()).
         setRideWayHint(null);
         setRideFreeWayIds(freeWayIdsRef.current);
         s = await startTracking({
           wayPick: null, mode: 'free', wayIds: freeWayIdsRef.current,
           startContext: startContextRef.current ?? undefined,
+          sportId,
         });
       } else {
         setRideWayHint(pickedWayRef.current?.refLineId ?? null);
         setRideFreeWayIds(null);
+        // WP-1 (C3): belt-and-braces engine scoping — the hard pick already
+        // restricts scoring to one way, but this keeps the recovery path's
+        // session.wayIds honest for a sport-scoped re-arm too.
         s = await startTracking({
           wayPick: pickedWayRef.current?.id ?? null,
+          wayIds: [...(wayIdsOfSport(currentCatalog(), sportId, currentSports()) ?? [])],
           startContext: startContextRef.current ?? undefined,
+          sportId,
         });
       }
       setRecovered(false);
@@ -499,7 +554,12 @@ export default function RecordScreen({
       // longer a null-offer either — it comes back with existingWayId set (a
       // second Route on that Way). Null (no offer) now covers: short rides,
       // read failures.
-      const draft = s ? await draftRouteFromRide(s.rideId, s.startedAtMs, finalState.track, createExpoFsAdapter()) : null;
+      // WP-1 (C4): the ride's OWN sport (stamped at START), not whatever
+      // the global active sport happens to be now — a sport switch made
+      // from SETTINGS mid-ride must not retag the naming offer.
+      const draft = s
+        ? await draftRouteFromRide(s.rideId, s.startedAtMs, finalState.track, createExpoFsAdapter(), s.sportId ?? activeSportId())
+        : null;
       // Cycle 024 (WP-A2, Nathan 2026-08-19): "at the end when you press
       // stop it would be nice to show the animation again — but reversed."
       // session clears and phase flips to 'ending' TOGETHER, after the ride
@@ -548,7 +608,7 @@ export default function RecordScreen({
     // WP-G: belt to the card's own braces — the card already disables ADD
     // ROUTE on a duplicate, but the pick could have gone stale between
     // renders (another ride landed the same specs in the meantime).
-    if (draft.existingRouteId && findWayWithSpecs(currentCatalog(), draft.existingRouteId, names.specs ?? [])) {
+    if (draft.existingRouteId && findWayWithSpecs(activeCatalog(), draft.existingRouteId, names.specs ?? [])) {
       Alert.alert('That way already exists', 'Pick it on RECORD next time instead of adding it again.');
       return;
     }
@@ -967,7 +1027,7 @@ export default function RecordScreen({
             busy={busy}
             matchedWayLabel={naming.matchedWayId ? wayLabelIn(currentCatalog(), naming.matchedWayId) : null}
             existingRoute={naming.existingRouteId ? existingRouteProps(naming.existingRouteId) : null}
-            vocabulary={specVocabulary(currentCatalog().ways)}
+            vocabulary={specVocabulary(activeCatalog().ways)}
             onSave={onNamingSave}
             onSkip={onNamingSkip}
           />
@@ -1189,108 +1249,149 @@ export default function RecordScreen({
             />
           </View>
         ) : null}
-        <View style={styles.startFlow}>
-          <Text style={styles.flowLabel}>
-            {settings.startMode === 'auto'
-              ? (fromId === detected?.id
-                  ? 'DETECTED START'
-                  : detected
-                    ? 'STARTING FROM'
-                    : 'START NOT DETECTED — PICK ONE')
-              : 'STARTING FROM'}
-          </Text>
-          <View style={styles.pillRow}>
-            {startable.map((l) => (
-              <Pressable key={l.id} onPress={() => pickFrom(l.id)}
-                style={[styles.pill, fromId === l.id && styles.pillOn]}>
-                <Text style={[styles.pillText, fromId === l.id && styles.pillTextOn]}>
-                  {l.label}{detected?.id === l.id ? ' ✓' : ''}
-                </Text>
-              </Pressable>
-            ))}
-            {/* WP-B: 'new' — free ride, unknown origin (Nathan: "go from
-                work>>new"). Not a catalog landmark, so it is added here
-                rather than to `startable`. */}
-            <Pressable key={NEW_ID} onPress={() => pickFrom(NEW_ID)}
-              style={[styles.pill, fromId === NEW_ID && styles.pillOn]}>
-              <Text style={[styles.pillText, fromId === NEW_ID && styles.pillTextOn]}>new</Text>
-            </Pressable>
+        {/* Q4 (WP-1): zero sports blocks the whole setup flow — a ride
+            cannot start without a sport for it to belong to. No onboarding
+            screen; SETTINGS -> SPORTS only. */}
+        {noSport ? (
+          <View style={styles.startFlow}>
+            <Text style={styles.flowLabel}>SET UP A SPORT FIRST</Text>
+            <Text style={styles.sub}>
+              Rides belong to a sport — bike, run, walk, whatever you call it. Add one in SETTINGS → SPORTS, then come back.
+            </Text>
           </View>
-          <Text style={styles.flowLabel}>GOING TO</Text>
-          <View style={styles.pillRow}>
-            {startable.filter((l) => l.id !== fromId).map((l) => (
-              <Pressable key={l.id} onPress={() => setTo(l.id)}
-                style={[styles.pill, to === l.id && styles.pillOn]}>
-                <Text style={[styles.pillText, to === l.id && styles.pillTextOn]}>{l.label}</Text>
-              </Pressable>
-            ))}
-            {/* WP-B: 'new' — free ride, unknown destination (e.g. new>>home). */}
-            <Pressable key={NEW_ID} onPress={() => setTo(NEW_ID)}
-              style={[styles.pill, to === NEW_ID && styles.pillOn]}>
-              <Text style={[styles.pillText, to === NEW_ID && styles.pillTextOn]}>new</Text>
-            </Pressable>
-          </View>
-          {/* WP-B: freeRide never has a `way` (NEW_ID matches no catalog
-              landmark), so this is already hidden by construction; !freeRide
-              is stated explicitly too — belt and braces, per the brief. */}
-          {!freeRide && route && routeWays.length > 1 ? (
-            <>
-              <Text style={styles.flowLabel}>WHICH WAY TODAY?</Text>
-              {hasSpecs(routeWays)
-                ? specPickRows(routeWays, pickedWay?.id ?? null, defaultWayFor).map((row) => (
-                    <View key={row.depth} style={styles.pillRow}>
-                      {row.options.map((o) => (
-                        <Pressable key={`${row.depth}:${o.label}`} onPress={() => setWayPick({ routeId: route.id, wayId: o.way.id })}
-                          style={[styles.pill, o.on && styles.pillOn]}>
-                          <Text style={[styles.pillText, o.on && styles.pillTextOn]}>{o.label}</Text>
-                        </Pressable>
-                      ))}
-                    </View>
-                  ))
-                : (
-                  <View style={styles.pillRow}>
-                    {routeWays.map((r) => (
-                      <Pressable key={r.id} onPress={() => setWayPick({ routeId: route.id, wayId: r.id })}
-                        style={[styles.pill, pickedWay?.id === r.id && styles.pillOn]}>
-                        <Text style={[styles.pillText, pickedWay?.id === r.id && styles.pillTextOn]}>
-                          {wayVariantLabel(r.id, route, r.specs)}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                )}
-              <Text style={styles.sub}>
-                your pick is locked for this ride
-              </Text>
-            </>
-          ) : null}
-        </View>
-        {lastSummary ? (
-          <Text style={styles.sub}>
-            Ride saved — {fmtElapsed(lastSummary.endMs - lastSummary.startMs)}. Find it in Rides.
-          </Text>
         ) : (
-          <Text style={styles.sub}>Ready to record.</Text>
+          <>
+            {/* Q3 (WP-1): the sport row shows only with 2+ sports AND the
+                SETTINGS toggle on — hidden by construction below that. */}
+            {showSportPillRow(currentSports().sports.length, settings.showSportPillOnRecord) ? (
+              <View style={styles.startFlow}>
+                <Text style={styles.flowLabel}>SPORT</Text>
+                <View style={styles.pillRow}>
+                  {currentSports().sports.map((sp) => (
+                    <Pressable key={sp.id} onPress={() => pickSport(sp.id)}
+                      style={[styles.pill, activeSportId() === sp.id && styles.pillOn]}>
+                      <Text style={[styles.pillText, activeSportId() === sp.id && styles.pillTextOn]}>
+                        {sp.label}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+            <View style={styles.startFlow}>
+              <Text style={styles.flowLabel}>
+                {settings.startMode === 'auto'
+                  ? (fromId === detected?.id
+                      ? 'DETECTED START'
+                      : detected
+                        ? 'STARTING FROM'
+                        : 'START NOT DETECTED — PICK ONE')
+                  : 'STARTING FROM'}
+              </Text>
+              <View style={styles.pillRow}>
+                {startable.map((l) => (
+                  <Pressable key={l.id} onPress={() => pickFrom(l.id)}
+                    style={[styles.pill, fromId === l.id && styles.pillOn]}>
+                    <Text style={[styles.pillText, fromId === l.id && styles.pillTextOn]}>
+                      {l.label}{detected?.id === l.id ? ' ✓' : ''}
+                    </Text>
+                  </Pressable>
+                ))}
+                {/* WP-B: 'new' — free ride, unknown origin (Nathan: "go from
+                    work>>new"). Not a catalog landmark, so it is added here
+                    rather than to `startable`. */}
+                <Pressable key={NEW_ID} onPress={() => pickFrom(NEW_ID)}
+                  style={[styles.pill, fromId === NEW_ID && styles.pillOn]}>
+                  <Text style={[styles.pillText, fromId === NEW_ID && styles.pillTextOn]}>new</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.flowLabel}>GOING TO</Text>
+              <View style={styles.pillRow}>
+                {startable.filter((l) => l.id !== fromId).map((l) => (
+                  <Pressable key={l.id} onPress={() => setTo(l.id)}
+                    style={[styles.pill, to === l.id && styles.pillOn]}>
+                    <Text style={[styles.pillText, to === l.id && styles.pillTextOn]}>{l.label}</Text>
+                  </Pressable>
+                ))}
+                {/* WP-B: 'new' — free ride, unknown destination (e.g. new>>home). */}
+                <Pressable key={NEW_ID} onPress={() => setTo(NEW_ID)}
+                  style={[styles.pill, to === NEW_ID && styles.pillOn]}>
+                  <Text style={[styles.pillText, to === NEW_ID && styles.pillTextOn]}>new</Text>
+                </Pressable>
+              </View>
+              {/* WP-B: freeRide never has a `way` (NEW_ID matches no catalog
+                  landmark), so this is already hidden by construction; !freeRide
+                  is stated explicitly too — belt and braces, per the brief. */}
+              {!freeRide && route && routeWays.length > 1 ? (
+                <>
+                  <Text style={styles.flowLabel}>WHICH WAY TODAY?</Text>
+                  {hasSpecs(routeWays)
+                    ? specPickRows(routeWays, pickedWay?.id ?? null, defaultWayFor).map((row) => (
+                        <View key={row.depth} style={styles.pillRow}>
+                          {row.options.map((o) => (
+                            <Pressable key={`${row.depth}:${o.label}`} onPress={() => setWayPick({ routeId: route.id, wayId: o.way.id })}
+                              style={[styles.pill, o.on && styles.pillOn]}>
+                              <Text style={[styles.pillText, o.on && styles.pillTextOn]}>{o.label}</Text>
+                            </Pressable>
+                          ))}
+                        </View>
+                      ))
+                    : (
+                      <View style={styles.pillRow}>
+                        {routeWays.map((r) => (
+                          <Pressable key={r.id} onPress={() => setWayPick({ routeId: route.id, wayId: r.id })}
+                            style={[styles.pill, pickedWay?.id === r.id && styles.pillOn]}>
+                            <Text style={[styles.pillText, pickedWay?.id === r.id && styles.pillTextOn]}>
+                              {wayVariantLabel(r.id, route, r.specs)}
+                            </Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    )}
+                  <Text style={styles.sub}>
+                    your pick is locked for this ride
+                  </Text>
+                </>
+              ) : null}
+            </View>
+            {lastSummary ? (
+              <Text style={styles.sub}>
+                Ride saved — {fmtElapsed(lastSummary.endMs - lastSummary.startMs)}. Find it in Rides.
+              </Text>
+            ) : (
+              <Text style={styles.sub}>Ready to record.</Text>
+            )}
+          </>
         )}
       </View>
 
       {/* RECORD — arms the ride (Cycle 024, WP-A2, Nathan 2026-08-19): plays
           the launch mark, then the RACE screen is ready but not moving until
           START is pressed there. Amber, no red (D-013) — see WP-A2's
-          NEEDS-NATHAN #1 for the red option. */}
+          NEEDS-NATHAN #1 for the red option. Q4 (WP-1): replaced by a GO TO
+          SETTINGS button, same bigBtn styling, while zero sports exist. */}
       <Pressable
         style={[styles.bigBtn, styles.startYellow, busy && styles.busy]}
         disabled={busy}
-        onPress={onRecord}
+        onPress={noSport ? () => tabNav.go('settings') : onRecord}
       >
-        {/* Record-dot glyph (mockup: red slab + white dot; D-013 "NO RED
-            ANYWHERE" forbids the red, so this ships as a charcoal dot on the
-            existing accent-yellow slab — t.onAccent inherited from the
-            parent Text, same colour the RECORD label itself uses. */}
-        <Text style={[styles.bigBtnText, styles.startText]}>{'●'} RECORD</Text>
-        <Text style={[styles.bigBtnSub, styles.startSub]}>
-          arms the ride · nothing starts yet
-        </Text>
+        {noSport ? (
+          <>
+            <Text style={[styles.bigBtnText, styles.startText]}>GO TO SETTINGS</Text>
+            <Text style={[styles.bigBtnSub, styles.startSub]}>add a sport to start recording</Text>
+          </>
+        ) : (
+          <>
+            {/* Record-dot glyph (mockup: red slab + white dot; D-013 "NO RED
+                ANYWHERE" forbids the red, so this ships as a charcoal dot on the
+                existing accent-yellow slab — t.onAccent inherited from the
+                parent Text, same colour the RECORD label itself uses. */}
+            <Text style={[styles.bigBtnText, styles.startText]}>{'●'} RECORD</Text>
+            <Text style={[styles.bigBtnSub, styles.startSub]}>
+              arms the ride · nothing starts yet
+            </Text>
+          </>
+        )}
       </Pressable>
 
     </ScrollView>

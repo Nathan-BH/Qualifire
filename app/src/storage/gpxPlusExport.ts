@@ -228,6 +228,7 @@ function buildSessionBlock(
         a('wayId', pickEv.wayId) +
         (pickEv.pickSource === undefined ? '' : ` pickSource="${pickEv.pickSource}"`) +
         (pickEv.wayIds ? ` wayIds="${escapeXml(pickEv.wayIds.join(' '))}"` : '') +
+        a('sportId', pickEv.sportId) +
         ` t="${isoTime(pickEv.tUnixMs)}"/>`,
     );
   }

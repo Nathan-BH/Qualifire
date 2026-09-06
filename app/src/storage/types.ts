@@ -152,6 +152,9 @@ export interface PickEvent {
   wayId?: string | null;
   pickSource?: 'picked' | 'default' | 'none';
   wayIds?: string[] | null;
+  /** WP-1 (2026-09-06): the sport this ride was started under. Additive
+   * optional field — an older sidecar reader is unaffected by its absence. */
+  sportId?: string;
 }
 /** N9: one per `live/engine.ts` LockKind transition (LiveEngine.noteLockChange) —
  * closes the two transitions (soft->verified promotion, soft/none->finalized

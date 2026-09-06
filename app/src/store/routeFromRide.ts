@@ -150,9 +150,12 @@ export async function promoteRideToReference(
  * readRideFixes. */
 export async function draftRouteFromRide(
   rideId: string, startedAtMs: number, matchedWayId: string | null, fs: FsAdapter,
-  // WP-1: defaults to the current global active sport so Phase A compiles
-  // and tests standalone, ahead of Phase C wiring the caller's own ride-sport
-  // through explicitly. Phase C replaces this default.
+  // WP-1 (C4): both real callers (RecordScreen's post-STOP offer,
+  // RideDetailScreen's retroactive offer) now pass the RIDE's own sport
+  // explicitly (its start-time stamp, resolved through effectiveRideSportId)
+  // — never whatever the global active sport happens to be right now, since
+  // a sport switch made from SETTINGS mid-ride must not retag the offer.
+  // The default is a fallback for a hypothetical bare caller only.
   sportId: string | null = activeSportId(),
 ): Promise<RouteCreationDraft | null> {
   const fixes = await readRideFixes(rideId, fs);

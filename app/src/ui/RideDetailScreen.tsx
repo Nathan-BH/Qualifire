@@ -35,6 +35,8 @@ import {
 import { rideDetailFor } from './rideDetailModel.ts';
 import { ALL_YELLOW } from './sectorTrailModel.ts';
 import { currentCatalog, userCatalog } from '../store/catalogStore.ts';
+import { effectiveRideSportId } from '../store/sports.ts';
+import { activeCatalog, currentSports } from '../store/sportStore.ts';
 import { wayLabelIn } from '../store/defaultWay.ts';
 import {
   getStoredResult, removeStoredResult, setIgnoredFromRanking, storedResultsForWay,
@@ -196,13 +198,21 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
     let cancelled = false;
     setDraft('pending');
     (async () => {
-      const d = await draftRouteFromRide(request.rideId, request.startedAtMs, model.wayId, createExpoFsAdapter());
+      // WP-1 (C4): the RIDE's own sport (its start-time stamp, via meta —
+      // read once on mount above, same source RidesScreen uses), resolved
+      // through the §3.4 fallback — never whatever the global active sport
+      // happens to be right now.
+      const sportId = effectiveRideSportId(meta?.sportId, currentSports());
+      const d = await draftRouteFromRide(
+        request.rideId, request.startedAtMs, model.wayId, createExpoFsAdapter(), sportId,
+      );
       if (!cancelled) setDraft(d);
     })();
     return () => {
       cancelled = true;
     };
-  }, [request.rideId, request.startedAtMs, model.wayId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [request.rideId, request.startedAtMs, model.wayId, meta]);
 
   const offer = draft !== 'pending' && draft !== null && model.referenceOf === null ? draft : null;
   const offerRoute = offer?.existingRouteId ? existingRouteProps(offer.existingRouteId) : null;
@@ -213,7 +223,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
   async function onNamingSave(names: RouteNames) {
     if (offer === null) return;
     // WP-G: belt to the card's own braces (RecordScreen's onNamingSave, verbatim).
-    if (offer.existingRouteId && findWayWithSpecs(currentCatalog(), offer.existingRouteId, names.specs ?? [])) {
+    if (offer.existingRouteId && findWayWithSpecs(activeCatalog(), offer.existingRouteId, names.specs ?? [])) {
       Alert.alert('That way already exists', 'Pick it on RECORD next time instead of adding it again.');
       return;
     }
@@ -517,7 +527,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
             busy={busy}
             matchedWayLabel={offer.matchedWayId ? wayLabelIn(currentCatalog(), offer.matchedWayId) : null}
             existingRoute={offerRoute}
-            vocabulary={specVocabulary(currentCatalog().ways)}
+            vocabulary={specVocabulary(activeCatalog().ways)}
             onSave={(names) => void onNamingSave(names)}
             onSkip={() => setNaming(false)}
           />

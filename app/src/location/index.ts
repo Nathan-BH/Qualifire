@@ -320,12 +320,20 @@ export async function startTracking(opts?: {
    * pressed — logged as the sidecar's one `pick` event. Omitted (no pick
    * event at all) for a caller that doesn't supply it. */
   startContext?: StartContext;
+  /** WP-1 (2026-09-06): the sport this ride is started under — required
+   * because RECORD's setup phase refuses to render the START flow (let alone
+   * this call) while zero sports exist, so a real caller always has one.
+   * Stamped onto the raw header (storage/core.ts), the index entry, the
+   * ActiveSession marker (session.ts, for a headless relaunch to recover)
+   * and the sidecar's `pick` event — never changed mid-ride even if the
+   * global active sport is switched elsewhere. */
+  sportId: string;
 }): Promise<ActiveSession> {
   const pressedAtMs = Date.now();
   const existing = await ensureSession();
   if (existing) return existing; // already recording; be idempotent
 
-  const rideId = await startRide(opts?.mode);
+  const rideId = await startRide(opts?.mode, opts?.sportId);
   const startedAtMs = Date.now();
   const s: ActiveSession = {
     rideId,
@@ -338,6 +346,8 @@ export async function startTracking(opts?: {
     // carries its mode (storage/core.ts's startRide) — see both files' headers.
     mode: opts?.mode ?? 'route',
     wayIds: opts?.wayIds ?? null,
+    // WP-1: the ride's own sport, stamped once and never changed mid-ride.
+    sportId: opts?.sportId,
   };
   try {
     await saveSession(s);
@@ -399,6 +409,9 @@ export async function startTracking(opts?: {
     wayId: opts?.wayPick ?? null,
     ...(ctx ? { from: ctx.from, to: ctx.to, fromLabel: ctx.fromLabel, toLabel: ctx.toLabel, pickSource: ctx.pickSource } : {}),
     ...(opts?.wayIds ? { wayIds: opts.wayIds } : {}),
+    // WP-1: additive optional field — an older sidecar reader/decoder never
+    // sees it and is unaffected.
+    ...(opts?.sportId ? { sportId: opts.sportId } : {}),
   });
   emit();
   return s;

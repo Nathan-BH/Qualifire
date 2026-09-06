@@ -28,6 +28,11 @@ export interface ActiveSession {
    * mode did not exist yet). */
   mode?: 'route' | 'free';
   wayIds?: string[] | null;
+  /** WP-1 (2026-09-06): the sport this ride was started under — stamped once
+   * at startTracking and never changed mid-ride, even if the global active
+   * sport is switched elsewhere (from SETTINGS, while RECORD is unmounted).
+   * Optional: a marker written before this fix predates sports entirely. */
+  sportId?: string;
   /** Cycle 025 (P4): last-known-alive heartbeat, refreshed by the location
    * task every HEARTBEAT_EVERY_N_FIXES fixes (location/index.ts) and set at
    * startTracking. On relaunch recovery, ensureSession derives
@@ -61,7 +66,8 @@ export async function loadSession(): Promise<ActiveSession | null> {
         typeof parsed.lastAliveAtMs === 'number' && Number.isFinite(parsed.lastAliveAtMs)
           ? parsed.lastAliveAtMs
           : undefined;
-      return { rideId: parsed.rideId, startedAtMs: parsed.startedAtMs, mode, wayIds, lastAliveAtMs };
+      const sportId = typeof parsed.sportId === 'string' ? parsed.sportId : undefined;
+      return { rideId: parsed.rideId, startedAtMs: parsed.startedAtMs, mode, wayIds, lastAliveAtMs, sportId };
     }
     // Corrupt marker: discard rather than crash the task forever.
     await clearSession();
