@@ -31,6 +31,11 @@ export interface HeaderRecord {
   rideId: string;
   startedAtMs: number;
   recorder: string;
+  /** WP-1 (2026-09-06): which user-defined sport (store/sports.ts) this ride
+   * was started under. Absent on every ride recorded before WP-1 — never
+   * backfilled; such a ride's effective sport is store/sports.ts's
+   * effectiveRideSportId fallback (the first sport in sports.json). */
+  sportId?: string;
 }
 
 /** One line per fix, append-only. Field values are the Fix verbatim. */
@@ -62,6 +67,10 @@ export interface RideMeta {
   startMs: number;
   endMs: number;
   nFixes: number;
+  /** WP-1: carried from the index entry (ended path) or the header (recording/
+   * derived path) — see IndexEntry.sportId's doc comment. Absent = same
+   * fallback rule as everywhere else this field appears. */
+  sportId?: string;
 }
 
 export interface IndexEntry {
@@ -77,6 +86,13 @@ export interface IndexEntry {
    * which cannot read mode back out of the raw JSONL — D-023) is treated as
    * 'route' by omission, same back-compat precedent as `status` above. */
   mode?: 'route' | 'free';
+  /** WP-1 (2026-09-06): which sport (store/sports.ts) this ride was recorded
+   * under. Optional — absent on every entry written before WP-1. UNLIKE
+   * `mode` above, this one CAN be recovered by rebuildIndex (it also lives on
+   * the ride file's own HeaderRecord, D-023-compatible because only NEW rides
+   * carry it), so a lost/corrupt index.json never silently loses the
+   * partition key the way it does the display-only `mode` flag. */
+  sportId?: string;
 }
 
 /** index.json — a derived convenience; always rebuildable from the ride files. */

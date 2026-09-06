@@ -245,6 +245,46 @@ test('resultsstore: backfill derives a result matching a direct deriveRideResult
   );
 });
 
+test('resultsstore (WP-1): a wayIdsFor callback that excludes the matching way writes an unmatched marker, not a result; omitted (or returning null) matches as before', async () => {
+  const fx = loadFixture('clean_morning');
+
+  // Excluding scope: the ride would match 'Morning' unscoped, but the
+  // caller's set (another sport's ways) does not include it.
+  const excludeFs = createMemoryFsAdapter();
+  const excludeId = 'backfillride-scope-exclude';
+  await writeRideFile(excludeFs, excludeId, fx.fixes.t, fx.fixes.lat, fx.fixes.lon);
+  resultsStore.resetResultsStoreForTests();
+  await resultsStore.initResultsStore(excludeFs);
+  await resultsStore.backfillMissingResults(excludeFs, [excludeId], () => new Set(['SomeOtherWay']));
+  assert(resultsStore.getStoredResult(excludeId) === null, 'excluded from every candidate: no result stored');
+  const unmatchedText = excludeFs.files.get('results/unmatched.json');
+  assert(typeof unmatchedText === 'string' && unmatchedText.includes(excludeId),
+    'an unmatched marker is written instead');
+
+  // Omitted callback: matches exactly as resultsstore's own un-scoped test above.
+  const omittedFs = createMemoryFsAdapter();
+  const omittedId = 'backfillride-scope-omitted';
+  await writeRideFile(omittedFs, omittedId, fx.fixes.t, fx.fixes.lat, fx.fixes.lon);
+  resultsStore.resetResultsStoreForTests();
+  await resultsStore.initResultsStore(omittedFs);
+  await resultsStore.backfillMissingResults(omittedFs, [omittedId]);
+  const omittedStored = resultsStore.getStoredResult(omittedId);
+  assert(omittedStored !== null && omittedStored.wayId === 'Morning', 'omitted callback: unfiltered, matches as before');
+
+  // Callback returning null for this ride (its effective sport is "no
+  // filter"): also matches, same as omitted.
+  const nullFs = createMemoryFsAdapter();
+  const nullId = 'backfillride-scope-null';
+  await writeRideFile(nullFs, nullId, fx.fixes.t, fx.fixes.lat, fx.fixes.lon);
+  resultsStore.resetResultsStoreForTests();
+  await resultsStore.initResultsStore(nullFs);
+  await resultsStore.backfillMissingResults(nullFs, [nullId], () => null);
+  const nullStored = resultsStore.getStoredResult(nullId);
+  assert(nullStored !== null && nullStored.wayId === 'Morning', 'callback returning null: unfiltered, matches as before');
+
+  resultsStore.resetResultsStoreForTests();
+});
+
 /** Deterministic PRNG (mulberry32) — same implementation as
  * tests/storage_suite.ts's rng() (WP-B cycle 2 T5). */
 function rng(seed: number): () => number {

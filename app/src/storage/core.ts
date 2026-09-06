@@ -23,8 +23,9 @@ export interface RideStorage {
   /** WP-B fix B2: `mode` (default 'route' when omitted) is recorded on the
    * index entry so a completed free ride never gets silently backfilled as a
    * route result on a later boot (D-025) — see lastRide.ts's initRideHistory
-   * and RidesScreen.tsx's mirrored filter. */
-  startRide(mode?: 'route' | 'free'): Promise<string>;
+   * and RidesScreen.tsx's mirrored filter. WP-1: `sportId` is stamped onto
+   * both the header (source of truth) and the index entry (cache). */
+  startRide(mode?: 'route' | 'free', sportId?: string): Promise<string>;
   appendFix(rideId: string, fix: Fix): Promise<void>;
   endRide(rideId: string): Promise<RideMeta>;
   listRides(): Promise<RideMeta[]>;
@@ -125,6 +126,9 @@ export function createStorage(fs: FsAdapter, opts: StorageOptions = {}): RideSto
         endMs: decoded.end !== null ? meta.endMs : null,
         nFixes: meta.nFixes,
         status: decoded.end !== null ? 'ended' : 'recording',
+        // WP-1: recovered from the header (unlike `mode`, this survives a
+        // rebuild — see IndexEntry.sportId's doc comment).
+        sportId: decoded.header?.sportId,
       });
     }
     await fs.writeText(INDEX_FILE, encodeIndex(index));
@@ -137,11 +141,11 @@ export function createStorage(fs: FsAdapter, opts: StorageOptions = {}): RideSto
   }
 
   return {
-    async startRide(mode) {
+    async startRide(mode, sportId) {
       await fs.ensureDir(RIDES_DIR);
       const startedAtMs = now();
       const rideId = makeRideId(startedAtMs, randomSuffix());
-      await fs.writeText(rideFile(rideId), encodeHeader(rideId, startedAtMs));
+      await fs.writeText(rideFile(rideId), encodeHeader(rideId, startedAtMs, sportId));
       await saveEntry({
         rideId,
         file: `${rideId}.jsonl`,
@@ -150,6 +154,7 @@ export function createStorage(fs: FsAdapter, opts: StorageOptions = {}): RideSto
         nFixes: 0,
         status: 'recording',
         mode,
+        sportId,
       });
       live.add(rideId);
       return rideId;
@@ -209,7 +214,9 @@ export function createStorage(fs: FsAdapter, opts: StorageOptions = {}): RideSto
       // set at startRide time must be carried forward explicitly here or it
       // silently drops on every ended ride (mode is not derivable from the
       // raw JSONL alone — D-023 — so it must come from the existing entry).
-      const existingMode = (await loadIndex()).rides.find((r) => r.rideId === rideId)?.mode;
+      const existingEntry = (await loadIndex()).rides.find((r) => r.rideId === rideId);
+      const existingMode = existingEntry?.mode;
+      const existingSportId = existingEntry?.sportId;
       await saveEntry({
         rideId,
         file: `${rideId}.jsonl`,
@@ -218,6 +225,7 @@ export function createStorage(fs: FsAdapter, opts: StorageOptions = {}): RideSto
         nFixes: meta.nFixes,
         status: 'ended',
         mode: existingMode,
+        sportId: existingSportId,
       });
       live.delete(rideId);
       endedThisProcess.add(rideId);
@@ -234,6 +242,7 @@ export function createStorage(fs: FsAdapter, opts: StorageOptions = {}): RideSto
             startMs: entry.startMs,
             endMs: entry.endMs,
             nFixes: entry.nFixes,
+            sportId: entry.sportId,
           });
         } else {
           // recording or crashed mid-ride: derive honest numbers from the file

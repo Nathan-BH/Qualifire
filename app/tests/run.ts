@@ -20,6 +20,8 @@ import './towermodel_suite.ts';
 import './resultsstore_suite.ts';
 import './migrations_suite.ts';
 import './catalogstore_suite.ts';
+import './sports_suite.ts';
+import './sportstore_suite.ts';
 import './catalogdelete_suite.ts';
 import './routecreation_suite.ts';
 import './wayspec_suite.ts';

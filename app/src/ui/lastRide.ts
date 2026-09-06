@@ -23,6 +23,8 @@ import { gateSetFor } from '../store/catalog.ts';
 import { currentCatalog } from '../store/catalogStore.ts';
 import { ranks } from '../store/results.ts';
 import * as resultsStore from '../store/resultsStore.ts';
+import { effectiveRideSportId, wayIdsOfSport } from '../store/sports.ts';
+import { currentSports } from '../store/sportStore.ts';
 import type { LiveEngineState } from '../live/engine.ts';
 import type { RideResult, SectorQuality } from '../store/types.ts';
 import { RESULT_SCHEMA_VERSION } from '../store/types.ts';
@@ -264,10 +266,16 @@ export async function initRideHistory(fs: FsAdapter): Promise<void> {
       // backfillMissingResults — a free ride that happens to trace a clean
       // lap of a known route must not get silently derived and saved as a
       // real route PB (D-025). Mirrors RidesScreen.tsx's identical filter.
-      const endedIds = rideIndex.rides
-        .filter((r) => r.status === 'ended' && r.mode !== 'free')
-        .map((r) => r.rideId);
-      await resultsStore.backfillMissingResults(fs, endedIds);
+      const endedEntries = rideIndex.rides.filter((r) => r.status === 'ended' && r.mode !== 'free');
+      const endedIds = endedEntries.map((r) => r.rideId);
+      // WP-1: scope backfill candidates to each ride's OWN effective sport —
+      // per-ride-sport, not per-active-sport, so switching the active sport
+      // never leaves another sport's rides un-derived (§5 B3's own note).
+      const sportByRideId = new Map(endedEntries.map((r) => [r.rideId, r.sportId]));
+      await resultsStore.backfillMissingResults(fs, endedIds, (rideId) => {
+        const f = currentSports();
+        return wayIdsOfSport(currentCatalog(), effectiveRideSportId(sportByRideId.get(rideId), f), f);
+      });
       const have2 = new Set(recorded.map((r) => r.rideId));
       for (const r of resultsStore.storedResults()) {
         if (ranks(r) && !have2.has(r.rideId)) {

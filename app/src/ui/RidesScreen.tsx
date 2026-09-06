@@ -13,6 +13,8 @@ import type { RideMeta } from '../storage/types';
 import { decodeIndex } from '../storage/rideIndex';
 import { backfillMissingResults, getStoredResult } from '../store/resultsStore';
 import { currentCatalog } from '../store/catalogStore';
+import { effectiveRideSportId, wayIdsOfSport } from '../store/sports';
+import { currentSports } from '../store/sportStore';
 import { wayLabelIn } from '../store/defaultWay';
 import { createExpoFsAdapter } from '../storage/expoFsAdapter';
 import { buildRideRows } from './rideHistoryModel';
@@ -76,10 +78,16 @@ export default function RidesScreen() {
           // WP-B fix B2: exclude free rides from the same backfill — a free
           // ride must never get silently re-derived as a route PB (D-025).
           // Mirrors lastRide.ts's initRideHistory identical filter.
-          const endedIds = rideIndex.rides
-            .filter((r) => r.status === 'ended' && r.mode !== 'free')
-            .map((r) => r.rideId);
-          await backfillMissingResults(fs, endedIds);
+          const endedEntries = rideIndex.rides.filter((r) => r.status === 'ended' && r.mode !== 'free');
+          const endedIds = endedEntries.map((r) => r.rideId);
+          // WP-1: per-ride-sport scoping, not per-active-sport — backfill
+          // must derive every sport's rides regardless of which is active
+          // (mirrors lastRide.ts's initRideHistory identical callback).
+          const sportByRideId = new Map(endedEntries.map((r) => [r.rideId, r.sportId]));
+          await backfillMissingResults(fs, endedIds, (rideId) => {
+            const f = currentSports();
+            return wayIdsOfSport(currentCatalog(), effectiveRideSportId(sportByRideId.get(rideId), f), f);
+          });
         }
       } catch { /* best-effort — the row still renders off whatever is already stored */ }
       if (!cancelled) {

@@ -15,13 +15,16 @@ import type {
 } from './types.ts';
 import { SCHEMA_VERSION } from './types.ts';
 
-export function encodeHeader(rideId: string, startedAtMs: number): string {
+export function encodeHeader(rideId: string, startedAtMs: number, sportId?: string): string {
   const rec: HeaderRecord = {
     kind: 'header',
     schemaVersion: SCHEMA_VERSION,
     rideId,
     startedAtMs,
     recorder: 'qualifire-app',
+    // WP-1: emitted only when given (absent, not null) so a ride started
+    // with no sport in play stays byte-identical to the pre-WP-1 encoder.
+    ...(sportId !== undefined ? { sportId } : {}),
   };
   return JSON.stringify(rec) + '\n';
 }
@@ -105,5 +108,8 @@ export function deriveMeta(decoded: DecodedRide, rideId: string): RideMeta {
     startMs: n > 0 ? inOrder[0].tUnixMs : fallback,
     endMs: n > 0 ? inOrder[n - 1].tUnixMs : fallback,
     nFixes: n,
+    // WP-1: carried onto RideMeta only when the header has it, so an
+    // unstamped (pre-WP-1) ride still derives `sportId: undefined`.
+    ...(decoded.header?.sportId !== undefined ? { sportId: decoded.header.sportId } : {}),
   };
 }

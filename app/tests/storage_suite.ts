@@ -282,6 +282,42 @@ test('storage: WP-B fix B2 — startRide(mode) persists mode on the index entry,
     `no-arg startRide() invented a mode (${noArgEntry.mode}) instead of leaving it unset`);
 });
 
+test('storage: WP-1 — startRide(mode, sportId) stamps the header AND the index entry; endRide preserves both; rebuildIndex recovers sportId from the header', async () => {
+  const { fs, storage, clock } = makeEnv();
+
+  const rideId = await storage.startRide('route', 'sport:1');
+  const headerLine = fs.files.get(`rides/${rideId}.jsonl`)!.split('\n')[0];
+  const header = JSON.parse(headerLine);
+  assert(header.sportId === 'sport:1', `header sportId: got ${JSON.stringify(header.sportId)}`);
+  const afterStart = JSON.parse(fs.files.get('index.json')!);
+  const entryAtStart = afterStart.rides.find((r: { rideId: string }) => r.rideId === rideId);
+  assert(entryAtStart.sportId === 'sport:1', `index entry sportId at start: got ${entryAtStart.sportId}`);
+
+  clock.t += 1000;
+  await storage.appendFix(rideId, { tUnixMs: clock.t, lat: 50.8, lon: 4.6 });
+  clock.t += 1000;
+  await storage.endRide(rideId);
+  const afterEnd = JSON.parse(fs.files.get('index.json')!);
+  const entryAtEnd = afterEnd.rides.find((r: { rideId: string }) => r.rideId === rideId);
+  assert(entryAtEnd.mode === 'route' && entryAtEnd.sportId === 'sport:1',
+    `endRide dropped mode/sportId: got mode=${entryAtEnd.mode} sportId=${entryAtEnd.sportId}`);
+
+  // A ride with no sportId at all: header omits the field (absent, not
+  // null), so the pre-WP-1 header shape is byte-identical.
+  const bareId = await storage.startRide('route');
+  const bareHeaderLine = fs.files.get(`rides/${bareId}.jsonl`)!.split('\n')[0];
+  assert(!bareHeaderLine.includes('sportId'), 'no-sportId startRide() must not emit the key at all');
+
+  // rebuildIndex recovery: delete index.json, listRides() must reconstruct
+  // sportId from the ride file's own header — UNLIKE mode, this survives.
+  fs.files.delete('index.json');
+  const list = await storage.listRides();
+  const recovered = list.find((r) => r.rideId === rideId);
+  assert(recovered?.sportId === 'sport:1', `rebuildIndex must recover sportId from the header, got ${recovered?.sportId}`);
+  const recoveredBare = list.find((r) => r.rideId === bareId);
+  assert(recoveredBare?.sportId === undefined, 'a ride with no sportId recovers as undefined, never invented');
+});
+
 /** Async-jitter wrapper over the memory adapter: every read/append resolves
  * after 0-3 deterministic macrotask ticks — the promise-race soup a device
  * produces when a burst of queued location events each call appendFix without

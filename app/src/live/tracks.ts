@@ -11,6 +11,8 @@
  */
 import { gateSetFor } from '../store/catalog.ts';
 import { currentCatalog } from '../store/catalogStore.ts';
+import { wayIdsOfSport } from '../store/sports.ts';
+import { currentSports } from '../store/sportStore.ts';
 import { refFor } from './refs.ts';
 import type { TrackSpec } from './engine.ts';
 
@@ -41,4 +43,15 @@ export function catalogTrackSpecs(): TrackSpec[] {
     specs.push({ id: way.id, ref, gates: gateSet.chainageM });
   }
   return specs;
+}
+
+/** WP-1: catalogTrackSpecs() filtered to one sport's own ways — unfiltered
+ * (identical to catalogTrackSpecs()) when `sportId` is null (no sport, or
+ * zero sports total). Nothing calls this until Phase C wires up the engine;
+ * it exists now so Phase C has a pure, testable seam and catalogTrackSpecs()
+ * itself (used by tests and the engine's own default) stays untouched. */
+export function sportTrackSpecs(sportId: string | null): TrackSpec[] {
+  const wayIds = wayIdsOfSport(currentCatalog(), sportId, currentSports());
+  if (wayIds === null) return catalogTrackSpecs();
+  return catalogTrackSpecs().filter((s) => wayIds.has(s.id));
 }

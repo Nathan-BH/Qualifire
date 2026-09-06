@@ -423,6 +423,7 @@ test('migrations 12: buildRouteCreationCatalog mints way:<rideId> for the varian
     trackLengthM: 1000,
     matchedWayId: null,
     existingRouteId: null,
+    sportId: null,
   };
   const built = buildRouteCreationCatalog(emptyCatalog(), draft, { start: 'Start', end: 'End' });
   assert(built.ways.length === 1 && built.ways[0].id === 'way:mig1' && built.ways[0].refLineId === 'way:mig1',

@@ -38,6 +38,7 @@ import { ThemeProvider, useTheme } from './src/ui/themeContext';
 import { initRideHistory } from './src/ui/lastRide';
 import { initFreeRidePersistence } from './src/store/freeRides';
 import { initCatalogStore } from './src/store/catalogStore';
+import { initSportStore } from './src/store/sportStore';
 import { initUserRefs } from './src/live/userRefs';
 import { createExpoFsAdapter } from './src/storage/expoFsAdapter';
 import {
@@ -132,7 +133,12 @@ function Shell() {
     // initCatalogStore never throws; the same state bump then re-renders the
     // mounted screens with the merged catalog too.
     const fs = createExpoFsAdapter();
-    initCatalogStore(fs)
+    // WP-1: the sport list loads FIRST — the catalog's own route-level
+    // sportId fallback (store/sports.ts's effectiveSportId) is meaningless
+    // until sports.json is known, and initSportStore never throws (same
+    // no-throw contract as initCatalogStore below).
+    initSportStore(fs)
+      .then(() => initCatalogStore(fs))
       .then(() => initUserRefs(fs))
       .then(() => initRideHistory(fs))
       .then(

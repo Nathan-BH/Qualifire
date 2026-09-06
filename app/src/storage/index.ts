@@ -24,9 +24,10 @@ function storage(): RideStorage {
 }
 
 /** Creates the ride file (header line) and returns its rideId. WP-B fix B2:
- * `mode` (default 'route' when omitted) is persisted on the index entry. */
-export function startRide(mode?: 'route' | 'free'): Promise<string> {
-  return storage().startRide(mode);
+ * `mode` (default 'route' when omitted) is persisted on the index entry.
+ * WP-1: `sportId` is stamped onto the header and the index entry. */
+export function startRide(mode?: 'route' | 'free', sportId?: string): Promise<string> {
+  return storage().startRide(mode, sportId);
 }
 
 /** Appends one fix, flushed to disk before resolving. Stored verbatim. */
@@ -46,7 +47,7 @@ export function endRide(
 
 /** All rides, oldest first. Crashed (never-ended) rides report honest derived numbers. */
 export function listRides(): Promise<
-  Array<{ rideId: string; startMs: number; endMs: number; nFixes: number }>
+  Array<{ rideId: string; startMs: number; endMs: number; nFixes: number; sportId?: string }>
 > {
   return storage().listRides();
 }

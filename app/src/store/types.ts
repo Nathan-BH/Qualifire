@@ -41,6 +41,12 @@ export interface Route {
   /** required iff start === end (loops are a real category: 78 archived rides) */
   loopDiscriminator?: string;
   wayIds: string[];
+  /** WP-1 (2026-09-06): which user-defined sport (store/sports.ts) this route
+   * belongs to. Absent on every route that predates WP-1 (every shipped-seed
+   * route, everything in an existing catalog.user.json) — NEVER backfilled;
+   * such a route's effective sport is the FIRST sport in sports.json
+   * (store/sports.ts's effectiveSportId — the fallback rule, §3.4). */
+  sportId?: string;
 }
 
 /** Way — one named way of riding a route (its `specs`, its reference

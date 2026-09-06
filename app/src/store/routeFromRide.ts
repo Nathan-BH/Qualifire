@@ -21,6 +21,8 @@ import { buildRefFromRideFixes, saveUserRef, userRefFor } from '../live/userRefs
 import { seedGateChainages } from './gateSeeding.ts';
 import { addGateSet, gateSetFor, waysForRoute } from './catalog.ts';
 import { currentCatalog, saveUserCatalog, userCatalog } from './catalogStore.ts';
+import { scopeCatalog } from './sports.ts';
+import { activeSportId, currentSports } from './sportStore.ts';
 import { backfillMissingResults, getStoredResult, removeStoredResult, storedResultsForWay } from './resultsStore.ts';
 import type { Catalog } from './types.ts';
 import {
@@ -148,12 +150,20 @@ export async function promoteRideToReference(
  * readRideFixes. */
 export async function draftRouteFromRide(
   rideId: string, startedAtMs: number, matchedWayId: string | null, fs: FsAdapter,
+  // WP-1: defaults to the current global active sport so Phase A compiles
+  // and tests standalone, ahead of Phase C wiring the caller's own ride-sport
+  // through explicitly. Phase C replaces this default.
+  sportId: string | null = activeSportId(),
 ): Promise<RouteCreationDraft | null> {
   const fixes = await readRideFixes(rideId, fs);
   if (fixes === null) return null;
   try {
-    return draftRouteCreation(currentCatalog(), {
-      rideId, startedAtMs, fixes: fixes.map((f) => ({ lat: f.lat, lon: f.lon })), matchedWayId,
+    // WP-1: all landmarks (shared, for disc fitting) but only THIS sport's
+    // routes (for the existing-route/variant check) — identity when
+    // sportId === null (no sport, or zero sports total).
+    const scoped = scopeCatalog(currentCatalog(), sportId, currentSports());
+    return draftRouteCreation(scoped, {
+      rideId, startedAtMs, fixes: fixes.map((f) => ({ lat: f.lat, lon: f.lon })), matchedWayId, sportId,
     });
   } catch {
     return null;

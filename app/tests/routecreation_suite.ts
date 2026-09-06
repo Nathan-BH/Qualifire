@@ -19,6 +19,7 @@
 import * as path from 'node:path';
 import { assert, loadFixture, loadJson, test, TESTS_DIR } from './lib.ts';
 import { emptyCatalog, mergeCatalogs, metresBetween, waysForRoute, validateCatalog } from '../src/store/catalog.ts';
+import { scopeCatalog, type SportsFile } from '../src/store/sports.ts';
 import {
   MATCHED_ENDPOINT_SLACK_M,
   MIN_LANDMARK_RADIUS_M,
@@ -125,6 +126,39 @@ test('WP-G 0: an existing directed way drafts a VARIANT', () => {
   const reverse = catWith([a, b], [{ id: 'b>a', startLandmarkId: 'b', endLandmarkId: 'a', wayIds: ['r1'] }]);
   const d3 = draftRouteCreation(reverse, { ...RIDE, fixes: northRide(20) });
   assert(d3 !== null && d3!.existingRouteId === null, 'reverse direction still a different way: existingWayId null');
+});
+
+test('WP-1: a sport:2 ride between two discs already bound by a sport:1 Route drafts a NEW route (not a variant), stamped sport:2, reusing both landmarks', () => {
+  const a = lm('a', LAT0, LON0, 150);
+  const b = lm('b', LAT0 + 0.019, LON0, 150);
+  const bikeRoute: Route = { id: 'r-bike', startLandmarkId: 'a', endLandmarkId: 'b', wayIds: ['w-bike'], sportId: 'sport:1' };
+  const bikeWay: Way = { id: 'w-bike', routeId: 'r-bike', refLineId: 'w-bike', gateSetVersion: 1, seeded: false };
+  const full = catWith([a, b], [bikeRoute], [bikeWay]);
+  const sports: SportsFile = {
+    schemaVersion: 1,
+    sports: [{ id: 'sport:1', label: 'Bike', createdAtMs: 0 }, { id: 'sport:2', label: 'Run', createdAtMs: 1 }],
+    activeSportId: 'sport:2',
+  };
+
+  // Exactly what routeFromRide.ts's draftRouteFromRide hands to
+  // draftRouteCreation: all landmarks, only THIS sport's routes.
+  const runScoped = scopeCatalog(full, 'sport:2', sports);
+  assert(runScoped.routes.length === 0, 'sanity: sport:2 sees no routes in this scoped view (bikeRoute is sport:1)');
+
+  const d = draftRouteCreation(runScoped, { ...RIDE, fixes: northRide(20), sportId: 'sport:2' });
+  assert(d !== null, 'drafts');
+  assert(d!.existingRouteId === null, 'no existing route in the sport:2-scoped view: a brand-new route, not a variant');
+  assert(d!.start.kind === 'existing' && d!.start.landmarkId === 'a', 'reuses landmark a (shared, unscoped)');
+  assert(d!.end.kind === 'existing' && d!.end.landmarkId === 'b', 'reuses landmark b (shared, unscoped)');
+  assert(d!.sportId === 'sport:2', 'the draft carries the ride\'s own sport');
+
+  const built = buildRouteCreationCatalog(emptyCatalog(), d!, { start: 'A', end: 'B' });
+  assert(built.routes.length === 1 && built.routes[0].sportId === 'sport:2', 'the new Route is stamped sport:2');
+  assert(built.routes[0].startLandmarkId === 'a' && built.routes[0].endLandmarkId === 'b', 'both landmark ids reused, no new landmark minted');
+  assert(built.landmarks.length === 0, 'no new landmark was drafted at all — both endpoints already existed');
+
+  // Sanity: the ORIGINAL (unscoped) sport:1 route is untouched by any of this.
+  assert(full.routes[0].id === 'r-bike' && full.routes[0].sportId === 'sport:1', 'the bike route is never touched');
 });
 
 test('wayCreation: the built catalog validates when merged and carries the reference ride', () => {
@@ -357,6 +391,7 @@ function variantDraft(rideId: string, routeId: string, startId: string, endId: s
     trackLengthM: 2000,
     matchedWayId: null,
     existingRouteId: routeId,
+    sportId: null,
   };
 }
 

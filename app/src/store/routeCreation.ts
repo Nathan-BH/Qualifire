@@ -48,6 +48,11 @@ export interface RideFacts {
    * little outside that way's own landmark disc from being drafted as a
    * brand-new place. */
   matchedWayId?: string | null;
+  /** WP-1: the sport (store/sports.ts) this ride was recorded under — the
+   * session's own stamp, resolved through effectiveRideSportId. null = no
+   * sport in play (zero sports on the phone). Carried onto the draft
+   * unchanged; stamped onto a brand-new Route by buildRouteCreationCatalog. */
+  sportId?: string | null;
 }
 
 /** WP-F: on a ride the engine attributed to route X, an endpoint fix within
@@ -81,6 +86,10 @@ export interface RouteCreationDraft {
    * adds no landmark and no way, only a Route (+ gate set) under it. Null =
    * today's brand-new-way offer. */
   existingRouteId?: string | null;
+  /** WP-1: the ride's own sport (RideFacts.sportId), carried through
+   * unchanged so buildRouteCreationCatalog can stamp it onto a brand-new
+   * Route. null = no sport in play. */
+  sportId: string | null;
 }
 
 /** Ridden length: fix-to-fix sum, same flat-earth metric the catalog uses. */
@@ -265,6 +274,7 @@ export function draftRouteCreation(c: Catalog, ride: RideFacts): RouteCreationDr
     trackLengthM: len,
     matchedWayId: ride.matchedWayId ?? null,
     existingRouteId: existingRoute?.id ?? null,
+    sportId: ride.sportId ?? null,
   };
 }
 
@@ -372,6 +382,9 @@ export function buildRouteCreationCatalog(
     endLandmarkId: draft.end.landmarkId,
     ...(draft.loop ? { loopDiscriminator: `loop:${draft.rideId}` } : {}),
     wayIds: [wayId],
+    // WP-1: stamped on a brand-new Route only — the existingRouteId variant
+    // path above stamps nothing, because that route already has its sport.
+    ...(draft.sportId !== null ? { sportId: draft.sportId } : {}),
   };
   const way: Way = {
     id: wayId,

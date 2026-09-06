@@ -416,6 +416,13 @@ async function appendUnmatched(rideId: string): Promise<void> {
  * a single ride's failure (corrupt file, thrown adapter) is swallowed and the
  * loop moves on.
  *
+ * WP-1 (2026-09-06): `wayIdsFor(rideId)` — when given — scopes the candidate
+ * specs to one sport (store/sports.ts's wayIdsOfSport), so a run that
+ * retraces a bike commute can never get backfilled as a bike PB. Omitted, or
+ * returning `null` for a particular ride (its effective sport is "no sport
+ * filter" — zero sports total), matches every catalog spec exactly as before
+ * this parameter existed.
+ *
  * Candidate loop (route matching). A candidate is accepted iff BOTH:
  *  (a) derive yields a non-null routeId with lap quality 'clean' or
  *      'interrupted' — the brief's original rule; and
@@ -426,7 +433,11 @@ async function appendUnmatched(rideId: string): Promise<void> {
  * full root cause and the threshold's evidence are on MIN_CORRIDOR_COVERAGE.
  * Zero accepted -> unmatched marker. Two or more -> tie-break by smallest mean
  * |xtd| over the ride, computed only for the tied candidates. */
-export async function backfillMissingResults(fs: FsAdapter, rideIds: string[]): Promise<void> {
+export async function backfillMissingResults(
+  fs: FsAdapter,
+  rideIds: string[],
+  wayIdsFor?: (rideId: string) => ReadonlySet<string> | null,
+): Promise<void> {
   const specs = catalogTrackSpecs();
   for (const rideId of rideIds) {
     if (store.has(rideId)) continue;
@@ -442,8 +453,15 @@ export async function backfillMissingResults(fs: FsAdapter, rideIds: string[]): 
       const lat = inOrder.map((f) => f.lat);
       const lon = inOrder.map((f) => f.lon);
 
+      // WP-1: when the caller hands us a sport-scoping set, only candidates
+      // in it are considered — otherwise (omitted, or the callback itself
+      // returns null for a ride with no effective sport) every catalog spec
+      // is a candidate, exactly as before WP-1 existed.
+      const scopeIds = wayIdsFor ? wayIdsFor(rideId) : null;
+      const candidateSpecs = scopeIds === null ? specs : specs.filter((s) => scopeIds.has(s.id));
+
       const accepted: { result: RideResult; proj: Projected }[] = [];
-      for (const spec of specs) {
+      for (const spec of candidateSpecs) {
         const gateSetVersion = gateSetFor(currentCatalog(), spec.id)?.version ?? 1;
         const result = deriveRideResult({
           rideId,
