@@ -61,6 +61,18 @@ export default function ResultsDetailScreen({ request }: { request: ResultsDetai
   const windowN = plotWindow(results).length;
   const label = wayLabelIn(CATALOG, request.wayId);
 
+  // §3.7/§3.9: the plot's selection caption reads the SAME all-time
+  // position the board shows for this ride — computed here from the
+  // screen's own board data, never re-derived inside ResultsPlot. Empty
+  // while rankings are off, or the selected ride has no all-time position
+  // (unranked / NO TIME).
+  const selectedBoardRow = selectedRideId !== null
+    ? board.rows.find((r) => r.rideId === selectedRideId) ?? null
+    : null;
+  const selectedPosLabel = s.tower && selectedBoardRow !== null && selectedBoardRow.pos !== null
+    ? `P${selectedBoardRow.pos} of ${board.total}`
+    : '';
+
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
       <View style={styles.topBar}>
@@ -79,9 +91,8 @@ export default function ResultsDetailScreen({ request }: { request: ResultsDetai
       </Text>
       <ResultsPlot
         results={results}
-        boardRows={board.rows}
-        rankingsOn={s.tower}
         selectedRideId={selectedRideId}
+        selectedPosLabel={selectedPosLabel}
         onSelect={setSelectedRideId}
         onOpenRide={(rideId, startedAtMs) => tabNav.openRide({ rideId, source: 'results', startedAtMs })}
       />

@@ -13,9 +13,11 @@
  */
 import { createContext, useContext, type ReactNode } from 'react';
 
-// 'demo' = the old Preview tab, renamed (IDEAS §26, 2026-08-16). WP-H drops
-// 'result': the RESULT tab is gone (Nathan, Q4 — "Lets drop the results tab
-// entirely"); its job is now the full-screen ride detail overlay below.
+// 'demo' = the old Preview tab, renamed (IDEAS §26, 2026-08-16). WP-H dropped
+// the old RESULT tab (Nathan, Q4 — "Lets drop the results tab entirely");
+// its job moved to the full-screen ride detail overlay below. WP-2 (cycle 3)
+// re-introduced it as 'results' — a per-way history tab, not a revival of
+// the old RESULT screen.
 export type Tab = 'record' | 'rides' | 'routes' | 'results' | 'settings' | 'demo';
 
 /** WP-H: who opened the ride detail, and for which ride. `source` decides

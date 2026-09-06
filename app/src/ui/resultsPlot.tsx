@@ -6,17 +6,22 @@
  * pixel comes from resultsPlotModel.ts's buildPlotModel — this component
  * only measures its own width (onLayout, same idiom as wayMapView.tsx's
  * PngWayMap) and lays out plain Views from what the model already computed.
- * No arithmetic here — position lookups for the caption (date/time/rank)
- * are plain string formatting off resultsListModel.ts's already-formatted
- * HistoryRow, never a recomputation.
+ * No arithmetic here — the caption's date/time are formatted directly off
+ * the selected point's own raw fields via colourModel.ts's fmt and
+ * towerModel.ts's towerDate (the same formatters resultsPlotModel.ts uses
+ * internally), never a recomputation; the all-time position segment
+ * (`selectedPosLabel`) is computed by the screen from its own board data,
+ * not here — the plot never reaches into boardRows/rankingsOn itself.
  *
- * The average line is a row of small Views (a "dash train"), never a
- * single-edge `borderStyle: 'dotted'` (unreliable cross-platform on RN).
- * Plain Views throughout — no react-native-svg, no native rebuild.
+ * The average line is a row of small square dots (a "dotted" train, per
+ * §3.7 — 2x2px squares spaced 4px apart), never a single-edge
+ * `borderStyle: 'dotted'` (unreliable cross-platform on RN). Plain Views
+ * throughout — no react-native-svg, no native rebuild.
  *
  * Rankings-off (SETTINGS s.tower) leaves the plot itself untouched — tones
  * are pure time comparisons, not a rank — the switch only drops the
- * position segment from the selection caption below.
+ * position segment from the selection caption below (the screen passes an
+ * empty `selectedPosLabel` in that case).
  */
 import { useMemo, useState } from 'react';
 import {
@@ -26,15 +31,18 @@ import type { RideResult } from '../store/types.ts';
 import {
   buildPlotModel, GUTTER_W, PLOT_H, POINT_R, FASTEST_R, type PointTone,
 } from './resultsPlotModel.ts';
-import type { HistoryRow } from './resultsListModel.ts';
 import { YELLOW_TIER } from './tierColour.ts';
+import { fmt } from './colourModel.ts';
+import { towerDate } from './towerModel.ts';
 import { PaddockTheme, colors, radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
 
-const DASH_W = 5;
-const DASH_GAP = 5;
+const DASH_W = 2;
+const DASH_GAP = 4;
 const X_AXIS_H = 16;
 const Y_TICK_LABEL_W = 36;
+const X_TICK_LABEL_W = 80;
+const RING_R = 8;
 
 function toneColour(tone: PointTone): string {
   if (tone === 'fastest') return colors.purple;
@@ -43,13 +51,14 @@ function toneColour(tone: PointTone): string {
 }
 
 export default function ResultsPlot({
-  results, boardRows, rankingsOn, selectedRideId, onSelect, onOpenRide,
+  results, selectedRideId, selectedPosLabel, onSelect, onOpenRide,
 }: {
   results: RideResult[];
-  boardRows: HistoryRow[];
-  rankingsOn: boolean;
   selectedRideId: string | null;
-  onSelect: (rideId: string) => void;
+  /** `P3 of 27` — computed by the screen from its own board data; empty
+   * while rankings are off (§3.9). The plot never formats this itself. */
+  selectedPosLabel: string;
+  onSelect: (rideId: string | null) => void;
   onOpenRide: (rideId: string, startedAtMs: number) => void;
 }) {
   const { t } = useTheme();
@@ -69,11 +78,21 @@ export default function ResultsPlot({
     [plotW],
   );
 
-  // The row this selection's caption reads off — pure lookup, no arithmetic;
-  // dateLabel/timeLabel/pos are already formatted by buildHistoryBoard.
-  const selectedRow = selectedRideId !== null
-    ? boardRows.find((r) => r.rideId === selectedRideId) ?? null
+  // The point this selection's caption reads off — a plain lookup by id
+  // against the model's own points, no recomputation.
+  const selectedPoint = selectedRideId !== null
+    ? model.points.find((p) => p.rideId === selectedRideId) ?? null
     : null;
+
+  // Dedup x-tick positions before rendering: with very few rides (or
+  // near-identical timestamps) the model can legitimately hand back two
+  // ticks that land on the same pixel (§3.5's zero-candidate fallback
+  // labels both ends, which coincide when there is one point) — render
+  // only one label there, keyed by index so two same-`at` ticks never
+  // collide on key either.
+  const xTicksToRender = model.xTicks.filter(
+    (tick, i, arr) => arr.findIndex((t2) => t2.at === tick.at) === i,
+  );
 
   return (
     <View style={[styles.frame, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
@@ -82,7 +101,7 @@ export default function ResultsPlot({
           <View style={{ height: PLOT_H }} />
         ) : model.empty === 'no-ranked' ? (
           <View style={styles.emptyWrap}>
-            <Text style={{ color: t.textDim }}>not enough ranked rides yet</Text>
+            <Text style={{ color: t.textDim }}>no ranked rides yet</Text>
           </View>
         ) : (
           <>
@@ -102,11 +121,29 @@ export default function ResultsPlot({
                   </Text>
                 )
               ))}
+              {model.meanY !== null && model.meanS !== null ? (
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.avgLabel,
+                    { color: t.textDim, top: model.meanY - 7, width: Y_TICK_LABEL_W },
+                  ]}
+                >
+                  {`avg ${fmt(model.meanS)}`}
+                </Text>
+              ) : null}
             </View>
             {/* plot area */}
             <View style={{ width: plotW, height: PLOT_H }}>
+              {/* bottommost: tapping empty plot space clears the selection.
+                  Points render after this (on top) and still receive their
+                  own taps. */}
+              <Pressable
+                style={StyleSheet.absoluteFill}
+                onPress={() => onSelect(null)}
+              />
               {model.meanY !== null ? (
-                <View style={[styles.dashRow, { top: model.meanY }]} pointerEvents="none">
+                <View style={[styles.dashRow, { top: model.meanY - 1 }]} pointerEvents="none">
                   {dashes.map((_, i) => (
                     <View
                       // eslint-disable-next-line react/no-array-index-key
@@ -116,9 +153,24 @@ export default function ResultsPlot({
                   ))}
                 </View>
               ) : null}
+              {selectedPoint !== null ? (
+                <View
+                  pointerEvents="none"
+                  style={[
+                    styles.selectionRing,
+                    {
+                      left: selectedPoint.x - RING_R,
+                      top: selectedPoint.y - RING_R,
+                      width: RING_R * 2,
+                      height: RING_R * 2,
+                      borderRadius: RING_R,
+                      borderColor: t.text,
+                    },
+                  ]}
+                />
+              ) : null}
               {model.points.map((p) => {
                 const r = p.tone === 'fastest' ? FASTEST_R : POINT_R;
-                const selected = p.rideId === selectedRideId;
                 return (
                   <Pressable
                     key={p.rideId}
@@ -134,7 +186,6 @@ export default function ResultsPlot({
                         borderRadius: r,
                         backgroundColor: toneColour(p.tone),
                       },
-                      selected && { borderWidth: 2, borderColor: t.text },
                     ]}
                   />
                 );
@@ -147,11 +198,12 @@ export default function ResultsPlot({
         <View style={{ flexDirection: 'row' }}>
           <View style={{ width: GUTTER_W }} />
           <View style={{ width: plotW, height: X_AXIS_H }}>
-            {model.xTicks.map((tick) => (
+            {xTicksToRender.map((tick, i) => (
               <Text
-                key={tick.at}
+                // eslint-disable-next-line react/no-array-index-key
+                key={`${tick.at}-${i}`}
                 numberOfLines={1}
-                style={[styles.xTickLabel, { color: t.textDim, left: tick.at - 16 }]}
+                style={[styles.xTickLabel, { color: t.textDim, left: tick.at - X_TICK_LABEL_W / 2 }]}
               >
                 {tick.label}
               </Text>
@@ -160,23 +212,24 @@ export default function ResultsPlot({
         </View>
       ) : null}
       {/* selection caption — WP-2 §3.7: drops the position segment when
-          rankings are off, but the dots above are unaffected by the switch. */}
+          rankings are off (the screen passes '' for selectedPosLabel), but
+          the dots above are unaffected by the switch. */}
       <Pressable
         style={styles.captionRow}
-        disabled={selectedRow === null}
+        disabled={selectedPoint === null}
         onPress={() => {
-          if (selectedRow !== null) onOpenRide(selectedRow.rideId, selectedRow.startedAtMs);
+          if (selectedPoint !== null) onOpenRide(selectedPoint.rideId, selectedPoint.startedAtMs);
         }}
       >
         <Text style={[styles.captionText, { color: t.textDim }]}>
-          {selectedRow === null
+          {selectedPoint === null
             ? 'tap a point for that ride'
-            : `${selectedRow.dateLabel} · ${selectedRow.timeLabel}${
-              rankingsOn && selectedRow.pos !== null ? ` · P${selectedRow.pos}` : ''
-            }`}
+            : [towerDate(selectedPoint.startedAtMs), fmt(selectedPoint.timeS), selectedPosLabel]
+              .filter((part) => part !== '')
+              .join(' · ')}
         </Text>
-        {selectedRow !== null ? (
-          <Text style={[styles.captionLink, { color: t.accent }]}>open ›</Text>
+        {selectedPoint !== null ? (
+          <Text style={[styles.captionLink, { color: t.accentText }]}>open ›</Text>
         ) : null}
       </Pressable>
     </View>
@@ -191,14 +244,18 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
     paddingHorizontal: 8,
     marginBottom: 8,
   },
-  emptyWrap: { flex: 1, height: PLOT_H, alignItems: 'center', justifyContent: 'center' },
+  emptyWrap: { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center' },
   yTickLabel: { position: 'absolute', fontSize: 10, textAlign: 'right' },
-  xTickLabel: { position: 'absolute', top: 0, fontSize: 10, width: 32, textAlign: 'center' },
-  dashRow: {
-    position: 'absolute', left: 0, right: 0, flexDirection: 'row', height: 1, overflow: 'hidden',
+  avgLabel: { position: 'absolute', fontSize: 11, fontWeight: '600', textAlign: 'right' },
+  xTickLabel: {
+    position: 'absolute', top: 0, fontSize: 10, width: X_TICK_LABEL_W, textAlign: 'center',
   },
-  dash: { height: 1 },
+  dashRow: {
+    position: 'absolute', left: 0, right: 0, flexDirection: 'row', height: 2, overflow: 'hidden',
+  },
+  dash: { height: 2, borderRadius: 1 },
   point: { position: 'absolute' },
+  selectionRing: { position: 'absolute', borderWidth: 2, backgroundColor: 'transparent' },
   captionRow: {
     flexDirection: 'row',
     alignItems: 'center',

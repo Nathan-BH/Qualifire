@@ -137,11 +137,21 @@ function yAt(timeS: number, yMin: number, yMax: number): number {
   return ((timeS - yMin) / (yMax - yMin)) * PLOT_H;
 }
 
+/** how many tick multiples of `step` actually land inside [yMin, yMax] —
+ * `floor(span/step) + 1` in the general case, which is NOT the same
+ * quantity as `span/step`; comparing against this (not the raw ratio) is
+ * what actually guarantees the on-screen count stays <= MAX_Y_TICKS. */
+function tickCountForStep(yMin: number, yMax: number, step: number): number {
+  const first = Math.ceil(yMin / step) * step;
+  let count = 0;
+  for (let v = first; v <= yMax + 1e-9; v += step) count++;
+  return count;
+}
+
 function buildYTicks(yMin: number, yMax: number, meanY: number): PlotTick[] {
-  const span = yMax - yMin;
   let step = TICK_STEPS_S[TICK_STEPS_S.length - 1];
   for (const s of TICK_STEPS_S) {
-    if (span / s <= MAX_Y_TICKS) { step = s; break; }
+    if (tickCountForStep(yMin, yMax, s) <= MAX_Y_TICKS) { step = s; break; }
   }
   const first = Math.ceil(yMin / step) * step;
   const ticks: PlotTick[] = [];
