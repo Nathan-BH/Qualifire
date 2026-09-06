@@ -14,7 +14,7 @@ import { decodeIndex } from '../storage/rideIndex';
 import { backfillMissingResults, getStoredResult } from '../store/resultsStore';
 import { currentCatalog } from '../store/catalogStore';
 import { effectiveRideSportId, wayIdsOfSport } from '../store/sports';
-import { currentSports } from '../store/sportStore';
+import { activeSportId, currentSports } from '../store/sportStore';
 import { wayLabelIn } from '../store/defaultWay';
 import { createExpoFsAdapter } from '../storage/expoFsAdapter';
 import { buildRideRows } from './rideHistoryModel';
@@ -38,7 +38,15 @@ export default function RidesScreen() {
   const refresh = useCallback(async () => {
     try {
       const list = await listRides();
-      setRides([...list].sort((a, b) => b.startMs - a.startMs));
+      // WP-1: RIDES shows only the active sport's own rides (both sides are
+      // null under zero sports, so every ride passes — §3.4). Backfill above
+      // still runs unfiltered across every sport (per-ride-sport, not
+      // per-active-sport) so switching sport never starves another sport's
+      // backfill.
+      const f = currentSports();
+      const active = activeSportId();
+      const scoped = list.filter((r) => effectiveRideSportId(r.sportId, f) === active);
+      setRides([...scoped].sort((a, b) => b.startMs - a.startMs));
     } catch (e) {
       Alert.alert('Could not load rides', e instanceof Error ? e.message : String(e));
       setRides([]);
@@ -107,6 +115,7 @@ export default function RidesScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rides, resultsTick, s.timing],
   );
+  const sportLabel = currentSports().sports.find((sp) => sp.id === activeSportId())?.label ?? null;
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -115,6 +124,10 @@ export default function RidesScreen() {
           <Text style={styles.refreshText}>Refresh</Text>
         </Pressable>
       </View>
+      {/* Q5: bare sport-name badge, same convention as ROUTES. */}
+      <Text style={styles.sub}>
+        {sportLabel !== null ? sportLabel.toUpperCase() : 'NO SPORT YET — ADD ONE IN SETTINGS'}
+      </Text>
       {backfilling ? <Text style={styles.sub}>matching ways…</Text> : null}
       {rides == null ? (
         <Text style={styles.sub}>Loading…</Text>

@@ -6,14 +6,20 @@
  */
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import * as FileSystem from 'expo-file-system/legacy';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { setEarconsEnabled } from '../location';
 import { loadSession } from '../location/session';
 import { listRides } from '../storage';
+import type { RideMeta } from '../storage/types';
 import { createExpoFsAdapter, archiveStorageRoot } from '../storage/expoFsAdapter';
-import { USER_CATALOG_FILE, initCatalogStore, userCatalog } from '../store/catalogStore';
+import { USER_CATALOG_FILE, currentCatalog, initCatalogStore, userCatalog } from '../store/catalogStore';
 import { USER_REFS_FILE, initUserRefs } from '../live/userRefs';
 import { initFreeRidePersistence, resetFreeRides } from '../store/freeRides';
+import {
+  addSport, deleteSport, MAX_SPORT_LABEL, renameSport, setActiveSport, SPORT_LABEL_PLACEHOLDER,
+  sportUsage, type SportsFile,
+} from '../store/sports';
+import { currentSports, initSportStore, saveSports, sportWritesArmed } from '../store/sportStore';
 import { initRideHistory, resetRecorded } from './lastRide';
 import { saveTextFile } from './saveGpx';
 import { DEFAULT_TIMING, setTimingMode, type TimingMode } from '../store/timing';
@@ -35,6 +41,10 @@ export interface Settings {
    * every stop counts (the default — luck counts); 'moving' = raw minus
    * detected stopped time, the opt-in. Read by store/timing.ts's scoredS(). */
   timing: TimingMode;
+  /** WP-1 (2026-09-06, Q3): show the sport pill row on RECORD's setup phase
+   * when 2+ sports exist. Off = switch sports only in SETTINGS → SPORTS.
+   * Meaningless (and not rendered) below 2 sports. Default true. */
+  showSportPillOnRecord: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -45,6 +55,7 @@ const DEFAULTS: Settings = {
   earcons: true,
   sectorColours: true,
   timing: DEFAULT_TIMING,
+  showSportPillOnRecord: true,
 };
 
 interface Ctx { s: Settings; set: <K extends keyof Settings>(k: K, v: Settings[K]) => void }
@@ -235,6 +246,10 @@ async function performReset(): Promise<void> {
     if (theme !== null) await fs.writeText('settings.json', theme);
     resetRecorded();
     resetFreeRides();
+    // WP-1: sports.json lives under the same storage root that was just
+    // moved aside — re-init it first (same order as App.tsx's boot chain) so
+    // the in-memory sport list actually returns to zero, not a stale copy.
+    await initSportStore(fs);
     await initCatalogStore(fs);
     await initUserRefs(fs);
     await initRideHistory(fs);
@@ -287,6 +302,219 @@ async function onResetPress(): Promise<void> {
         },
       },
     ],
+  );
+}
+
+/**
+ * WP-1 (2026-09-06): SETTINGS -> SPORTS — the sport switcher (a Seg-style
+ * chip row, §3.2's global) plus the management list (add/rename/delete) and
+ * the RECORD pill-row toggle (Q3). Q1: nothing is pre-created — the fill-in
+ * placeholder IS the suggestion. Subscribes by local state (read
+ * currentSports()/listRides() on mount and after every successful save) —
+ * the same manual-tick pattern RidesScreen.tsx uses for resultsTick, because
+ * this screen is a different module from the store.
+ */
+function SportsSection({ t, help }: { t: PaddockTheme; help: Help }) {
+  const { s, set } = useSettings();
+  const [sf, setSf] = useState<SportsFile>(() => currentSports());
+  const [rides, setRides] = useState<RideMeta[]>([]);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [renameText, setRenameText] = useState('');
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const [addText, setAddText] = useState('');
+  const [addError, setAddError] = useState<string | null>(null);
+
+  useEffect(() => {
+    listRides().then(setRides).catch(() => {});
+  }, []);
+
+  function refreshSports(): void {
+    setSf(currentSports());
+  }
+
+  function usageFor(id: string) {
+    return sportUsage(currentCatalog(), rides, id, sf);
+  }
+
+  async function handleAdd(): Promise<void> {
+    const candidate = addSport(sf, addText.trim(), Date.now());
+    if (Array.isArray(candidate)) {
+      setAddError(candidate.join('; '));
+      return;
+    }
+    const errs = await saveSports(candidate);
+    if (errs.length > 0) {
+      setAddError(errs.join('; '));
+      return;
+    }
+    setAddError(null);
+    setAddText('');
+    refreshSports();
+  }
+
+  async function handleRename(id: string): Promise<void> {
+    const candidate = renameSport(sf, id, renameText.trim());
+    if (Array.isArray(candidate)) {
+      setRenameError(candidate.join('; '));
+      return;
+    }
+    const errs = await saveSports(candidate);
+    if (errs.length > 0) {
+      setRenameError(errs.join('; '));
+      return;
+    }
+    setRenameError(null);
+    setExpanded(null);
+    refreshSports();
+  }
+
+  async function handleDelete(id: string): Promise<void> {
+    const candidate = deleteSport(sf, id, usageFor(id));
+    if (Array.isArray(candidate)) {
+      Alert.alert('Cannot delete', candidate.join('; '));
+      return;
+    }
+    const errs = await saveSports(candidate);
+    if (errs.length > 0) {
+      Alert.alert('Cannot delete', errs.join('; '));
+      return;
+    }
+    setExpanded(null);
+    refreshSports();
+  }
+
+  function confirmDelete(id: string, label: string): void {
+    Alert.alert(
+      `Delete "${label}"?`,
+      'This cannot be undone from inside the app.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => void handleDelete(id) },
+      ],
+    );
+  }
+
+  async function handleSwitch(id: string): Promise<void> {
+    const candidate = setActiveSport(sf, id);
+    if (Array.isArray(candidate)) return;
+    await saveSports(candidate);
+    refreshSports();
+  }
+
+  const inputStyle = [st.input, { color: t.text, borderColor: t.cardBorder, backgroundColor: t.bg }];
+
+  return (
+    <>
+      <Text style={[st.h2, { color: t.textDim }]}>SPORTS</Text>
+      <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
+        {sf.sports.length > 0 ? (
+          <Row label="Active sport" hint="Everything on RECORD, ROUTES and RIDES is scoped to this one." help={help} t={t}>
+            <Seg
+              t={t}
+              value={sf.activeSportId ?? sf.sports[0].id}
+              options={sf.sports.map((sp): [string, string] => [sp.id, sp.label])}
+              onPick={(id) => void handleSwitch(id)}
+            />
+          </Row>
+        ) : (
+          <Text style={{ color: t.textDim, fontSize: 12.5, paddingVertical: 8 }}>
+            Add at least one sport to record. Name it what you like.
+          </Text>
+        )}
+
+        {sf.sports.map((sp) => {
+          const usage = usageFor(sp.id);
+          const isActive = sp.id === sf.activeSportId;
+          const canDelete = !isActive && usage.routes === 0 && usage.rides === 0;
+          const isExpanded = expanded === sp.id;
+          return (
+            <View key={sp.id} style={[st.sportRow, { borderBottomColor: t.cardBorder }]}>
+              <Pressable
+                onPress={() => {
+                  if (isExpanded) {
+                    setExpanded(null);
+                  } else {
+                    setExpanded(sp.id);
+                    setRenameText(sp.label);
+                    setRenameError(null);
+                  }
+                }}
+              >
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Text style={{ color: t.text, fontSize: 14 }}>{sp.label}</Text>
+                  <Text style={{ color: t.textDim, fontSize: 11.5 }}>
+                    {usage.routes} route{usage.routes === 1 ? '' : 's'} · {usage.rides} ride{usage.rides === 1 ? '' : 's'}
+                  </Text>
+                </View>
+              </Pressable>
+              {isExpanded ? (
+                <View style={{ marginTop: 8, gap: 8 }}>
+                  <TextInput
+                    style={inputStyle}
+                    value={renameText}
+                    onChangeText={setRenameText}
+                    placeholder={SPORT_LABEL_PLACEHOLDER}
+                    placeholderTextColor={t.textDim}
+                    maxLength={MAX_SPORT_LABEL}
+                  />
+                  {renameError ? <Text style={{ color: t.textDim, fontSize: 11 }}>{renameError}</Text> : null}
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <Pressable style={[st.shareBtn, { borderColor: t.cardBorder }]} onPress={() => void handleRename(sp.id)}>
+                      <Text style={[st.shareText, { color: t.text }]}>rename</Text>
+                    </Pressable>
+                    <Pressable
+                      disabled={!canDelete}
+                      style={[st.shareBtn, { borderColor: t.cardBorder }, !canDelete && { opacity: 0.4 }]}
+                      onPress={() => { if (canDelete) confirmDelete(sp.id, sp.label); }}
+                    >
+                      <Text style={[st.shareText, { color: t.textDim }]}>delete</Text>
+                    </Pressable>
+                  </View>
+                  {!canDelete ? (
+                    <Text style={{ color: t.textDim, fontSize: 11 }}>
+                      {isActive
+                        ? 'switch to another sport first'
+                        : `${usage.routes} route${usage.routes === 1 ? '' : 's'} · ${usage.rides} ride${usage.rides === 1 ? '' : 's'} — delete those first`}
+                    </Text>
+                  ) : null}
+                </View>
+              ) : null}
+            </View>
+          );
+        })}
+
+        <View style={{ marginTop: sf.sports.length > 0 ? 10 : 0, gap: 8 }}>
+          <TextInput
+            style={inputStyle}
+            value={addText}
+            onChangeText={setAddText}
+            placeholder={SPORT_LABEL_PLACEHOLDER}
+            placeholderTextColor={t.textDim}
+            maxLength={MAX_SPORT_LABEL}
+          />
+          {addError ? <Text style={{ color: t.textDim, fontSize: 11 }}>{addError}</Text> : null}
+          <Pressable style={[st.shareBtn, { alignSelf: 'flex-start', borderColor: t.cardBorder }]} onPress={() => void handleAdd()}>
+            <Text style={[st.shareText, { color: t.text }]}>add sport</Text>
+          </Pressable>
+        </View>
+
+        {!sportWritesArmed() ? (
+          <Text style={{ color: t.textDim, fontSize: 11, marginTop: 10 }}>
+            sports.json could not be read at boot — saving is disabled this session. Reset to virgin or fix the file (debug export) to recover.
+          </Text>
+        ) : null}
+
+        {sf.sports.length >= 2 ? (
+          <Row
+            label="Sport picker on RECORD"
+            hint="Show the sport row on RECORD. Off: switch sports here instead."
+            help={help} t={t} sep
+          >
+            <Switch on={s.showSportPillOnRecord} onToggle={() => set('showSportPillOnRecord', !s.showSportPillOnRecord)} t={t} />
+          </Row>
+        ) : null}
+      </View>
+    </>
   );
 }
 
@@ -355,6 +583,8 @@ export default function SettingsScreen() {
         </Row>
       </View>
 
+      <SportsSection t={t} help={help} />
+
       <Text style={[st.h2, { color: t.textDim }]}>DATA</Text>
       <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
         <Row label="Places & routes" t={t} help={help}
@@ -411,4 +641,7 @@ const st = StyleSheet.create({
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   helpBtn: { width: 18, height: 18, borderRadius: 9, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   helpText: { fontSize: 11, fontWeight: '700', lineHeight: 13 },
+  // WP-1: SPORTS section — one management row per sport, plus the add row.
+  sportRow: { paddingVertical: 10, borderBottomWidth: 1 },
+  input: { borderWidth: 1, borderRadius: radius.btn, paddingHorizontal: 10, paddingVertical: 8, fontSize: 14 },
 });

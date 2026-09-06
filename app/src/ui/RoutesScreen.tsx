@@ -17,7 +17,7 @@
  * renders here.
  */
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { currentCatalog } from '../store/catalogStore.ts';
+import { activeCatalog, activeSportId, currentSports } from '../store/sportStore.ts';
 import { radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
 import { useTabNav } from './tabNav.tsx';
@@ -26,16 +26,31 @@ export default function RoutesScreen() {
   const { t } = useTheme();
   const tabNav = useTabNav();
   const now = Date.now();
-  // B-39: read per render, never captured at import (see RecordScreen).
-  const CATALOG = currentCatalog();
+  // WP-1: sport-scoped view — landmarks stay the FULL shared set (all
+  // sports draw from the same places), routes/ways/gate sets are this
+  // sport's own. B-39: read per render, never captured at import (see
+  // RecordScreen).
+  const CATALOG = activeCatalog();
+  const sportId = activeSportId();
+  const sportLabel = currentSports().sports.find((sp) => sp.id === sportId)?.label ?? null;
+  // A landmark used by at least one of THIS sport's routes (start or end) —
+  // everything else still shows (places are shared) but is flagged as not
+  // used here, on top of the existing dormant treatment.
+  const usedLandmarkIds = new Set(CATALOG.routes.flatMap((r) => [r.startLandmarkId, r.endLandmarkId]));
 
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+      {/* Q5: a bare sport-name badge, nothing else — or, with zero sports, a
+          plain nudge toward SETTINGS. */}
+      <Text style={[st.h2, { color: t.textDim }]}>
+        {sportLabel !== null ? sportLabel.toUpperCase() : 'NO SPORT YET — ADD ONE IN SETTINGS'}
+      </Text>
       <Text style={[st.h2, { color: t.textDim }]}>YOUR PLACES</Text>
       <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
         {CATALOG.landmarks.map((l) => {
           const dormant = !l.offerAtStart
             || (l.activeUntilMs !== null && l.activeUntilMs < now);
+          const notUsedHere = sportId !== null && !usedLandmarkIds.has(l.id);
           return (
             <Pressable
               key={l.id}
@@ -44,7 +59,7 @@ export default function RoutesScreen() {
             >
               <View style={{ flex: 1 }}>
                 <Text style={{ color: dormant ? t.textDim : t.text, fontSize: 14 }}>
-                  {l.label}{dormant ? '  · dormant' : ''}
+                  {l.label}{dormant ? '  · dormant' : ''}{notUsedHere ? `  · not used by ${sportLabel}` : ''}
                 </Text>
                 <Text style={{ color: t.textDim, fontSize: 11.5 }}>
                   {l.lat.toFixed(5)}, {l.lon.toFixed(5)} · {l.radiusM} m
