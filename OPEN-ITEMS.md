@@ -39,10 +39,17 @@ replaced. Vocabulary is post-WP-3: a route is the from→to path, a way is one v
    card on the real map (nudge, long-press repeat, start/finish gates) and gate editing on a
    saved way from ROUTES; `refs.user.json` survives an app restart; WP-B's GPX+ check on the
    WorkHomeWet/281e ride; overlapping gate tap-targets on an out-and-back ride; whether the
-   old pale-purple contrast bug is really gone (cycle2's code check found no trace). Findings
-   go in a `data/activities/TEST in virgin-app rides/` notes file, as before.
+   old pale-purple contrast bug is really gone (cycle2's code check found no trace);
+   MAP-CONTRACT §4's acceptance sequence (pre-start pannable → moving locked/no labels →
+   stopped identical to moving → finished released back to pannable); MAP-TILES §2's
+   dead-zone check (does the ribbon still draw the last-ridden corridor with the radio off?).
+   Never run formally — added here 2026-09-08 (virgin-cycle5 NW-2). Findings go in a
+   `data/activities/TEST in virgin-app rides/` notes file, as before.
 3. **Empty-state pass.** "0 rides found" and no lock on the first ride of a new route — what
-   the blank Preview says and shows to a stranger before any history exists.
+   the blank Preview says and shows to a stranger before any history exists. Also check
+   COLD-START F-2 while here (added 2026-09-08, virgin-cycle5 NW-2): a way's lap can colour
+   while its busiest sector stays uncoloured, because sector history is clean-only while lap
+   history isn't — the board should say why rather than looking inconsistent.
 4. **Whole-app export/import.** Still parked as described below. A smaller debug-export exists
    (2026-08-31): SETTINGS → DATA shares `catalog.user.json` and `refs.user.json`, and per-ride
    GPX+ from RIDES carries rich session diagnostics — enough for "get today's state and one

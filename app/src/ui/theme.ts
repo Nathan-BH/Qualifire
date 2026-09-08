@@ -13,9 +13,9 @@ export const colors = {
   ink: '#F4F2EC', // --ink
   inkDim: '#9a978f', // --ink-dim
   grey: '#6f6e6a', // --grey — NO-DATA only
-  purple: '#A667F0', // filled tier — 28d best
+  purple: '#A667F0', // filled tier — fastest of the ranking pool (colourModel.ts)
   purpleDeep: '#7b3fd1',
-  green: '#3ED598', // outlined tier — 7d best
+  green: '#3ED598', // outlined tier — above the pool's recent average
   neutral: '#F5C542', // flat tier / accent — warm, never grey
   amber: '#E8A33D', // warnings (D-013: this, not red)
   riderBlue: '#2F7DE1', // rider dot — the universal "you are here" hue; never a tier colour (D-030), never red (D-013)
