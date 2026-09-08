@@ -58,12 +58,10 @@ besides Nathan can use this app" is a top-priority goal, not just a design lens.
   runtime catalog is the shipped seed merged read-side with an on-phone
   `catalog.user.json` (never copied to disk, so a seed edit still reaches every install).
   The empty seed is the **default** since 2026-09-08 (`seed.ts` resolves 'empty' unless
-  `EXPO_PUBLIC_SEED_MODE=shipped`) — **landed in the working tree, not yet committed** as
-  of `eeab73f` and the cycle5 round-2 commit; the virgin-cycle4 session owns that commit
-  (`seed.ts`, `tests/seedmode_pin.ts`, `tests/run.ts`, `app.config.js`, `README-dev.md`,
-  `scripts/build7.ps1`, the `dev-virgin` retirement, the cycle4 docs). Until it lands,
-  HEAD's `seed.ts` still defaults to 'shipped' and `scripts/dev-virgin.*` are still tracked
-  — see OPEN-ITEMS "Housekeeping". With it: plain `npx expo start` on the dev client and the
+  `EXPO_PUBLIC_SEED_MODE=shipped`) — committed as `09a0aa0` (`seed.ts`,
+  `tests/seedmode_pin.ts`, `tests/run.ts`, `app.config.js`, `README-dev.md`,
+  `scripts/build7.ps1`, the `dev-virgin` retirement, the cycle4 docs). Plain
+  `npx expo start` on the dev client and the
   `preview` / `virgin` EAS profiles (which still set `empty` explicitly) all ship a
   genuinely blank catalog: 0 sports, 0 landmarks, 0 routes, 0 ways, 0 ghosts. The Leuven seed is
   opt-in only — `$env:EXPO_PUBLIC_SEED_MODE = "shipped"` before `npx expo start` (the
@@ -221,8 +219,7 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   (WP-1), RESULTS tab (WP-2).
 - `cycles/virgin-cycle4/README.md` — 2026-09-06/08: build7 (blank-seed Preview + OTA
   re-anchor) — inspected, dry run clean, real build run by Nathan; then (2026-09-08) the
-  seed default flipped to 'empty' and the `dev-virgin` scripts were retired (that tail sits
-  in the working tree, uncommitted as of the cycle5 round-2 commit — OPEN-ITEMS Housekeeping).
+  seed default flipped to 'empty' and the `dev-virgin` scripts were retired (`09a0aa0`).
 - `cycles/virgin-cycle5/` — 2026-09-08: this root-doc cleanup (main-branch leftover vs.
   staleness); see its `CONTEXT.md` and `BRIEF-root-docs-cleanup.md`. Later cycles: add a
   line here when the cycle closes.
