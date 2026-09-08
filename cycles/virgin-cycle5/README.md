@@ -92,7 +92,44 @@ vs. the mechanically simplest one) — flagged for the executor to re-check, not
   only on `main`. Every `D-0xx`/`B-xx` id cited across product/ docs is a key into those
   now-absent files.
 
-## Proposed execution order (2026-09-08, all three briefs, all now execution-ready)
+## EXECUTED (2026-09-08) — every wave landed, cycle effectively closed
+
+All five waves below were actually run, fully autonomously, same day they were proposed. 21
+commits (`6c6dec5`..`a4b176c`), tests green throughout (563/563 pass, 0 fail, `tsc` exit 0 at
+every checkpoint). Two real decisions came back from Nathan mid-execution and were applied
+immediately: **D5** (palette) was ruled — keep the original day/night colours permanently, both
+palette explorations (`product/brand/palettes/`, `design/drafts/`) closed as "considered, not
+adopted, kept as history"; and a live bug he spotted (the header/hero/footer Q-monogram ring
+was invisible in day mode — hardcoded to the dark theme's ink colour) was fixed same-session
+(`6240b9c`).
+
+**What landed, by wave:**
+- **Wave 1** — product docs WP-P0-P10 (`6c6dec5`, `14edefa`), website no-regrets fixes (`918c06f`,
+  `c9629f3`), design generator repair D0 (`16c844b`), palette comparison collages D5.0 (`a3ef234`).
+- **Wave 2** — NW-1, the colour-model code change (`e6b2975`), independently Fable-inspected
+  (caught one real overstatement — the "reference ride never gets a colour" claim was too
+  strong; fixed in `a6f4d1e` along with several other now-stale docs the inspect surfaced).
+- **Wave 3** — website Option-2 copy pass (`3dcd4d5`), design D1/D2 (`69c7ffd`, `50aeae3`),
+  NW-2 (`a1e2531`).
+- **Wave 4** — D5, Nathan's own call, landed mid-session (`9fc12b9`) — see above.
+- **Wave 5** — D4 parked rather than built (`3157896`, per the brief's own recommendation),
+  NW-3/NW-4 closed as superseded/not-triggered (`3157896`), design D3 + D6 housekeeping
+  (`3348e94`, `097ef28`), NW-5 launch-animation option deck (`f30daa9`), HYPERFRAMES-PLAN.md
+  restructured virgin-native (`b399355`, `a4b176c`).
+
+**What's still open, genuinely:**
+- Push to `origin/virgin` is still blocked by the 403-from-proxy on this device — all 21+
+  commits are local, same as the rest of this cycle. Needs a manual push.
+- `NW-5`'s launch-animation options and the palette collages (`design/drafts/collage_*.png`,
+  now moot given D5's ruling, but harmless as history) are sitting there for Nathan to look at
+  whenever — nothing blocks on them.
+- The MAP-CONTRACT/MAP-TILES on-device checklist items and the empty-state pass (`OPEN-ITEMS.md`
+  items 1-4) all still need an actual phone in hand — nothing an agent can close.
+- `design/ChatGPT attempt at improved design/`'s rename question is still open (deliberately left
+  alone per "ask before touching what Nathan committed himself").
+
+## Proposed execution order (2026-09-08, all three briefs, all now execution-ready) — historical, superseded by "EXECUTED" above
+
 
 Not a strict must-follow, but this is the order that minimises rework and gets the highest-value
 fix (the colour model, NW-1) landed before anything downstream references its old behaviour.
