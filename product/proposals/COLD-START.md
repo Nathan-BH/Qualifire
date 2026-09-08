@@ -1,6 +1,39 @@
 # Cold start — what the app is with nothing in it
 
-Product Owner, cycle 011. **Design lens only** (Nathan's ruling): Qualifire stays single-user, no accounts, no sync, no store, no multi-user code (D-001, D-012). "Someone else" is used here as the sharpest test of one capability the app needs anyway — the path shared by a new way with no history (§20), riding in a new city, and the day the phone is wiped. Every proposal below is **UNBUILT**.
+> **Reading this on the `virgin` branch — note added 2026-09-08 (virgin-cycle5).** This is a dated
+> design record from before the branch was cut (2026-08-31). `D-0xx` / `B-xx` ids and role names
+> (Product Owner, Designer, Backend Dev, Race Engineer, Principal …) refer to `main`'s
+> `product/DECISIONS.md`, `product/BACKLOG.md` and its named-role process — none of which exist on
+> this branch. **Since 2026-09-06 (WP-3) the words "route" and "way" mean the opposite of what they
+> mean below:** a *route* is now the from→to path between two landmarks (the parent) and a *way* is
+> one variant of riding it (the child, which owns the line, gates, results and ghosts) — see
+> `GLOSSARY.md`. Morning / Evening A / Evening B, the 624-ride archive and the Leuven landmarks are
+> Nathan's own seed data; a fresh install ships none of it (empty-seed default since 2026-09-08).
+
+Product Owner, cycle 011. **Design lens only** (Nathan's ruling): Qualifire stays single-user, no accounts, no sync, no store, no multi-user code (D-001, D-012). "Someone else" is used here as the sharpest test of one capability the app needs anyway — the path shared by a new way with no history (§20), riding in a new city, and the day the phone is wiped. ~~Every proposal below is **UNBUILT**.~~
+
+## Disposition on `virgin` (2026-09-08, virgin-cycle5)
+
+This proposal is what the `virgin` branch set out to build (Nathan's notes4, 2026-08-27: "someone
+else" stopped being a thought experiment). Its §6 rows, checked against the code:
+
+| §6 row | Status | Where |
+|---|---|---|
+| B-32 retroactive way creation — name start/end at STOP | **BUILT** 2026-08-31 | `app/src/store/routeCreation.ts`, `app/src/ui/routeNamingCard.tsx` (post-WP-3 names: creates a Route + Way; both ends named on a free ride) |
+| B-35 de-hardcode route identity; empty-seed install | **BUILT** — cycle 025 + default `'empty'` since 2026-09-08 | `app/src/store/seed.ts`, `EXPO_PUBLIC_SEED_MODE` |
+| B-38 ride 1 is the reference; promote a later lap | **BUILT** — ride-1 default 2026-08-31; promotion from the RIDE detail screen | `Way.referenceRideId`, `RideDetailScreen.tsx` `onPromote` |
+| B-33 provisional gates from 2 traces | **BUILT, differently** — seeded from ride 1 (not after ride 2): 25/50/75 % chainage, nudged ≥150 m clear of the reference ride's stops, flagged `origin:'geometric'`; the "replaced by measured gates at ≥10 rides" half is not built (OPEN-ITEMS Parked) | `app/src/store/gateSeeding.ts` |
+| B-36 persist the comparison window across restarts | **BUILT** (main cycle 024 `resultsStore.ts`) — §4's "`recordedResults()` is memory-only" is no longer true | |
+| B-37 alternatives — several ways per endpoint pair, grouped, never colour-compared | **BUILT** structurally by WP-3 (`Route.wayIds[]`) + way `specs` | `app/src/store/types.ts` |
+| B-40 bug F-1 — own lap inside its own history | **FIXED** by D-045 ruling 2: the window is sliced after excluding the judged ride | `colourModel.ts` `ghostsFor` |
+| B-41 reconcile 28-day vs `WINDOW_N = 10` | **RESOLVED** — last-10 everywhere | `STATE.md` ground rules |
+| B-39 empty-state pass | **OPEN** | `OPEN-ITEMS.md` item 3 |
+| B-31 cold-start ladder — verdict-free ride-1 board, "ride n of 5", two announcements | **NOT BUILT.** Its premise is live: `MIN_HISTORY = 5` still gates every colour and rank (`colourModel.ts:40,144`, `towerSource.ts:40`, `rideDetailModel.ts:71`) although D-045 ruling 1 (2026-08-26) deleted the floor — the 2026-08-26 "STALE" note in §1 below describes the ruling, not the code. F-4 is therefore still open. | see `OPEN-ITEMS.md` |
+| B-34 sector count scales with length | **NOT BUILT**, deliberately — exactly four sectors is a ground rule | `STATE.md` |
+
+Also true today: sports (WP-1) come before landmarks on a blank install — RECORD asks for a sport
+name first; §3's step table is otherwise the shipped order. F-2 (sector colour lags lap colour
+because `sectorValues` is clean-only) is still structurally true.
 
 ---
 

@@ -1,13 +1,24 @@
 # MAP-CONTRACT — cycle 014, 2026-08-17
 
-UNBUILT. Written jointly: Product Owner (§1–4) + Designer (§5–7). Reads STATE.md, LAYOUT.md, BACKLOG.md,
-team logs, `routeMapView.tsx` + call sites only. Ground: `RouteMapView` is called from **RecordScreen.tsx**
-(live) and **DemoScreen.tsx** (shared component, same file) only. `RoutesScreen.tsx` shows a separate static
-full-route `<Image>` (not `RouteMapView`, no interaction). `ResultScreen.tsx` currently has **no map at all** —
-matches LAYOUT §3.6 ("No map on this screen"; a "view trace" link is specced but unbuilt).
+> **Reading this on the `virgin` branch — note added 2026-09-08 (virgin-cycle5).** Dated record from
+> before the branch was cut (2026-08-31). `D-0xx` / `B-xx` ids, `cycles/cycle-0xx.md` and role names
+> (Designer, Product Owner, Backend Dev …) refer to `main`'s `product/DECISIONS.md`,
+> `product/BACKLOG.md`, its cycle records and its named-role process — none of which exist on this
+> branch. Current status is in the block below, `STATE.md` and `cycles/virgin-cycle*/README.md`.
 
-Nathan's ruling today overrules D-033's "no map on live ride" (its reserve rules still bind) and reopens B-34.
-It supersedes STATE.md's cycle-011 "map work is parked" line — Principal should correct STATE accordingly.
+**BUILT — status on `virgin` 2026-09-08 (virgin-cycle5).** Written 2026-08-17 as an UNBUILT contract
+(Product Owner §1–4, Designer §5–7) the day Nathan overruled D-033's "no map on live ride". Since then
+MapLibre + OpenFreeMap replaced every painted PNG: `app/src/ui/wayMapView.tsx` (renamed from
+`routeMapView.tsx` by WP-3) is used by **RecordScreen** (pre-start / moving / stopped / finished, per
+§1 and §5), **DemoScreen** (same component), **RideDetailScreen** (the sector-coloured trail — this is
+what §1's "view trace" became, reached from RIDES; cycle1 WP-H), **CatalogDetailScreen** (ROUTES →
+place/route detail, replacing the static `<Image>`; cycle2 WP-K) and **gateAdjustCard** / 
+**GateAdjustScreen** (§1's "future gate-setup" row; cycle2 WP-I/WP-J). RESULTS deliberately has no map
+(Nathan, cycle3 Q2) — consistent with §1's "nothing on the board itself". §2's verdicts and §5–§7's
+rules are what the code does; §3's backlog rows are `main` bookkeeping (kept as the record). §4 is
+still the best one-paragraph on-device test of the live map and has never been formally run — see
+`OPEN-ITEMS.md`. Still unverified: MapLibre's ambient tile cache serving previously seen tiles with no
+signal (MAP-TILES §2).
 
 ---
 
@@ -15,7 +26,7 @@ It supersedes STATE.md's cycle-011 "map work is parked" line — Principal shoul
 
 ### 1. Per-surface contract
 
-| Surface | For (one clause) | Shows | Interactions | Never | PNG today |
+| Surface | For (one clause) | Shows | Interactions | Never | PNG today (2026-08-17 — all replaced by MapLibre since) |
 |---|---|---|---|---|---|
 | **Routes overview** | recognize which way a route is, at a glance | whole route line + gate rings over real streets, no rider | pan/zoom, tap route to expand (existing) | show a rider position (no live ride here); colour an unscored gate | Static `<Image>`, not `RouteMapView`. Adequate for "which way" recognition; genuinely needs real tiles for "is this actually my street," which is Nathan's whole ask |
 | **Result (post-ride)** | let a curious rider confirm the road behind a number, off the critical path | nothing on the board itself (D-002); a "view trace" link, one tap away | (on view-trace only) full pan/zoom/layer-switch — stationary, no time pressure | put a map inside the ten-second glance path; outrank the tower headline | Link is unbuilt (grep confirms). Needs real tiles day one — its only reason to exist is "which street was that" |
@@ -37,6 +48,8 @@ It supersedes STATE.md's cycle-011 "map work is parked" line — Principal shoul
 | Heading-up | **ADOPT, live-only** | Live ride only (D-033); Routes/Result stay north-up — nothing there to orient a moving body to |
 
 ### 3. Proposed backlog rows
+
+*Historical — `main`'s backlog. On `virgin`: B-50/B-51/B-53 done; B-57 done as the RIDE detail trail; B-52 (ambient cache offline) unverified on device; B-54/B-55/B-56 not pursued; B-58 (phone-checkable acceptance test) never folded anywhere — §4 is that test.*
 
 | ID | Item | Owner role | Status |
 |---|---|---|---|

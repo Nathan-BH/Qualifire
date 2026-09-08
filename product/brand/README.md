@@ -16,6 +16,12 @@ Related but elsewhere: earcon WAVs in `app/assets/earcons/` (with their own
 decision lands, theme.ts is the single place to change, then rerun the boards
 with the same hexes.
 
-Status: palette decision OPEN — Nathan comparing `palettes/brandboard_*.png`
-(A signal = current, B vibrant gold, C two-tone, E cool-gray; D and F rejected
-in the composite round). Adopted mark: concept 5 (+1 as launcher form).
+Status (2026-09-08, `virgin`): the palette comparison below was never ruled on;
+**palette A ("signal") is what ships** — `app/src/ui/theme.ts` (`#F5C542` /
+`#A667F0` / `#3ED598`) — by default of no decision, with daylight + night themes
+added 2026-08-24. B vibrant gold, C two-tone and E cool-gray were never reviewed;
+D and F were rejected in the composite round. Nathan's later wish (notes4, point 6)
+is a different question — extra *chrome* themes (pink / light blue / green), verdict
+colours fixed — and is not on `OPEN-ITEMS.md` either; both are flagged there for
+him to keep or drop. Adopted mark: concept 5 (+1 as launcher form) — shipped:
+`app/assets/icon/` is concept 1, the launch animation is concept 5.

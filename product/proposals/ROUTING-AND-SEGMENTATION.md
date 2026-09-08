@@ -1,6 +1,18 @@
 # Routing and segmentation — type a destination, get a raceable track
 
+> **Reading this on the `virgin` branch — note added 2026-09-08 (virgin-cycle5).** This is a dated
+> design record from before the branch was cut (2026-08-31). `D-0xx` / `B-xx` ids and role names
+> (Product Owner, Designer, Backend Dev, Race Engineer, Principal …) refer to `main`'s
+> `product/DECISIONS.md`, `product/BACKLOG.md` and its named-role process — none of which exist on
+> this branch. **Since 2026-09-06 (WP-3) the words "route" and "way" mean the opposite of what they
+> mean below:** a *route* is now the from→to path between two landmarks (the parent) and a *way* is
+> one variant of riding it (the child, which owns the line, gates, results and ghosts) — see
+> `GLOSSARY.md`. Morning / Evening A / Evening B, the 624-ride archive and the Leuven landmarks are
+> Nathan's own seed data; a fresh install ships none of it (empty-seed default since 2026-09-08).
+
 **Navigation Engineer design proposal, cycle 011 (2026-08-17).** Answers IDEAS §29. Everything proposed here is `UNBUILT`. No app code is touched.
+
+*Status on `virgin` (2026-09-08): still a proposal — IDEAS §29 is the one Parked product fork on `OPEN-ITEMS.md` (needs a routing engine; no maintained Expo binding exists, §1). What did ship out of this file: §3 step 5's rules (no gate within 150 m of a controlled stop, ±250 m search window) and the `GateSet.origin: 'measured' | 'geometric'` honesty clause — both cited by name in `app/src/store/gateSeeding.ts` and `types.ts`; the stop proxy is the reference ride's own stationary points, not OSM signals. Not shipped: BRouter, geocoding, the 3–6 sector count (four is a ground rule), the overlap scan. Every input in §0 and §4 (`data/analysis/`, `activity-index.csv`, `routes.json`, the 624 rides) is `main`-only. "Route" in this file is the physical path — today's **way**.*
 
 Inputs: `data/analysis/RESULTS.md` (all σ and cross-track numbers below), `product/DATA-MODEL.md` (catalog schema), `data/activity-index.csv` (624 rides, re-measured today), `app/assets/routes/routes.json` (3 routes, raster + web-mercator + hand gates).
 

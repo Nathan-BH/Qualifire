@@ -5,6 +5,10 @@ marks must serve). Every claim here should trace to a recorded decision or a
 BRAND principle; where a concept's story was weak, the design was changed, not
 the story stretched.
 
+*Status (2026-09-08, `virgin`): the recommendation below is what shipped — concept 1
+is the launcher icon (`app/assets/icon/README.md`), concept 5 is the identity and the
+launch animation (`app/src/ui/launchChoreo.ts`, `marketing/`). Concepts 2–4 unused.*
+
 Shared ground rules, from BRAND: charcoal ground (paddock `#17171b`), warm ink,
 signature yellow `#F5C542` (which *is* the neutral "time posted" tier — the
 brand colour is deliberately the app's default temperature, not its rarest

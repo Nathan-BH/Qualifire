@@ -1,29 +1,56 @@
 # Concept
 
+> **Reading this on the `virgin` branch — note added 2026-09-08 (virgin-cycle5).** This is a dated
+> design record from before the branch was cut (2026-08-31). `D-0xx` / `B-xx` ids and role names
+> (Product Owner, Designer, Backend Dev, Race Engineer, Principal …) refer to `main`'s
+> `product/DECISIONS.md`, `product/BACKLOG.md` and its named-role process — none of which exist on
+> this branch. **Since 2026-09-06 (WP-3) the words "route" and "way" mean the opposite of what they
+> mean below:** a *route* is now the from→to path between two landmarks (the parent) and a *way* is
+> one variant of riding it (the child, which owns the line, gates, results and ghosts) — see
+> `GLOSSARY.md`. Morning / Evening A / Evening B, the 624-ride archive and the Leuven landmarks are
+> Nathan's own seed data; a fresh install ships none of it (empty-seed default since 2026-09-08).
+
 The structured version of the app idea. Source material is `IDEAS.md` (Nathan's raw words); this file is the team's working interpretation. Where they conflict, `IDEAS.md` is the intent and this file is wrong.
 
 Owner: Product Owner. Last revised: 2026-08-15 (cycle 007 — added the timing tower, IDEAS §15/§17).
 
-## Status corrections (2026-08-24, cycle 024)
+## Status on the `virgin` branch (2026-09-08, virgin-cycle5 — supersedes the 2026-08-24 block)
 
-The body below is kept as the original design record and is not rewritten. What has
-changed since 2026-08-15:
+The body below is the original 2026-08-15 design record and is not rewritten. What is true today:
 
-- The app EXISTS and runs on Nathan's phone — a dev client, since 2026-08-14 — not the
-  paper design this file's body describes.
-- The timing tower (§ below) is BUILT, not a proposal (cycle 016, B-28).
-- The catalog is now **20 routes across 13 ways** (grown from the 19/13 of cycle 019 by
-  cycle 024's WP-D1), and the live engine now locks/scores **all 20** of them (WP-D2,
-  cycle 024) — not just the 4 it used to (Morning, Evening A, Evening B, Morning B,
-  cycle 020).
-- The colour model is D-030/D-037's **last-10-rides rolling window** (purple beats the
-  best of the last 10 comparable rides on that route, green beats their average), not
-  the 7-day/28-day language elsewhere in this document.
-- D-042 (2026-08-17) made **raw wall-clock time** the ruled scoring default — luck
-  counts. Implementation is still pending (B-59); until it lands, colours and ranks
-  still compare moving time as this document describes.
-- This document's closing line, "No application code exists yet; every design above is
-  UNBUILT," has been false since cycle 005.
+- **The app exists** and has run on Nathan's phone since 2026-08-14 (dev client) and as the
+  standalone "Qualifire Preview" APK (build 7, 2026-09-06/07). The body's "no application code
+  exists yet" and every "UNBUILT" heading in it are historical.
+- **A fresh install is empty.** No sports, landmarks, routes, ways or ghosts ship (empty-seed default
+  since 2026-09-08). The body's "three tracks" (Morning / Evening A / Evening B) were Nathan's own
+  seed catalog; on this branch that data only appears if a developer opts in with
+  `EXPO_PUBLIC_SEED_MODE=shipped`. Everything a rider races against is created by riding: a ride
+  between unknown places is recorded as a free ride, and a naming card at STOP turns it into a
+  route + way with that ride as the reference (built 2026-08-31).
+- **Vocabulary (WP-3, 2026-09-06):** the body's "track" is today's **way** — one variant of riding a
+  **route** (the from→to path between two landmarks). Ways own the line, gates, history and colours;
+  colours never compare two ways. See `GLOSSARY.md`.
+- **Sports (WP-1, 2026-09-06):** every landmark, route, way and ride belongs to one user-named sport;
+  sports never cross-compare; none is pre-seeded — RECORD blocks until the rider names one.
+- **Colour model:** the last-10-rides rolling window (purple beats the best of the previous 9
+  comparable rides on that way, green beats their average, yellow = time posted), not the body's
+  7-day/28-day tiers. Scoring compares **raw wall-clock time** by default (luck counts); moving time is
+  opt-in (SETTINGS → Timing, built cycle2 WP-C). Nathan's D-045 ruling (2026-08-26) removed the "<5
+  clean rides stay neutral" noise floor — **that half of the ruling is not yet in code** (`MIN_HISTORY
+  = 5` still gates colours and ranks, `app/src/ui/colourModel.ts`); see `OPEN-ITEMS.md`.
+- **Reference lap:** not the body's automatic monthly reference. The first ride saved on a new route
+  is its way's reference; any later clean lap can be promoted from the RIDE detail screen.
+- **Timing tower:** built (2026-08-17). The post-ride surface is now the RIDE detail screen (sector-
+  coloured trail + tower) and the RESULTS tab (per-way board → ranked history + last-9-rides plot,
+  cycle3 WP-2). The "ideal lap" line the body and LAYOUT §3 describe was never built.
+- **Gates:** four sectors, gates at 25/50/75 % of the way's distance, nudged ≥150 m clear of where the
+  reference ride stood still (a one-ride proxy for traffic signals, flagged `origin: 'geometric'`);
+  adjustable tap-then-nudge on a real map; start/finish at 1 %/99 %. The body's "pending σ_s
+  measurement" never happened and the shipped model does not need it.
+- **Map:** MapLibre + OpenFreeMap on every screen including the live ride (heading-up, locked, no
+  labels while moving) — see `MAP-CONTRACT.md`.
+- **Non-goals** below still hold (single user, no accounts, sideloaded APK). "Anything that isn't the
+  commute" has widened: the app is for anyone's repeated ride in any sport, not Nathan's commute.
 
 ---
 
@@ -44,6 +71,8 @@ Nathan e-bikes a ~15-minute commute every day (D-014). The route is fixed and th
 
 Three tracks, not one route (D-015): **Morning** (home→work), **Evening A** (same corridor reversed), **Evening B** (a different road home, ~2% overlap with A). Each has its own sectors, benchmarks and boards — colours never compare different physical roads (principle from D-010, applied per-track). A ride matching no track goes uncoloured.
 
+*Superseded on `virgin` (2026-09-08 note): the principle — one set of sectors, benchmarks and colours per physical path, never compared across paths — is exactly today's rule, with "track" = way. The three named tracks were Nathan's seed data and do not ship.*
+
 ## Colour model — settled
 
 Three tiers on the live surface (D-007):
@@ -63,7 +92,7 @@ Three tiers on the live surface (D-007):
 
 Why this shape serves the bad day: neutral reads as "time posted", not failure; there is no red anywhere (D-013); rolling windows mean fatigue or a headwind week lowers the bar it must beat 7 days later, so the app never punishes a cold twice.
 
-## The timing tower — ratified direction 2026-08-15, UNBUILT
+## The timing tower — ratified direction 2026-08-15 (BUILT 2026-08-17; heading kept as written)
 
 IDEAS §15: the post-ride result is no longer a delta plot but a **ranked finish among past selves** — the trailing-28-day lap set for this track is a qualifying classification, and today's lap slots into a position at ride end ("P2 of your last 19 commutes"). Proposed semantics (cycle 007, pending Principal/Nathan):
 
@@ -98,4 +127,4 @@ Live feedback was adopted *with* constraints, over the Designer's recorded disse
 
 ## Technical shape (decided, unbuilt)
 
-React Native + Expo dev-build, TypeScript, MapLibre, Android-only, $0 pipeline (D-012). The map is cosmetic — all logic runs on the raw trace (D-002). Build order: Phase-0 PC validation harness on the GPX archive first; mobile code after the numbers are real. **No application code exists yet; every design above is UNBUILT.**
+React Native + Expo dev-build, TypeScript, MapLibre, Android-only, $0 pipeline (D-012). The map is cosmetic — all logic runs on the raw trace (D-002). Build order: Phase-0 PC validation harness on the GPX archive first; mobile code after the numbers are real. ~~**No application code exists yet; every design above is UNBUILT.**~~ *(False since 2026-08-14 — see the status block at the top. `HOW-THE-APP-IS-BUILT.md` describes what runs.)*

@@ -1,6 +1,14 @@
 # Prior Art — what is reusable, not a market overview
 
+> **Reading this on the `virgin` branch — note added 2026-09-08 (virgin-cycle5).** Dated record from
+> before the branch was cut (2026-08-31). `D-0xx` / `B-xx` ids, `cycles/cycle-0xx.md` and role names
+> (Designer, Product Owner, Backend Dev …) refer to `main`'s `product/DECISIONS.md`,
+> `product/BACKLOG.md`, its cycle records and its named-role process — none of which exist on this
+> branch. Current status is in the block below, `STATE.md` and `cycles/virgin-cycle*/README.md`.
+
 Written by the Mobile Developer, cycle 003 (2026-08-14), for B-18. Scope: things Qualifire can adopt, borrow or must deliberately avoid. Web-verified 2026-08-14 unless marked `[UNVERIFIED]`.
+
+*Status on `virgin` (2026-09-08): still the reference it was. "Phase-0 / Phase 3 / Phase-99" is `main`'s original build plan; the Strava archive ZIP is no longer on this branch (`safe_to_delete/`); "one-route scale" predates multi-way catalogs. Of §5's steal list, 1 (gate interpolation), 2 (completion-only earcons) and the expo-audio choice shipped; the audio-ducking `[UNVERIFIED]` in §4 was never closed on device.*
 
 ---
 

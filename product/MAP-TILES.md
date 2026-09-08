@@ -1,6 +1,14 @@
 # MAP-TILES — cycle 014, Backend Dev
 
-All UNBUILT. Corridor bbox for extract command: lon 4.60–4.72, lat 50.81–50.89 (routes.json bounds 50.8348–50.8638 / 4.6382–4.6883 + ~2 km margin per brief).
+> **Reading this on the `virgin` branch — note added 2026-09-08 (virgin-cycle5).** Dated record from
+> before the branch was cut (2026-08-31). `D-0xx` / `B-xx` ids, `cycles/cycle-0xx.md` and role names
+> (Designer, Product Owner, Backend Dev …) refer to `main`'s `product/DECISIONS.md`,
+> `product/BACKLOG.md`, its cycle records and its named-role process — none of which exist on this
+> branch. Current status is in the block below, `STATE.md` and `cycles/virgin-cycle*/README.md`.
+
+~~All UNBUILT.~~ **Status on `virgin` 2026-09-08 (virgin-cycle5):** §1 is built exactly as written — `app/src/ui/wayMapView.tsx` uses `…/styles/positron` (daylight) and `…/styles/dark` (night), no key; §6's OpenFreeMap attribution string ships byte-for-byte; §5's palette firewall + label hiding is `app/src/ui/wayMapStyle.ts` (style JSON patched at load, labels hidden while moving). §2 (ambient cache serving cached tiles with no signal) is still `[UNVERIFIED]` on a real dead-zone ride. §3 (PMTiles corridor extract) is not built — parked, only if §2 proves insufficient. §4 satellite/terrain remain non-goals. The corridor bbox below is Nathan's Leuven commute (`routes.json` is `main`-only); the product itself is location-agnostic — a blank install has no corridor until someone rides one. `08_build_route_assets.py`, `MAPLIBRE-SPIKE.md` and `cycles/cycle-014.md` are `main`-only.
+
+Corridor bbox for extract command (Nathan's seed, worked example): lon 4.60–4.72, lat 50.81–50.89 (routes.json bounds 50.8348–50.8638 / 4.6382–4.6883 + ~2 km margin per brief).
 
 ## 1. Online basemap, no key
 
@@ -54,7 +62,7 @@ Planet builds contain **z0–15 only**; MapLibre overzooms z15 for display, so n
 
 Licence: ODbL Produced Work, "OpenStreetMap attribution required" (docs.protomaps.com/basemaps/downloads).
 
-Known trap (confirmed by MAPLIBRE-SPIKE.md §3, consistent with the brief): MapLibre Android cannot read `pmtiles://asset://` (no byte-range reads on `AssetManagerFileSource`) — the .pmtiles file must be copied to `filesDir` on first run. UNBUILT.
+Known trap (confirmed by MAPLIBRE-SPIKE.md §3, consistent with the brief): MapLibre Android cannot read `pmtiles://asset://` (no byte-range reads on `AssetManagerFileSource`) — the .pmtiles file must be copied to `filesDir` on first run. UNBUILT (still, 2026-09-08 — parked).
 
 **Size [ESTIMATE], unmeasured (sandbox cannot download):** box is ~8.6 km (lon) × ~8.9 km (lat) at this latitude — roughly 2–3× the area of the ~4×6 km corridor MAPLIBRE-SPIKE.md §3 already sized. That spike's own arithmetic: ~15 tiles z14, 54 z15, 187 z16, ~260 tiles z0–16, ~10–30 MB [ESTIMATE] for the smaller corridor. Scaling area linearly for this wider bbox: z0–15 ≈ 15–45 MB [ESTIMATE], typical vector tile 15–60 KB each at these zooms (basemap, not imagery). Not measured — no downloadable tile source in this sandbox.
 
@@ -67,7 +75,7 @@ Known trap (confirmed by MAPLIBRE-SPIKE.md §3, consistent with the brief): MapL
 3D terrain in MapLibre Native: roadmap page (maplibre.org/roadmap/maplibre-native/terrain3d/) lists "Terrain3D" as a **roadmap item**, not confirmed shipped; Android-specific status [UNVERIFIED] from the pages fetched.
 **Verdict: not worth it** — Leuven is flat (this is a commute in Belgium, not mountain riding), and terrain support on MapLibre Native Android is unconfirmed/roadmap, not a ship-today feature.
 
-## 5. Palette firewall in style JSON — UNBUILT proposal
+## 5. Palette firewall in style JSON — ~~UNBUILT proposal~~ built (`app/src/ui/wayMapStyle.ts`)
 
 (a) MapLibre React Native v11 is **declarative** — there is no GL-JS-style runtime `map.setPaintProperty`/`setLayoutProperty` API. Style overrides are done by editing the style JSON itself: fetch the OpenFreeMap positron (or dark) style JSON at build time, patch `layers[].paint` for the layers below, and either host the patched JSON as a bundled asset or pass it as a `mapStyle` object to the map component. Layer ids below are the **real** OpenFreeMap positron ids, verified by inspector (not the standard-OpenMapTiles-naming guesses this section previously used):
 

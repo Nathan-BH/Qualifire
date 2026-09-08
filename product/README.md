@@ -1,56 +1,43 @@
 # product/ — what we are building
 
-Split into three, 2026-08-24 (cycle 024, WP-I bookkeeping), following the disposition
-the 2026-08-20 WP-I brief set out. Nothing in the split was rewritten as part of the
-move itself — files moved as-is (one file, `GPX-PLUS-proposal.md`, got a one-line
-"implemented" note prepended before its move; `BRAND.md`, `LAYOUT.md`, `CONCEPT.md`
-were separately rewritten/corrected the same day, as noted below).
+**`virgin` branch — index rewritten 2026-09-08 (virgin-cycle5).** Every file in this folder is a
+design record written before the branch was cut (2026-08-31, from `main` at cycle 025). None has
+been rewritten in today's words; each carries a status note at the top saying what has changed
+since. The live picture is `STATE.md`; the vocabulary is `GLOSSARY.md`; what is left to build is
+`OPEN-ITEMS.md`. This folder explains *why* the app is shaped the way it is.
 
-## Full disposition index
+Not on this branch (cut by `44e24f1`, still on `main`): `product/BACKLOG.md`, `product/DECISIONS.md`,
+`product/superseded/` (MAPLIBRE-SPIKE, MAP-STACK-OPTIONS, BUILD-PIPELINE, GPX-PLUS-proposal) and
+`product/proposals/TRIAGE-ideas-18-27.md`. The `D-0xx` / `B-xx` ids cited throughout these files are
+keys into those two deleted documents.
 
-| File | Status | Last touched | Who reads it | What it is |
-|---|---|---|---|---|
-| `BACKLOG.md` | live | 2026-08-24 | Product Owner (owns content), Team Principal (sets status), everyone at cycle start | Open work, prioritised. |
-| `DECISIONS.md` | live | 2026-08-24 | everyone — append-only decision log | Every settled question, dated, with rationale (numbered from D-001). |
-| `CONCEPT.md` | live (+ correction block, 2026-08-24) | 2026-08-24 | Product Owner (owns), everyone wanting the idea | The app concept, distilled — body is the cycle-007 record, corrected at the top for what's now built. |
-| `DATA-MODEL.md` | live | 2026-08-16 | Navigation Engineer, Backend Dev | Data model — §8a is the route-pick-at-START design (2026-08-16). The later pick-bias/lock-then-verify ruling (D-044, 2026-08-20) that builds on it is not yet cross-referenced here — filed as B-152. |
-| `LAYOUT.md` | live (+ status-block fix, 2026-08-24) | 2026-08-24 | Designer, Mobile Dev | Screen-by-screen spec — status block at top corrected to match the shipped six-tab app; body (§1 onward) kept as the original design record. |
-| `BRAND.md` | live (full rewrite, 2026-08-24) | 2026-08-24 | Art Director, Designer, Mobile Dev | Brand doc — rewritten to drop the scarcity/162m/three-tracks/7-28-day framing Nathan overruled; see `cycles/cycle-024.md`. |
-| `PRIOR-ART.md` | live | 2026-08-14 | Product Owner | Still-consulted reference (Strava/OpenTracks/Open Pace comparison). |
-| `MAP-TILES.md` | live | 2026-08-17 | Mobile Dev, Navigation Engineer | Style URLs, ToS, attribution strings — still operative (open B-52/B-56). |
-| `MAP-CONTRACT.md` | live | 2026-08-17 | Mobile Dev, Navigation Engineer, QA | Per-surface map behaviour + acceptance test — still binding. |
-| `brand/` | live | 2026-08-15 | Art Director | Canonical brand assets + `make_brandboard.py`. |
-| `README.md` | live | 2026-08-24 | everyone | This file. |
-| `proposals/COLD-START.md` | proposal | 2026-08-17 | Product Owner, Designer | Unbuilt cold-start ladder design (B-35…B-43 open). |
-| `proposals/SETUP-UX.md` | proposal | 2026-08-17 | Product Owner, Designer | Unbuilt onboarding/gate-setup design. |
-| `proposals/ROUTING-AND-SEGMENTATION.md` | proposal | 2026-08-17 | Product Owner, Designer | Unbuilt; gated on the §29 typed-destination fork Nathan hasn't ruled. |
-| `proposals/TRIAGE-ideas-18-27.md` | proposal | 2026-08-16 | Product Owner | Idea triage; open remnants tracked in `BACKLOG.md`. |
-| `superseded/MAPLIBRE-SPIKE.md` | superseded | 2026-08-17 | nobody (historical) | Stale v10 prop names, from before the real MapLibre map decision (D-041) superseded it. |
-| `superseded/MAP-STACK-OPTIONS.md` | superseded | 2026-08-17 | nobody (historical) | Decision support that fed the real map-stack decision (D-041). |
-| `superseded/BUILD-PIPELINE.md` | superseded | 2026-08-16 | nobody (historical) | Plan overtaken by real builds 3/4/5 + runbooks + `scripts/`. |
-| `superseded/GPX-PLUS-proposal.md` | superseded | 2026-08-24 | nobody (historical) | Shipped as GPX+ (B-68, cycle 021); extended further cycle 024 (WP-G). |
+**Vocabulary warning.** Since 2026-09-06 (WP-3) a *route* is the from→to path between two landmarks
+(parent) and a *way* is one variant of riding it (child). Every file here dated before that uses the
+words the other way round. Each affected file says so at the top.
 
-## Moved 2026-08-24 (old path → new path)
+## Index
 
-| Old path | New path |
-|---|---|
-| `product/COLD-START.md` | `product/proposals/COLD-START.md` |
-| `product/SETUP-UX.md` | `product/proposals/SETUP-UX.md` |
-| `product/ROUTING-AND-SEGMENTATION.md` | `product/proposals/ROUTING-AND-SEGMENTATION.md` |
-| `product/TRIAGE-ideas-18-27.md` | `product/proposals/TRIAGE-ideas-18-27.md` |
-| `product/MAPLIBRE-SPIKE.md` | `product/superseded/MAPLIBRE-SPIKE.md` |
-| `product/MAP-STACK-OPTIONS.md` | `product/superseded/MAP-STACK-OPTIONS.md` |
-| `product/BUILD-PIPELINE.md` | `product/superseded/BUILD-PIPELINE.md` |
-| `product/GPX-PLUS-proposal.md` | `product/superseded/GPX-PLUS-proposal.md` |
+| File | Status on `virgin` | What it is |
+|---|---|---|
+| `CONCEPT.md` | dated record (2026-08-15) + status block (2026-09-08) | The app idea, distilled — pitch, mechanic, colour model, tower, safety constraints. Body describes the paper design; the status block says what shipped differently. |
+| `DATA-MODEL.md` | **§2–§3 rewritten to the v2 schema 2026-09-08**; §4–§9 dated (2026-08-16) | Landmark / Route / Way / GateSet / RideResult and the derived-results-cache argument. `app/src/store/types.ts` is the authority; this explains it. |
+| `LAYOUT.md` | dated record (cycles 002–007) + status block (2026-09-08) | Screen-by-screen spec: live counter, override moment, board, tower anatomy, colour/redundant-cue table, earcon spec (§6a is still the earcon authority). Body screens ≠ today's six tabs; see the status block. |
+| `BRAND.md` | current (rewritten 2026-08-24, touched 2026-09-08) | Story, tagline, paddock/race modes, P1–P4 principles, motion language, logo brief. |
+| `MAP-CONTRACT.md` | **built**; contract still binding | Per-surface map behaviour (what each screen shows, allows, never does) + the on-device acceptance test (§4). |
+| `MAP-TILES.md` | §1/§5/§6 built as written; §2 unverified; §3/§4 not built | OpenFreeMap style URLs, attribution strings, palette-firewall patching, offline options. |
+| `PRIOR-ART.md` | reference (2026-08-14) | Strava segment matching, OpenTracks/FitoTrack/OpenPace, JS geo libraries, Expo audio/haptics. |
+| `brand/` | current | Logo SVG/PNG (`logos/`), brand board (`board/`), palette trials (`palettes/`), maker scripts; `LOGO-RATIONALE.md`. |
+| `proposals/COLD-START.md` | **largely built** on this branch — disposition table at top | The cold-start design the `virgin` branch executed: retroactive naming at STOP, ride-1-as-reference, empty seed. Its unbuilt remainder is the "ride n of N" honesty ladder. |
+| `proposals/SETUP-UX.md` | **largely built** — disposition table at top | ROUTES-as-editor IA, first-run flow, destination pills, tap-then-nudge gate editing (built); depth strip (not built). |
+| `proposals/ROUTING-AND-SEGMENTATION.md` | still a proposal (IDEAS §29, parked) | Type-a-destination via offline BRouter; §3's gate-placement rules and `GateSet.origin` shipped, the rest did not. |
+| `proposals/README.md` | current | What "proposal" means here now. |
 
-Every move above is reversible (`mv` back) — see `STATE.md` → "Awaiting Nathan" for
-the one-line flag.
+## How to read this folder
 
-## `proposals/` — designed but not built
-
-Unbuilt design work. Promotion out of here means it gets built, not just discussed.
-
-## `superseded/` — settled or overtaken, kept for the record
-
-Never deleted; these explain how the project got here even though nothing here is
-current.
+- Want the idea? `CONCEPT.md` status block, then `BRAND.md`.
+- Writing store or engine code? `DATA-MODEL.md` §1–§3 — then `app/src/store/types.ts`, which wins.
+- Touching a screen? `LAYOUT.md` for the rules the screens still obey (glance, no touch while
+  moving, colour ladder, earcons); `cycles/virgin-cycle1..3/README.md` for what the screens are now.
+- Touching the map? `MAP-CONTRACT.md` §1 and §5; `MAP-TILES.md` §1, §5, §6.
+- Wondering why a blank install behaves as it does? `proposals/COLD-START.md` and
+  `proposals/SETUP-UX.md`, disposition tables first.

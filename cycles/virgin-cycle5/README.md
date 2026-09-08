@@ -159,6 +159,10 @@ fix (the colour model, NW-1) landed before anything downstream references its ol
 - **`scripts/OTA-TROUBLESHOOTING.md`** shows as modified in the working tree (not by this
   cycle) — left untouched, looks like Nathan's own in-progress edit for the still-open
   "record build7's fingerprint" item.
+- **`product/` docs — audited and cleaned (follow-on, same cycle).** `REVIEW-product-docs.md` has
+  the per-file findings; `BRIEF-product-docs-cleanup.md` the edits. Biggest non-doc finding: the
+  D-045 "no noise floor" ruling is in `STATE.md` but not in code (`MIN_HISTORY = 5` still gates
+  colours and ranks) — proposed as a code WP in that brief's §12.
 
 ## Verification (Part 1 only — Part 2 made no code changes)
 

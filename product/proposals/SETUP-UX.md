@@ -1,7 +1,27 @@
 # SETUP-UX — the surfaces where a rider tells the app things
 
-**Status: PROPOSAL. Everything in this file is UNBUILT.** Owner: Designer · Cycle 011, 2026-08-17. Answers IDEAS §28 (fresh install, no seeded data) and §29 (destination entry). Binding inputs unchanged: D-006, D-008, D-011, D-030, BRAND P1–P4, LAYOUT §2/§3b/§5.
+> **Reading this on the `virgin` branch — note added 2026-09-08 (virgin-cycle5).** This is a dated
+> design record from before the branch was cut (2026-08-31). `D-0xx` / `B-xx` ids and role names
+> (Product Owner, Designer, Backend Dev, Race Engineer, Principal …) refer to `main`'s
+> `product/DECISIONS.md`, `product/BACKLOG.md` and its named-role process — none of which exist on
+> this branch. **Since 2026-09-06 (WP-3) the words "route" and "way" mean the opposite of what they
+> mean below:** a *route* is now the from→to path between two landmarks (the parent) and a *way* is
+> one variant of riding it (the child, which owns the line, gates, results and ghosts) — see
+> `GLOSSARY.md`. Morning / Evening A / Evening B, the 624-ride archive and the Leuven landmarks are
+> Nathan's own seed data; a fresh install ships none of it (empty-seed default since 2026-09-08).
+
+**Status: ~~PROPOSAL. Everything in this file is UNBUILT.~~ Largely BUILT on `virgin` — disposition below (2026-09-08).** Owner: Designer · Cycle 011, 2026-08-17. Answers IDEAS §28 (fresh install, no seeded data) and §29 (destination entry). Binding inputs unchanged: D-006, D-008, D-011, D-030, BRAND P1–P4, LAYOUT §2/§3b/§5.
 Grounded on `app/App.tsx` (six-tab bar), `RoutesScreen.tsx` (YOUR PLACES → WAYS → routes, read-only), `RecordScreen.tsx` (STARTING FROM / GOING TO pills, way derived from the pair). `product/LAYOUT.md` is deliberately **not** edited — it describes shipped surfaces; the §3.5/§5 changes proposed here are flagged, not made.
+
+## Disposition on `virgin` (2026-09-08, virgin-cycle5)
+
+| Section | Status | Notes |
+|---|---|---|
+| §1 no seventh tab; ROUTES rows → read-only detail; edit gates behind a second tap | **BUILT** (cycle2 WP-K `CatalogDetailScreen.tsx`, WP-I `GateAdjustScreen.tsx`) | RECORD keeps exactly one setup affordance, as argued |
+| §2 first run — ride first, name after; arrival card; one answer creates landmark + route + way + reference + 4 gates | **BUILT** 2026-08-31 (`routeNamingCard.tsx`, save-flow gates) | Differences: a blank install first asks for a **sport** (WP-1); there is no prefilled "Home" — with no landmarks the first ride is a free ride and *both* ends are named at STOP; gates are seeded from ride 1 (25/50/75 % + stop-snap) and offered for nudging before save |
+| §3 destination from your own places | **BUILT in spirit** — STARTING FROM / GOING TO pills on RECORD | Type-to-filter, recents and time-of-day ranking: not built; the pre-START sector-strip preview: not built |
+| §4 select-then-nudge, ± pad, never drag | **BUILT** (cycle2 WP-J: ± buttons, long-press repeat, real zoomable map) | The START/FINISH "locked ring + laps-count confirm" was **deliberately dropped** (`gateAdjustModel.ts`: every gate nudges alike; the ROUTES entry prices every move with its own reset dialog). "Make this a new route instead": not built |
+| §5 depth strip | **DROPPED (Nathan, 2026-09-08)** — not built, not wanted; doesn't serve an immediate purpose | Nearest thing that shipped instead: the RESULTS last-9-rides scatterplot. Remove from any "parked" list; this is a closed question, not an open one |
 
 ---
 

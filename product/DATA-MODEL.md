@@ -1,6 +1,16 @@
 # Data model — landmarks, ways, and the derived results store
 
-**Backend Dev design proposal, 2026-08-16.** Covers B-10 (data model, OPEN since cycle 002), its generalization to §20/§21 "ways" (proposed B-33), and the store B-28's timing tower has been waiting on (STATE open-work #2). No app code is touched by this document — it is a schema proposal for a cycle to adopt.
+> **Reading this on the `virgin` branch — note added 2026-09-08 (virgin-cycle5).** This is a dated
+> design record from before the branch was cut (2026-08-31). `D-0xx` / `B-xx` ids and role names
+> (Product Owner, Designer, Backend Dev, Race Engineer, Principal …) refer to `main`'s
+> `product/DECISIONS.md`, `product/BACKLOG.md` and its named-role process — none of which exist on
+> this branch. **Since 2026-09-06 (WP-3) the words "route" and "way" mean the opposite of what they
+> mean below:** a *route* is now the from→to path between two landmarks (the parent) and a *way* is
+> one variant of riding it (the child, which owns the line, gates, results and ghosts) — see
+> `GLOSSARY.md`. Morning / Evening A / Evening B, the 624-ride archive and the Leuven landmarks are
+> Nathan's own seed data; a fresh install ships none of it (empty-seed default since 2026-09-08).
+
+**Backend Dev design proposal, 2026-08-16 — adopted; §2–§3 refreshed to the shipped v2 schema on 2026-09-08 (virgin-cycle5).** Originally covered B-10 (data model), its generalization to §20/§21 "ways" (B-33), and the store the timing tower waited on. The schema below is what `app/src/store/types.ts` implements (`CATALOG_SCHEMA_VERSION = 2`, `RESULT_SCHEMA_VERSION = 2` since WP-3's read-side key rename; v1 files are migrated on read). **When this file and `types.ts` disagree, `types.ts` wins** — this document explains the shape, it does not define it. Sections §4–§9 are the 2026-08-16 record: §5, §7 and §9 describe Nathan's archive seeding and are marked historical.
 
 Inputs consumed: `data/analysis/landmarks_proposal.md` (83 clusters, 521/624 rides mapping to landmark pairs, way counts, the puttestraat↔work consistency run), `data/analysis/colour_backtest.md`, and the existing storage implementation in `app/src/storage/`.
 
@@ -28,13 +38,15 @@ Four curated entities plus one derived one. Curated data is small, human-readabl
 
 **Landmark** — a named place with a radius. From the archive mining: home, work, church, fosh, Leuven station, Puttestraat, plus the unnamed 88-visit cluster at 50.8703, 4.6919 that Nathan still has to identify. Radius is per-place, not global: `landmarks_proposal.md` found 150 m resolves ordinary places cleanly but smears fosh across two clusters (bike-parking jitter), so parkings want a bigger radius.
 
-**Way** — an ordered (startLandmark, endLandmark) pair. Directional by construction, which is D-010 held at the way level rather than re-derived. Loops (start == end) are a real category, not an edge case — 78 archived rides are loops — so a way is identified by (start, end, discriminator), where the discriminator is null for ordinary ways and a route label for loops.
+**Route** — the from→to path between two landmarks: an ordered (startLandmark, endLandmark) pair, directional by construction (D-010 held at the route level rather than re-derived). Loops (start == end) are a real category, not an edge case — 78 archived rides were loops — so a route is identified by (start, end, discriminator), where the discriminator is null for ordinary routes and a label for loops. A route is the **parent**: it lists its `wayIds` and, since WP-1 (2026-09-06), belongs to exactly one user-named `sportId`. *(In this document's original vocabulary this entity was called a "way"; WP-3 swapped the two names on 2026-09-06.)*
 
-**Route** — one physical path realizing a way, with its reference polyline. This is the level D-015 actually operates at: home→work is one way with three routes' worth of history today (Morning / Evening A / Evening B are, in the new vocabulary, *routes* of two ways). A way has 1..n routes; the live auto-lock (D-025) picks among the routes of all candidate ways. The measurement that justifies keeping this level separate rather than collapsing it: puttestraat↔work is 237 rides at **median 97% path overlap, zero rides below 70%** — one route per direction, no A/B split — while home↔work genuinely splits. The model must express both without special-casing either.
+**Way** — one physical path realizing a route, with its own reference polyline (`refLineId`), versioned gate set (`gateSetVersion`), reference ride (`referenceRideId` — on a blank install, the first ride saved on the route) and optional `specs` (the rider's own ordered qualifiers, e.g. `['Dry','Fast']`). This is the level the live engine locks and scores at: every ride result, gate set, ghost, best and colour is keyed by way, and colours never compare two ways. A route has 1..n ways; the live auto-lock (D-025, now pick-biased) picks among the ways of all candidate routes. *(Originally called a "route" here. The archive measurement that justified keeping this level — puttestraat↔work at median 97 % path overlap, home↔work genuinely split into Evening A / Evening B — is `main`-only data, but the argument stands: some routes have one way, some several, and the model expresses both without special-casing.)*
 
-**GateSet** — the ordered gate list for a route, **versioned**. Sector identity stays D-023's: (route, gate-pair chainage) — never GPS points.
+**GateSet** — the ordered gate list for a **way**, **versioned**; since 2026-08-31 it also carries `origin: 'measured' | 'geometric'` (ROUTING-AND-SEGMENTATION §3's honesty clause — every gate set the app seeds today is `'geometric'`). Sector identity stays D-023's: (way, gate-pair chainage) — never GPS points.
 
-**RideResult** *(derived)* — what the offline pipeline computes for one recorded ride: which route it matched, lap time, per-sector times, and the honesty flags. Recomputable from the raw JSONL at any time; deleting the whole derived tree costs only CPU.
+**RideResult** *(derived)* — what the pipeline computes for one recorded ride: which **way** it matched (`wayId`, null for a free ride), lap time, per-sector times, and the honesty flags (`tripwireDemoted`, `ignoredFromRanking`). Recomputable from the raw JSONL at any time; deleting the whole derived tree costs only CPU. Persisted since main's cycle 024 (`app/src/store/resultsStore.ts`: `results/<rideId>.json` + `results/index.json`).
+
+**Sport** *(WP-1, 2026-09-06 — not in the original proposal)* — a user-named category (`app/src/store/sports.ts`, `sports.json`). One global active sport; landmarks, routes, ways, rides and results carry a `sportId` and are filtered by it (tag-and-filter over the single stores, not per-sport storage roots). Sports never cross-compare and none is pre-seeded.
 
 ---
 
@@ -43,87 +55,152 @@ Four curated entities plus one derived one. Curated data is small, human-readabl
 Written in the style of `app/src/storage/types.ts` (pure types, no expo, headless-testable).
 
 ```ts
-export const CATALOG_SCHEMA_VERSION = 1;
+export const CATALOG_SCHEMA_VERSION = 2;
+export const RESULT_SCHEMA_VERSION = 2;
 
+/** A place, in a period of life. Identity — never a timing boundary: the
+ * landmark marks where the ride truly ends, while the final gate sits a few
+ * hundred metres before it (Nathan, 2026-08-16). */
 export interface Landmark {
-  id: string;            // 'home' | 'work' | 'fosh' | …  stable, never renamed
-  label: string;         // display name; renaming is cosmetic only
-  lat: number; lon: number;
-  radiusM: number;       // p90 of endpoint spread + 30 m, capped at half the
-                         // gap to the nearest landmark (measured: 120–256 m)
-  /** Era. A landmark is a place *in a period of life*: the old student bike
-   * spot ran Sep 2024 → Oct 2025, Puttestraat until Apr 2026. Dormant ones
-   * keep seeding history and are never offered at START. */
+  id: string;
+  label: string;
+  lat: number;
+  lon: number;
+  /** p90 of the endpoint spread + 30 m, capped at half the gap to the nearest
+   * landmark. Measured range 120–256 m; a flat 60–80 m loses 3/4 of the rides. */
+  radiusM: number;
   activeFromMs: number;
-  activeUntilMs: number | null;   // null = current
-  /** false ⇒ archive-only (dormant homes) or an errand stop, not a way end. */
+  activeUntilMs: number | null;
+  /** false ⇒ archive-only (dormant homes) or an errand stop — seeds history,
+   * never offered at START. */
   offerAtStart: boolean;
-  // NB a landmark is an IDENTITY, not a timing boundary (Nathan, 2026-08-16):
-  // it marks where the ride truly ends, while the final gate deliberately sits
-  // a few hundred metres before it (§22). Precision here costs timing nothing.
 }
 
-export interface Way {
-  id: string;                  // 'home→work', 'putt→work'
+/** Route — the from→to path between two landmarks; the parent. */
+export interface Route {
+  id: string;
   startLandmarkId: string;
   endLandmarkId: string;
-  loopDiscriminator?: string;  // required iff start === end
-  routeIds: string[];          // 1..n; D-015 lives here
+  /** required iff start === end (loops are a real category: 78 archived rides) */
+  loopDiscriminator?: string;
+  wayIds: string[];
+  /** WP-1 (2026-09-06): which user-defined sport (store/sports.ts) this route
+   * belongs to. Absent on every route that predates WP-1 (every shipped-seed
+   * route, everything in an existing catalog.user.json) — NEVER backfilled;
+   * such a route's effective sport is the FIRST sport in sports.json
+   * (store/sports.ts's effectiveSportId — the fallback rule, §3.4). */
+  sportId?: string;
 }
 
-export interface Route {
-  id: string;                  // 'Morning' | 'EveningA' | 'EveningB' | 'putt2work'
-  wayId: string;
-  refLineId: string;           // → the reference polyline fixture
-  gateSetVersion: number;      // current version; history keeps older ones
-  seeded: boolean;             // archive-seeded (D-018/D-024 ghosts)
+/** Way — one named way of riding a route (its `specs`, its reference
+ * line, its gate set); rides, gate sets and results are keyed by way.
+ *
+ * WP-3 (2026-09-05) swapped these two names; ids minted before WP-3 carry
+ * the OLD prefixes (`way:<rideId>` on a Route, `route:<rideId>` on a Way)
+ * and never change — see `isUserMintedWayId`. */
+export interface Way {
+  id: string;
+  routeId: string;
+  refLineId: string;
+  gateSetVersion: number;
+  seeded: boolean;
+  /** OPEN-ITEMS item 2 (COLD-START §3 step 9): the ride whose recorded track
+   * is this route's benchmark — "ride 1 IS the reference by default";
+   * promoting a later clean lap rewrites this field. Optional: seed routes
+   * predate it (their reference is the archive-built refLine, not one ride). */
+  referenceRideId?: string;
+  /** WP-G (Nathan 2026-09-02, Q2): the rider's own ordered free-text segments
+   * AFTER the way's From/To — "Home → Work → Dry → Fast" stores ['Dry','Fast'].
+   * Order matters (it is a path, not a tag set): RECORD groups a way's routes
+   * by shared prefix and forks the pill row only where the lists diverge
+   * (store/routeSpecs.ts). Absent or [] = the way's "plain" route. Trimmed,
+   * non-empty strings; validateCatalog rejects two routes on one way with the
+   * same NON-empty list (two plain routes stay legal — the seed's shape).
+   * Seed routes never carry this; their variant names remain the
+   * ROUTE_DISPLAY_ID overlay (defaultRoute.ts). Ids are untouched (D-023). */
+  specs?: string[];
 }
 
 export interface GateSet {
-  routeId: string;
-  version: number;             // monotonic; a gate move mints a new version
-  chainageM: number[];         // gate positions along the ref line
+  wayId: string;
+  version: number;
+  chainageM: number[];
   createdAtMs: number;
-  note?: string;               // why it moved — §22 will move the start/finish gates
+  /** ROUTING-AND-SEGMENTATION §3 honesty clause: 'geometric' = placed from
+   * geometry/proxies (quantiles, the reference ride's own stops), a starting
+   * grid, never to be described as good placement; 'measured' is reserved
+   * for placement from real multi-ride stop data (unbuilt). Optional: sets
+   * that predate this field (the shipped seed) carry neither claim. */
+  origin?: 'measured' | 'geometric';
+  note?: string;
 }
 
-export interface Catalog {           // catalog.json — curated, small, hand-editable
+export interface Catalog {
   schemaVersion: number;
   landmarks: Landmark[];
-  ways: Way[];
   routes: Route[];
+  ways: Way[];
   gateSets: GateSet[];
 }
-```
-
-```ts
-export const RESULT_SCHEMA_VERSION = 1;
 
 export type SectorQuality = 'clean' | 'interrupted' | 'estimated' | 'missed';
 
 export interface SectorResult {
   index: number;
-  fromChainageM: number; toChainageM: number;   // sector identity, per D-023
+  fromChainageM: number;
+  toChainageM: number;
   rawS: number;
-  movingS: number | null;      // null when quality !== 'clean' | 'interrupted'
+  /** null unless clean|interrupted — estimated sectors never get moving time */
+  movingS: number | null;
   quality: SectorQuality;
 }
 
 export interface RideResult {
   kind: 'rideResult';
   schemaVersion: number;
-  rideId: string;              // → the raw JSONL; the only link that matters
+  rideId: string;
   startedAtMs: number;
-  routeId: string | null;      // null = matched no route (D-025: uncoloured)
-  source: 'app' | 'archive';   // archive ⇒ ghost marking (D-018)
+  /** null = matched no route; stays uncoloured (D-025) */
+  wayId: string | null;
+  source: 'app' | 'archive';
   lap: { rawS: number; movingS: number | null; quality: SectorQuality };
   sectors: SectorResult[];
-  tripwireDemoted?: boolean;   // D-024 cruise-σ demotion, seeds only
-  derivedBy: {                 // recompute trigger — any mismatch ⇒ stale
+  /** D-024 cruise-σ tripwire fired on a seed ⇒ demoted out of the ranking */
+  tripwireDemoted?: boolean;
+  /** WP-H: the RIDER excluded this ride from ranking (detail screen's "Ignore
+   * in ranking"). Distinct from tripwireDemoted (automatic, D-024) and from
+   * deletion (the ride, trace and sector times all stay on file and visible).
+   * Enforced at the ONE gate every consumer already uses — results.ts ranks()
+   * — so no reader needs to know this field exists. Absent = counts. */
+  ignoredFromRanking?: boolean;
+  derivedBy: {
     engineVersion: string;
     gateSetVersion: number;
     resultSchemaVersion: number;
   };
+}
+
+export interface ResultsIndexEntry {
+  rideId: string;
+  wayId: string;
+  startedAtMs: number;
+}
+
+/** results/index.json — ordered by startedAtMs ascending, always rebuildable. */
+export interface ResultsIndex {
+  schemaVersion: number;
+  entries: ResultsIndexEntry[];
+}
+
+/** One row of the timing tower (D-028). Rank is computed, never stored. */
+export interface TowerRow {
+  rideId: string;
+  /** the lap's scored seconds under the current timing mode (store/timing.ts) */
+  timeS: number;
+  /** 1-based; null = present but unranked (estimated / tripwire-demoted) */
+  position: number | null;
+  ghost: boolean;
+  interrupted: boolean;
 }
 ```
 
@@ -139,6 +216,7 @@ index.json                ride index, rebuildable                (existing)
 catalog.json              landmarks · ways · routes · gate sets  (curated)
 results/<rideId>.json     one RideResult                         (derived, deletable)
 results/index.json        routeId → [{rideId, startedAtMs}] ordered ascending
+catalog.user.json · refs.user.json · sports.json · results/   ← the actual file names on `virgin` (store/catalogStore.ts, live/userRefs.ts, store/sports.ts, store/resultsStore.ts)
 ```
 
 Invariant, inherited from D-023 and worth stating as a test: **deleting `results/` entirely must lose nothing but CPU.** A QA case that wipes the tree, rebuilds, and asserts byte-equality is the cheapest possible guard against a benchmark second quietly becoming authoritative.
@@ -146,6 +224,8 @@ Invariant, inherited from D-023 and worth stating as a test: **deleting `results
 `results/index.json` is the only structure the live path reads at ride start. It is ordered by `startedAtMs`, so both window shapes are cheap: a 28-day window is a binary search on time; a last-N window is a slice from the tail. D-008's "benchmarks frozen at ride start" then holds unchanged — the freeze is a slice taken once, before the wheels move, and live colouring stays O(1).
 
 ## 5. Migration from what exists today
+
+*Historical (2026-08-16). Describes migrating `main`'s three hardcoded `TrackId`s and seeding 232 + 131 archive rides. On `virgin` a fresh install has no seed; the migration that actually ran here is WP-3's v1→v2 key rename (read-side, `app/src/store/`).*
 
 `TrackId = 'Morning' | 'EveningA' | 'EveningB'` is hardcoded in `app/core` and read through `app/src/live/refs.ts` from the QA-owned parity fixture. The migration is deliberately boring: those three strings become **route ids** verbatim, `refLineId` points at the same fixture entries, and two ways (`home→work`, `work→home`) are minted over them. No reference polyline changes, no re-parity, no fixture rebuild — the parity-proven engine keeps comparing the same numbers to the same lines. `TrackId` narrows to a `RouteId` alias so `app/core` need not change at all in the first step.
 
@@ -161,6 +241,8 @@ Seeding, per D-018/D-024: archive rides replay through the same offline pipeline
 That asymmetry is the argument for doing §22 early rather than later: every week of delay costs more lap history at the eventual cutover.
 
 ## 7. What the tower needs (D-028), as a query
+
+*Historical. Built as `app/src/live/towerSource.ts` + `app/src/ui/colourModel.ts` over the last-10-rides window (D-045), not the 28-day window written here; ghosts are the rider's own previous rides on the way.*
 
 B-28's `getLiveTowerPosition` stub replaces its body with roughly:
 
@@ -184,6 +266,8 @@ Nathan's amendment to §2: where a way genuinely has several routes, the app sho
 - **UI shape** (for B-34, not decided here): START → detected landmark (correctable) → destination → *if the way has >1 route*, a route pick defaulting to the most-ridden recent one; single-route ways skip the step entirely and nothing changes from today.
 
 ## 9. Open questions
+
+*Historical. Q1 and Q4 are about Nathan's archive landmarks (not on this branch). Q2: loops carry a hand label (`loopDiscriminator`). Q3 ("does a way with 4 rides get colours?") was ruled YES by D-045 (2026-08-26) — colours from ride 1 — but the code still holds the 5-ride floor; see `OPEN-ITEMS.md`.*
 
 1. ~~**The 88-visit cluster needs a name.**~~ **Answered — it was two places in two eras.** The 75-event mass is where the bike lived while Nathan commuted from his student accommodation (Sep 2024 → Oct 2025, now dormant); the 7-event minority is a still-active errand stop at the Carrefour 141 m away (Aug 2025 → now). Chasing it turned up a measurement error worth keeping: at a 150 m radius the cluster merges his old **student accommodation** (50.87031, 4.69189 — ~7 events) with an unidentified spot **141 m southwest** (50.86982, 4.69003) that absorbs ~75 events and holds the bike for a median 101.7 h between rides. Full working in `landmarks_proposal.md` → "Centroid drift". Two consequences: **(a)** radius is derived, not defaulted — p90 of the endpoint spread + 30 m, capped at half the gap to the nearest landmark (a flat 60–80 m, which I first proposed, drops the mapped-ride count from 435 to **115**: bikes park across a 100–230 m cloud); **(b)** landmark coordinates shown to a human must carry a map link — this error survived one round of analysis and died the moment Nathan looked at a link.
 
