@@ -76,6 +76,11 @@ replaced. Vocabulary is post-WP-3: a route is the from→to path, a way is one v
 
 ## Parked (scoped, not urgent)
 
+- **`design/` empty-state mockups (D4, virgin-cycle5).** `BRIEF-design-folder-plan.md` D4 —
+  one mockup each for ROUTES/RIDES/RESULTS/RECORD-setup's zero-data state, now that the
+  default install is `EXPO_PUBLIC_SEED_MODE=empty`. The brief's own recommendation: only worth
+  building if Nathan is actively working on first-run UX; parked here rather than built on
+  spec (2026-09-08).
 - **Real (OSM-signal-based) `'measured'` gate placement.** Today's sector gates snap away from
   the reference ride's own stops — a real but one-ride proxy, honestly flagged
   `origin: 'geometric'`. Getting to `'measured'` needs either a real traffic-signal data

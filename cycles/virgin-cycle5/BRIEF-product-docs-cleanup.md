@@ -852,10 +852,19 @@ entries (they already are, or will be per (a)-(e) above); don't manufacture urge
 changed ROUTES (detail screen), RESULTS (new tab), RECORD (sport pills, naming card). Not checked here.
 `design/ChatGPT attempt at improved design/` is a screenshot/reconstruction set, not a brand input.
 
+**Resolved 2026-09-08 — superseded, not separately needed.** `BRIEF-design-folder-plan.md`'s D0-D2
+did exactly this currency check as part of actually fixing the generator and re-transcribing the
+changed screens (commits `16c844b`, `69c7ffd`, `50aeae3`) — ROUTES, RESULTS, RECORD and result→
+ride_detail are all current now. No separate audit dispatch needed.
+
 ### NW-4 — `product/DATA-MODEL.md` §4/§6/§8a refresh (doc, SMALL) — only if WP-P3's D6 grep turns up
 more store files than listed (e.g. a free-rides or unmatched-results file), or if the executor finds
 §8a's pick-at-START prose contradicts the live engine's soft/verified lock in a way the header note
 does not cover. Otherwise nothing.
+
+**Resolved 2026-09-08 — not needed.** The WP-P0-P10 dispatch ran the D6 grep and confirmed all
+four store-file names already listed (`catalog.user.json`, `refs.user.json`, `sports.json`,
+`results/`) — nothing extra turned up, so the condition for this WP was never triggered.
 
 ---
 
