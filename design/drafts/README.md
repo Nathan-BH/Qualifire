@@ -1,5 +1,10 @@
 # design/drafts/ -- DRAFT palette mockups, NOT canonical
 
+**CLOSED 2026-09-08 (Nathan): not adopted.** He ruled to keep the app's original day/night
+palette permanently, reasoning that a brand existing in every colour loses its recognizable
+image. This folder stays as history -- nothing here ships, nothing here is revisited unless
+Nathan reopens the question himself.
+
 These SVGs are an exploration for Nathan to look at. They are **not** ship-ready, they are
 **not** what the app renders, and no app code refers to them. The canonical mockups -- the
 ones that mirror what actually ships -- remain the 18 files in `design/canonical/`.

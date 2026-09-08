@@ -145,7 +145,15 @@ Recommendation: do this only if Nathan is actively working on first-run UX; othe
 
 ---
 
-## D5 — The palette decision (Nathan) — UPDATED 2026-09-08: collage step added before D5 closes
+## D5 — The palette decision (Nathan) — RULED 2026-09-08: option (a), both explorations closed
+
+**Nathan's ruling, after seeing the D5.0 collages:** he doesn't like any of the alternatives,
+and more importantly wants to stick with the app's original day/night colours permanently —
+"if it exists in every colour, it loses its image." Both explorations (`product/brand/palettes/`
+and `design/drafts/`) are discontinued. Recorded in `product/brand/README.md` and
+`design/drafts/README.md`. Nothing is deleted — both folders stay as history, per option (a)'s
+own text below. No code change (the app already ships palette A). This closes D5; nothing
+further to decide here.
 
 **Nathan's answer (Q8):** he can't form a visual opinion from the current material — the SVGs are
 "nice for control... but not easy to look at" one at a time in Inkscape, slow to load individually.
