@@ -53,10 +53,14 @@ a review + a brief for a future cycle to execute, per Nathan's ask.
 | `marketing/` (website) | `REVIEW-website.md` | `BRIEF-website-improvement-plan.md` (3 positioning options + no-regrets fixes + HYPERFRAMES disposition) |
 | `design/` | `REVIEW-design-folder.md` | `BRIEF-design-folder-plan.md` (D0-D6: repair the generator, add missing screens, re-transcribe changed ones, Nathan's palette call, housekeeping) |
 
-**`QUESTIONS-FOR-NATHAN.md`** collects every open question across all three briefs that needs
+**`QUESTIONS-FOR-NATHAN.md`** collects every open question across all three briefs that needed
 an answer before execution (8 questions: a code-ruling reconfirmation, the website's
 positioning, the hero line, HYPERFRAMES disposition, and the two parallel unresolved palette
-explorations, plus a couple of small parked-or-drop calls) — answer inline there, not in chat.
+explorations, plus a couple of small parked-or-drop calls). **Answered 2026-09-08** — all three
+briefs below have been updated to match. One answer (Q1, the colour-model ruling) opened a real
+technical fork that needed a second pass rather than a straight brief edit: see
+**`QUESTIONS-FOR-NATHAN2.md`**, which is still open. `BRIEF-product-docs-cleanup.md`'s NW-1 is
+blocked on it; the other two briefs are not.
 
 **Headline findings worth reading even before picking a brief up:**
 
