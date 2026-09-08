@@ -92,6 +92,52 @@ vs. the mechanically simplest one) — flagged for the executor to re-check, not
   only on `main`. Every `D-0xx`/`B-xx` id cited across product/ docs is a key into those
   now-absent files.
 
+## Proposed execution order (2026-09-08, all three briefs, all now execution-ready)
+
+Not a strict must-follow, but this is the order that minimises rework and gets the highest-value
+fix (the colour model, NW-1) landed before anything downstream references its old behaviour.
+
+**Wave 1 — independent, no cross-dependencies, safe to run in any order or in parallel:**
+1. `BRIEF-product-docs-cleanup.md` WP-P0…P10 (product/ doc edits) — one dispatch, one commit.
+2. `BRIEF-website-improvement-plan.md` (c) — the 9 no-regrets fixes. Independent of positioning.
+3. `BRIEF-design-folder-plan.md` D0 — generator repair. Unblocks D1–D4.
+4. `BRIEF-design-folder-plan.md` D5.0 — comparison collages. Independent of D0; hand to Nathan
+   as soon as it lands so he can look while everything else keeps moving.
+
+**Wave 2 — the one real app-code change, isolated so a code review is never mixed with a doc diff:**
+5. `BRIEF-product-docs-cleanup.md` NW-1 — colour model (`MIN_HISTORY` 5→1). Own dispatch, own
+   commit, full 560-test run plus the new n=0/1/2/10 cases. Do this before item 6 below and
+   before website (b) / HYPERFRAMES — several downstream doc and copy passages read differently
+   once this has actually landed, and doing it late means rewriting them twice.
+6. Small follow-up (anticipated in NW-1's own scope): strike the "not yet in code" sentences
+   WP-P0-P10 added to CONCEPT.md, DATA-MODEL.md §9 and COLD-START's disposition, now that they're
+   true. Bundle into NW-1's commit or right after — a few sentences, not its own dispatch.
+
+**Wave 3 — depends on Wave 1/2 landing:**
+7. `BRIEF-website-improvement-plan.md` (b) — the Option 2 copy changes. Sequenced after (c) per
+   the brief's own plan, and after NW-1 so the cold-start / noise-floor language can state the
+   real (now fixed) behaviour instead of a caveat that needs a second pass.
+8. `BRIEF-design-folder-plan.md` D1 — RESULTS mockups (needs D0).
+9. `BRIEF-design-folder-plan.md` D2 — re-transcribe changed screens (needs D0; can run alongside
+   D1, both only depend on D0).
+10. `BRIEF-product-docs-cleanup.md` NW-2 — OPEN-ITEMS.md additions. Small, slots in anywhere here.
+
+**Wave 4 — Nathan's own call, not a dispatch:**
+11. `BRIEF-design-folder-plan.md` D5 — the actual palette pick, once he's seen D5.0's collages.
+
+**Wave 5 — deferrable / explicitly lower priority, do when there's slack:**
+12. Design D3 — optional extra mockups (catalog_detail, gate_adjust, SETTINGS→SPORTS).
+13. Design D4 — optional empty-state mockups.
+14. Design D6 — housekeeping; best after D0–D2 so the README rewrite describes what's actually true.
+15. `BRIEF-product-docs-cleanup.md` NW-5 — launch-animation options HTML deck. Nathan wants to
+    browse ideas, not urgent, not blocking.
+16. NW-3 — `design/` currency check. Largely covered by D0–D2 already re-verifying the tree;
+    treat as a final confirmation pass rather than fresh work.
+17. NW-4 — DATA-MODEL.md refresh, only if WP-P3's own D6 grep (inside WP-P0-P10) turns up a gap.
+18. `BRIEF-website-improvement-plan.md` (d) — the HYPERFRAMES-PLAN.md restructure. Explicitly
+    not a priority (Nathan's own words); do last, and after NW-1 has landed since ideas 4 and 7
+    both cite the colour model directly.
+
 ## Commits
 
 1. `eeab73f` — root-doc cleanup (round 1)
