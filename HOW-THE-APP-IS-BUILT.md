@@ -35,7 +35,7 @@ opts his own Leuven seed back in with an environment flag on the dev client.
 
 **The UI** (`app/src/ui`) is what you actually see: six tabs across the bottom —
 RECORD (set up → armed → running → the finish moment, with the live map; a sport pill row on
-top with 2+ sports and the SETTINGS togg|e on; the naming card at STOP for a ride between
+top with 2+ sports and the SETTINGS toggle on; the naming card at STOP for a ride between
 unknown places),
 RIDES (your ride history; tap a ride for its detail screen with the sector-coloured trail),
 ROUTES (your places and routes; tap one for a full-screen detail where ways can be inspected,

@@ -30,7 +30,7 @@ Qualifire/
 ├── CLAUDE.md               Instructions for any Claude session working in this repo.
 │
 ├── app/                 What actually runs on the phone (React Native / Expo).
-├── briefs/              Legacy: the five 2026-08+31 briefs ftom the branch cut. Every later
+├── briefs/              Legacy: the five 2026-08-31 briefs from the branch cut. Every later
 │                        brief lives inside its cycle folder — nothing new goes here.
 ├── cycles/              One folder per work cycle (virgin-cycle1, 2, …): briefs, decisions,
 │                        Inspect findings, token usage. Start with the newest README.md.

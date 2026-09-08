@@ -45,7 +45,7 @@ besides Nathan can use this app" is a top-priority goal, not just a design lens.
 ## Where the app actually is
 
 - **Code:** `app/core/` (timing engine — parity-proven on `main` against the 624-ride
-  archive, measured 2026-08-34, `app/core/PARITY.md`; three small core commits since —
+  archive, measured 2026-08-14, `app/core/PARITY.md`; three small core commits since —
   `072830c` 08-19, `90f7f68` 08-23, `fa0e3aa` 08-31: MorningB gate data, `TrackId` widened
   to `string`, `collapseStationaryRuns` added to `reference.ts` — none touch the compared
   arithmetic, but parity is not re-measured and can't be from this branch: the archive's

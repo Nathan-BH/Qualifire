@@ -49,7 +49,7 @@ mid-ride — built to be readable at a glance, like a race timing tower.
 install the first ride you save on a new route becomes its way's reference automatically;
 the gates are seeded from it at 25/50/75 % of the distance and you can nudge them.
 
-**Lock (soft / verified).** The moment the live commmits to the way you're riding.
+**Lock (soft / verified).** The moment the live engine commits to the way you're riding.
 Before lock it's still gathering evidence: no lock of any kind until a way has about 400 m
 of corridor-verified travel behind it. If you picked a way on RECORD, that pick is the only
 way the ride can ever lock. A *soft* lock (pick rides only) comes as soon as the picked way
