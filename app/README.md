@@ -4,7 +4,7 @@ This is the real app that runs on Nathan's phone. For what's actually in here an
 it fits together, read:
 
 - **`../HOW-THE-APP-IS-BUILT.md`** — the plain-language one-pager: engine, location,
-  storage, the store, the UI, the live engine, dev client vs. build, mockup vs. app.
+  storage, the store, the UI, the live engine, dev client vs. build (Preview).
   Start here if you're not sure what a piece is called.
 - **`README-dev.md`** — the developer setup and acceptance-test steps for working on
   this code from Nathan's PC: pipeline status, test suite, build/rebuild triggers.

@@ -22,8 +22,9 @@ between.
 
 **Sport.** A category you name yourself — bike, e-bike, run, walk. Every landmark, route,
 way, ride and result belongs to exactly one sport, and the app shows one *active* sport at a
-time: switch it in SETTINGS → Sports, or with the pill row at the top of RECORD (which only
-appears once you have two or more). A fresh install has no sports at all until you name one,
+time: switch it in SETTINGS → Sports, or with the pill row at the top of RECORD (shown only
+with 2+ sports and the SETTINGS "Sport picker on RECORD" toggle on — on by default). A
+fresh install has no sports at all until you name one,
 and RECORD says so instead of recording.
 
 **Ghost.** The past version of yourself the app is comparing you against right now — your
@@ -48,11 +49,17 @@ mid-ride — built to be readable at a glance, like a race timing tower.
 install the first ride you save on a new route becomes its way's reference automatically;
 the gates are seeded from it at 25/50/75 % of the distance and you can nudge them.
 
-**Lock (soft / verified).** The moment the live engine decides which way you're actually
-riding, out of every way it was watching. Before lock it's still narrowing candidates. A
-*soft* lock shows that way on screen but doesn't yet score against it; once you've covered
-enough of that way's corridor it becomes *verified*, and sector colours and the tower are
-tied to it. A verified lock never switches. A free ride never locks.
+**Lock (soft / verified).** The moment the live commmits to the way you're riding.
+Before lock it's still gathering evidence: no lock of any kind until a way has about 400 m
+of corridor-verified travel behind it. If you picked a way on RECORD, that pick is the only
+way the ride can ever lock. A *soft* lock (pick rides only) comes as soon as the picked way
+has its 400 m: from then on it is shown on screen **and** scored — sector colours, the
+tower, everything — exactly as a verified lock would be; the only difference is that the
+engine hasn't yet confirmed it as the clear leader over every other way it watches, and the
+screen says so. Once it is, the lock is promoted to *verified* with no second lock event.
+Without a pick there's no soft stage — the clear leader locks verified straight away. A
+lock never switches to another way, however far ahead one pulls; leaving the picked road
+scores as missed sectors on the pick. A free ride never locks.
 
 **Free ride ("new>>new").** A ride whose start and end match no landmark you know. The app
 records it and shows nothing to compare against — no reference line, no colours — and at

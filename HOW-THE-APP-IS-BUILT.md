@@ -10,9 +10,12 @@ The app folder (`app/`) has a handful of working parts, each doing one job.
 **The engine** (`app/core`) is the pure timing brain. It takes a stream of GPS points,
 projects them onto a way's line, detects gate crossings, and computes sector and lap times.
 It has no idea about phones, screens, or storage — just numbers in, numbers out. It was
-proven on `main` against the 624-ride Strava archive (same input, same answer, every time);
-that archive and its tooling stay on `main`, but the engine code hasn't changed since
-2026-08-14, so the proof still applies to what runs here.
+proven on `main` against the 624-ride Strava archive (same input, same answer, every time —
+`app/core/PARITY.md`, measured 2026-08-14). That archive and its Python side stay on `main`,
+so the proof can't be re-run from this branch. Three small core commits have landed since
+(2026-08-19, 08-23, 08-31: a fourth commute track's gate data, a widened track-id type, and
+an added stationary-run helper in `reference.ts`); none touches the arithmetic the proof
+compared, but parity has not been re-measured on top of them.
 
 **Location** (`app/src/location`) talks to Android's GPS in the background (a foreground
 service, so it keeps running with the screen off) and hands each fix to the engine as it
@@ -32,7 +35,8 @@ opts his own Leuven seed back in with an environment flag on the dev client.
 
 **The UI** (`app/src/ui`) is what you actually see: six tabs across the bottom —
 RECORD (set up → armed → running → the finish moment, with the live map; a sport pill row on
-top once you have two sports; the naming card at STOP for a ride between unknown places),
+top with 2+ sports and the SETTINGS togg|e on; the naming card at STOP for a ride between
+unknown places),
 RIDES (your ride history; tap a ride for its detail screen with the sector-coloured trail),
 ROUTES (your places and routes; tap one for a full-screen detail where ways can be inspected,
 their gates edited on a real zoomable map, or deleted), RESULTS (a board of your ways,

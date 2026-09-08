@@ -1,14 +1,16 @@
-# data/ — the ride archive and analysis pipeline
+# data/ — app-recorded test rides (virgin branch)
 
-Not itemized per-ride below — see subfolder descriptions instead.
+On `virgin` this folder holds only what the app itself produced during test rounds. The
+624-ride Strava archive, `activity-index.csv`, the `analysis/` Python pipeline and its
+reports all stay on omain`. Nothing here is read by the app or by the headless test suite.
 
 | Entry | What it is |
 |---|---|
-| `activities/` | The raw GPX archive — 624 exported rides (Aug 2024 → Aug 2026, all e-bike) plus `activities/TEST in app rides/`, the app's own recorded test rides (individual files and per-day subfolders). |
-| `activity-index.csv` | One row per archive ride: filename, date, distance, and the metadata the analysis pipeline keys off. |
-| `analysis/` | The numbered pipeline scripts (`01_parse.py` → `10_gatefield_replay.py`) that turn raw GPX into the app's catalog: parsing, gate detection, way/route mapping, mockup and route-asset generation, the route workbench data, and the gate-field replay tool. `analysis/cache/` holds 125 parsed archive rides as `.npz` (fast re-load, not re-parsed from GPX each time). `analysis/workbench/` backs `demos/workbench.html`. Output reports (`RESULTS.md`, `*_report.md`, `*.csv`) sit alongside the scripts that produced them. |
-| `strava_export-20260814.zip` | The original raw Strava export the archive was built from — kept as the ground-truth source, not touched by the pipeline. |
+| `activities/TEST in app rides/` | Pre-branch test rounds on the old app (2026-08-19 → 08-29), one `qualifire-YYYYMMDD/` folder per day: Nathan's notes, reviews and post-review notes, plus a few screenshots. Notes only — no GPX. Kept for reference; vocabulary is pre-WP-3 (route/way not yet swapped). |
+| `activities/TEST in virgin-app rides/` | Test rounds on this branch (2026-09-01, 09-03, 09-04), one `qualifire-YYYYMMDD/` folder per day: the app's GPX+ exports (`qualifire-YYYYMMDD-HHMM.gpx`), the debug exports `qualifire-catalog-*.json` / `qualifire-refs-*.json`, and the day's notes / review. New on-device findings go in a new folder here (OPEN-ITEMS.md item 2). |
 
-Read by: whoever is doing route/gate work that cycle (usually the Navigation
-Engineer or a data-analysis work package); the app itself never reads this folder
-directly — it consumes the catalog files the pipeline produces into `app/src/store`.
+Not on this branch, though still referenced by two offline builder scripts the suite never
+imports ( app/tests/build_fixtures.ts`, `app/tests/build_seed.ts`) and by the scratch script
+`app/tests/scratch_freeride_replay.ts`: `activity-index.csv`, the raw archive, `analysis/`.
+`strava_export-20260814.zip` was moved to `safe_to_delete/` in virgin-cycle5. The `.gpx`
+files here are the app's own exports, not Strava's.

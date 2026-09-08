@@ -22,7 +22,8 @@ replaced. Vocabulary is post-WP-3: a route is the from→to path, a way is one v
   `cycles/virgin-cycle3/README.md`.
 - virgin-cycle4 (2026-09-06/08): build7 — Preview rebuilt in place as a permanently
   blank-seed install, OTA fingerprint re-anchored; dry run clean, real EAS build run by Nathan
-  and completed; seed default flipped to 'empty' — `cycles/virgin-cycle4/README.md`.
+  and completed; seed default flipped to 'empty' (working tree only — uncommitted, see
+  Housekeeping below) — `cycles/virgin-cycle4/README.md`.
 
 ## The virgin-prototype path, in order
 
@@ -56,6 +57,19 @@ replaced. Vocabulary is post-WP-3: a route is the from→to path, a way is one v
    guess. This is what makes a lost/replaced phone, or handing your exact setup to a friend,
    survivable — separate from retroactive route creation, which is what lets a total stranger
    start from nothing.
+
+## Housekeeping (agent-side, no phone needed)
+
+- **Commit the virgin-cycle4 tail.** As of the cycle5 round-2 commit the seed-default flip
+  ('empty' unless `EXPO_PUBLIC_SEED_MODE=shipped`) sits in the working tree, uncommitted:
+  `app/src/store/seed.ts`, `app/tests/seedmode_pin.ts`, `app/tests/run.ts`,
+  `app/app.config.js`, `app/README-dev.md`, `scripts/build7.ps1`, `scripts/dev-virgin.*`
+  deleted (copies in `safe_to_delete/`), `cycles/virgin-cycle4/*.md`. The root docs already
+  describe the flipped state (STATE.md wins where they differ). The virgin-cycle4 session
+  owns the commit; when it lands, strike this item and drop the "uncommitted" flags in
+  STATE.md (the seed bullet and the cycle4 footer line) and in the cycle4 line above. Then
+  the last cycle4 step per `cycles/virgin-cycle4/TOKEN-USAGE.md`: record build7's
+  fingerprint in `scripts/OTA-TROUBLESHOOTING.md`.
 
 ## Parked (scoped, not urgent)
 

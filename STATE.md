@@ -45,7 +45,11 @@ besides Nathan can use this app" is a top-priority goal, not just a design lens.
 ## Where the app actually is
 
 - **Code:** `app/core/` (timing engine — parity-proven on `main` against the 624-ride
-  archive; unchanged since 2026-08-14, so the proof still applies), `app/src/live/`
+  archive, measured 2026-08-34, `app/core/PARITY.md`; three small core commits since —
+  `072830c` 08-19, `90f7f68` 08-23, `fa0e3aa` 08-31: MorningB gate data, `TrackId` widened
+  to `string`, `collapseStationaryRuns` added to `reference.ts` — none touch the compared
+  arithmetic, but parity is not re-measured and can't be from this branch: the archive's
+  `activity-index.csv` and the Python side live on `main` only), `app/src/live/`
   (full-catalog pick-bias engine; candidates are ways), `app/src/store/` (sports + catalog +
   results + timing, empty-seed-capable — see below), `app/src/ui/` (six tabs:
   RECORD / RIDES / ROUTES / RESULTS / SETTINGS / DEMO). `app/tests/`: **560 tests, 557 pass,
@@ -54,7 +58,12 @@ besides Nathan can use this app" is a top-priority goal, not just a design lens.
   runtime catalog is the shipped seed merged read-side with an on-phone
   `catalog.user.json` (never copied to disk, so a seed edit still reaches every install).
   The empty seed is the **default** since 2026-09-08 (`seed.ts` resolves 'empty' unless
-  `EXPO_PUBLIC_SEED_MODE=shipped`): plain `npx expo start` on the dev client and the
+  `EXPO_PUBLIC_SEED_MODE=shipped`) — **landed in the working tree, not yet committed** as
+  of `eeab73f` and the cycle5 round-2 commit; the virgin-cycle4 session owns that commit
+  (`seed.ts`, `tests/seedmode_pin.ts`, `tests/run.ts`, `app.config.js`, `README-dev.md`,
+  `scripts/build7.ps1`, the `dev-virgin` retirement, the cycle4 docs). Until it lands,
+  HEAD's `seed.ts` still defaults to 'shipped' and `scripts/dev-virgin.*` are still tracked
+  — see OPEN-ITEMS "Housekeeping". With it: plain `npx expo start` on the dev client and the
   `preview` / `virgin` EAS profiles (which still set `empty` explicitly) all ship a
   genuinely blank catalog: 0 sports, 0 landmarks, 0 routes, 0 ways, 0 ghosts. The Leuven seed is
   opt-in only — `$env:EXPO_PUBLIC_SEED_MODE = "shipped"` before `npx expo start` (the
@@ -212,7 +221,8 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   (WP-1), RESULTS tab (WP-2).
 - `cycles/virgin-cycle4/README.md` — 2026-09-06/08: build7 (blank-seed Preview + OTA
   re-anchor) — inspected, dry run clean, real build run by Nathan; then (2026-09-08) the
-  seed default flipped to 'empty' and the `dev-virgin` scripts were retired.
+  seed default flipped to 'empty' and the `dev-virgin` scripts were retired (that tail sits
+  in the working tree, uncommitted as of the cycle5 round-2 commit — OPEN-ITEMS Housekeeping).
 - `cycles/virgin-cycle5/` — 2026-09-08: this root-doc cleanup (main-branch leftover vs.
   staleness); see its `CONTEXT.md` and `BRIEF-root-docs-cleanup.md`. Later cycles: add a
   line here when the cycle closes.
