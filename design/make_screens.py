@@ -8,22 +8,22 @@ script (his edited file is the truth until mirrored). Re-run:
 
 History: cycle 024/WP-J's re-emit pass (2026-08-24) drew the RECORD (four
 phases), RIDES and RESULT screens once that cycle's WP-A/WP-B/WP-E had
-landed. This pass (virgin-cycle5, D0, 2026-09-08) is a mechanical repair
-only — no drawing changes — after WP-3 (2026-09-06) swapped the route/way
-vocabulary app-wide and the asset manifest moved from app/assets/routes/
-routes.json to app/assets/ways/ways.json, both of which had left this
-script unable to run. See cycles/virgin-cycle5/BRIEF-design-folder-plan.md
-§D0 for the fix list; D1/D2 (new RESULTS-tab drawings, re-transcribing
-ROUTES/RECORD/result->ride_detail) are separate, later passes.
+landed. virgin-cycle5 D0 (2026-09-08) was a mechanical repair only — no
+drawing changes — after WP-3 (2026-09-06) swapped the route/way vocabulary
+app-wide and the asset manifest moved from app/assets/routes/routes.json to
+app/assets/ways/ways.json. D1 added the RESULTS tab; D2 re-transcribed
+ROUTES/RECORD/result->ride_detail. D3 (2026-09-08, optional per the brief)
+added catalog_detail, gate_adjust, and a SETTINGS -> SPORTS section. See
+cycles/virgin-cycle5/BRIEF-design-folder-plan.md for the full work list.
 
 WP-B's free-ride "new" start/end option is UNRATIFIED (no agreed layout) and
 is deliberately not drawn anywhere in this file — every RECORD screen below
 depicts a normal known-route ride only. See design/README.md.
 
-Implemented (9 screens x day/night = 18 files):
-    routes, settings, demo                                        (pass 1)
-    record_setup, record_armed, record_running, record_finished,
-    rides, result                                                 (pass 2)
+Implemented (13 screens x day/night = 26 files):
+    routes, settings, demo, record_setup, record_armed, record_running,
+    record_finished, rides, ride_detail, results, results_detail,
+    catalog_detail, gate_adjust
 
 Current source files this script reads/mirrors (re-grep before editing —
 the tree moves fast):
@@ -31,17 +31,21 @@ the tree moves fast):
     app/src/ui/theme.ts             — THEMES/COLORS token source of truth
     app/src/ui/wayMapView.tsx       — CASING const + map/gate-tick styling
     app/src/ui/chips.tsx            — tier chip colours (chipColors, PURPLE_INK)
-    app/src/ui/settings.tsx         — the '#fff' switch-knob literal
+    app/src/ui/settings.tsx         — the '#fff' switch-knob literal + SportsSection
     app/src/store/defaultWay.ts     — wayLabel()/wayVariantLabel(), mirrored
                                        below as way_label()/way_variant_label()
-    app/src/store/catalog.seed.json — routes (parent) / ways (child) fixture
+    app/src/store/catalog.seed.json — routes (parent) / ways (child) fixture,
+                                       incl. gateSets (real chainageM per way)
     app/App.tsx                     — tab bar order + labels
     app/src/ui/RoutesScreen.tsx     — ROUTES screen section headings
     app/src/ui/RecordScreen.tsx     — RECORD screen phases
     app/src/ui/RidesScreen.tsx      — RIDES screen row layout
-(ResultScreen.tsx no longer exists — build_result() below still mirrors its
-pre-WP-2 shape; re-transcribing it against RideDetailScreen.tsx and renaming
-its output files is D2.3, not done in this pass.)
+    app/src/ui/CatalogDetailScreen.tsx / catalogDetailModel.ts — catalog_detail
+    app/src/ui/GateAdjustScreen.tsx / gateAdjustCard.tsx / gateAdjustModel.ts
+                                     — gate_adjust (gate_name/fmt_chainage/
+                                       fmt_pct below mirror gateAdjustModel.ts)
+RideDetailScreen.tsx (WP-H) is what build_ride_detail() mirrors; ResultScreen.tsx
+no longer exists.
 
 Requirements satisfied here (brief WP-J-svg-tab-recompositions.md §5):
  - stdlib only, Python 3.
@@ -130,12 +134,14 @@ TABS = ["RECORD", "RIDES", "ROUTES", "RESULTS", "SETTINGS", "DEMO"]
 
 # D1/D2 (virgin-cycle5, 2026-09-08): D1 added results/results_detail; D2.3
 # renamed result -> ride_detail (ResultScreen.tsx is gone — WP-H) and
-# re-transcribed it against RideDetailScreen.tsx.
+# re-transcribed it against RideDetailScreen.tsx. D3 (2026-09-08, optional
+# per the brief) added catalog_detail and gate_adjust.
 IMPLEMENTED = [
     "routes", "settings", "demo",
     "record_setup", "record_armed", "record_running", "record_finished",
     "rides", "ride_detail",
     "results", "results_detail",
+    "catalog_detail", "gate_adjust",
 ]
 DEFERRED: list[str] = []
 
@@ -743,6 +749,74 @@ def tier_line_colour(tier: str) -> str | None:
     return None
 
 
+# --------------------------------------------------------------------------
+# D3 (virgin-cycle5, 2026-09-08): catalog_detail / gate_adjust helpers —
+# mirror catalogDetailModel.ts's fmtLengthM() and gateAdjustModel.ts's
+# gateName()/fmtChainage()/fmtPct() exactly (Python names snake_cased to
+# match this file's own convention, e.g. way_label() for wayLabel()).
+# --------------------------------------------------------------------------
+
+def fmt_length_m(m: float) -> str:
+    """Mirrors catalogDetailModel.ts's fmtLengthM(): '5.8 km' / '850 m'."""
+    if m < 1000:
+        return f"{round(m)} m"
+    return f"{m / 1000:.1f} km"
+
+
+def gate_name(index: int, n_gates: int) -> str:
+    """Mirrors gateAdjustModel.ts's gateName() exactly."""
+    if index == 0:
+        return "START"
+    if index == n_gates - 1:
+        return "FINISH"
+    return f"G{index}"
+
+
+def fmt_chainage(m: float) -> str:
+    """Mirrors gateAdjustModel.ts's fmtChainage() exactly:
+    '1842' -> '1 842 m' (thousands grouped on a plain space)."""
+    v = str(round(m))
+    parts: list[str] = []
+    while len(v) > 3:
+        parts.insert(0, v[-3:])
+        v = v[:-3]
+    parts.insert(0, v)
+    return " ".join(parts) + " m"
+
+
+def fmt_pct(chainage_m: float, ref_length_m: float) -> str:
+    """Mirrors gateAdjustModel.ts's fmtPct() exactly."""
+    if ref_length_m <= 0:
+        return "— %"
+    return f"{(chainage_m / ref_length_m) * 100:.1f} %"
+
+
+def way_path_length_m(asset: dict) -> float:
+    """[ASSUMPTION] (D3, virgin-cycle5): the real app's refLengthM comes from
+    a runtime reference line (live/refs.ts) this offline tooling cannot
+    read. A haversine sum over the SAME schematic path ways.json already
+    carries (asset['path'] — the very points make_projector()/draw_map()
+    already draw) is the closest approximation available, not the real
+    GPX-precision figure. Used only by catalog_detail's 'length' fact and
+    gate_adjust's %-of-way readout."""
+    pts = asset["path"]
+    total = 0.0
+    for i in range(1, len(pts)):
+        total += _haversine_m(pts[i - 1], pts[i])
+    return total
+
+
+def _haversine_m(a: tuple[float, float], b: tuple[float, float]) -> float:
+    lat1, lon1 = a
+    lat2, lon2 = b
+    r = 6371000.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dl = math.radians(lon2 - lon1)
+    x = math.sin(dphi / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * r * math.asin(math.sqrt(x))
+
+
 def draw_strip_slot(parent, id_prefix, x, y, w, h, t, tier, label, time=None, current=False):
     """Mirrors chips.tsx's <StripSlot>: border is t.accent when current,
     else t.raceBorder when empty (tier 'none'), else the tier's own border;
@@ -1244,7 +1318,92 @@ def build_settings(theme_name: str, repo_root: str) -> ET.Element:
     y = section(y, "content_scoring_heading", "SCORING",
                 [("Timing tower", "rank today against the ghost set", switch(True))],
                 "content_scoring_card")
-    y += 20
+    y += 24
+
+    # D3 (virgin-cycle5, 2026-09-08): SETTINGS -> SPORTS, settings.tsx:317-520
+    # (SportsSection) read fresh — not already drawn (confirmed: this file's
+    # pre-D3 build_settings() had no SPORTS section at all). Real order is
+    # APPEARANCE / ON THE BIKE / STARTING A RIDE / SCORING / SPORTS / DATA
+    # (settings.tsx:586); DATA is out of scope (not drawn before D3 either).
+    # Active-sport row reuses this function's own `seg2`/`switch` row shape;
+    # the sport list + add-sport input have no `section()`-row equivalent
+    # (label + right-aligned usage text, and a text input) so they are drawn
+    # directly into the same card.
+    # [ASSUMPTION] two fixture sports, matching FIXTURE_SPORT_LABEL
+    # ("Cycling") used by ROUTES/RIDES/RESULTS and the second fixture sport
+    # ("Running") build_record_setup's D2.2 sport-pill row already invented —
+    # reused here so every screen's fixture sports agree with each other.
+    # Usage counts (13 routes/6 rides for Cycling, 0/0 for Running) are
+    # invented placeholders — catalog.seed.json carries no per-sport split
+    # (same [ASSUMPTION] build_routes() already documents for FIXTURE_SPORT_LABEL).
+    sports_fixture = [("Cycling", 13, 6), ("Running", 0, 0)]
+
+    text_el(content, "content_sports_heading", 16, y, "SPORTS", 12, weight="700",
+            color=t["textDim"], letter_spacing=2, upper=True)
+    y += 16
+    card_top = y
+    ry = y + 24
+
+    seg_draw, seg_w = seg2([sp for sp, _, _ in sports_fixture], 0)
+    control_x = VB_W - 30 - seg_w
+    hint_txt = "Everything on RECORD, ROUTES and RIDES is scoped to this one."
+    text_el(content, "content_sports_active_label", 30, ry, "Active sport", 14, color=t["text"])
+    hint_lines = wrap_text(hint_txt, control_x - 30 - 10, 10.5)
+    for j, ln in enumerate(hint_lines):
+        hid = "content_sports_active_hint" + (f"_l{j+1}" if len(hint_lines) > 1 else "")
+        text_el(content, hid, 30, ry + 15 + j * 12, ln, 10.5, color=t["textDim"])
+    seg_draw(content, "content_sports_active", ry - 8, control_x)
+    row_h = 30 + 14 + 12 * max(0, len(hint_lines) - 1) + 16
+    line(content, "content_sports_active_divider", 30, ry + row_h - 16, VB_W - 30, ry + row_h - 16,
+         t["cardBorder"], 1)
+    ry += row_h
+
+    # One collapsed row per sport (label + "N routes · M rides"); the real
+    # screen's tap-to-expand rename/delete UI is not drawn — a static mockup
+    # shows the closed state, same discipline as RoutesScreen's rows.
+    for i, (sp_label, n_routes, n_rides) in enumerate(sports_fixture):
+        usage = f"{n_routes} route{'' if n_routes == 1 else 's'} · {n_rides} ride{'' if n_rides == 1 else 's'}"
+        text_el(content, f"content_sports_row_{i+1}_label", 30, ry + 18, sp_label, 14, color=t["text"])
+        text_el(content, f"content_sports_row_{i+1}_usage", VB_W - 30, ry + 18, usage, 11.5,
+                color=t["textDim"], anchor="end")
+        line(content, f"content_sports_row_{i+1}_divider", 30, ry + 32, VB_W - 30, ry + 32,
+             t["cardBorder"], 1)
+        ry += 40
+
+    # add-sport input (SPORT_LABEL_PLACEHOLDER, store/sports.ts:26) + button
+    rect(content, "content_sports_add_input_bg", 30, ry, VB_W - 60, 30, fill=t["bg"],
+         stroke=t["cardBorder"], sw=1, rx=8)
+    text_el(content, "content_sports_add_input_placeholder", 38, ry + 19,
+            "e.g. Bike, Run, Walk, E-bike, Fast walk", 10.5, color=t["textDim"])
+    ry += 30 + 10
+    add_btn_w = 76.0
+    rect(content, "content_sports_add_btn_bg", 30, ry, add_btn_w, 24, fill="none",
+         stroke=t["cardBorder"], sw=1, rx=9)
+    text_el(content, "content_sports_add_btn_label", 30 + add_btn_w / 2, ry + 16, "add sport", 11.5,
+            color=t["text"], anchor="middle", letter_spacing=1)
+    ry += 24 + 16
+
+    # Row: "Sport picker on RECORD" — only at >=2 sports (settings.tsx:503's
+    # own guard), same seg2/switch row shape as every other section() row.
+    if len(sports_fixture) >= 2:
+        toggle_draw, toggle_w = switch(True)
+        toggle_x = VB_W - 30 - toggle_w
+        toggle_hint = "Show the sport row on RECORD. Off: switch sports here instead."
+        text_el(content, "content_sports_toggle_label", 30, ry, "Sport picker on RECORD", 14, color=t["text"])
+        toggle_hint_lines = wrap_text(toggle_hint, toggle_x - 30 - 10, 10.5)
+        for j, ln in enumerate(toggle_hint_lines):
+            hid = "content_sports_toggle_hint" + (f"_l{j+1}" if len(toggle_hint_lines) > 1 else "")
+            text_el(content, hid, 30, ry + 15 + j * 12, ln, 10.5, color=t["textDim"])
+        toggle_draw(content, "content_sports_toggle", ry - 8, toggle_x)
+        ry += 30 + 14 + 12 * max(0, len(toggle_hint_lines) - 1) + 8
+
+    card_h = ry - card_top + 8
+    content.insert(0, E("rect", "content_sports_card_bg", {
+        "x": fmt(16), "y": fmt(card_top), "width": fmt(VB_W - 32), "height": fmt(card_h),
+        "fill": t["card"], "stroke": t["cardBorder"], "stroke-width": fmt(1), "rx": fmt(16),
+    }))
+    y = card_h + card_top + 20
+
     text_el(content, "content_footer_note", 16, y,
             "Saved on the phone and restored on launch. A corrupt file falls back", 10.5, color=t["textDim"])
     text_el(content, "content_footer_note_2", 16, y + 13,
@@ -2280,6 +2439,282 @@ def build_ride_detail(theme_name: str, repo_root: str) -> ET.Element:
     return svg
 
 
+# --------------------------------------------------------------------------
+# D3 (virgin-cycle5, 2026-09-08, optional per the brief) — the remaining
+# full-screen surfaces: catalog_detail (CatalogDetailScreen.tsx) and
+# gate_adjust (GateAdjustScreen.tsx + gateAdjustCard.tsx). Both read fresh
+# off the staged files at execution time, same discipline as every builder
+# above.
+# --------------------------------------------------------------------------
+
+def build_catalog_detail(theme_name: str, repo_root: str) -> ET.Element:
+    """Mirrors CatalogDetailScreen.tsx (WP-K): the ROUTES-tab full-screen
+    detail, mount-swapped over the active tab, full-screen, `‹ BACK`, no tab
+    bar. Two request kinds exist (`place` / `route`); per the brief's D3
+    table this draws the WAY variant, i.e. `request.kind === 'route'` ->
+    RouteBody -> one WaySection — "the map + real gate-set facts + 'edit
+    gates' entry", not a place. This is also where RoutesScreen.tsx's old
+    expanded-card content now lives (WP-K absorbed it here, D2.1 removed it
+    from ROUTES).
+
+    Fixture: the SAME "Morning" way/'home>work' route every other screen in
+    this file uses (continuity — the design's one running example). Real
+    gate-set facts come straight from catalog.seed.json's gateSets entry for
+    "Morning" (chainageM [162, 1312, 2662, 4212, 5487], v1, no origin) — the
+    only realistic gate numbers available; this is what D2.1's own note says
+    replaced the old hardcoded "4 sectors · START ~160 m in" caption.
+    [ASSUMPTION] refLengthM (the real app derives it from a runtime
+    reference line — live/refs.ts — which this offline tooling cannot read)
+    is approximated via way_path_length_m()'s haversine sum over ways.json's
+    own schematic path; see that function's own docstring.
+
+    [ASSUMPTION] "Morning" is seed-owned (isSeedOwned), so the real model's
+    `gateEditable` (r.deletable && a resolvable draft) and `r.deletable`
+    would BOTH be false for this exact fixture — no "edit gates" button, no
+    "delete way"/"delete route" would render for real. "edit gates" is drawn
+    anyway to illustrate the entry point this D3 mockup exists to show (same
+    tradeoff build_ride_detail() already makes for its "Make this the
+    reference of this way" button, for the identical reason: a fixture way
+    that is honestly ineligible for an action the brief still wants drawn).
+    Delete affordances are honestly omitted instead (a seed route has none),
+    with a one-line note in ACTIONS saying why. referenceRide/
+    referenceUnscored are both genuinely null/false for "Morning" (the seed
+    way carries no referenceRideId) — so, unlike the illustrative edit-gates
+    button, the reference-ride row is simply not drawn, matching the real
+    model exactly.
+
+    ridesOnFile/rankedCount ("9"/"9") continue build_ride_detail()'s own
+    fixture ("P3 of 9 on this way") — [ASSUMPTION], the same one continuous
+    story that screen's own docstring documents."""
+    t = THEMES[theme_name]
+    asset = load_way_asset(repo_root, "Morning")
+    catalog = load_catalog(repo_root)
+    svg = new_svg()
+
+    bg = layer(svg, "bg")
+    rect(bg, "bg_ground", 0, 0, VB_W, VB_H, fill=t["bg"])
+
+    content = layer(svg, "content")
+    y = 24.0
+    text_el(content, "content_back", 16, y, "‹ BACK", 14, weight="700", color=t["textDim"])
+    text_el(content, "content_top_title", VB_W / 2, y, "ROUTE", 15, weight="800", color=t["text"],
+            anchor="middle", letter_spacing=2, upper=True)
+    text_el(content, "content_top_caption", VB_W - 16, y, "shipped", 12, color=t["textDim"],
+            anchor="end")
+    y += 26
+
+    route = next(r for r in catalog["routes"] if r["id"] == "home>work")
+    landmarks = catalog["landmarks"]
+    from_l = next(l for l in landmarks if l["id"] == route["startLandmarkId"])
+    to_l = next(l for l in landmarks if l["id"] == route["endLandmarkId"])
+    ways_for_route = [w for w in catalog["ways"] if w["routeId"] == route["id"]]
+
+    card_top = y
+    cy = card_top + 20
+    text_el(content, "content_route_label", 29, cy, f"{from_l['label']} → {to_l['label']}", 18,
+            weight="800", color=t["text"])
+    cy += 20
+    way_count_txt = f"{len(ways_for_route)} way" + ("" if len(ways_for_route) == 1 else "s")
+    if len(ways_for_route) > 1:
+        way_count_txt += " · asks which one at START"
+    text_el(content, "content_route_sub", 29, cy, way_count_txt, 12.5, color=t["textDim"])
+    cy += 22
+    text_el(content, "content_route_from_label", 29, cy, f"from: {from_l['label']}", 13, color=t["text"])
+    text_el(content, "content_route_from_chev", VB_W - 29, cy, "›", 13, color=t["textDim"], anchor="middle")
+    cy += 20
+    text_el(content, "content_route_to_label", 29, cy, f"to: {to_l['label']}", 13, color=t["text"])
+    text_el(content, "content_route_to_chev", VB_W - 29, cy, "›", 13, color=t["textDim"], anchor="middle")
+    cy += 14
+    card_h = cy - card_top + 8
+    content.insert(0, E("rect", "content_route_card_bg", {
+        "x": fmt(16), "y": fmt(card_top), "width": fmt(VB_W - 32), "height": fmt(card_h),
+        "fill": t["card"], "stroke": t["cardBorder"], "stroke-width": fmt(1), "rx": fmt(16),
+    }))
+    y = card_top + card_h + 20
+
+    variant_label = way_variant_label("Morning", route)
+    text_el(content, "content_way_heading", 16, y, f"WAY · {variant_label}", 12, weight="700",
+            color=t["textDim"], letter_spacing=2, upper=True)
+    y += 16
+
+    map_h = 260.0
+    draw_map(content, "content_way_map", t, asset, (16.0, y, VB_W - 32.0, map_h),
+             gate_tiers=[None] * 5, rider_at=None, label_note=True,
+             route_casing=True, gate_casing=True, placeholder_size=4)
+    y += map_h + 14
+
+    gate_set = next(g for g in catalog["gateSets"] if g["wayId"] == "Morning")
+    chainage = gate_set["chainageM"]
+    n_gates = len(chainage)
+    length_m = way_path_length_m(asset)
+    facts: list[tuple[str, str]] = [
+        ("length", fmt_length_m(length_m)),
+        ("gates", f"{n_gates} · v{gate_set['version']}"),
+    ]
+    for i, m in enumerate(chainage):
+        facts.append((gate_name(i, n_gates), fmt_chainage(m)))
+    facts.append(("rides on file", "9"))
+    facts.append(("ranked", "9"))
+    for i, (label_txt, value_txt) in enumerate(facts):
+        text_el(content, f"content_fact_{i+1}_label", 16, y, label_txt, 13, color=t["textDim"])
+        text_el(content, f"content_fact_{i+1}_value", VB_W - 16, y, value_txt, 13, color=t["text"],
+                anchor="end", tabular=True)
+        y += 20
+    y += 10
+
+    edit_btn_w = 110.0
+    edit_btn = group(content, "content_edit_gates_btn", {})
+    rect(edit_btn, "content_edit_gates_btn_bg", 16, y, edit_btn_w, 32, fill="none",
+         stroke=t["cardBorder"], sw=1, rx=8)
+    text_el(edit_btn, "content_edit_gates_btn_label", 16 + edit_btn_w / 2, y + 21, "edit gates", 12.5,
+            weight="700", color=t["textDim"], anchor="middle")
+    y += 32 + 24
+
+    text_el(content, "content_actions_heading", 16, y, "ACTIONS", 12, weight="700",
+            color=t["textDim"], letter_spacing=2, upper=True)
+    y += 18
+    text_el(content, "content_actions_note", 16, y, "no delete — this way and route are shipped", 11.5,
+            color=t["textDim"])
+    y += 30
+
+    btn_w, btn_h = 190.0, 44.0
+    btn = group(content, "content_primary_button", {})
+    rect(btn, "content_primary_button_bg", (VB_W - btn_w) / 2, y, btn_w, btn_h, fill=t["accent"], rx=10)
+    text_el(btn, "content_primary_button_label", VB_W / 2, y + 27, "BACK TO ROUTES", 12.5,
+            weight="800", color=t["onAccent"], anchor="middle", letter_spacing=1)
+
+    return svg
+
+
+def build_gate_adjust(theme_name: str, repo_root: str) -> ET.Element:
+    """Mirrors GateAdjustScreen.tsx + gateAdjustCard.tsx (WP-J extended
+    scope): the full-screen "proper openmap render" gate editor — Nathan's
+    own framing, cited in GateAdjustScreen.tsx's own file header. Full-
+    screen, `‹ BACK`, `EDIT GATES` title, no tab bar; one card: title
+    "Sector gates — <way label>", subtitle, the embedded map with a
+    tap-then-nudge UI (chip row -> selected-gate readout -> nudge pad),
+    SAVE/KEEP GATES.
+
+    Fixture: "Morning" again (continuity), gate G2 selected and nudged +1%
+    (largeM) from its real catalog.seed.json chainage — the state that best
+    demonstrates "tap a gate, then nudge it" (an untouched screen would show
+    nothing to nudge). dirty=True, so the primary button reads SAVE GATES
+    and the discard link is shown, matching gateAdjustCard.tsx's own dirty
+    branch. mapHeight uses the real component's documented floor (280, "half
+    the window, floor = the inline default") rather than inventing a window
+    height for a static canvas.
+
+    The selected gate's tick is drawn bolder + riderBlue on top of
+    draw_map()'s own tick, mirroring wayMapView.tsx's own real rule exactly
+    ("the selected gate draws bolder/blue on this rung too" — colors.
+    riderBlue, thicker) rather than inventing a new selection convention.
+    [ASSUMPTION] refLengthM/chainage same haversine approximation as
+    catalog_detail (way_path_length_m()) — see that function's docstring."""
+    t = THEMES[theme_name]
+    asset = load_way_asset(repo_root, "Morning")
+    catalog = load_catalog(repo_root)
+    svg = new_svg()
+
+    bg = layer(svg, "bg")
+    rect(bg, "bg_ground", 0, 0, VB_W, VB_H, fill=t["bg"])
+
+    content = layer(svg, "content")
+    y = 24.0
+    text_el(content, "content_back", 16, y, "‹ BACK", 14, weight="700", color=t["textDim"])
+    text_el(content, "content_top_title", VB_W / 2, y, "EDIT GATES", 15, weight="800", color=t["text"],
+            anchor="middle", letter_spacing=2, upper=True)
+    y += 30
+
+    gate_set = next(g for g in catalog["gateSets"] if g["wayId"] == "Morning")
+    chainage = list(gate_set["chainageM"])
+    n = len(chainage)
+    ref_length_m = way_path_length_m(asset)
+    selected_i = 2  # G2 — mid-way, clear of START/FINISH's own end-of-list chip
+    large_m = 0.01 * ref_length_m  # NUDGE_LARGE_PCT (gateAdjustModel.ts)
+    chainage[selected_i] = min(chainage[selected_i] + large_m,
+                                chainage[selected_i + 1] - 50)  # MIN_GATE_GAP_M
+
+    card_top = y
+    cy = card_top + 22
+    title_txt = f"Sector gates — {way_label('Morning')}"
+    used = text_block(content, "content_card_title", 32, cy, title_txt, 16, VB_W - 64,
+                       weight="700", color=t["text"])
+    cy += used + 6
+    subtitle = ("Tap a gate on the map or below to nudge it — start and finish too. Saving moved "
+                "gates resets this way's history: past results are re-timed from their recordings "
+                "against the new gates, old times and ranks do not survive.")
+    used = text_block(content, "content_card_subtitle", 32, cy, subtitle, 12.5, VB_W - 64,
+                       color=t["textDim"])
+    cy += used + 12
+
+    map_x, map_w, map_h = 32.0, VB_W - 64.0, 280.0
+    draw_map(content, "content_map", t, asset, (map_x, cy, map_w, map_h),
+             gate_tiers=[None] * n, rider_at=None, label_note=True,
+             route_casing=True, gate_casing=True, placeholder_size=4)
+    # Selected gate's tick redrawn bolder + riderBlue on top, matching
+    # wayMapView.tsx's own real selected-gate rule exactly (see docstring).
+    pts = asset["path"]
+    proj = make_projector(asset, map_x, cy, map_w, map_h)
+    full_idx = [0] + list(asset["gateIdx"]) + [len(pts) - 1]
+    gi = full_idx[selected_i]
+    tx1, ty1, tx2, ty2 = gate_tick_endpoints(proj, pts, gi)
+    line(content, "content_map_selected_gate", tx1, ty1, tx2, ty2, COLORS["riderBlue"], 5)
+    cy += map_h + 16
+
+    chip_gap = 6.0
+    chip_w = (map_w - chip_gap * (n - 1)) / n
+    for i in range(n):
+        cx = map_x + i * (chip_w + chip_gap)
+        sel = i == selected_i
+        chip = group(content, f"content_chip_{i+1}", {})
+        rect(chip, f"content_chip_{i+1}_bg", cx, cy, chip_w, 32, fill=t["accent"] if sel else "none",
+             stroke=t["cardBorder"], sw=1, rx=9)
+        text_el(chip, f"content_chip_{i+1}_label", cx + chip_w / 2, cy + 20, gate_name(i, n), 11,
+                weight="700", color=t["onAccent"] if sel else t["text"], anchor="middle",
+                letter_spacing=0.5)
+    cy += 32 + 16
+
+    readout = f"{gate_name(selected_i, n)} · {fmt_chainage(chainage[selected_i])} · " \
+              f"{fmt_pct(chainage[selected_i], ref_length_m)}"
+    text_el(content, "content_readout", VB_W / 2, cy, readout, 16, weight="700", color=t["text"],
+            anchor="middle", tabular=True)
+    cy += 18
+
+    pad_items = [("−1%", 1.25), ("−0.1%", 0.75), ("+0.1%", 0.75), ("+1%", 1.25)]
+    total_flex = sum(fl for _, fl in pad_items)
+    pad_w_unit = (map_w - chip_gap * (len(pad_items) - 1)) / total_flex
+    px = map_x
+    for i, (lbl, fl) in enumerate(pad_items):
+        w_i = pad_w_unit * fl
+        big = fl > 1
+        pad = group(content, f"content_pad_{i+1}", {})
+        rect(pad, f"content_pad_{i+1}_bg", px, cy, w_i, 40 if big else 32, fill="none",
+             stroke=t["cardBorder"], sw=1, rx=9)
+        text_el(pad, f"content_pad_{i+1}_label", px + w_i / 2, cy + (26 if big else 21), lbl,
+                17 if big else 13, weight="800" if big else "700", color=t["text"], anchor="middle")
+        px += w_i + chip_gap
+    cy += 40 + 18
+
+    save_w, save_h = map_w, 44.0
+    save_btn = group(content, "content_save_btn", {})
+    rect(save_btn, "content_save_btn_bg", map_x, cy, save_w, save_h, fill=t["accent"], rx=10)
+    text_el(save_btn, "content_save_btn_label", VB_W / 2, cy + 28, "SAVE GATES", 15, weight="700",
+            color=t["onAccent"], anchor="middle", letter_spacing=1)
+    cy += save_h + 12
+
+    text_el(content, "content_discard_label", VB_W / 2, cy,
+            "discard nudges — keep the current gates", 13, color=t["textDim"], anchor="middle")
+    cy += 20
+
+    card_h = cy - card_top + 12
+    content.insert(0, E("rect", "content_card_bg", {
+        "x": fmt(16), "y": fmt(card_top), "width": fmt(VB_W - 32), "height": fmt(card_h),
+        "fill": t["card"], "stroke": t["cardBorder"], "stroke-width": fmt(1), "rx": fmt(16),
+    }))
+
+    return svg
+
+
 BUILDERS = {
     "routes": build_routes,
     "settings": build_settings,
@@ -2292,6 +2727,8 @@ BUILDERS = {
     "ride_detail": build_ride_detail,
     "results": build_results,
     "results_detail": build_results_detail,
+    "catalog_detail": build_catalog_detail,
+    "gate_adjust": build_gate_adjust,
 }
 
 

@@ -9,6 +9,7 @@
     <rect id="bg_ground" inkscape:label="bg_ground" x="0" y="0" width="390" height="844" fill="#17171b" />
   </g>
   <g id="content" inkscape:label="content" inkscape:groupmode="layer">
+    <rect id="content_sports_card_bg" inkscape:label="content_sports_card_bg" x="16" y="756" width="358" height="328" fill="#212127" stroke="#41414c" stroke-width="1" rx="16" />
     <rect id="content_scoring_card_bg" inkscape:label="content_scoring_card_bg" x="16" y="618" width="358" height="98" fill="#212127" stroke="#41414c" stroke-width="1" rx="16" />
     <rect id="content_start_card_bg" inkscape:label="content_start_card_bg" x="16" y="468" width="358" height="110" fill="#212127" stroke="#41414c" stroke-width="1" rx="16" />
     <rect id="content_bike_card_bg" inkscape:label="content_bike_card_bg" x="16" y="174" width="358" height="254" fill="#212127" stroke="#41414c" stroke-width="1" rx="16" />
@@ -66,8 +67,36 @@
       <rect id="content_scoring_card_row_1_switch_track" inkscape:label="content_scoring_card_row_1_switch_track" x="316" y="643" width="44" height="25" fill="#F5C542" rx="25" />
       <circle id="content_scoring_card_row_1_switch_knob" inkscape:label="content_scoring_card_row_1_switch_knob" cx="341" cy="655.5" r="9.5" fill="#FFFFFF" />
     </g>
-    <text id="content_footer_note" inkscape:label="content_footer_note" x="16" y="736" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#9a978f" text-anchor="start">Saved on the phone and restored on launch. A corrupt file falls back</text>
-    <text id="content_footer_note_2" inkscape:label="content_footer_note_2" x="16" y="749" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#9a978f" text-anchor="start">to these defaults rather than blocking the app.</text>
+    <text id="content_sports_heading" inkscape:label="content_sports_heading" x="16" y="740" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="700" fill="#9a978f" text-anchor="start" letter-spacing="2" style="text-transform:uppercase">SPORTS</text>
+    <text id="content_sports_active_label" inkscape:label="content_sports_active_label" x="30" y="780" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#F4F2EC" text-anchor="start">Active sport</text>
+    <text id="content_sports_active_hint_l1" inkscape:label="content_sports_active_hint_l1" x="30" y="795" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#9a978f" text-anchor="start">Everything on RECORD, ROUTES and</text>
+    <text id="content_sports_active_hint_l2" inkscape:label="content_sports_active_hint_l2" x="30" y="807" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#9a978f" text-anchor="start">RIDES is scoped to this one.</text>
+    <g id="content_sports_active_seg" inkscape:label="content_sports_active_seg">
+      <rect id="content_sports_active_seg_bg" inkscape:label="content_sports_active_seg_bg" x="231.8" y="772" width="128.2" height="26" fill="none" stroke="#41414c" stroke-width="1" rx="9" />
+      <rect id="content_sports_active_seg_1_on_bg" inkscape:label="content_sports_active_seg_1_on_bg" x="231.8" y="772" width="64.1" height="26" fill="#F5C542" rx="9" />
+      <text id="content_sports_active_seg_1_label" inkscape:label="content_sports_active_seg_1_label" x="263.85" y="789" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#17171b" text-anchor="middle">Cycling</text>
+      <text id="content_sports_active_seg_2_label" inkscape:label="content_sports_active_seg_2_label" x="327.95" y="789" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#9a978f" text-anchor="middle">Running</text>
+    </g>
+    <line id="content_sports_active_divider" inkscape:label="content_sports_active_divider" x1="30" y1="836" x2="360" y2="836" stroke="#41414c" stroke-width="1" stroke-linecap="round" />
+    <text id="content_sports_row_1_label" inkscape:label="content_sports_row_1_label" x="30" y="870" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#F4F2EC" text-anchor="start">Cycling</text>
+    <text id="content_sports_row_1_usage" inkscape:label="content_sports_row_1_usage" x="360" y="870" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#9a978f" text-anchor="end">13 routes · 6 rides</text>
+    <line id="content_sports_row_1_divider" inkscape:label="content_sports_row_1_divider" x1="30" y1="884" x2="360" y2="884" stroke="#41414c" stroke-width="1" stroke-linecap="round" />
+    <text id="content_sports_row_2_label" inkscape:label="content_sports_row_2_label" x="30" y="910" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#F4F2EC" text-anchor="start">Running</text>
+    <text id="content_sports_row_2_usage" inkscape:label="content_sports_row_2_usage" x="360" y="910" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#9a978f" text-anchor="end">0 routes · 0 rides</text>
+    <line id="content_sports_row_2_divider" inkscape:label="content_sports_row_2_divider" x1="30" y1="924" x2="360" y2="924" stroke="#41414c" stroke-width="1" stroke-linecap="round" />
+    <rect id="content_sports_add_input_bg" inkscape:label="content_sports_add_input_bg" x="30" y="932" width="330" height="30" fill="#17171b" stroke="#41414c" stroke-width="1" rx="8" />
+    <text id="content_sports_add_input_placeholder" inkscape:label="content_sports_add_input_placeholder" x="38" y="951" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#9a978f" text-anchor="start">e.g. Bike, Run, Walk, E-bike, Fast walk</text>
+    <rect id="content_sports_add_btn_bg" inkscape:label="content_sports_add_btn_bg" x="30" y="972" width="76" height="24" fill="none" stroke="#41414c" stroke-width="1" rx="9" />
+    <text id="content_sports_add_btn_label" inkscape:label="content_sports_add_btn_label" x="68" y="988" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#F4F2EC" text-anchor="middle" letter-spacing="1">add sport</text>
+    <text id="content_sports_toggle_label" inkscape:label="content_sports_toggle_label" x="30" y="1012" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#F4F2EC" text-anchor="start">Sport picker on RECORD</text>
+    <text id="content_sports_toggle_hint_l1" inkscape:label="content_sports_toggle_hint_l1" x="30" y="1027" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#9a978f" text-anchor="start">Show the sport row on RECORD. Off: switch</text>
+    <text id="content_sports_toggle_hint_l2" inkscape:label="content_sports_toggle_hint_l2" x="30" y="1039" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#9a978f" text-anchor="start">sports here instead.</text>
+    <g id="content_sports_toggle_switch" inkscape:label="content_sports_toggle_switch">
+      <rect id="content_sports_toggle_switch_track" inkscape:label="content_sports_toggle_switch_track" x="316" y="1007" width="44" height="25" fill="#F5C542" rx="25" />
+      <circle id="content_sports_toggle_switch_knob" inkscape:label="content_sports_toggle_switch_knob" cx="341" cy="1019.5" r="9.5" fill="#FFFFFF" />
+    </g>
+    <text id="content_footer_note" inkscape:label="content_footer_note" x="16" y="1104" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#9a978f" text-anchor="start">Saved on the phone and restored on launch. A corrupt file falls back</text>
+    <text id="content_footer_note_2" inkscape:label="content_footer_note_2" x="16" y="1117" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10.5" font-weight="400" fill="#9a978f" text-anchor="start">to these defaults rather than blocking the app.</text>
   </g>
   <g id="tabbar" inkscape:label="tabbar" inkscape:groupmode="layer" clip-path="url(#tabbar_viewport_clip)">
     <rect id="tabbar_bg" inkscape:label="tabbar_bg" x="0" y="790" width="390" height="54" fill="#17171b" />
