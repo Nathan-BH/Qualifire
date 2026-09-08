@@ -62,7 +62,7 @@ sector hasn't earned.
 **P1 — Two states: paddock and race** (Nathan's direction, 2026-08-15; theming
 confirmed and expanded 2026-08-24). The app lives in two moods, and — as shipped —
 each mood has both a **daylight** and a **night** theme; daylight is the app default,
-night is user-selectable (a toggle on the Record screen, persisted). Nathan: "happy
+night is user-selectable (the ☀/☾ pill on RECORD, or SETTINGS → Theme; persisted). Nathan: "happy
 with the current night and day designs and they could be expanded with more themes in
 the future."
 - **Paddock** (home, rides, history, setup, board review): warmer, livelier — daylight
