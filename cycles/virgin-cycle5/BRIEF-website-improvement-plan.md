@@ -10,9 +10,18 @@ are what follows from each choice. Part (c) is safe to execute *today* regardles
 `index.html`; the executor writes the copy inside BRAND.md's voice, using (b) as the
 requirements, not the wording.
 
+**Update 2026-09-08 — Nathan ruled on both calls in (a).** Positioning: **Option 2**. Hero line:
+**swap to "Same road. New meaning."**, drop "The commute, reframed as a qualifying lap." entirely.
+Both are locked below; (a) is no longer a decision space for the executor, just the record of how
+it was decided. (d) HYPERFRAMES also changed shape — see that section — but is explicitly not a
+priority; do (b)/(c) first.
+
 ---
 
-## (a) The positioning question — resolve this first
+## (a) The positioning question — RULED 2026-09-08 (Nathan): Option 2, hero swaps to "Same road. New meaning."
+
+Kept below for the record and because (b)/(c)/(d) reference it throughout. The executor does not
+re-decide anything in this section.
 
 **Today the site says:** Qualifire is one person's tool, fed by one person's archive, and this
 page exists "not to sell it to anyone but its one user."
@@ -69,6 +78,9 @@ say about virgin *and* the best copy opportunity on the page — it is not a com
 truth and taste. If Nathan wants the site to remain a purely personal mood piece, Option 1 is
 entirely legitimate and this brief's part (c) is the whole job. Option 3 is not recommended.
 
+**Nathan's ruling (2026-09-08): Option 2.** His own words: `"you" is whoever has the app`. Build
+against the "If Option 2" block in (b) below.
+
 **Second call bundled with (a): the hero line.** "The commute, reframed as a qualifying lap."
 is the site's most-repeated sentence (title, meta, h1, the teaser video) and its narrowest
 (commute-only; virgin is multi-sport, BRAND says "trajects, not just commutes"). Options:
@@ -77,6 +89,11 @@ meaning." (sport-neutral, BRAND-anointed, currently buried as an h2); or keep th
 sentence but drop "commute" for something broader. This is taste. Whatever is chosen must be
 applied to `index.html` (title, meta, h1), `hyperframes/teaser/index.html` (tagline element),
 and `HYPERFRAMES-PLAN.md` idea 2 together — three copies of one line.
+
+**Nathan's ruling (2026-09-08): swap.** "Same road. New meaning." leads everywhere; "The commute,
+reframed as a qualifying lap." is retired — his words, it "aligns the strongest with my current
+vision." Apply to all three copies (`index.html` title/meta/h1, `hyperframes/teaser/index.html`
+tagline, `HYPERFRAMES-PLAN.md` idea 2) as one pass, per the original sequencing note.
 
 ---
 
@@ -198,41 +215,58 @@ chosen option deliberately kept).
 
 ---
 
-## (d) HYPERFRAMES-PLAN.md and the teaser
+## (d) HYPERFRAMES-PLAN.md and the teaser — RESCOPED 2026-09-08 per Nathan's Q7 answer
+
+**Nathan's answer, in full:** not ready to implement anything with HYPERFRAMES yet — it isn't a
+priority. But he wants an honest plan to exist: what's possible with it, how it would work
+practically, what steps it would need, *from a virgin build* (the 624-ride archive the original
+plan leans on is superseded, so it needs a different foundation) — and he wants the
+folder/plan itself **restructured and reframed** now, so it's aligned with the current app and
+ready to execute later, rather than executed now.
+
+That's a bigger ask than the strike/repoint edits originally scoped below, and a smaller one in
+urgency — it's a planning deliverable, not a video, and it is explicitly **not a priority**: do
+(b) and (c) first. The per-idea table below is still the right starting material (nothing in the
+analysis changes), but the deliverable is now a properly rewritten `HYPERFRAMES-PLAN.md`, not a
+handful of strikes — one that a future executor could actually pick up and act on.
 
 The plan is `main`'s plan (dated 2026-08-17). Its premise — "marketing is for fun/showcase,
 a personal sideloaded app, not a store listing" — is still true. Its slate is half-stranded.
 
-| Idea | Status on virgin | Recommendation |
-|---|---|---|
-| 1 The Gate (logo sting) | Brand-only, no data | Keep as-is |
-| 2 Reframed (teaser) | Built (`hyperframes/teaser/`); hard-codes the hero line and "of your last 10 commutes" | Keep; update the tagline element together with whatever (a) decides for the hero. "P2 · of your last 10" stays true |
-| 3 Qualifire, a tour | Tours `index.html` "once finalized" | Keep, explicitly blocked on this brief landing first |
-| 4 Why purple is rare | Sources D-030 + `colourModel.ts` `WINDOW_N` | Keep; the source pointer to `product/DECISIONS.md` is a `main` file — repoint to GLOSSARY.md Tier entry + `colourModel.ts`. Carries the same noise-floor caveat as (c) 6 |
-| 5 624 commutes | Needs `data/activities/` (624 GPX), `app/assets/routes/` PNGs, `data/analysis/` — all `main`-only; bundled route PNGs were emptied on virgin builds (cycle1 WP-E) | **Strike from the virgin slate, or re-home it as "a `main`-branch video".** Do not rewrite it around virgin data — there isn't any yet. If a "real data" piece is wanted for virgin, the honest successor is a *first-ride* piece: one blank install, one ride, one route appearing — and it needs on-device footage that `OPEN-ITEMS.md` item 3 (empty-state pass) hasn't produced yet. Park it there |
-| 6 Shipped: the real map | `/pr-to-video` on a `spike/maplibre` PR that was `main` history; the map is simply shipped on virgin | Strike, or fold into idea 3 (the tour shows the map) |
-| 7 P2 of your last 10 | Storyboards against `demos/mockup.html` (absent) + `tower.tsx` | Keep the idea; change the storyboard source to `tower.tsx` + on-device footage only; drop the mockup path. Fix the same REF/ideal-lap mistake as (c) 3 if it appears in the storyboard |
+| Idea | Status on virgin | Original recommendation | Folded into the restructure as |
+|---|---|---|---|
+| 1 The Gate (logo sting) | Brand-only, no data | Keep as-is | Keep as-is — needs nothing from virgin data |
+| 2 Reframed (teaser) | Built (`hyperframes/teaser/`); hard-codes the hero line and "of your last 10 commutes" | Keep; update the tagline together with (a)'s hero decision | Keep; retag with "Same road. New meaning." (the hero swap above); "P2 · of your last 10" stays true |
+| 3 Qualifire, a tour | Tours `index.html` "once finalized" | Keep, blocked on this brief landing first | Keep — now genuinely unblocked once (b)/(c) land; still the most virgin-native idea on the slate |
+| 4 Why purple is rare | Sources D-030 + `colourModel.ts` `WINDOW_N` | Keep; repoint the `product/DECISIONS.md` source to GLOSSARY.md + `colourModel.ts` | Keep; also now depends on however NW-1 (colour model, `BRIEF-product-docs-cleanup.md`) resolves — note the dependency explicitly rather than assume today's `MIN_HISTORY=5` behaviour |
+| 5 624 commutes | Needs `data/activities/` (624 GPX), route PNGs, `data/analysis/` — all `main`-only, gone from virgin builds | Strike or re-home as "a `main`-branch video" | Re-home explicitly: this idea belongs to `main`'s history, not virgin's plan. Its honest virgin-native successor is a *first-ride* piece (one blank install → one ride → one route appearing), written up as a **new** idea in the restructured plan, flagged as needing on-device footage that doesn't exist yet (`OPEN-ITEMS.md` item 3) |
+| 6 Shipped: the real map | `/pr-to-video` on a stranded `main`-history PR | Strike, or fold into idea 3 | Fold into idea 3 (the tour shows the map) — drop as its own idea |
+| 7 P2 of your last 10 | Storyboards against `demos/mockup.html` (absent) + `tower.tsx` | Keep; restoryboard from `tower.tsx` + on-device footage | Keep; same fix, plus the same NW-1 dependency note as idea 4 |
 
-Also: §4's "cloud sandbox cannot npm install" note and §5's ordering both reference the
-stranded ideas; §5 step 2 ("624 commutes + Why purple — unblocked today") is wrong on virgin.
-Rewrite §5 with ideas 1, 2, 4 as the unblocked set and 3, 7 as post-site/post-footage.
-Whether any of this gets *rendered* is separate — the plan itself says nothing has been
-rendered yet ("first render test… ready to preview today"). The plan should be edited, not
-executed, in this cycle.
+**What the restructure should produce**, when someone (Fable, later) picks this up: a
+`HYPERFRAMES-PLAN.md` written against virgin's actual data (no 624-ride archive, no `main`-only
+PRs), with a short "why HYPERFRAMES, still" framing, the surviving idea list above (1/2/3/4/7,
+idea 5 reframed as a new virgin-native first-ride idea, 6 folded away), and for each surviving
+idea: what data/footage it needs, roughly how it'd get built, and what it's blocked on (mostly:
+on-device footage, and for 4/7, NW-1 landing). Explicitly a plan, not a production schedule — no
+rendering, no ffmpeg runs, nothing executed. This can be its own follow-on brief rather than
+folded into this one; either is fine, it just needs to happen before the folder gets audited
+again and looks stale for the third time.
 
 ---
 
 ## Sequencing for the executor
 
-1. Get the (a) ruling (Nathan, or a fresh Fable `[ASSUMPTION]` with reasoning logged).
+1. ~~Get the (a) ruling~~ — done: Option 2, hero swaps to "Same road. New meaning." (2026-09-08).
 2. Do (c) 1–9 in one pass — they are independent of (a) except where (b) says otherwise.
-3. Do the (b) changes for the chosen option. Write copy fresh, in BRAND.md's voice; reuse the
-   site's existing sentences wherever they are still true (most are).
-4. Propagate the hero decision to `hyperframes/teaser/index.html` and `HYPERFRAMES-PLAN.md`
-   idea 2; apply (d) to the plan file.
-5. Inspect: a fresh Fable pass reads the rendered page top to bottom as *the reader the chosen
-   option targets*, checks every behavioural claim against `STATE.md` ground rules and the
-   code pointers in this brief, and runs the grep in (c).
+3. Do the (b) changes for Option 2 (the "If Option 2" block). Write copy fresh, in BRAND.md's
+   voice; reuse the site's existing sentences wherever they are still true (most are).
+4. Propagate the hero swap to `hyperframes/teaser/index.html` and `HYPERFRAMES-PLAN.md` idea 2.
+5. Inspect: a fresh Fable pass reads the rendered page top to bottom as the reader Option 2
+   targets (anyone with the app, not specifically Nathan), checks every behavioural claim
+   against `STATE.md` ground rules and the code pointers in this brief, and runs the grep in (c).
+6. (d)'s HYPERFRAMES-PLAN.md restructure is separate, lower-priority work — not a precondition
+   for 1–5, and not expected to land in the same pass. Pick it up after, or as its own brief.
 
 ## Out of scope (say no if asked)
 - Bringing `demos/mockup.html` or the 624-ride archive over from `main` to make stale

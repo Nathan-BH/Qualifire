@@ -47,11 +47,11 @@ a review + a brief for a future cycle to execute, per Nathan's ask.
 
 **Reviews + briefs written (no execution — these are for a future cycle):**
 
-| Domain | Review | Brief |
-|---|---|---|
-| `product/` docs | `REVIEW-product-docs.md` | `BRIEF-product-docs-cleanup.md` (11 doc work packages P0-P10 + 3 new non-doc work packages NW-1..3) |
-| `marketing/` (website) | `REVIEW-website.md` | `BRIEF-website-improvement-plan.md` (3 positioning options + no-regrets fixes + HYPERFRAMES disposition) |
-| `design/` | `REVIEW-design-folder.md` | `BRIEF-design-folder-plan.md` (D0-D6: repair the generator, add missing screens, re-transcribe changed ones, Nathan's palette call, housekeeping) |
+| Domain | Review | Brief | Status after round 2 (2026-09-08) |
+|---|---|---|---|
+| `product/` docs | `REVIEW-product-docs.md` | `BRIEF-product-docs-cleanup.md` (11 doc WPs P0-P10, non-doc WPs NW-1..5) | Doc WPs (P0-P10) execution-ready. NW-1 **blocked** on `QUESTIONS-FOR-NATHAN2.md` Q1′/Q1″. NW-2/5 ready. |
+| `marketing/` (website) | `REVIEW-website.md` | `BRIEF-website-improvement-plan.md` (positioning ruled, hero ruled, no-regrets fixes, HYPERFRAMES rescoped) | (a) ruled (Option 2, "Same road. New meaning."), (b)/(c) execution-ready. (d) rescoped to a plan-only restructure, explicitly not a priority. |
+| `design/` | `REVIEW-design-folder.md` | `BRIEF-design-folder-plan.md` (D0-D6, D5.0 added) | D0-D4/D6 execution-ready. D5.0 (comparison collages) execution-ready, added per Nathan's Q8 answer; D5 itself (the actual pick) still waits on him seeing them. |
 
 **`QUESTIONS-FOR-NATHAN.md`** collects every open question across all three briefs that needed
 an answer before execution (8 questions: a code-ruling reconfirmation, the website's

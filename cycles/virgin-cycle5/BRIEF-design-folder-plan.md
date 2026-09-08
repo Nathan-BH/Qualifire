@@ -3,7 +3,7 @@
 **Status: PLAN — nothing executed. No SVG or script was touched while writing this.**
 **Open item:** Nathan asked (2026-09-08) for a review of `design/` and a plan for moving forward. Review is in `REVIEW-design-folder.md` (same folder); this is the plan. Add to `OPEN-ITEMS.md` under virgin-cycle5 (or the next cycle) when accepted.
 **Written by:** Plan tier (Fable). Verified against the device tree 2026-09-08, branch `virgin`. Every `file:line` below was read today; re-grep before editing — the tree moves fast.
-**Size:** medium overall. D0 is a chore; D1 is the one genuinely new drawing; D2 is a re-transcription pass; D3/D4 are optional and separable; D5 is a one-line question for Nathan; D6 is five minutes of housekeeping.
+**Size:** medium overall. D0 is a chore; D1 is the one genuinely new drawing; D2 is a re-transcription pass; D3/D4 are optional and separable; D5.0 (added 2026-09-08, Nathan's Q8 answer) is a Sonnet collage-generation step; D5 itself is then a one-line answer for Nathan; D6 is five minutes of housekeeping.
 
 ---
 
@@ -20,10 +20,11 @@ Work packages, in the order they should run (each is one Sonnet Execute dispatch
 | **D2** | Re-transcribe the screens that changed: ROUTES (post-WP-K/WP-3), RECORD ×4 (sport pills, WP-E tick retire, trail spans), `result` → `ride_detail` | D0 | Sonnet |
 | **D3** | Optional: mockups for the remaining full-screen surfaces (catalog detail, gate editor, SETTINGS → SPORTS) | D0 | Sonnet; can be deferred |
 | **D4** | Optional: empty-state variants (default seed mode) | D0 | Sonnet; can be deferred or folded into D1–D3 |
-| **D5** | The palette decision — Nathan's call, not ours | nothing; blocks closure of `drafts/` | Nathan |
+| **D5.0** | Comparison collages (PNG/JPEG grids) for both palette explorations — new, added 2026-09-08 | none — `drafts/` and `brand/palettes/` are independent of D0's generator | Sonnet |
+| **D5** | The palette decision — Nathan's call, not ours | D5.0 (added 2026-09-08); blocks closure of `drafts/` | Nathan |
 | **D6** | Housekeeping: `edited/` fixture, ChatGPT folder, `README.md` rewrite | none | coordinator / Haiku |
 
-D0 → D1 → D2 is the minimum that makes the folder honest again. D3–D4 make it complete. D5 is a decision. D6 can happen any time.
+D0 → D1 → D2 is the minimum that makes the folder honest again. D3–D4 make it complete. D5.0 → D5 is a decision, now with the comparison step Nathan asked for first. D6 can happen any time.
 
 **Acceptance rule for every WP that touches the script:** `python3 design/make_screens.py` exits 0, its built-in validator passes for every file, the run is byte-identical when run twice, and `git diff --stat design/canonical/` shows only the screens the WP claims to change.
 
@@ -144,7 +145,38 @@ Recommendation: do this only if Nathan is actively working on first-run UX; othe
 
 ---
 
-## D5 — The palette decision (Nathan)
+## D5 — The palette decision (Nathan) — UPDATED 2026-09-08: collage step added before D5 closes
+
+**Nathan's answer (Q8):** he can't form a visual opinion from the current material — the SVGs are
+"nice for control... but not easy to look at" one at a time in Inkscape, slow to load individually.
+**Ask, before re-asking for the decision:** for each candidate design, produce a PNG/JPEG collage
+(a grid of that candidate's screens on one canvas, for a single glance) *in addition to* the SVGs,
+which stay canonical. This is now **D5.0**, and it blocks D5 proper (the actual choice) rather than
+being optional polish.
+
+### D5.0 — Comparison collages (new sub-step, Sonnet, before D5 can close)
+- **`design/drafts/` (pink / lightblue / green):** already 27 SVGs across the three palettes. Build
+  one collage PNG/JPEG per palette (e.g. `design/drafts/collage_pink.png`, `_lightblue.png`,
+  `_green.png`), each a grid of that palette's screens (the four `record_*` states + `demo_*` at
+  minimum — whatever the full set is by then), captioned with the filename so Nathan can match a
+  square back to a screen. A fourth collage showing the *current* shipped theme's equivalent
+  screens side by side is worth adding too, so "keep current" has the same one-glance comparison
+  as the alternatives.
+- **`product/brand/palettes/`:** partially done already — `palette_A_signal.png` .. `palette_F_teal_whisper.png`
+  are already single-composite images per candidate, and `<slug>/brandboard_<slug>.png` are already
+  12-panel boards. Confirm which of `brandboard_{daylight,golden,navy,night}.png` corresponds to
+  which of A(signal)/B(vibrant gold)/C(two-tone)/E(cool-gray) — the naming doesn't match 1:1 on
+  sight — relabel or add a small caption image if it's ambiguous, rather than building new
+  collages from scratch; this folder likely just needs a legend, not new renders.
+- **Tooling note for the executor:** `rsvg-convert` is not installed on this box; ImageMagick's
+  `convert` has an SVG delegate but it falls back to its own limited internal renderer without
+  `rsvg-convert` present — verify visually that a test render matches the SVG (colours especially)
+  before trusting a batch conversion; `pip install cairosvg` is a fallback with better fidelity if
+  the ImageMagick path looks wrong. PIL/Pillow is already available for the grid compositing itself
+  once each screen is a PNG.
+- Output: nothing is deleted, nothing is decided — this only adds comparison images next to the
+  existing SVGs, in both folders, so D5's actual question can be answered by looking rather than
+  guessing.
 
 **This is the only item in `design/` that cannot be closed by an agent.** State of play:
 
@@ -161,7 +193,9 @@ Two parallel explorations, both open, neither referencing the other. The options
 
 What blocks closure is only the choice. Recommendation on *process*, not taste: whichever way Nathan leans, the two explorations should be reconciled into one line in `OPEN-ITEMS.md` and one sentence in `product/brand/README.md`, so the next audit does not rediscover them separately. If he wants to compare on-device rather than on SVG, note that `draft_palettes.py`'s token sets are already in `theme.ts`'s shape — a throwaway `EXPO_PUBLIC_THEME=pink` build is a small ask.
 
-Suggested question for `QUESTIONS-FOR-NATHAN.md`: *"Palette: keep current / pink / lightblue / green / one of the brand boards / park it? (One word is enough; the plan for each is in BRIEF-design-folder-plan.md §D5.)"*
+~~Suggested question for `QUESTIONS-FOR-NATHAN.md`~~ — asked (Q8) and answered 2026-09-08: Nathan
+wants the D5.0 collages first, then he'll pick. Don't re-ask the four-way choice until D5.0 has
+landed and he's had a look.
 
 ---
 
@@ -190,5 +224,6 @@ Suggested question for `QUESTIONS-FOR-NATHAN.md`: *"Palette: keep current / pink
 | D2 ROUTES / RECORD / ride_detail (+ settings SPORTS) | ~2–3 h Sonnet | D0 |
 | D3 catalog_detail, gate_adjust | ~2 h Sonnet, deferrable | D0 |
 | D4 empty states | ~1 h Sonnet, deferrable | D0 |
-| D5 palette | Nathan, one word | — |
+| D5.0 comparison collages | ~30 min Sonnet | none |
+| D5 palette | Nathan, one word | D5.0 |
 | D6 housekeeping | ~20 min | D0–D2 for the README |

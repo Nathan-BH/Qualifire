@@ -14,6 +14,14 @@ ambiguity is resolved from this brief, `STATE.md`'s ground rules, `GLOSSARY.md` 
 `process/CONVENTIONS.md` and logged as `[ASSUMPTION]` in the report — except an **anchor mismatch**,
 handled by §0.3 (skip that one edit, report verbatim).
 
+**Update 2026-09-08 — Nathan's answers to `QUESTIONS-FOR-NATHAN.md` are in.** Applied below:
+Q2 (SETUP-UX depth strip → dropped, not parked), Q4 (MAP-TILES PMTiles → confirmed parked, no
+change to the plan). Q3 (launch animation) is answered but changes shape: Nathan wants visual
+options to react to, not code — see the new §12 NW-5. **NW-1 is now BLOCKED**, not ready: Q1's
+answer described a materially different colour model than the one this section assumed, and it
+conflicts with an existing code comment about the planned future behaviour. See
+`QUESTIONS-FOR-NATHAN2.md` Q1′/Q1″ — do not build NW-1 until that lands.
+
 Design stance, so the executor does not over-reach: these files are **dated design records**. The
 job is to make each one *honest about its date and status* and to stop it from actively misleading
 a reader of today's code — not to rewrite Nathan's design history in today's words. Only two things
@@ -605,7 +613,7 @@ original (pre-WP-3) vocabulary — the note at the top of each file explains the
 
 - `COLD-START.md` — largely built (retroactive naming, ride-1 reference, empty seed). Open: the
   "ride n of N" honesty ladder, and the noise-floor question it depends on.
-- `SETUP-UX.md` — largely built (ROUTES-as-editor, first-run, nudge pad). Open: depth strip.
+- `SETUP-UX.md` — largely built (ROUTES-as-editor, first-run, nudge pad). Depth strip: dropped.
 - `ROUTING-AND-SEGMENTATION.md` — still a proposal (IDEAS §29, parked); its §3 gate rules shipped.
 ----- END product/proposals/README.md -----
 
@@ -661,7 +669,7 @@ Grounded on `app/App.tsx` (six-tab bar), `RoutesScreen.tsx` (YOUR PLACES → WAY
 | §2 first run — ride first, name after; arrival card; one answer creates landmark + route + way + reference + 4 gates | **BUILT** 2026-08-31 (`routeNamingCard.tsx`, save-flow gates) | Differences: a blank install first asks for a **sport** (WP-1); there is no prefilled "Home" — with no landmarks the first ride is a free ride and *both* ends are named at STOP; gates are seeded from ride 1 (25/50/75 % + stop-snap) and offered for nudging before save |
 | §3 destination from your own places | **BUILT in spirit** — STARTING FROM / GOING TO pills on RECORD | Type-to-filter, recents and time-of-day ranking: not built; the pre-START sector-strip preview: not built |
 | §4 select-then-nudge, ± pad, never drag | **BUILT** (cycle2 WP-J: ± buttons, long-press repeat, real zoomable map) | The START/FINISH "locked ring + laps-count confirm" was **deliberately dropped** (`gateAdjustModel.ts`: every gate nudges alike; the ROUTES entry prices every move with its own reset dialog). "Make this a new route instead": not built |
-| §5 depth strip | **NOT BUILT** | Nearest thing: the RESULTS last-9-rides scatterplot. The `⚠n/5` retirement is moot once the noise floor goes (see COLD-START disposition, B-31) |
+| §5 depth strip | **DROPPED (Nathan, 2026-09-08)** — not built, not wanted; doesn't serve an immediate purpose | Nearest thing that shipped instead: the RESULTS last-9-rides scatterplot. Remove from any "parked" list; this is a closed question, not an open one |
 ```
 
 ### 9d — `proposals/ROUTING-AND-SEGMENTATION.md`: status line
@@ -755,8 +763,25 @@ is that stranger. It also means `STATE.md` currently states as settled something
 it or say "first ride"); `sectorValues` clean-only rule unchanged; `demoModel.ts` no longer needs six
 pinned laps; update the `MIN_HISTORY` doc-comments; tests in `app/tests/` for n=0/1/2/10; run the 560.
 Then strike the "not yet in code" sentences this brief adds to CONCEPT.md, DATA-MODEL.md §9 and
-COLD-START's disposition. **Ask Nathan only one thing first:** confirm ruling 1 still stands (it is
-his 2026-08-26 word; nothing since contradicts it).
+COLD-START's disposition.
+
+**Nathan answered (2026-09-08) — ruling confirmed, but the shape changed. STATUS: BLOCKED, do not
+build yet.** He confirmed the floor should go, but described the baseline differently than this
+section assumed: the way's *reference* ride (ride 1 — the one that names the landmarks and seeds
+the gates, `Way.referenceRideId`) is not itself a scored lap. The first ride that gets a colour at
+all is the ride *after* the reference: compared against the reference's one data point, faster is
+purple, slower is yellow (no green yet, since with one comparison point "fastest" and "the average"
+are the same number). Green becomes reachable once there are two prior rides to average against.
+This is good news mechanically — it's consistent with the colour model already in the code (purple
+= fastest of window, green = above average) and likely means the fix is `MIN_HISTORY` going from 5
+to something like 1 rather than new branching logic in `tierFor`. But it conflicts with
+`routeCreation.ts:24`'s own comment, which describes the *opposite* planned future: deriving the
+reference ride into a scored all-purple lap. Whether the reference ride's own entry shows a colour
+(purple, ceremony) or stays neutral (a role, not a result) changes what `tierFor` returns for n=0,
+which is the one case this section didn't fully spec. **Do not implement until
+`QUESTIONS-FOR-NATHAN2.md` Q1′ (and its one-line confirmation Q1″) come back** — the scope above is
+otherwise still right (drop the floor, fix the four listed call sites, update the docs this brief
+touches), it's only the n=0/n=1 exact behaviour that's pending.
 
 ### NW-2 — `OPEN-ITEMS.md` additions (doc, SMALL, one anchored edit each)
 (a) Item 2's on-device checklist: add MAP-CONTRACT §4's acceptance paragraph (pre-start pannable →
@@ -764,10 +789,19 @@ moving locked/no labels → stopped identical → finished released) and MAP-TIL
 (does the ribbon still draw the last-ridden corridor with the radio off?). Never run formally.
 (b) Item 3 (empty-state pass): add COLD-START F-2 — a way's lap can colour while its busiest sector
 stays uncoloured (clean-only sector history); the board should say why.
-(c) Parked: SETUP-UX §5 depth strip — keep parked or drop (Nathan).
-(d) Parked or dropped, Nathan's call, currently on neither list: the ideal-lap line (LAYOUT §3,
-CONCEPT); "more uses of the launch animation" (notes2); the brand palette B/C/E review and the
-notes4 extra-chrome-themes idea (brand/README.md); MAP-TILES §3 PMTiles offline pack.
+(c) Dropped (Nathan, 2026-09-08): SETUP-UX §5 depth strip. Don't list it as parked — it's a
+closed question. Remove any earlier "parked" wording for it if it survived from an older draft.
+(d) Resolved 2026-09-08, record as **parked** (not "Nathan's call pending"): MAP-TILES §3 PMTiles
+offline pack — confirmed still wanted as a future item, not blocking, not urgent (online tiles
+cache well enough that one connected moment before a ride covers most cases per Nathan's own
+Macedonia experience this week).
+(e) Resolved differently than "parked or dropped": "more uses of the launch animation" (notes2) —
+Nathan wants to see visual options before deciding where, not a code work package yet. See NW-5.
+The brand palette B/C/E review and the notes4 extra-chrome-themes idea move to
+`BRIEF-design-folder-plan.md` §D5, which now includes a collage-generation step (Q8) before Nathan
+picks. Don't duplicate the palette item here.
+(f) Still genuinely open, Nathan's call, not yet asked: the ideal-lap line (LAYOUT §3, CONCEPT).
+Carry forward to a later questions round.
 (e) Housekeeping: `app/src/ui/theme.ts` lines 16/18 still comment the tiers as "28d best" / "7d best";
 `colourModel.ts` calls the floor "D-008's noise floor". Fold into NW-1's comment sweep.
 
@@ -780,6 +814,26 @@ changed ROUTES (detail screen), RESULTS (new tab), RECORD (sport pills, naming c
 more store files than listed (e.g. a free-rides or unmatched-results file), or if the executor finds
 §8a's pick-at-START prose contradicts the live engine's soft/verified lock in a way the header note
 does not cover. Otherwise nothing.
+
+---
+
+### NW-5 — Launch-animation option deck (design prototype, SMALL, added 2026-09-08 per Q3)
+**Ask, as given:** Nathan wants to see visual options for "more uses of the launch animation"
+(the notes2 request `BRAND.md` flags as three-weeks-open) before picking where it goes — not a
+code change yet. **Deliverable:** one static HTML file (open directly in a browser, no server,
+no build step — same convention as the `marketing/` site) presenting several concrete concept
+options side by side, each a short looping/replayable animation using the same visual language as
+the shipped launch animation (`app/src/ui/launchChoreo.ts`, concept 5 per `LOGO-RATIONALE.md`).
+Candidate placements to illustrate (the executor's judgment on which 3–5 are worth mocking up):
+a tab-switch micro-version already partly covered by the existing four uses (app-launch / START /
+tab-switch / final-gate) — so favour *new* moments: a way's soft→verified lock moment, a personal-
+best/purple-lap reveal, the reference-ride-created moment (ties into NW-1 once that lands), a
+RESULTS-tab entry transition. Label each option clearly (what triggers it, roughly how long it
+runs) so Nathan can react in one word per option. **Not in scope:** wiring any option into the
+app — this is a look-and-feel deck, purely for Nathan to react to. Output location:
+`cycles/virgin-cycle5/launch-animation-options.html` (or `design/prototypes/` if that reads better
+to the executor — either is fine, just record where in the cycle README). No brand/GLOSSARY doc
+edits ride on this landing.
 
 ---
 
