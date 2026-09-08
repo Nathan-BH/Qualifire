@@ -28,7 +28,7 @@ registerHooks({
 const {
   buildRideRows, buildSectorRows, buildPbRows, buildPbDetail, dateTimeLabel, lapCellLabel,
 } = await import('../src/ui/rideHistoryModel.ts');
-const { fmt, MIN_HISTORY } = await import('../src/ui/colourModel.ts');
+const { fmt } = await import('../src/ui/colourModel.ts');
 
 // ------------------------------------------------------------------ helpers
 
@@ -92,14 +92,17 @@ test('ridehistory: buildRideRows rank excludes self — 5 others => "of" is 6, m
   assert(rows[0].rank!.pos === 1, `500 is fastest of all six — expected pos 1, got ${rows[0].rank!.pos}`);
 });
 
-test('ridehistory: buildRideRows rank is null below MIN_HISTORY (4 comparable others)', () => {
+test('NW-1 (2026-09-08): buildRideRows still ranks a way\'s reference ride — zero comparable others, "P1 of 1"', () => {
+  // D-045 ruling 1: rank and colour are independent facts. hist.length+1
+  // (this ride counts as its own first pool member) clears MIN_HISTORY=1
+  // even with ZERO others on file — exactly a way's reference ride, the
+  // very first ride ever stored against it.
   const metas: RideMeta[] = [{ rideId: 'r1', startMs: 1000, endMs: 2000, nFixes: 10 }];
   const result = makeResult('r1', 'Morning', 1000, { movingS: 500, rawS: 500, quality: 'clean' }, []);
-  const others = [510, 520, 530, 540];
-  assert(others.length < MIN_HISTORY, 'test fixture must stay below MIN_HISTORY');
-  const rows = buildRideRows(metas, () => result, () => others);
-  assert(rows[0].rank === null,
-    `rank must be null with only ${others.length} others (< MIN_HISTORY) — got ${JSON.stringify(rows[0].rank)}`);
+  const rows = buildRideRows(metas, () => result, () => []);
+  assert(rows[0].rank !== null, `expected a rank with zero others (the reference-ride case), got ${JSON.stringify(rows[0].rank)}`);
+  assert(rows[0].rank!.pos === 1 && rows[0].rank!.of === 1,
+    `expected P1 of 1, got P${rows[0].rank!.pos} of ${rows[0].rank!.of}`);
 });
 
 test('B-117: a tripwire-demoted lap never takes a position in RIDES rows', () => {

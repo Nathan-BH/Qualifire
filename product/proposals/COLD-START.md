@@ -28,7 +28,7 @@ else" stopped being a thought experiment). Its §6 rows, checked against the cod
 | B-40 bug F-1 — own lap inside its own history | **FIXED** by D-045 ruling 2: the window is sliced after excluding the judged ride | `colourModel.ts` `ghostsFor` |
 | B-41 reconcile 28-day vs `WINDOW_N = 10` | **RESOLVED** — last-10 everywhere | `STATE.md` ground rules |
 | B-39 empty-state pass | **OPEN** | `OPEN-ITEMS.md` item 3 |
-| B-31 cold-start ladder — verdict-free ride-1 board, "ride n of 5", two announcements | **NOT BUILT.** Its premise is live: `MIN_HISTORY = 5` still gates every colour and rank (`colourModel.ts:40,144`, `towerSource.ts:40`, `rideDetailModel.ts:71`) although D-045 ruling 1 (2026-08-26) deleted the floor — the 2026-08-26 "STALE" note in §1 below describes the ruling, not the code. F-4 is therefore still open. | see `OPEN-ITEMS.md` |
+| B-31 cold-start ladder — verdict-free ride-1 board, "ride n of 5", two announcements | **CORE MECHANIC BUILT** (NW-1, 2026-09-08): D-045 ruling 1's floor is in code now — `MIN_HISTORY = 1` (`colourModel.ts:47`) — so the way's reference ride (ride 1) is genuinely verdict-free (neutral) while still ranking once stored, the next ride is purple/yellow-only, and green opens up from the ride after that. The ladder's specific UI framing ("ride n of 5" copy, two scripted announcements) was never part of the ruling and is not built — F-4's messaging half stays open. | `app/src/ui/colourModel.ts`, `app/tests/live_colour_suite.ts` |
 | B-34 sector count scales with length | **NOT BUILT**, deliberately — exactly four sectors is a ground rule | `STATE.md` |
 
 Also true today: sports (WP-1) come before landmarks on a blank install — RECORD asks for a sport

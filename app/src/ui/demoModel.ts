@@ -6,19 +6,23 @@
  *
  * Why the demo owns its own "previous laps": on a virgin build `ghostsFor()`
  * is always `[]` (B-39, `store/seed.ts` under the `virgin` EAS profile), so
- * `tierFor`'s D-008 floor (`MIN_HISTORY` clean rides) is never cleared and
- * every sector renders 'neutral' — the demo would show no tier colours at
- * all. `DEMO_HISTORY` below pins six laps per sector (>= MIN_HISTORY) so the
- * one scripted lap in `DEMO_SECS` always shows all three verdict colours,
- * on every build, forever.
+ * without a pinned history every sector would render 'neutral' (n=0, the
+ * same honest floor a real way's reference ride gets — NW-1, 2026-09-08).
+ * `DEMO_HISTORY` below pins six laps per sector — MIN_HISTORY itself only
+ * needs 1 since D-045 ruling 1, but the demo isn't chasing the floor, it is
+ * chasing VARIETY: green needs history with a mean above its best (n>=2),
+ * and the six pinned values below are what makes the one scripted lap in
+ * `DEMO_SECS` show all three verdict colours at once, on every build,
+ * forever.
  */
 import { tierFor, type UiTier } from './colourModel.ts';
 
 export type DemoMode = 'first' | 'second';
 
-/** The demo's own "previous laps" — six per sector, so tierFor()'s MIN_HISTORY
- * floor (5) is cleared on a virgin build with zero archived rides. Chosen so
- * one run of the scripted lap shows all three verdict colours. */
+/** The demo's own "previous laps" — six per sector. MIN_HISTORY (1, since
+ * D-045 ruling 1 / NW-1) needs only one to clear the floor; six is chosen
+ * instead so the pinned history has real spread (best < mean), which is
+ * what lets one run of the scripted lap show all three verdict colours. */
 export const DEMO_HISTORY: readonly (readonly number[])[] = [
   [190, 195, 188, 200, 192, 197],   // S1: best 188, mean ~193.7
   [210, 205, 215, 208, 212, 206],   // S2: best 205, mean ~209.3

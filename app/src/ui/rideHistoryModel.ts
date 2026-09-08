@@ -124,8 +124,12 @@ export function buildRideRows(
         const hist = laps(wayId, m.rideId);
         // D-008/D-028: too little comparable history is NO verdict, not a
         // generous one — an estimated lap never reaches here at all (lapS is
-        // null for 'estimated'/'missed' quality by construction).
-        if (hist.length >= MIN_HISTORY) rank = positionAmong(lapS, hist);
+        // null for 'estimated'/'missed' quality by construction). Rank reads
+        // MIN_HISTORY against the POOL (hist + this ride), not hist alone —
+        // same divergence as rankLineFor (rideDetailModel.ts, NW-1
+        // 2026-09-08): a way's reference ride (hist = []) still ranks
+        // "P1 of 1" in this list even though its own tier stays neutral.
+        if (hist.length + 1 >= MIN_HISTORY) rank = positionAmong(lapS, hist);
       }
       return {
         rideId: m.rideId,

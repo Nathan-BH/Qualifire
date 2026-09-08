@@ -57,8 +57,14 @@ test('towerModel: rows sort ascending, pos is 1-based, today slots by rank', () 
   });
   assert(m.rows[1].today === true, 'the 860 lap is today and must carry the flag');
   assert(m.rows.filter((r) => r.today).length === 1, 'exactly one today row');
-  // Only 2 other laps in each row's history (< MIN_HISTORY): no verdict at all.
-  assert(m.rows.every((r) => r.tier === 'neutral'), 'thin history must stay neutral, never coloured');
+  // D-045 ruling 1 / NW-1 (2026-09-08): MIN_HISTORY dropped to 1, so 2 other
+  // laps is now plenty for a real verdict — only a genuinely empty history
+  // (n=0) stays neutral. Each past row is judged against the OTHER 2 past
+  // values; today (860) is judged against all 3.
+  assert(m.rows[0].tier === 'purple', `850 beats its two others (875,900) ⇒ purple, got ${m.rows[0].tier}`);
+  assert(m.rows[1].tier === 'green', `860 (today) is under the field mean (875) ⇒ green, got ${m.rows[1].tier}`);
+  assert(m.rows[2].tier === 'yellow', `875 sits at its two others' mean (850,900) ⇒ yellow, got ${m.rows[2].tier}`);
+  assert(m.rows[3].tier === 'yellow', `900 is above its two others' mean (850,875) ⇒ yellow, got ${m.rows[3].tier}`);
 });
 
 test('towerModel: gap is em-dash for P1, whole rounded seconds elsewhere', () => {

@@ -20,8 +20,14 @@
  *    before (tracks.ts warns + skips; routeMapView builds a RouteAsset at
  *    runtime from that ref (ui/routeAssetRuntime.ts)).
  *  - route.referenceRideId records the ride-1-as-reference designation
- *    (COLD-START §3 step 9). Deriving that ride into the route's first
- *    scored all-purple lap is STILL deferred — a later package.
+ *    (COLD-START §3 step 9). It does NOT get a scored all-purple lap — that
+ *    idea described the pre-virgin, Strava-seeded world, where "ride 1" was
+ *    already a raced lap pulled from Nathan's own archive. On a genuinely
+ *    blank virgin install the reference ride never raced anything, so
+ *    D-045 ruling 1 (2026-08-26, executed NW-1 2026-09-08) gives it NO
+ *    colour verdict ('neutral', via colourModel.ts's MIN_HISTORY floor) —
+ *    it only earns a rank, once stored, as the comparison point for the
+ *    ride after it.
  *
  * Pure — no fs, no Date.now(); the caller supplies every fact.
  */

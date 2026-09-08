@@ -36,8 +36,15 @@ export const WINDOW_N = 10;
 export const WINDOW_PREV = WINDOW_N - 1;
 
 /** D-008's noise floor, shared by every verdict on screen: below this much
- * comparable history nothing is coloured and nothing is ranked. */
-export const MIN_HISTORY = 5;
+ * comparable history nothing is coloured. D-045 ruling 1 (2026-08-26,
+ * executed NW-1 2026-09-08) dropped this from 5 to 1 — a way's reference
+ * ride (`Way.referenceRideId`, `store/routeCreation.ts`) has n=0 prior
+ * rides and lands here same as any thinner-than-floor history, going
+ * 'neutral' with no special-casing in `tierFor`: it did not race anything,
+ * so it earns no verdict. It still gets RANKED once stored (see
+ * `rankLineFor`/`getLiveTowerPosition`) — rank and colour are independent
+ * facts, and only colour reads this floor. */
+export const MIN_HISTORY = 1;
 
 export type UiTier = 'purple' | 'green' | 'neutral' | 'yellow' | 'est';
 
@@ -134,9 +141,13 @@ export function sectorValues(wayId: string, index: number, excludeRideId?: strin
 /**
  * `history` is the ordered window of comparable times; `value` is today's.
  *
- * D-008's <5-clean-rides rule survives the ruling: too little history means NO
- * verdict at all — 'neutral', which renders as plain ink rather than a colour.
- * Nothing is judged on two rides.
+ * D-008's noise floor survives D-045 ruling 1, just lowered to MIN_HISTORY=1
+ * (NW-1, 2026-09-08): too little history means NO verdict at all —
+ * 'neutral', which renders as plain ink rather than a colour. n=0 (a way's
+ * reference ride, which never raced anything) lands here same as any
+ * history thinner than the floor — no special-casing needed. n=1 can only
+ * be purple or yellow (best and mean coincide at a pool of one, so green is
+ * not reachable until n>=2).
  */
 export function tierFor(value: number | null, history: number[]): UiTier {
   if (value === null) return 'est';

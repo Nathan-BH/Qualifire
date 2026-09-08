@@ -31,17 +31,20 @@ registerHooks({
 const {
   ALL_YELLOW, storedSectorColours, liveSectorColours,
 } = await import('../src/ui/sectorTrailModel.ts');
-const { MIN_HISTORY } = await import('../src/ui/colourModel.ts');
-
 // ------------------------------------------------------------------ fixtures
 
 interface Manifest { schemaVersion: number; projection: string; ways: Record<string, WayAsset> }
 const manifest = loadJson<Manifest>(path.join(TESTS_DIR, '..', 'assets', 'ways', 'ways.json'));
 
-// n = MIN_HISTORY, best 100, mean 120 — enough comparable history to earn a tier.
-const RICH = Array.from({ length: MIN_HISTORY }, (_, i) => 100 + i * 10);
-// too little history — always 'neutral'.
-const THIN = [100, 110];
+// A realistic, comfortably-above-the-floor comparison window with real
+// spread (best != mean, so purple/green/yellow all remain reachable):
+// best 100, mean 120. Deliberately NOT sized off MIN_HISTORY (D-045 ruling
+// 1 / NW-1, 2026-09-08, dropped that floor to 1) — this fixture is about
+// tier variety, not about probing the floor itself.
+const RICH = [100, 110, 120, 130, 140];
+// n=0, the only history that still stays 'neutral' under MIN_HISTORY=1 —
+// this is the same shape a way's reference ride sees (colourModel.ts).
+const THIN: number[] = [];
 
 // Paints EVERY tier (including neutral/est) to a distinct string, so a test
 // that expects null proves the BUILDER withholds colour, not that the
@@ -91,7 +94,7 @@ test('sectortrail: stored — a value between best and mean earns green', () => 
   assert(out[1] === 'P:green', `expected P:green, got ${out[1]}`);
 });
 
-test('sectortrail: stored — neutral (< MIN_HISTORY) never paints even when paint would', () => {
+test('sectortrail: stored — neutral (n=0, below MIN_HISTORY) never paints even when paint would', () => {
   const ride = stored([{ index: 1, rawS: 95, movingS: 95, quality: 'clean' }]);
   const out = storedSectorColours(ride, () => THIN, paintAll);
   assert(out.length === 2, `expected length 2, got ${out.length}`);

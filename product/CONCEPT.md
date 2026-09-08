@@ -36,8 +36,11 @@ The body below is the original 2026-08-15 design record and is not rewritten. Wh
   comparable rides on that way, green beats their average, yellow = time posted), not the body's
   7-day/28-day tiers. Scoring compares **raw wall-clock time** by default (luck counts); moving time is
   opt-in (SETTINGS → Timing, built cycle2 WP-C). Nathan's D-045 ruling (2026-08-26) removed the "<5
-  clean rides stay neutral" noise floor — **that half of the ruling is not yet in code** (`MIN_HISTORY
-  = 5` still gates colours and ranks, `app/src/ui/colourModel.ts`); see `OPEN-ITEMS.md`.
+  clean rides stay neutral" noise floor — **built** (NW-1, 2026-09-08: `MIN_HISTORY = 1`,
+  `app/src/ui/colourModel.ts`). A way's reference ride (ride 1, `Way.referenceRideId`) still gets no
+  colour verdict — it never raced anyone — but it does earn a rank once stored; the ride right after
+  it can only be purple or yellow (green needs a pool of 2+), and green opens up from the ride after
+  that.
 - **Reference lap:** not the body's automatic monthly reference. The first ride saved on a new route
   is its way's reference; any later clean lap can be promoted from the RIDE detail screen.
 - **Timing tower:** built (2026-08-17). The post-ride surface is now the RIDE detail screen (sector-

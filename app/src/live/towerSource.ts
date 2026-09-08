@@ -36,7 +36,13 @@ export function getLiveTowerPosition(st: LiveEngineState): string | null {
   const mine = scoredS(st.lap);
   if (mine === null) return null;
   const ghosts = lapValues(st.track);
-  // Same noise floor as the colours: one ghost yielding "P1" is not a fact.
-  if (ghosts.length < MIN_HISTORY) return null;
+  // D-045 ruling 1 / NW-1 (2026-09-08): rank and colour are independent
+  // facts. The colour floor (MIN_HISTORY) gates PRIOR rides needed to
+  // judge a verdict; a position needs no priors at all — the pool is
+  // ghosts.length + 1 (this lap counts as its own first entry), so a
+  // brand-new way's very first live lap still earns a real "P1 of 1"
+  // rather than nothing. Only a pool of zero (impossible: `mine` is
+  // already checked non-null above) would have no fact to report.
+  if (ghosts.length + 1 < MIN_HISTORY) return null;
   return `P${positionAmong(mine, ghosts).pos} of ${ghosts.length + 1}`;
 }

@@ -73,9 +73,100 @@ test('cycle008: the ratified model — purple / green / yellow, F1 style', () =>
 });
 
 test('cycle008: too little history means NO verdict at all', () => {
-  const thin = [100, 101, 102]; // < 5 clean rides (D-008)
-  assert(tierFor(50, thin) === 'neutral', 'must not colour on 3 rides, however fast');
+  // D-045 ruling 1 / NW-1 (2026-09-08) dropped MIN_HISTORY from 5 to 1: only
+  // n=0 — no prior rides at all, exactly a way's reference ride — stays
+  // neutral now. Even a single prior ride (n=1) earns a real tier (purple
+  // or yellow; see the n=1 test below for why green stays unreachable there).
+  assert(tierFor(50, []) === 'neutral', 'must not colour on zero prior rides, however fast');
   assert(tierFor(null, [1, 2, 3, 4, 5, 6]) === 'est', 'no time ⇒ estimated, never a tier');
+});
+
+test('NW-1: n=1 prior ride can only be purple or yellow — green needs n>=2', () => {
+  // A pool of exactly one prior ride has best === mean, so "beats the best"
+  // and "beats the average" are the same test — there is no room between
+  // them for green to live in.
+  const onePrior = [500];
+  assert(tierFor(499, onePrior) === 'purple', 'faster than the one prior ride ⇒ purple');
+  assert(tierFor(500, onePrior) === 'yellow', 'tying the one prior ride is not "beating" it ⇒ yellow');
+  assert(tierFor(501, onePrior) === 'yellow', 'slower than the one prior ride ⇒ yellow');
+});
+
+test('NW-1: n=2 prior rides unlocks green', () => {
+  const twoPriors = [500, 520]; // best 500, mean 510
+  assert(tierFor(499, twoPriors) === 'purple', 'beats the best ⇒ purple');
+  assert(tierFor(505, twoPriors) === 'green', 'between best and mean ⇒ green, now reachable at n=2');
+  assert(tierFor(515, twoPriors) === 'yellow', 'above the mean ⇒ yellow');
+});
+
+test('NW-1 (2026-09-08): a brand-new way walked ride-by-ride — n=0/1/2/10, end to end through the real store', () => {
+  // Not a seeded track (Morning/EveningA/EveningB): a synthetic wayId starts
+  // with truly zero history, exactly the "someone else's blank install"
+  // case D-045 ruling 1 is about.
+  resetRecordedForTests();
+  const wayId = 'nw1-integration-way';
+  const doneSector4 = (movingS: number) => [
+    doneSector(movingS / 4), doneSector(movingS / 4), doneSector(movingS / 4), doneSector(movingS / 4),
+  ];
+  // rememberRide()'s session id is `session:${Date.now()}` when no `meta`
+  // is supplied (headless in-memory path, deliberately unchanged by A1) —
+  // a tight loop of calls can land in the same millisecond and collide on
+  // that id. `tick()` forces real time to move on before the next call.
+  const tick = (): void => {
+    const t0 = Date.now();
+    while (Date.now() === t0) { /* spin one tick */ }
+  };
+  const rideOn = (movingS: number) => {
+    rememberRide(stateWith({
+      track: wayId, sectors: doneSector4(movingS),
+      lap: { rawS: movingS, stoppedS: 0, movingS, estimated: false },
+    }));
+    tick();
+  };
+
+  // n=0: the way's reference ride, about to be judged for the first time —
+  // there is nothing on file yet at all.
+  assert(lapValues(wayId).length === 0, 'a brand-new way must start with zero history');
+  assert(tierFor(500, lapValues(wayId)) === 'neutral', 'the reference ride itself gets no colour verdict');
+
+  rideOn(500); // ride 1 stored — this becomes the reference ride
+  const ride1Id = `session:${getLastRide()!.atMs}`;
+  // Even excluding itself, the reference ride still ranks "P1 of 1" once
+  // stored (rank and colour are independent facts — colourModel.ts, NW-1).
+  const selfHist = lapValues(wayId, ride1Id);
+  assert(selfHist.length === 0, "the reference ride's own history (excluding itself) is empty");
+  const selfRank = positionAmong(500, selfHist);
+  assert(selfRank.pos === 1 && selfRank.of === 1, `expected P1 of 1 for the reference ride, got P${selfRank.pos} of ${selfRank.of}`);
+
+  // n=1: ride 2 is judged against the one stored reference ride. Only
+  // purple/yellow are reachable — best and mean coincide at a pool of one.
+  const hist1 = lapValues(wayId);
+  assert(hist1.length === 1, `ride 2 should see exactly 1 prior ride, got ${hist1.length}`);
+  assert(tierFor(490, hist1) === 'purple', 'faster than the reference ride ⇒ purple');
+  assert(tierFor(510, hist1) === 'yellow', 'slower than the reference ride ⇒ yellow, never green at n=1');
+
+  rideOn(510); // ride 2 stored (yellow)
+
+  // n=2: ride 3 is judged against the 2 stored rides — green is now reachable.
+  const hist2 = lapValues(wayId);
+  assert(hist2.length === 2, `ride 3 should see exactly 2 prior rides, got ${hist2.length}`);
+  assert(tierFor(503, hist2) === 'green', `503 sits between best (500) and mean (505) ⇒ green, got ${tierFor(503, hist2)}`);
+
+  rideOn(503); // ride 3 stored (green)
+
+  // n=10: keep riding out to a full WINDOW_N pool — the D-045 ruling 2
+  // window (unrelated to ruling 1, unaffected by MIN_HISTORY) must still
+  // cap the comparison window at WINDOW_PREV=9 / pool WINDOW_N=10.
+  for (let i = 0; i < 7; i++) rideOn(505 + i); // rides 4..10 → 10 stored total
+  assert(rankedCountFor(wayId) === 10, `expected 10 rides on file, got ${rankedCountFor(wayId)}`);
+  const hist10 = lapValues(wayId);
+  assert(hist10.length === WINDOW_PREV, `the comparison window must still cap at WINDOW_PREV=${WINDOW_PREV}, got ${hist10.length}`);
+
+  rideOn(506); // an 11th ride — the window must still not grow past WINDOW_N
+  assert(rankedCountFor(wayId) === 11, 'true count keeps growing past the window');
+  const pool = rankingPoolFor(wayId, `session:${getLastRide()!.atMs}`);
+  assert(pool.length === WINDOW_N, `ranking pool must stay exactly WINDOW_N=${WINDOW_N}, got ${pool.length}`);
+
+  resetRecordedForTests();
 });
 
 test('cycle008: the live position chip ranks, or renders nothing at all', () => {

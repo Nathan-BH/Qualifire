@@ -68,7 +68,15 @@ export function rankLineFor(
   if (r.ignored) return 'not ranked — you excluded this ride from ranking';
   if (r.lapS !== null) {
     if (barred) return 'no rank — this lap is excluded from the comparison';
-    if (hist.length >= MIN_HISTORY) {
+    // D-045 ruling 1 / NW-1 (2026-09-08): rank and colour read the same
+    // MIN_HISTORY floor but against different pools. Colour (tierFor)
+    // needs MIN_HISTORY PRIOR rides. Rank needs a pool of MIN_HISTORY
+    // TOTAL, and this ride is already one member of its own pool — so the
+    // reference ride (hist = [], the very first ride on a way) still
+    // clears a floor of 1 and gets "P1 of 1", even though its tier is
+    // neutral: it has a position among the rides on file, it just never
+    // raced anyone for a verdict.
+    if (hist.length + 1 >= MIN_HISTORY) {
       const { pos, of } = positionAmong(r.lapS, hist);
       return `P${pos} of ${of} on this way`;
     }
