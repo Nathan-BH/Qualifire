@@ -44,7 +44,7 @@ standalone bumper.
 
 **2 · Reframed (brand teaser).** The scaffold already built at
 `marketing/hyperframes/teaser/index.html` — logo sting, wordmark + tagline
-("The commute, reframed as a qualifying lap."), four sector slots filling
+("Same road. New meaning."), four sector slots filling
 yellow→green→yellow→purple with big tabular sector times, then a
 timing-tower line ("P2 · of your last 10 commutes") fading to the yellow
 endcard. It runs ~12s rather than `/motion-graphics`'s ~10s sweet spot
