@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qualifire — Launch-animation option deck</title>
+<meta name="description" content="Four concept mockups for new uses of the launch mark, for Nathan to react to. Not wired into the app.">
+<style>
+  /* Tokens copied verbatim from app/src/ui/theme.ts + marketing/index.html.
+     No new colours are introduced anywhere in this file — the palette is
+     permanent as of Nathan's 2026-09-08 ruling. */
+  :root{
+    --pad-bg: #17171b;       /* night.bg */
+    --pad-card: #212127;     /* night.card */
+    --pad-border: #41414c;   /* night.cardBorder */
+    --pad-recessed: #101014;
+    --race-bg: #0A0A0A;      /* colors.bg */
+    --race-card: #141414;    /* colors.card */
+    --race-border: #232323;  /* colors.cardBorder */
+    --ink: #F4F2EC;          /* colors.ink */
+    --ink-dim: #9a978f;      /* colors.inkDim */
+    --text2: #b5b3ac;        /* night.text2 */
+    --grey: #6f6e6a;         /* colors.grey — NO-DATA only, unused for verdicts here */
+    --yellow: #F5C542;       /* colors.neutral — signature / neutral tier */
+    --yellow-ink: #17171b;
+    --green: #3ED598;        /* colors.green */
+    --purple: #A667F0;       /* colors.purple */
+    --purple-deep: #7b3fd1;  /* colors.purpleDeep */
+    --amber: #E8A33D;        /* colors.amber */
+    --rider-blue: #2F7DE1;   /* colors.riderBlue */
+  }
+  :root[data-theme="light"]{
+    --pad-bg: #FAF7EE;       /* daylight.bg */
+    --pad-card: #FFFFFF;     /* daylight.card */
+    --pad-border: #E0D9C4;   /* daylight.cardBorder */
+    --pad-recessed: #ECE8DC;
+    --race-bg: #FFFFFF;      /* daylight.race.bg */
+    --race-card: #F5F1E6;    /* daylight.race.card */
+    --race-border: #E4DECB;  /* daylight.race.border */
+    --ink: #201F24;          /* daylight.text */
+    --ink-dim: #8A8577;      /* daylight.textDim */
+    --text2: #6D6759;        /* daylight.text2 */
+    --grey: #8b897f;
+    --yellow-ink: #17171b;
+  }
+
+  *{ box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+  body{
+    margin:0;
+    background:var(--pad-bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    transition:background .2s ease, color .2s ease;
+  }
+  .wrap{ max-width:1180px; margin:0 auto; padding:40px 24px 80px; }
+
+  header.page{ position:relative; padding-bottom:22px; border-bottom:1px solid var(--pad-border); margin-bottom:34px; }
+  .kicker{ color:var(--yellow); font-size:.78rem; font-weight:700; letter-spacing:.16em; text-transform:uppercase; margin-bottom:10px; }
+  h1{ font-size:1.9rem; margin:0 0 10px 0; letter-spacing:-.01em; }
+  .lede{ color:var(--text2); max-width:70ch; line-height:1.55; margin:0 0 6px 0; }
+  .lede b{ color:var(--ink); }
+  .note{ color:var(--ink-dim); font-size:.85rem; max-width:70ch; line-height:1.5; }
+  .theme-toggle{
+    position:absolute; top:0; right:0;
+    background:var(--pad-card); color:var(--ink); border:1px solid var(--pad-border);
+    border-radius:8px; padding:8px 14px; font-size:.8rem; font-weight:600;
+    cursor:pointer; letter-spacing:.02em;
+  }
+  .theme-toggle:hover{ border-color:var(--yellow); }
+
+  .legend{ display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:16px; }
+  .legend span{ display:inline-flex; align-items:center; gap:6px; font-size:.72rem; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.06em; }
+  .legend i{ width:9px; height:9px; border-radius:50%; display:inline-block; }
+
+  .grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(420px,1fr)); gap:26px; margin-top:8px; }
+
+  .card{
+    background:var(--pad-card); border:1px solid var(--pad-border); border-radius:16px;
+    padding:22px 22px 20px; display:flex; flex-direction:column; gap:14px;
+  }
+  .card .idx{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:26px; height:26px; border-radius:50%; background:var(--pad-recessed);
+    border:1px solid var(--pad-border); color:var(--yellow); font-weight:800; font-size:.78rem;
+  }
+  .card h2{ font-size:1.12rem; margin:2px 0 0 0; display:flex; align-items:center; gap:10px; }
+  .card .oneline{ color:var(--text2); font-size:.9rem; margin:0; line-height:1.45; }
+
+  .meta{ display:flex; flex-wrap:wrap; gap:8px; }
+  .meta span{
+    font-size:.7rem; text-transform:uppercase; letter-spacing:.07em; font-weight:700;
+    color:var(--ink-dim); background:var(--pad-recessed); border:1px solid var(--pad-border);
+    border-radius:99px; padding:5px 11px;
+  }
+  .meta span b{ color:var(--ink); font-weight:700; }
+
+  .stage{
+    position:relative; border-radius:12px; overflow:hidden;
+    height:230px; display:flex; align-items:center; justify-content:center;
+  }
+  .stage.race{ background:var(--race-bg); border:1px solid var(--race-border); }
+  .stage.paddock{ background:var(--pad-recessed); border:1px solid var(--pad-border); }
+
+  .controls{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .replay{
+    background:transparent; color:var(--ink-dim); border:1px solid var(--pad-border);
+    border-radius:8px; padding:7px 13px; font-size:.76rem; font-weight:600; cursor:pointer;
+    letter-spacing:.03em; display:inline-flex; align-items:center; gap:7px;
+  }
+  .replay:hover{ color:var(--yellow); border-color:var(--yellow); }
+  .react{ display:flex; align-items:center; gap:8px; }
+  .react label{ font-size:.7rem; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-dim); }
+  .react input{
+    background:var(--pad-recessed); border:1px solid var(--pad-border); border-radius:7px;
+    color:var(--ink); font-size:.85rem; padding:6px 10px; width:120px;
+  }
+  .react input:focus{ outline:none; border-color:var(--yellow); }
+
+  footer.page{ margin-top:46px; padding-top:20px; border-top:1px solid var(--pad-border); color:var(--ink-dim); font-size:.78rem; line-height:1.6; }
+  footer.page a{ color:var(--text2); }
+
+  /* ============================================================
+     SHARED MARK GEOMETRY
+     circle cx=256 cy=218 r=118 stroke-width=30 (marketing/index.html
+     #q_ring, ported from qualifire_logo_5_monogram_wordmark.svg).
+     Circumference 2*pi*118 = 741.4 -> dasharray 742 (site's own rounding).
+     Tail line x1=291.355 y1=253.355 x2=387.5206 y2=349.5206, length ~136.
+     ============================================================ */
+  .mark-svg{ width:118px; height:118px; }
+  .ring-base{ fill:none; stroke-width:30; stroke-linecap:round; }
+  /* stroke set via CSS class (not the stroke="var(...)" attribute form) so
+     colour resolution is unambiguous across browsers, and so these flip
+     correctly with the day/night ground toggle. */
+  .s-ink{ stroke:var(--ink); }
+  .s-ink-dim{ stroke:var(--ink-dim); }
+  .s-yellow{ stroke:var(--yellow); }
+  .s-purple{ stroke:var(--purple); }
+  .s-purple-deep{ stroke:var(--purple-deep); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="page">
+    <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false">☀️ Day ground</button>
+    <div class="kicker">NW-5 · Design prototype · cycles/virgin-cycle5</div>
+    <h1>Launch-animation option deck</h1>
+    <p class="lede">Four concept mockups for <b>new</b> places the launch mark's motion language could show up,
+      beyond the four spots already shipped (app-launch, START, tab-switch, final-gate). Each one below is a
+      CSS/SVG web mockup of the idea — not the real React Native code in
+      <code>app/src/ui/launchChoreo.ts</code>, which stays untouched by this deck.</p>
+    <p class="note">Colours are the shipped palette only (<code>app/src/ui/theme.ts</code>) — ink, signature
+      yellow, green, purple, near-black/near-white grounds. Nathan ruled 2026-09-08 that the palette itself is
+      not changing, so nothing here proposes an alternate colour treatment; the toggle above just previews the
+      existing day and night paddock grounds, both already in the app. Nothing on this page is wired into the
+      app — react in one word per card, that's the whole ask.</p>
+    <div class="legend">
+      <span><i style="background:var(--ink)"></i>Ink — identity stroke</span>
+      <span><i style="background:var(--yellow)"></i>Yellow — neutral / gate</span>
+      <span><i style="background:var(--purple)"></i>Purple — fastest / earned only</span>
+      <span><i style="background:var(--green)"></i>Green — above pool average</span>
+    </div>
+  </header>
+
+  <div class="grid">
+
+    <!-- ============================================================ -->
+    <!-- OPTION A — Way soft -> verified lock                          -->
+    <!-- ============================================================ -->
+    <section class="card" id="card-a">
+      <h2><span class="idx">A</span> Way lock-in</h2>
+      <p class="oneline">The live engine's tentative match on a way snaps to a verified, committed route mid-ride.</p>
+      <div class="meta">
+        <span>Trigger: <b>soft match → verified</b> (live engine)</span>
+        <span>Runs: <b>~0.7s</b></span>
+        <span>Loops: <b>every 3.6s</b> in this demo</span>
+      </div>
+      <div class="stage race" id="stage-a">
+        <svg class="mark-svg" viewBox="0 0 512 512" id="svg-a">
+          <circle id="a-soft" class="ring-base s-ink-dim" cx="256" cy="218" r="118" stroke-dasharray="6 14"/>
+          <circle id="a-ring" class="ring-base s-ink" cx="256" cy="218" r="118"
+                  stroke-dasharray="742" stroke-dashoffset="742"
+                  transform="rotate(-90 256 218)"/>
+          <line id="a-tail" class="s-yellow" x1="291.355" y1="253.355" x2="387.5206" y2="349.5206" fill="none"
+                stroke-width="30" stroke-linecap="round"
+                stroke-dasharray="136" stroke-dashoffset="136"/>
+          <circle id="a-pulse" class="s-ink" cx="256" cy="218" r="118" fill="none" stroke-width="2" opacity="0"/>
+        </svg>
+      </div>
+      <div class="controls">
+        <button class="replay" type="button" data-replay="a">↻ Replay</button>
+        <div class="react"><label for="react-a">React</label><input id="react-a" type="text" maxlength="24" placeholder="one word"></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- OPTION B — Personal-best / purple-lap reveal                  -->
+    <!-- ============================================================ -->
+    <section class="card" id="card-b">
+      <h2><span class="idx">B</span> Purple-lap reveal</h2>
+      <p class="oneline">A sector or lap posts as the new fastest in the pool — the mark redraws itself in purple, the one tier the identity never wears by default.</p>
+      <div class="meta">
+        <span>Trigger: <b>new purple (fastest) verdict</b></span>
+        <span>Runs: <b>~1.5s</b></span>
+        <span>Loops: <b>every 4.2s</b> in this demo</span>
+      </div>
+      <div class="stage race" id="stage-b">
+        <svg class="mark-svg" viewBox="0 0 512 512" id="svg-b">
+          <circle id="b-ring" class="ring-base s-purple" cx="256" cy="218" r="118"
+                  stroke-dasharray="742" stroke-dashoffset="742"
+                  transform="rotate(-90 256 218)"/>
+          <line id="b-tail" class="s-purple-deep" x1="291.355" y1="253.355" x2="387.5206" y2="349.5206" fill="none"
+                stroke-width="30" stroke-linecap="round"
+                stroke-dasharray="136" stroke-dashoffset="136"/>
+          <circle id="b-shock1" class="s-purple" cx="256" cy="218" r="118" fill="none" stroke-width="4" opacity="0"/>
+          <circle id="b-shock2" class="s-purple" cx="256" cy="218" r="118" fill="none" stroke-width="4" opacity="0"/>
+        </svg>
+      </div>
+      <div class="controls">
+        <button class="replay" type="button" data-replay="b">↻ Replay</button>
+        <div class="react"><label for="react-b">React</label><input id="react-b" type="text" maxlength="24" placeholder="one word"></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- OPTION C — Reference-ride-created moment                      -->
+    <!-- ============================================================ -->
+    <section class="card" id="card-c">
+      <h2><span class="idx">C</span> Reference ride set</h2>
+      <p class="oneline">A blank-install rider's very first ride on a road becomes that way's reference route (NW-1). Neutral by ruling — no colour verdict, but it is real history from here on.</p>
+      <div class="meta">
+        <span>Trigger: <b>first ride on a way saved</b> (routeCreation.ts)</span>
+        <span>Runs: <b>~2.4s</b></span>
+        <span>Loops: <b>every 5.2s</b> in this demo</span>
+      </div>
+      <div class="stage paddock" id="stage-c">
+        <svg class="mark-svg" viewBox="0 0 512 512" id="svg-c">
+          <path id="c-squiggle" class="s-ink-dim" d="M 90 300 C 150 200, 200 340, 256 250 C 300 180, 330 300, 380 230"
+                fill="none" stroke-width="10" stroke-linecap="round"
+                stroke-dasharray="420" stroke-dashoffset="420"/>
+          <circle id="c-ring" class="ring-base s-ink" cx="256" cy="218" r="118"
+                  stroke-dasharray="742" stroke-dashoffset="742" opacity="0"
+                  transform="rotate(-90 256 218)"/>
+          <line id="c-tail" class="s-yellow" x1="291.355" y1="253.355" x2="387.5206" y2="349.5206" fill="none"
+                stroke-width="30" stroke-linecap="round"
+                stroke-dasharray="136" stroke-dashoffset="136"/>
+        </svg>
+        <div class="chip" id="c-chip" style="position:absolute; bottom:14px; left:50%; transform:translateX(-50%); opacity:0; font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-dim); background:var(--pad-card); border:1px solid var(--pad-border); border-radius:99px; padding:5px 12px; white-space:nowrap;">Reference set · P1 of 1</div>
+      </div>
+      <div class="controls">
+        <button class="replay" type="button" data-replay="c">↻ Replay</button>
+        <div class="react"><label for="react-c">React</label><input id="react-c" type="text" maxlength="24" placeholder="one word"></div>
+      </div>
+    </section>
+
+    <!-- ============================================================ -->
+    <!-- OPTION D — RESULTS-tab entry transition                       -->
+    <!-- ============================================================ -->
+    <section class="card" id="card-d">
+      <h2><span class="idx">D</span> Results-tab entry</h2>
+      <p class="oneline">Switching into RESULTS specifically (not the generic tab-switch flash already shipped) — the mark seeds an iris wipe that reveals the sector rows underneath it.</p>
+      <div class="meta">
+        <span>Trigger: <b>tab bar → RESULTS</b></span>
+        <span>Runs: <b>~0.5s</b></span>
+        <span>Loops: <b>every 3s</b> in this demo</span>
+      </div>
+      <div class="stage paddock" id="stage-d" style="align-items:stretch; justify-content:stretch; padding:16px;">
+        <div style="position:relative; width:100%; height:100%;">
+          <div id="d-rows" style="position:absolute; inset:0; display:flex; flex-direction:column; gap:8px; clip-path:circle(0% at 26% 24%);">
+            <div class="d-row" style="display:flex; justify-content:space-between; align-items:center; background:var(--pad-card); border:1px solid var(--pad-border); border-radius:8px; padding:9px 14px;">
+              <span style="font-size:.78rem; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.06em;">Sector 1</span>
+              <span style="font-weight:800; color:var(--purple);">0:41.2</span>
+            </div>
+            <div class="d-row" style="display:flex; justify-content:space-between; align-items:center; background:var(--pad-card); border:1px solid var(--pad-border); border-radius:8px; padding:9px 14px;">
+              <span style="font-size:.78rem; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.06em;">Sector 2</span>
+              <span style="font-weight:800; color:var(--green);">1:02.8</span>
+            </div>
+            <div class="d-row" style="display:flex; justify-content:space-between; align-items:center; background:var(--pad-card); border:1px solid var(--pad-border); border-radius:8px; padding:9px 14px;">
+              <span style="font-size:.78rem; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.06em;">Sector 3</span>
+              <span style="font-weight:800; color:var(--yellow);">0:38.5</span>
+            </div>
+            <div class="d-row" style="display:flex; justify-content:space-between; align-items:center; background:var(--pad-card); border:1px solid var(--pad-border); border-radius:8px; padding:9px 14px;">
+              <span style="font-size:.78rem; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.06em;">Sector 4</span>
+              <span style="font-weight:800; color:var(--yellow);">0:55.0</span>
+            </div>
+          </div>
+          <svg id="svg-d" viewBox="0 0 512 512" style="position:absolute; width:52px; height:52px; left:calc(26% - 26px); top:calc(24% - 26px); opacity:1;">
+            <circle id="d-ring" class="ring-base s-ink" cx="256" cy="218" r="118"
+                    stroke-dasharray="742" stroke-dashoffset="742"
+                    transform="rotate(-90 256 218)"/>
+            <line id="d-tail" class="s-yellow" x1="291.355" y1="253.355" x2="387.5206" y2="349.5206" fill="none"
+                  stroke-width="30" stroke-linecap="round"
+                  stroke-dasharray="136" stroke-dashoffset="136"/>
+          </svg>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="replay" type="button" data-replay="d">↻ Replay</button>
+        <div class="react"><label for="react-d">React</label><input id="react-d" type="text" maxlength="24" placeholder="one word"></div>
+      </div>
+    </section>
+
+  </div>
+
+  <footer class="page">
+    <p>Source brief: <code>cycles/virgin-cycle5/BRIEF-product-docs-cleanup.md</code> §12 NW-5. Visual language
+      ported from <code>marketing/index.html</code>'s hero mark (ring cx=256 cy=218 r=118 stroke-width=30,
+      tail line x1=291.355 y1=253.355 x2=387.5206 y2=349.5206 — same numbers <code>app/src/ui/launchChoreo.ts</code>
+      derives its own geometry from) and the shipped choreography (ring draws clockwise from 12 o'clock, tail
+      lands last). This file has no server dependency and no build step — open it directly in a browser.</p>
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ---- day/night ground toggle (mirrors marketing/index.html) ----
+  var root = document.documentElement;
+  var btn = document.getElementById('theme-toggle');
+  function applyTheme(t){
+    if (t === 'light') { root.setAttribute('data-theme', 'light'); btn.textContent = '🌙 Night ground'; btn.setAttribute('aria-pressed', 'true'); }
+    else { root.removeAttribute('data-theme'); btn.textContent = '☀️ Day ground'; btn.setAttribute('aria-pressed', 'false'); }
+  }
+  var saved = null;
+  try { saved = localStorage.getItem('qf-nw5-theme'); } catch (e) {}
+  applyTheme(saved === 'light' ? 'light' : 'dark');
+  btn.addEventListener('click', function(){
+    var next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    applyTheme(next);
+    try { localStorage.setItem('qf-nw5-theme', next); } catch (e) {}
+  });
+
+  // ---- tiny WAAPI-based looping choreography per card ----
+  // Each option is its own function returning an Animation-like handle with .cancel().
+  // Using the Web Animations API (native, no deps) so timelines read exactly like
+  // launchChoreo.ts's own ms-based constants and can be replayed on demand.
+
+  function animate(el, keyframes, opts){ return el.animate(keyframes, opts); }
+
+  // A — way lock-in: dashed "searching" ring holds, then snaps solid + fast tail,
+  // one confirmation pulse, then resets. ~700ms active moment inside a 3.6s loop
+  // so the demo shows the idle "searching" state most of the time, as it would live.
+  function runA(){
+    var soft = document.getElementById('a-soft');
+    var ring = document.getElementById('a-ring');
+    var tail = document.getElementById('a-tail');
+    var pulse = document.getElementById('a-pulse');
+    var anims = [];
+    anims.push(animate(soft, [
+      { opacity: 1, offset: 0 },
+      { opacity: 1, offset: 0.30 },
+      { opacity: 0, offset: 0.36 },
+      { opacity: 0, offset: 1 }
+    ], { duration: 3600, iterations: Infinity }));
+    anims.push(animate(ring, [
+      { strokeDashoffset: 742, offset: 0 },
+      { strokeDashoffset: 742, offset: 0.30 },
+      { strokeDashoffset: 0, offset: 0.38 },
+      { strokeDashoffset: 0, offset: 1 }
+    ], { duration: 3600, easing: 'cubic-bezier(.2,.7,.2,1)', iterations: Infinity }));
+    anims.push(animate(tail, [
+      { strokeDashoffset: 136, offset: 0 },
+      { strokeDashoffset: 136, offset: 0.38 },
+      { strokeDashoffset: 0, offset: 0.45 },
+      { strokeDashoffset: 0, offset: 1 }
+    ], { duration: 3600, easing: 'ease-out', iterations: Infinity }));
+    anims.push(animate(pulse, [
+      { opacity: 0, transform: 'scale(1)', offset: 0 },
+      { opacity: 0, transform: 'scale(1)', offset: 0.45 },
+      { opacity: 0.9, transform: 'scale(1)', offset: 0.47 },
+      { opacity: 0, transform: 'scale(1.18)', offset: 0.58 },
+      { opacity: 0, transform: 'scale(1)', offset: 1 }
+    ], { duration: 3600, easing: 'ease-out', iterations: Infinity }));
+    return anims;
+  }
+
+  // B — purple-lap reveal: full ring+tail redraw in purple (matching the shipped
+  // 1.4s ring / 0.5s tail feel, compressed slightly), then two outward shockwave
+  // rings, then a hold, then fade for the next loop.
+  function runB(){
+    var ring = document.getElementById('b-ring');
+    var tail = document.getElementById('b-tail');
+    var s1 = document.getElementById('b-shock1');
+    var s2 = document.getElementById('b-shock2');
+    var anims = [];
+    anims.push(animate(ring, [
+      { strokeDashoffset: 742, offset: 0 },
+      { strokeDashoffset: 0, offset: 0.26 },
+      { strokeDashoffset: 0, offset: 0.85 },
+      { strokeDashoffset: 742, offset: 0.98 },
+      { strokeDashoffset: 742, offset: 1 }
+    ], { duration: 4200, easing: 'cubic-bezier(.2,.7,.2,1)', iterations: Infinity }));
+    anims.push(animate(tail, [
+      { strokeDashoffset: 136, offset: 0 },
+      { strokeDashoffset: 136, offset: 0.22 },
+      { strokeDashoffset: 0, offset: 0.31 },
+      { strokeDashoffset: 0, offset: 0.85 },
+      { strokeDashoffset: 136, offset: 0.98 },
+      { strokeDashoffset: 136, offset: 1 }
+    ], { duration: 4200, easing: 'ease-out', iterations: Infinity }));
+    [s1, s2].forEach(function(el, i){
+      var delay = i * 0.05;
+      anims.push(animate(el, [
+        { opacity: 0, transform: 'scale(1)', offset: 0 },
+        { opacity: 0, transform: 'scale(1)', offset: 0.31 + delay },
+        { opacity: 0.8, transform: 'scale(1)', offset: 0.33 + delay },
+        { opacity: 0, transform: 'scale(1.5)', offset: 0.55 + delay },
+        { opacity: 0, transform: 'scale(1)', offset: 1 }
+      ], { duration: 4200, easing: 'ease-out', iterations: Infinity }));
+    });
+    return anims;
+  }
+
+  // C — reference ride set: an ordinary squiggled route draws first (the rider's
+  // first ride on the road), cross-dissolves into the identity ring+tail drawing
+  // with the shipped ring/tail timing ratio, then a "Reference set" chip appears.
+  // Neutral colours only (ink ring, yellow tail) per NW-1's ruling: no verdict.
+  function runC(){
+    var sq = document.getElementById('c-squiggle');
+    var ring = document.getElementById('c-ring');
+    var tail = document.getElementById('c-tail');
+    var chip = document.getElementById('c-chip');
+    var anims = [];
+    anims.push(animate(sq, [
+      { strokeDashoffset: 420, opacity: 1, offset: 0 },
+      { strokeDashoffset: 0, opacity: 1, offset: 0.27 },
+      { strokeDashoffset: 0, opacity: 1, offset: 0.32 },
+      { strokeDashoffset: 0, opacity: 0, offset: 0.40 },
+      { strokeDashoffset: 0, opacity: 0, offset: 1 }
+    ], { duration: 5200, easing: 'ease-out', iterations: Infinity }));
+    anims.push(animate(ring, [
+      { strokeDashoffset: 742, opacity: 0, offset: 0 },
+      { strokeDashoffset: 742, opacity: 1, offset: 0.32 },
+      { strokeDashoffset: 0, opacity: 1, offset: 0.59 },
+      { strokeDashoffset: 0, opacity: 1, offset: 0.85 },
+      { strokeDashoffset: 0, opacity: 0, offset: 0.98 },
+      { strokeDashoffset: 742, opacity: 0, offset: 1 }
+    ], { duration: 5200, easing: 'cubic-bezier(.2,.7,.2,1)', iterations: Infinity }));
+    anims.push(animate(tail, [
+      { strokeDashoffset: 136, offset: 0 },
+      { strokeDashoffset: 136, offset: 0.55 },
+      { strokeDashoffset: 0, offset: 0.65 },
+      { strokeDashoffset: 0, offset: 0.85 },
+      { strokeDashoffset: 136, offset: 0.98 },
+      { strokeDashoffset: 136, offset: 1 }
+    ], { duration: 5200, easing: 'ease-out', iterations: Infinity }));
+    anims.push(animate(chip, [
+      { opacity: 0, offset: 0 },
+      { opacity: 0, offset: 0.65 },
+      { opacity: 1, offset: 0.72 },
+      { opacity: 1, offset: 0.85 },
+      { opacity: 0, offset: 0.95 },
+      { opacity: 0, offset: 1 }
+    ], { duration: 5200, easing: 'ease-out', iterations: Infinity }));
+    return anims;
+  }
+
+  // D — results-tab entry: a compressed (~450ms) mark draw seeds an iris wipe
+  // that reveals the sector rows already sitting behind it, then a hold, then
+  // an iris close to reset the loop.
+  function runD(){
+    var ring = document.getElementById('d-ring');
+    var tail = document.getElementById('d-tail');
+    var rows = document.getElementById('d-rows');
+    var svg = document.getElementById('svg-d');
+    var anims = [];
+    anims.push(animate(ring, [
+      { strokeDashoffset: 742, offset: 0 },
+      { strokeDashoffset: 0, offset: 0.10 },
+      { strokeDashoffset: 0, offset: 0.62 },
+      { strokeDashoffset: 742, offset: 0.78 },
+      { strokeDashoffset: 742, offset: 1 }
+    ], { duration: 3000, easing: 'ease-out', iterations: Infinity }));
+    anims.push(animate(tail, [
+      { strokeDashoffset: 136, offset: 0 },
+      { strokeDashoffset: 136, offset: 0.08 },
+      { strokeDashoffset: 0, offset: 0.13 },
+      { strokeDashoffset: 0, offset: 0.62 },
+      { strokeDashoffset: 136, offset: 0.78 },
+      { strokeDashoffset: 136, offset: 1 }
+    ], { duration: 3000, easing: 'ease-out', iterations: Infinity }));
+    anims.push(animate(svg, [
+      { opacity: 1, offset: 0 },
+      { opacity: 1, offset: 0.60 },
+      { opacity: 0, offset: 0.70 },
+      { opacity: 0, offset: 0.76 },
+      { opacity: 1, offset: 0.88 },
+      { opacity: 1, offset: 1 }
+    ], { duration: 3000, easing: 'linear', iterations: Infinity }));
+    anims.push(animate(rows, [
+      { clipPath: 'circle(0% at 26% 24%)', offset: 0 },
+      { clipPath: 'circle(0% at 26% 24%)', offset: 0.10 },
+      { clipPath: 'circle(150% at 26% 24%)', offset: 0.20 },
+      { clipPath: 'circle(150% at 26% 24%)', offset: 0.70 },
+      { clipPath: 'circle(0% at 26% 24%)', offset: 0.80 },
+      { clipPath: 'circle(0% at 26% 24%)', offset: 1 }
+    ], { duration: 3000, easing: 'cubic-bezier(.2,.7,.2,1)', iterations: Infinity }));
+    return anims;
+  }
+
+  var registry = {};
+  function start(key, fn){
+    (registry[key] || []).forEach(function(a){ a.cancel(); });
+    registry[key] = fn();
+  }
+  start('a', runA);
+  start('b', runB);
+  start('c', runC);
+  start('d', runD);
+
+  var runners = { a: runA, b: runB, c: runC, d: runD };
+  Array.prototype.forEach.call(document.querySelectorAll('[data-replay]'), function(btn){
+    btn.addEventListener('click', function(){
+      var key = btn.getAttribute('data-replay');
+      start(key, runners[key]);
+    });
+  });
+})();
+</script>
+</body>
+</html>
