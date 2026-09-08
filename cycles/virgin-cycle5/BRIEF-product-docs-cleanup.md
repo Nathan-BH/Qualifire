@@ -1,9 +1,12 @@
 # BRIEF — `product/` doc cleanup (virgin-cycle5, follow-on)
 
-**Status: EXECUTION-READY for WP-P0 … WP-P10 (doc edits). Written 2026-09-08 by the Plan tier
-(Fable) against the tree at commit `eb2e2da` (branch `virgin`). One Sonnet Execute dispatch, one
-commit. The "New work packages" in §12 are NOT executed by this brief — they are proposals for
-Nathan / a later brief.**
+**Status: EXECUTION-READY for WP-P0 … WP-P10 (doc edits) AND, as of 2026-09-08, NW-1/NW-2/NW-5
+(§12). Written 2026-09-08 by the Plan tier (Fable) against the tree at commit `eb2e2da` (branch
+`virgin`); NW-1's colour-model spec finalized 2026-09-08 (second pass) after
+`QUESTIONS-FOR-NATHAN2.md`. WP-P0…P10 is one Sonnet Execute dispatch, one commit; §12's NW items
+are separate dispatches (NW-1 touches `app/`, the doc WPs don't — keep them apart so a code review
+and a doc review aren't mixed in one diff). NW-3/NW-4 remain conditional/audit items, not blocked,
+just not necessarily needed — see their own text.**
 
 Companion: `REVIEW-product-docs.md` (the per-file findings this brief acts on). Pattern follows
 `BRIEF-root-docs-cleanup.md` in this folder.
@@ -17,10 +20,16 @@ handled by §0.3 (skip that one edit, report verbatim).
 **Update 2026-09-08 — Nathan's answers to `QUESTIONS-FOR-NATHAN.md` are in.** Applied below:
 Q2 (SETUP-UX depth strip → dropped, not parked), Q4 (MAP-TILES PMTiles → confirmed parked, no
 change to the plan). Q3 (launch animation) is answered but changes shape: Nathan wants visual
-options to react to, not code — see the new §12 NW-5. **NW-1 is now BLOCKED**, not ready: Q1's
-answer described a materially different colour model than the one this section assumed, and it
-conflicts with an existing code comment about the planned future behaviour. See
-`QUESTIONS-FOR-NATHAN2.md` Q1′/Q1″ — do not build NW-1 until that lands.
+options to react to, not code — see the new §12 NW-5.
+
+**Update 2026-09-08 (second pass) — `QUESTIONS-FOR-NATHAN2.md` Q1′/Q1″ are in. NW-1 is now
+EXECUTION-READY**, same as the doc work packages: the reference ride is neutral (not purple, not
+yellow — see NW-1's resolution note for why "yellow" in his answer is read as "no special
+ceremony," logged as an `[ASSUMPTION]`), gets a rank but no colour verdict, and the fix is
+`MIN_HISTORY` 5→1 with no new branching logic. Also answered: the "ideal-lap line" and
+brand/drafts palette-reconciliation items block nothing (confirmed below, §12 NW-2) and every
+`.md` file under `product/` (14 files, checked against this brief's own commit list) is already
+inside this brief's scope — no new brief needed.
 
 Design stance, so the executor does not over-reach: these files are **dated design records**. The
 job is to make each one *honest about its date and status* and to stop it from actively misleading
@@ -742,15 +751,19 @@ instead and report it.
 
 ---
 
-## 12. New work packages (NOT executed by this brief — proposals for Nathan / a later brief)
+## 12. New work packages (NOT executed by the WP-P0…P10 doc-edit dispatch — separate dispatches)
 
 These surfaced from the audit and are not doc-text fixes. Listed in the order I would take them.
+**Updated 2026-09-08:** NW-1, NW-2 and NW-5 are now execution-ready (Nathan answered the open
+questions blocking them) — "not executed by this brief" originally meant "not decided yet," not
+"never." NW-3/NW-4 are conditional/audit items on their own terms, unrelated to any question.
 
 ### NW-1 — Implement D-045 ruling 1: colours and ranks from ride 1 (code, MEDIUM, own brief)
 **Finding.** `STATE.md` ground rule and COLD-START.md's 2026-08-26 note both say the "<5 clean rides
-stay neutral" floor was deleted by Nathan's ruling: first ride on a way logs all-purple sectors; one
-prior ride compares purple/yellow; two or more run the full model on the average. The code still has
-the floor: `app/src/ui/colourModel.ts:40` (`MIN_HISTORY = 5`) and `:144` (`tierFor` returns
+stay neutral" floor was deleted by Nathan's ruling. (Their exact wording — "first ride on a way logs
+all-purple sectors" — turned out to describe the pre-virgin, Strava-seeded world; see the resolution
+below for the corrected, virgin-native version: the reference ride is neutral, not purple.) The code
+still has the floor: `app/src/ui/colourModel.ts:40` (`MIN_HISTORY = 5`) and `:144` (`tierFor` returns
 `'neutral'` below it — every sector and lap colour goes through this), `app/src/live/towerSource.ts:40`
 (no live position under 5 ghosts), `app/src/ui/rideDetailModel.ts:71–75` ("too few to rank"),
 `app/src/store/routeCreation.ts:24` ("scored all-purple lap is STILL deferred"). D-045 ruling 2 (the
@@ -758,30 +771,53 @@ window slice) *was* implemented; ruling 1 was not.
 **Why it matters.** A stranger with the blank Preview rides the same way five times before any colour
 or rank appears — the exact failure COLD-START §2 was written to prevent, on the branch whose purpose
 is that stranger. It also means `STATE.md` currently states as settled something that is not built.
-**Scope.** `tierFor` semantics per the ruling (n=0 → purple; n=1 → purple/yellow; n≥2 → full model);
+**Scope (superseded by the finalized version below — kept for the "why" trail).** Originally:
+`tierFor` semantics per the ruling (n=0 → purple; n=1 → purple/yellow; n≥2 → full model);
 `getLiveTowerPosition` and `rankLineFor` drop the floor (a rank of "P1 of 1" — decide whether to show
 it or say "first ride"); `sectorValues` clean-only rule unchanged; `demoModel.ts` no longer needs six
 pinned laps; update the `MIN_HISTORY` doc-comments; tests in `app/tests/` for n=0/1/2/10; run the 560.
 Then strike the "not yet in code" sentences this brief adds to CONCEPT.md, DATA-MODEL.md §9 and
-COLD-START's disposition.
+COLD-START's disposition. The n=0 case below is the one thing that changed (neutral, not purple).
 
-**Nathan answered (2026-09-08) — ruling confirmed, but the shape changed. STATUS: BLOCKED, do not
-build yet.** He confirmed the floor should go, but described the baseline differently than this
-section assumed: the way's *reference* ride (ride 1 — the one that names the landmarks and seeds
-the gates, `Way.referenceRideId`) is not itself a scored lap. The first ride that gets a colour at
-all is the ride *after* the reference: compared against the reference's one data point, faster is
-purple, slower is yellow (no green yet, since with one comparison point "fastest" and "the average"
-are the same number). Green becomes reachable once there are two prior rides to average against.
-This is good news mechanically — it's consistent with the colour model already in the code (purple
-= fastest of window, green = above average) and likely means the fix is `MIN_HISTORY` going from 5
-to something like 1 rather than new branching logic in `tierFor`. But it conflicts with
-`routeCreation.ts:24`'s own comment, which describes the *opposite* planned future: deriving the
-reference ride into a scored all-purple lap. Whether the reference ride's own entry shows a colour
-(purple, ceremony) or stays neutral (a role, not a result) changes what `tierFor` returns for n=0,
-which is the one case this section didn't fully spec. **Do not implement until
-`QUESTIONS-FOR-NATHAN2.md` Q1′ (and its one-line confirmation Q1″) come back** — the scope above is
-otherwise still right (drop the floor, fix the four listed call sites, update the docs this brief
-touches), it's only the n=0/n=1 exact behaviour that's pending.
+**Nathan answered (2026-09-08, `QUESTIONS-FOR-NATHAN2.md` Q1′/Q1″) — RESOLVED. STATUS: EXECUTION-READY.**
+Final ruling: the reference ride (ride 1 on a way — `Way.referenceRideId`, confirmed Q1″ to be
+exactly `routeCreation.ts`'s ride-1-as-reference designation, no separate concept) is **not**
+scored, because it didn't race anything — "you did not go through any sectors or raced" (his
+words). It gets **no colour verdict**, but it **does** get a rank/position once it's on file — it
+is real history, just an unraced one. Historical note for whoever reads `routeCreation.ts:24`'s
+comment expecting an all-purple first lap: that comment described the *pre-virgin* seeding model,
+where the "first ride" was actually pre-seeded from Nathan's own Strava archive and so was already
+a raced lap. On a genuinely blank install the reference ride never races anything, so that comment
+is now superseded, not merely deferred — strike it rather than "still deferred" (§ scope below).
+
+**The mechanical fix stays exactly what was hoped: `MIN_HISTORY` 5 → 1, no new branching in
+`tierFor`.** With the pool defined as "ranked rides before this one," a ride with zero prior
+history (n=0, i.e. the reference ride itself) falls under `MIN_HISTORY=1` and gets `'neutral'`
+automatically — no colour, matching his ruling, with no special-casing required. It still gets
+added to `rankedFor(wayId)` once stored, so it is available as the one comparison point for the
+next ride. Ride 2 then has n=1 (the reference) → purple if faster, yellow if slower (fastest and
+"above the recent average" coincide at pool size 1, so green cannot appear yet — this falls out
+of the existing `colourModel.ts` logic unmodified). Ride 3 has n=2 → green becomes reachable.
+`rankLineFor`/`getLiveTowerPosition` should show a rank for the reference ride once it's the only
+entry ("P1 of 1") even though its tier is neutral — rank and colour are independent facts, per his
+"but... it gets a rank for example."
+**One assumption, logged per this cycle's convention rather than re-asked:** Nathan's exact words
+were "so it is just yellow as usual," which read literally would mean the reference ride's tier is
+forced to `'yellow'` rather than `'neutral'`. Building it as `'neutral'` instead, because (a) it's
+what falls out of `MIN_HISTORY=1` with zero special-casing — Occam's razor over inventing a new
+rule — and (b) it matches the reasoning he gave in the same sentence ("did not race anything," i.e.
+no verdict at all, not a specific verdict). If this is wrong, it is a one-line change (`tierFor`
+forcing `'yellow'` for `rideId === way.referenceRideId`) — flag it in the report as `[ASSUMPTION]`
+so it's easy to revisit.
+**Scope, finalized:** drop `MIN_HISTORY` from 5 to 1 in `colourModel.ts`; the four call sites this
+brief already identified (`colourModel.ts:40,144`, `towerSource.ts:40`, `rideDetailModel.ts:71–75`)
+follow from that one constant change plus whatever `tierFor` does at n=0, which is now nothing
+special; strike (not "still deferred") `routeCreation.ts:24`'s comment and replace it with the
+resolution above; `demoModel.ts` no longer needs six pinned laps; update `MIN_HISTORY`'s
+doc-comment to explain n=0 lands here too, not just n<5; tests in `app/tests/` for n=0/1/2/10; run
+the 560. Then strike the "not yet in code" sentences this brief adds to CONCEPT.md, DATA-MODEL.md
+§9 and COLD-START's disposition — this NW-1 code change makes them true. **Ready for a Sonnet
+Execute dispatch, its own commit, same as originally scoped.**
 
 ### NW-2 — `OPEN-ITEMS.md` additions (doc, SMALL, one anchored edit each)
 (a) Item 2's on-device checklist: add MAP-CONTRACT §4's acceptance paragraph (pre-start pannable →
@@ -800,8 +836,14 @@ Nathan wants to see visual options before deciding where, not a code work packag
 The brand palette B/C/E review and the notes4 extra-chrome-themes idea move to
 `BRIEF-design-folder-plan.md` §D5, which now includes a collage-generation step (Q8) before Nathan
 picks. Don't duplicate the palette item here.
-(f) Still genuinely open, Nathan's call, not yet asked: the ideal-lap line (LAYOUT §3, CONCEPT).
-Carry forward to a later questions round.
+(f) Asked 2026-09-08 (`QUESTIONS-FOR-NATHAN2.md`, the "not blocking" section) — **confirmed
+non-blocking.** The ideal-lap line (LAYOUT §3, CONCEPT) and the brand-vs-drafts palette
+reconciliation sentence (`OPEN-ITEMS.md`/`product/brand/README.md`) both stay open, undecided,
+low-priority — Nathan's answer was to have this brief instead confirm full coverage of
+`product/`'s `.md` files rather than rule on these two now. Confirmed (§ "New work packages"
+intro / brief status line): all 14 files under `product/` (root docs, `brand/`, `proposals/`) are
+already in this brief's scope — no gap, no new brief needed. Keep both items listed as OPEN-ITEMS
+entries (they already are, or will be per (a)-(e) above); don't manufacture urgency for either.
 (e) Housekeeping: `app/src/ui/theme.ts` lines 16/18 still comment the tiers as "28d best" / "7d best";
 `colourModel.ts` calls the floor "D-008's noise floor". Fold into NW-1's comment sweep.
 

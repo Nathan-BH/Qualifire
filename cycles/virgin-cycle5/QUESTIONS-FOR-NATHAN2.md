@@ -44,7 +44,7 @@ what should its own entry show?
   carrying the purple rather than being invisible).
 - **(c) Something else** (say what).
 
-Your answer:
+Your answer: option (a) seems more correct, a reference lap is not purple because you did not go through any sectors or raced anything. So it is just yellow as usual. But the only addition is actually using it as the first ride so it gets a rank for example. (the only reason I had it all purple is because we pre-seeded it from my strava rides, so the first ride was actually a "race" already going through sectors, but that's not the case anymore)
 
 
 ### Q1″ — One-line confirmation, so NW-1 isn't built on a guess
@@ -52,7 +52,7 @@ Your answer:
 landmarks and seeds the gates, `routeCreation.ts` / `GLOSSARY.md`'s "Reference ride" entry) —
 not a separate manually-entered route. Right?
 
-Your answer (yes / no, and if no, what you meant):
+Your answer (yes / no, and if no, what you meant): yes exactly, that's the reference, any ride that is used as reference for a given FromToRouteWay.
 
 
 ---
@@ -64,5 +64,8 @@ Your answer (yes / no, and if no, what you meant):
   from the original review — neither was in round 1's questions, so neither is answered yet. Not
   urgent; they'll keep showing up in future audits until someone rules on them, whenever that's
   convenient for you.
+
+Answer: is there anything blocking implementation here ? mostr of these files are outdated and should be updated to match the virgin cycle idea and current state. So have a look and make a brief to update every md file in the "C:\Users\natha\Claude personal projects\Qualifire\product" folder if there isn't a brief for it already
+
 - Everything else from round 1 (Q2–Q8) reads as decisive as given — no extra opinion needed, and
   the relevant briefs are being updated to match.

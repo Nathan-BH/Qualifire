@@ -49,7 +49,7 @@ a review + a brief for a future cycle to execute, per Nathan's ask.
 
 | Domain | Review | Brief | Status after round 2 (2026-09-08) |
 |---|---|---|---|
-| `product/` docs | `REVIEW-product-docs.md` | `BRIEF-product-docs-cleanup.md` (11 doc WPs P0-P10, non-doc WPs NW-1..5) | Doc WPs (P0-P10) execution-ready. NW-1 **blocked** on `QUESTIONS-FOR-NATHAN2.md` Q1′/Q1″. NW-2/5 ready. |
+| `product/` docs | `REVIEW-product-docs.md` | `BRIEF-product-docs-cleanup.md` (11 doc WPs P0-P10, non-doc WPs NW-1..5) | **All execution-ready** — doc WPs (P0-P10) and NW-1/2/5 (NW-1 unblocked 2026-09-08 via `QUESTIONS-FOR-NATHAN2.md`; run NW-1 as its own code dispatch, separate from the doc-only WP-P0-P10 commit). NW-3/4 remain conditional. |
 | `marketing/` (website) | `REVIEW-website.md` | `BRIEF-website-improvement-plan.md` (positioning ruled, hero ruled, no-regrets fixes, HYPERFRAMES rescoped) | (a) ruled (Option 2, "Same road. New meaning."), (b)/(c) execution-ready. (d) rescoped to a plan-only restructure, explicitly not a priority. |
 | `design/` | `REVIEW-design-folder.md` | `BRIEF-design-folder-plan.md` (D0-D6, D5.0 added) | D0-D4/D6 execution-ready. D5.0 (comparison collages) execution-ready, added per Nathan's Q8 answer; D5 itself (the actual pick) still waits on him seeing them. |
 
@@ -58,9 +58,11 @@ an answer before execution (8 questions: a code-ruling reconfirmation, the websi
 positioning, the hero line, HYPERFRAMES disposition, and the two parallel unresolved palette
 explorations, plus a couple of small parked-or-drop calls). **Answered 2026-09-08** — all three
 briefs below have been updated to match. One answer (Q1, the colour-model ruling) opened a real
-technical fork that needed a second pass rather than a straight brief edit: see
-**`QUESTIONS-FOR-NATHAN2.md`**, which is still open. `BRIEF-product-docs-cleanup.md`'s NW-1 is
-blocked on it; the other two briefs are not.
+technical fork that needed a second pass rather than a straight brief edit:
+**`QUESTIONS-FOR-NATHAN2.md`** was written, answered, and applied 2026-09-08 — NW-1's colour
+model is now finalized (reference ride: neutral, ranked, not scored) and every brief is
+execution-ready. One `[ASSUMPTION]` logged in NW-1 itself (a literal reading of Nathan's answer
+vs. the mechanically simplest one) — flagged for the executor to re-check, not a blocker.
 
 **Headline findings worth reading even before picking a brief up:**
 
