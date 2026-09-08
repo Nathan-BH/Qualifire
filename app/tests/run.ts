@@ -5,7 +5,12 @@
  * Prints PASS/FAIL/SKIP per test and exits nonzero on any FAIL.
  * Fixtures under fixtures/ are committed; regenerate with build_fixtures.ts
  * against the ride archive (see README.md).
+ *
+ * `./seedmode_pin.ts` must stay the FIRST import: it sets
+ * EXPO_PUBLIC_SEED_MODE=shipped before any suite evaluates src/store/seed.ts
+ * (whose default is 'empty' since 2026-09-08).
  */
+import './seedmode_pin.ts';
 import './engine_suite.ts';
 import './storage_suite.ts';
 import './gpxplus_suite.ts';

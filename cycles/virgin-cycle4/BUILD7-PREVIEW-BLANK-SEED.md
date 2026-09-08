@@ -148,11 +148,18 @@ non-blocking notes logged here for future reference.
   -- the mechanism genuinely reaches the bundle for a real `eas build`, confirmed by reading
   the actual plugin source, not assumed.
 
-**Not yet possible from here:** an actual `-DryRun` execution. No `pwsh`/`powershell.exe` is
-reachable from the device_bash bridge -- everything above is a careful line-by-line manual
-trace of `build7.ps1`'s control flow (variable scope across `try`/`finally`, PowerShell 5.1
-compatibility, the `-in @(...)` operator, `ConvertFrom-Json` returning `$null` for missing
-properties under default StrictMode-off), not a live run.
+**Live dry run, run by Nathan on his own machine (2026-09-06): clean pass, first real
+confirmation.** `powershell -ExecutionPolicy Bypass -File .\build7.ps1 -DryRun` --
+every step green: expo-updates dependency present, fingerprint policy + updates.url +
+preview channel all correct, blank-seed wiring confirmed (`EXPO_PUBLIC_SEED_MODE=empty`
+read in `seed.ts`), working tree clean, tsc clean, 560 tests (557/0/3), build4's native-
+slate/variant/icon/route-map checks all OK, preflight verdict OK, and it printed the
+correct queued command (`npx.cmd eas-cli build --platform android --profile preview`) --
+confirming the `npx.cmd` fix (S8) actually resolves correctly on his machine, not just in
+theory. Everything in this file up to this point was a hand-trace; this is the first
+actual execution, and it matched the trace exactly -- no surprises, nothing to fix.
+Real build (`build7.ps1` without `-DryRun`) is ready to run whenever Nathan wants to spend
+the build slot.
 
 ## 6. Open follow-ups
 

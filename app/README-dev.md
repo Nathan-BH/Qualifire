@@ -65,7 +65,12 @@ native dependencies change.
 
 ## Daily dev loop
 
-1. PC: `npx expo start` (in `app/`).
+1. PC: `npx expo start` (in `app/`). This launches the **empty/virgin seed** (no
+   landmarks, ways, routes or ghosts — the default since 2026-09-08). To run the
+   Leuven seed instead, set `$env:EXPO_PUBLIC_SEED_MODE = "shipped"` in the same
+   PowerShell window first. The value is inlined at bundle time, so after switching
+   modes start Metro once with `npx expo start --clear` and do a full **Reload** from
+   the dev-client menu (Fast Refresh is not enough).
 2. Phone (same WiFi): open the installed Qualifire dev build — it connects to
    the PC and loads the current code.
 3. Any file edit on the PC appears on the phone in ~1 s. No cable, no rebuild.
@@ -87,7 +92,9 @@ native dependencies change.
 
 Prereq: storage module landed (`app/src/storage/index.ts`), `npx expo install
 expo-file-system` run once, `npx expo start` running on the PC, phone on the
-same WiFi with the dev build open.
+same WiFi with the dev build open. Step 9's route lock ("MORNING · route locked")
+needs the Leuven seed, which is no longer the default — start Metro with
+`$env:EXPO_PUBLIC_SEED_MODE = "shipped"` set for that check (see *Daily dev loop*).
 
 **First run only — permissions + battery:**
 1. Tap **START**. Android asks for location → choose **While using the app**,

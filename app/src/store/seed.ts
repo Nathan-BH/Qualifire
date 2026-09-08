@@ -5,21 +5,24 @@
  * this app).
  *
  * Two seed modes, fixed at bundle time:
- *  - 'shipped' (default — Nathan's dev client and "Qualifire Preview"): the
- *    curated catalog (catalog.seed.json: 6 landmarks, 13 ways, 20 routes)
- *    and the archive ghosts (results.seed.json), exactly as before this
- *    module existed.
- *  - 'empty' (the virgin build — eas.json's `virgin` profile sets
- *    EXPO_PUBLIC_SEED_MODE=empty): NO landmarks, ways, routes, gate sets or
- *    ghosts, and (WP-E) no bundled route assets or route PNGs — see
- *    bundledForSeedMode(). Everything the rider will ever race against is created on the
- *    phone (B-36/B-42, unbuilt) and lives in store/catalogStore.ts's user
+ *  - 'empty' (the DEFAULT since 2026-09-08 — plain `npx expo start` on the
+ *    dev client, and the `preview` / `virgin` EAS profiles, which also set
+ *    EXPO_PUBLIC_SEED_MODE=empty explicitly): NO landmarks, ways, routes,
+ *    gate sets or ghosts, and (WP-E) no bundled route assets or route PNGs
+ *    — see bundledForSeedMode(). Everything the rider will ever race against
+ *    is created on the phone and lives in store/catalogStore.ts's user
  *    catalog file.
+ *  - 'shipped' (opt-in only: EXPO_PUBLIC_SEED_MODE=shipped, e.g.
+ *    `$env:EXPO_PUBLIC_SEED_MODE = "shipped"` in the shell before
+ *    `npx expo start`): the curated Leuven catalog (catalog.seed.json:
+ *    6 landmarks, 13 ways, 20 routes) and the archive ghosts
+ *    (results.seed.json), exactly as before this module existed.
  *
  * `process.env.EXPO_PUBLIC_*` is inlined by Expo's bundler at build time, so
- * the mode is a constant in the shipped bundle; under Node (the headless
- * suite) the variable is simply unset and the seed is 'shipped'. The pure
- * `...ForSeedMode` functions exist so the suite can exercise the 'empty'
+ * the mode is a constant in the shipped bundle. Under Node the headless suite
+ * pins EXPO_PUBLIC_SEED_MODE=shipped itself (tests/seedmode_pin.ts, the first
+ * import of tests/run.ts) so it keeps exercising the shipped-catalog path; the
+ * pure `...ForSeedMode` functions exist so the suite can exercise the 'empty'
  * branch without touching the environment.
  *
  * Nothing here is ever mutated: both JSON imports are handed out as-is —
@@ -33,7 +36,7 @@ import type { Catalog, RideResult } from './types.ts';
 export type SeedMode = 'shipped' | 'empty';
 
 export const SEED_MODE: SeedMode =
-  process.env.EXPO_PUBLIC_SEED_MODE === 'empty' ? 'empty' : 'shipped';
+  process.env.EXPO_PUBLIC_SEED_MODE === 'shipped' ? 'shipped' : 'empty';
 
 export function catalogForSeedMode(mode: SeedMode): Catalog {
   return mode === 'empty' ? emptyCatalog() : (catalogJson as unknown as Catalog);

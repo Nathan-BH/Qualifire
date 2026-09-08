@@ -22,8 +22,9 @@ still needs to run the dry run himself on his own machine before spending a real
 | Final design + execute | `app/eas.json`'s `preview` profile gets `EXPO_PUBLIC_SEED_MODE=empty`; `scripts/build7.ps1` rewritten to rebuild Preview in place (blank seed + fingerprint re-anchor); `scripts/build7.cmd` relabeled | Landed, uncommitted |
 | Fresh-context inspect | Independent Opus/Fable pass, no memory of the execute work | PASS with concerns -- see `BUILD7-PREVIEW-BLANK-SEED.md` S4 |
 | Bug found + fixed | `build7.cmd` had LF-only line endings (every sibling `.cmd` is CRLF; `cmd.exe`'s multi-line `if/else` is unreliable on LF) | Fixed directly, verified |
-| Live dry run | `build7.ps1 -DryRun` / `build7.cmd dry` | **Still Nathan's to run** -- traced by hand only, never executed |
-| Real build | `build7.ps1` (drops `-DryRun`) | Not started |
+| Live dry run | `build7.ps1 -DryRun` | **DONE 2026-09-06, clean pass** -- every check green (fingerprint policy, blank-seed wiring, native slate, icon, route map assets, tsc, tests), preflight verdict OK, printed the correct queued command. First live confirmation, not just a hand-traced prediction. |
+| Real build | `build7.ps1` (drops `-DryRun`) | **RUN by Nathan, completed** -- reached build4's "Done." block (only reachable after a successful `eas-cli build`), which only prints post-success. Committed first (`build7 pre-build commit` / `...cleanup`, `03710eb`). |
+| Post-build note fix | `build7.ps1`'s header + printed notes still warned that `publish-preview.ps1` could restore the Leuven seed | **Stale, caught by Nathan, fixed** -- that warning described the exact risk already closed by S7's `publish-preview.ps1` fix, just never updated to say so. Rewritten to state it's fixed, not still a risk; also broadened the "travel" framing to match the permanent-seed correction. |
 
 **Final test suite: 560 tests, 557 pass / 0 fail / 3 skip. `tsc --noEmit`: exit 0.**
 (verified both before and after every edit in this cycle)

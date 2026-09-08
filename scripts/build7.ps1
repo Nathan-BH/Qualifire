@@ -4,18 +4,23 @@
     things baked in. Same engine as builds 4/5/6 (build4.ps1 does all the
     preflight and the EAS call); this wrapper adds the build-7 steps first.
 
-    1. BLANK SEED (Nathan, 2026-09-06 -- weeks of travel abroad, recording free
-       rides and walks with ZERO pre-seeded Leuven/Belgium routes or gates).
-       eas.json build.preview now sets EXPO_PUBLIC_SEED_MODE=empty; the seed
-       (src/store/seed.ts) reads it at bundle time and ships an empty catalog.
-       This is what Nathan asked for INSTEAD of a separate "Qualifire Virgin"
-       app (rejected the same day: "the virgin build should replace the
-       qualifire preview ... not a separate APK"). It is the standalone
-       counterpart of scripts/dev-virgin.ps1, which does the same for one Metro
-       session -- with one difference: a native build has no runtime switch,
-       the seed mode is frozen at build time. To get the shipped Leuven catalog
-       back on Preview, remove that env line from eas.json build.preview and
-       run the next numbered build (or see the OTA note below).
+    1. BLANK SEED, PERMANENT (Nathan, 2026-09-06). Triggered by weeks of travel
+       abroad, but NOT a travel-only mode: "i never want to restore the leuven
+       catalog, the goal is to try a real virgin app build applicable for any
+       user of the app." Preview ships zero pre-seeded routes/gates/sports,
+       for good, not just for the trip. eas.json build.preview sets
+       EXPO_PUBLIC_SEED_MODE=empty; the seed (src/store/seed.ts) reads it at
+       bundle time and ships an empty catalog. This is what Nathan asked for
+       INSTEAD of a separate "Qualifire Virgin" app (rejected the same day:
+       "the virgin build should replace the qualifire preview ... not a
+       separate APK"). It is the standalone counterpart of a plain
+       npx expo start session (empty seed by default since 2026-09-08;
+       scripts/dev-virgin.ps1, which used to flip that, is retired) --
+       with one difference: a native build has no runtime switch, the seed
+       mode is frozen at build time. Reverting to the shipped Leuven catalog
+       would need both the eas.json env line AND publish-preview.ps1's mirror
+       of it (see point 2 below) removed together, plus a new numbered build
+       -- not expected, not planned, but noted for completeness.
        Sports need nothing: they are never pre-seeded in ANY build (WP-1).
 
     2. FINGERPRINT RE-ANCHOR. Build 6 was fingerprinted at 251ddb86...; the
@@ -27,13 +32,20 @@
        step A only makes sure node_modules matches the committed lock file.
        Note the new fingerprint from the build page into OTA-TROUBLESHOOTING.md.
 
-    OTA caveat (known, NOT handled here): EXPO_PUBLIC_* values are inlined into
-    the JS bundle when it is bundled. eas.json's env applies to EAS Build only;
-    publish-preview.ps1 bundles LOCALLY and does not set EXPO_PUBLIC_SEED_MODE,
-    so an OTA published from it would flip Preview back to the shipped Leuven
-    seed (a JS-only change -- the fingerprint still matches, so it WOULD
-    apply). Do not publish while travelling unless that is what you want; after
-    the trip it is also the cheapest way to get the commute routes back.
+    2b. OTA CAVEAT -- FIXED, same day. EXPO_PUBLIC_* values are inlined into
+    the JS bundle when it is bundled. eas.json's env applies to EAS Build
+    only; publish-preview.ps1 bundles LOCALLY, so it never read eas.json's
+    env at all -- it would have flipped Preview back to the shipped Leuven
+    seed on its very first OTA push after this build (a JS-only change; the
+    fingerprint still matches, so it WOULD have applied). Since the blank
+    seed is now permanent (point 1), that would have been a real regression,
+    not a travel-only footgun -- so scripts/publish-preview.ps1 now sets
+    $env:EXPO_PUBLIC_SEED_MODE = 'empty' itself, right beside its existing
+    $env:APP_VARIANT = 'preview' line. OTA publishes stay blank. If eas.json's
+    line and publish-preview.ps1's mirror of it are ever changed, change both
+    together or they drift out of sync again -- exactly the class of bug this
+    fix closed. See cycles/virgin-cycle4/BUILD7-PREVIEW-BLANK-SEED.md S7 for
+    the full story.
 
     What stays on the phone: installing over the existing Preview keeps its
     data. Ride recordings and stored results persist (separate store); routes
@@ -174,5 +186,5 @@ if (-not $DryRun) {
     Say '  - first launch shows an EMPTY catalog: no routes, ways, gates or sports. Name a sport, then record.'
     Say '  - ride recordings, stored results and routes created on the phone are kept; only the bundled seed is gone.'
     Say '  - write the new fingerprint (build page) into scripts\OTA-TROUBLESHOOTING.md; commit package-lock.json if step A changed it.'
-    Say '  - do NOT run publish-preview.ps1 while travelling: its OTA would bring the Leuven seed back (see the header).'
+    Say '  - publish-preview.ps1 mirrors this build''s blank seed (EXPO_PUBLIC_SEED_MODE=empty), so OTA publishes stay blank -- keep the two in sync if that ever changes (see the header).'
 }

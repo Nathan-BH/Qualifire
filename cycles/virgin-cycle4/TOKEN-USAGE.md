@@ -29,3 +29,10 @@ throughout (every edit in this cycle is config/scripts-only, never `app/src` or
 `powershell.exe` is reachable from the device_bash bridge used for this cycle's work, so
 everything above was verified by direct file inspection, JSON/brace/encoding checks, and
 careful manual control-flow tracing, never a live execution.
+
+| Coordinator direct -- fix stale OTA-caveat text in `build7.ps1` (header + printed post-build note), caught by Nathan after the real build ran | Chore | -- (coordinator, no subagent) | -- | ~5 | The text still warned about a risk already closed by the earlier `publish-preview.ps1` fix (S7); rewritten to state it's fixed and to reflect the seed being permanent, not travel-scoped |
+
+**Real build ran and completed** (Nathan, after committing `03710eb`/`944c87e`) -- confirmed by
+reaching build4's post-success "Done." block, only printed after `eas-cli build` succeeds.
+Next real step: record the new fingerprint (from the EAS build page / `eas-cli build:list`)
+into `scripts/OTA-TROUBLESHOOTING.md` and add a build-7 line to `STATE.md` -- still open.
