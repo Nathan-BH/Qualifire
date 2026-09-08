@@ -36,62 +36,71 @@
       <circle id="content_map_rider_dot" inkscape:label="content_map_rider_dot" cx="116.1" cy="314.28" r="5.5" fill="#2F7DE1" stroke="#212127" stroke-width="2" />
       <rect id="content_map_placeholder_note" inkscape:label="content_map_placeholder_note" x="20" y="166" width="4" height="4" fill="none" />
     </g>
-    <text id="content_flow_from_label" inkscape:label="content_flow_from_label" x="20" y="344" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#9a978f" text-anchor="start" letter-spacing="2">DETECTED START</text>
+    <text id="content_flow_sport_label" inkscape:label="content_flow_sport_label" x="20" y="344" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#9a978f" text-anchor="start" letter-spacing="2">SPORT</text>
+    <g id="content_sport_pill_1" inkscape:label="content_sport_pill_1">
+      <rect id="content_sport_pill_1_bg" inkscape:label="content_sport_pill_1_bg" x="20" y="360" width="66.1" height="24" fill="none" stroke="#F5C542" stroke-width="1" rx="12" />
+      <text id="content_sport_pill_1_label" inkscape:label="content_sport_pill_1_label" x="53.05" y="377" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#F5C542" text-anchor="middle">Cycling</text>
+    </g>
+    <g id="content_sport_pill_2" inkscape:label="content_sport_pill_2">
+      <rect id="content_sport_pill_2_bg" inkscape:label="content_sport_pill_2_bg" x="92.1" y="360" width="66.1" height="24" fill="none" stroke="#41414c" stroke-width="1" rx="12" />
+      <text id="content_sport_pill_2_label" inkscape:label="content_sport_pill_2_label" x="125.15" y="377" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#9a978f" text-anchor="middle">Running</text>
+    </g>
+    <text id="content_flow_from_label" inkscape:label="content_flow_from_label" x="20" y="394" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#9a978f" text-anchor="start" letter-spacing="2">DETECTED START</text>
     <g id="content_from_pill_1" inkscape:label="content_from_pill_1">
-      <rect id="content_from_pill_1_bg" inkscape:label="content_from_pill_1_bg" x="20" y="360" width="59.8" height="24" fill="none" stroke="#F5C542" stroke-width="1" rx="12" />
-      <text id="content_from_pill_1_label" inkscape:label="content_from_pill_1_label" x="49.9" y="377" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#F5C542" text-anchor="middle">home ✓</text>
+      <rect id="content_from_pill_1_bg" inkscape:label="content_from_pill_1_bg" x="20" y="410" width="59.8" height="24" fill="none" stroke="#F5C542" stroke-width="1" rx="12" />
+      <text id="content_from_pill_1_label" inkscape:label="content_from_pill_1_label" x="49.9" y="427" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#F5C542" text-anchor="middle">home ✓</text>
     </g>
     <g id="content_from_pill_2" inkscape:label="content_from_pill_2">
-      <rect id="content_from_pill_2_bg" inkscape:label="content_from_pill_2_bg" x="85.8" y="360" width="47.2" height="24" fill="none" stroke="#41414c" stroke-width="1" rx="12" />
-      <text id="content_from_pill_2_label" inkscape:label="content_from_pill_2_label" x="109.4" y="377" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#9a978f" text-anchor="middle">work</text>
+      <rect id="content_from_pill_2_bg" inkscape:label="content_from_pill_2_bg" x="85.8" y="410" width="47.2" height="24" fill="none" stroke="#41414c" stroke-width="1" rx="12" />
+      <text id="content_from_pill_2_label" inkscape:label="content_from_pill_2_label" x="109.4" y="427" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#9a978f" text-anchor="middle">work</text>
     </g>
     <g id="content_from_pill_3" inkscape:label="content_from_pill_3">
-      <rect id="content_from_pill_3_bg" inkscape:label="content_from_pill_3_bg" x="139" y="360" width="110.2" height="24" fill="none" stroke="#41414c" stroke-width="1" rx="12" />
-      <text id="content_from_pill_3_label" inkscape:label="content_from_pill_3_label" x="194.1" y="377" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#9a978f" text-anchor="middle">Leuven station</text>
+      <rect id="content_from_pill_3_bg" inkscape:label="content_from_pill_3_bg" x="139" y="410" width="110.2" height="24" fill="none" stroke="#41414c" stroke-width="1" rx="12" />
+      <text id="content_from_pill_3_label" inkscape:label="content_from_pill_3_label" x="194.1" y="427" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#9a978f" text-anchor="middle">Leuven station</text>
     </g>
     <g id="content_from_pill_4" inkscape:label="content_from_pill_4">
-      <rect id="content_from_pill_4_bg" inkscape:label="content_from_pill_4_bg" x="255.2" y="360" width="47.2" height="24" fill="none" stroke="#41414c" stroke-width="1" rx="12" />
-      <text id="content_from_pill_4_label" inkscape:label="content_from_pill_4_label" x="278.8" y="377" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#9a978f" text-anchor="middle">fosh</text>
+      <rect id="content_from_pill_4_bg" inkscape:label="content_from_pill_4_bg" x="255.2" y="410" width="47.2" height="24" fill="none" stroke="#41414c" stroke-width="1" rx="12" />
+      <text id="content_from_pill_4_label" inkscape:label="content_from_pill_4_label" x="278.8" y="427" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#9a978f" text-anchor="middle">fosh</text>
     </g>
     <g id="content_from_pill_5" inkscape:label="content_from_pill_5">
-      <rect id="content_from_pill_5_bg" inkscape:label="content_from_pill_5_bg" x="308.4" y="360" width="59.8" height="24" fill="none" stroke="#41414c" stroke-width="1" rx="12" />
-      <text id="content_from_pill_5_label" inkscape:label="content_from_pill_5_label" x="338.3" y="377" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#9a978f" text-anchor="middle">church</text>
+      <rect id="content_from_pill_5_bg" inkscape:label="content_from_pill_5_bg" x="308.4" y="410" width="59.8" height="24" fill="none" stroke="#41414c" stroke-width="1" rx="12" />
+      <text id="content_from_pill_5_label" inkscape:label="content_from_pill_5_label" x="338.3" y="427" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#9a978f" text-anchor="middle">church</text>
     </g>
-    <text id="content_flow_to_label" inkscape:label="content_flow_to_label" x="20" y="394" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#9a978f" text-anchor="start" letter-spacing="2">GOING TO</text>
+    <text id="content_flow_to_label" inkscape:label="content_flow_to_label" x="20" y="444" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#9a978f" text-anchor="start" letter-spacing="2">GOING TO</text>
     <g id="content_to_pill_1" inkscape:label="content_to_pill_1">
-      <rect id="content_to_pill_1_bg" inkscape:label="content_to_pill_1_bg" x="20" y="410" width="47.2" height="24" fill="none" stroke="#F5C542" stroke-width="1" rx="12" />
-      <text id="content_to_pill_1_label" inkscape:label="content_to_pill_1_label" x="43.6" y="427" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#F5C542" text-anchor="middle">work</text>
+      <rect id="content_to_pill_1_bg" inkscape:label="content_to_pill_1_bg" x="20" y="460" width="47.2" height="24" fill="none" stroke="#F5C542" stroke-width="1" rx="12" />
+      <text id="content_to_pill_1_label" inkscape:label="content_to_pill_1_label" x="43.6" y="477" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#F5C542" text-anchor="middle">work</text>
     </g>
     <g id="content_to_pill_2" inkscape:label="content_to_pill_2">
-      <rect id="content_to_pill_2_bg" inkscape:label="content_to_pill_2_bg" x="73.2" y="410" width="110.2" height="24" fill="none" stroke="#41414c" stroke-width="1" rx="12" />
-      <text id="content_to_pill_2_label" inkscape:label="content_to_pill_2_label" x="128.3" y="427" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#9a978f" text-anchor="middle">Leuven station</text>
+      <rect id="content_to_pill_2_bg" inkscape:label="content_to_pill_2_bg" x="73.2" y="460" width="110.2" height="24" fill="none" stroke="#41414c" stroke-width="1" rx="12" />
+      <text id="content_to_pill_2_label" inkscape:label="content_to_pill_2_label" x="128.3" y="477" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#9a978f" text-anchor="middle">Leuven station</text>
     </g>
     <g id="content_to_pill_3" inkscape:label="content_to_pill_3">
-      <rect id="content_to_pill_3_bg" inkscape:label="content_to_pill_3_bg" x="189.4" y="410" width="47.2" height="24" fill="none" stroke="#41414c" stroke-width="1" rx="12" />
-      <text id="content_to_pill_3_label" inkscape:label="content_to_pill_3_label" x="213" y="427" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#9a978f" text-anchor="middle">fosh</text>
+      <rect id="content_to_pill_3_bg" inkscape:label="content_to_pill_3_bg" x="189.4" y="460" width="47.2" height="24" fill="none" stroke="#41414c" stroke-width="1" rx="12" />
+      <text id="content_to_pill_3_label" inkscape:label="content_to_pill_3_label" x="213" y="477" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#9a978f" text-anchor="middle">fosh</text>
     </g>
     <g id="content_to_pill_4" inkscape:label="content_to_pill_4">
-      <rect id="content_to_pill_4_bg" inkscape:label="content_to_pill_4_bg" x="242.6" y="410" width="59.8" height="24" fill="none" stroke="#41414c" stroke-width="1" rx="12" />
-      <text id="content_to_pill_4_label" inkscape:label="content_to_pill_4_label" x="272.5" y="427" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#9a978f" text-anchor="middle">church</text>
+      <rect id="content_to_pill_4_bg" inkscape:label="content_to_pill_4_bg" x="242.6" y="460" width="59.8" height="24" fill="none" stroke="#41414c" stroke-width="1" rx="12" />
+      <text id="content_to_pill_4_label" inkscape:label="content_to_pill_4_label" x="272.5" y="477" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#9a978f" text-anchor="middle">church</text>
     </g>
-    <text id="content_flow_way_label" inkscape:label="content_flow_way_label" x="20" y="444" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#9a978f" text-anchor="start" letter-spacing="2">WHICH WAY TODAY?</text>
+    <text id="content_flow_way_label" inkscape:label="content_flow_way_label" x="20" y="494" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="600" fill="#9a978f" text-anchor="start" letter-spacing="2">WHICH WAY TODAY?</text>
     <g id="content_way_pill_1" inkscape:label="content_way_pill_1">
-      <rect id="content_way_pill_1_bg" inkscape:label="content_way_pill_1_bg" x="20" y="460" width="40.9" height="24" fill="none" stroke="#F5C542" stroke-width="1" rx="12" />
-      <text id="content_way_pill_1_label" inkscape:label="content_way_pill_1_label" x="40.45" y="477" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#F5C542" text-anchor="middle">Dry</text>
+      <rect id="content_way_pill_1_bg" inkscape:label="content_way_pill_1_bg" x="20" y="510" width="40.9" height="24" fill="none" stroke="#F5C542" stroke-width="1" rx="12" />
+      <text id="content_way_pill_1_label" inkscape:label="content_way_pill_1_label" x="40.45" y="527" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#F5C542" text-anchor="middle">Dry</text>
     </g>
     <g id="content_way_pill_2" inkscape:label="content_way_pill_2">
-      <rect id="content_way_pill_2_bg" inkscape:label="content_way_pill_2_bg" x="66.9" y="460" width="40.9" height="24" fill="none" stroke="#41414c" stroke-width="1" rx="12" />
-      <text id="content_way_pill_2_label" inkscape:label="content_way_pill_2_label" x="87.35" y="477" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#9a978f" text-anchor="middle">Wet</text>
+      <rect id="content_way_pill_2_bg" inkscape:label="content_way_pill_2_bg" x="66.9" y="510" width="40.9" height="24" fill="none" stroke="#41414c" stroke-width="1" rx="12" />
+      <text id="content_way_pill_2_label" inkscape:label="content_way_pill_2_label" x="87.35" y="527" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11.5" font-weight="400" fill="#9a978f" text-anchor="middle">Wet</text>
     </g>
-    <text id="content_way_hint_l1" inkscape:label="content_way_hint_l1" x="195" y="500" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12.5" font-weight="400" fill="#b5b3ac" text-anchor="middle">the pick is intent — ride a different road and</text>
-    <text id="content_way_hint_l2" inkscape:label="content_way_hint_l2" x="195" y="516.25" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12.5" font-weight="400" fill="#b5b3ac" text-anchor="middle">the ride scores as the road you actually took</text>
-    <text id="content_way_hint_l3" inkscape:label="content_way_hint_l3" x="195" y="532.5" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12.5" font-weight="400" fill="#b5b3ac" text-anchor="middle">(§8a)</text>
-    <text id="content_ghost_line" inkscape:label="content_ghost_line" x="195" y="556.75" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#b5b3ac" text-anchor="middle">6 rides found — you are racing 6 ghosts</text>
-    <text id="content_ready_line" inkscape:label="content_ready_line" x="195" y="582.95" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#b5b3ac" text-anchor="middle">Ready to record.</text>
+    <text id="content_way_hint_l1" inkscape:label="content_way_hint_l1" x="195" y="550" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12.5" font-weight="400" fill="#b5b3ac" text-anchor="middle">the pick is intent — ride a different road and</text>
+    <text id="content_way_hint_l2" inkscape:label="content_way_hint_l2" x="195" y="566.25" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12.5" font-weight="400" fill="#b5b3ac" text-anchor="middle">the ride scores as the road you actually took</text>
+    <text id="content_way_hint_l3" inkscape:label="content_way_hint_l3" x="195" y="582.5" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12.5" font-weight="400" fill="#b5b3ac" text-anchor="middle">(§8a)</text>
+    <text id="content_ghost_line" inkscape:label="content_ghost_line" x="195" y="606.75" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#b5b3ac" text-anchor="middle">6 rides found — you are racing 6 ghosts</text>
+    <text id="content_ready_line" inkscape:label="content_ready_line" x="195" y="632.95" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#b5b3ac" text-anchor="middle">Ready to record.</text>
     <g id="content_record_button" inkscape:label="content_record_button">
-      <rect id="content_record_button_bg" inkscape:label="content_record_button_bg" x="20" y="612.95" width="350" height="100" fill="#F5C542" rx="20" />
-      <text id="content_record_button_label" inkscape:label="content_record_button_label" x="195" y="658.95" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="30" font-weight="800" fill="#17171b" text-anchor="middle" letter-spacing="3">● RECORD</text>
-      <text id="content_record_button_sub" inkscape:label="content_record_button_sub" x="195" y="680.95" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="400" fill="#17171b" text-anchor="middle">arms the ride · nothing starts yet</text>
+      <rect id="content_record_button_bg" inkscape:label="content_record_button_bg" x="20" y="662.95" width="350" height="100" fill="#F5C542" rx="20" />
+      <text id="content_record_button_label" inkscape:label="content_record_button_label" x="195" y="708.95" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="30" font-weight="800" fill="#17171b" text-anchor="middle" letter-spacing="3">● RECORD</text>
+      <text id="content_record_button_sub" inkscape:label="content_record_button_sub" x="195" y="730.95" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="11" font-weight="400" fill="#17171b" text-anchor="middle">arms the ride · nothing starts yet</text>
     </g>
   </g>
   <g id="tabbar" inkscape:label="tabbar" inkscape:groupmode="layer" clip-path="url(#tabbar_viewport_clip)">

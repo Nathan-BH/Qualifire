@@ -128,12 +128,13 @@ THEMES = {
 
 TABS = ["RECORD", "RIDES", "ROUTES", "RESULTS", "SETTINGS", "DEMO"]
 
-# D1 (virgin-cycle5, 2026-09-08): added results/results_detail (new — see
-# module docstring). D2 renames result -> ride_detail separately.
+# D1/D2 (virgin-cycle5, 2026-09-08): D1 added results/results_detail; D2.3
+# renamed result -> ride_detail (ResultScreen.tsx is gone — WP-H) and
+# re-transcribed it against RideDetailScreen.tsx.
 IMPLEMENTED = [
     "routes", "settings", "demo",
     "record_setup", "record_armed", "record_running", "record_finished",
-    "rides", "result",
+    "rides", "ride_detail",
     "results", "results_detail",
 ]
 DEFERRED: list[str] = []
@@ -441,7 +442,7 @@ def gate_tick_endpoints(proj, pts, gate_idx: int, length: float = 13.0):
 def draw_map(parent, id_prefix, t, asset, rect_xywh, gate_tiers, rider_at=None,
              rider_ahead_dotted=False, label_note=True, ground_fill=None, ground_border=None,
              rider_fill=None, rider_stroke=None, rider_off_route=False,
-             route_casing=False, gate_casing=False, placeholder_size=0):
+             route_casing=False, gate_casing=False, placeholder_size=0, sector_colours=None):
     """Schematic map, one <g> under `parent` (parent is already a layer or a
     group — this itself counts as ONE nesting level, so callers must add it
     directly under a layer, never under another group).
@@ -476,6 +477,22 @@ def draw_map(parent, id_prefix, t, asset, rect_xywh, gate_tiers, rider_at=None,
     Default 0 (pass-1's original zero-size leaf, unchanged). The RECORD
     screens pass a small nonzero value so the element is actually selectable
     in Inkscape instead of a 0×0 rect nothing can click on.
+    sector_colours (D2.2, virgin-cycle5, WP-K sector-coloured trail): list
+    parallel to gate_tiers/asset['gates'] — index i is the colour of the
+    SECTOR ENDING at gate i (the stretch of line between gate i-1 and gate
+    i); index 0 (START) is always ignored, same contract as
+    wayMapView.tsx's own `sectorColours` prop (sectorTrailModel.ts). None
+    (default) draws no spans — every pre-D2.2 caller (routes/demo/record_
+    setup/record_armed) is therefore byte-identical to before. When given,
+    drawn as one coloured path per earned sector, width 5 (between the
+    casing's 6 and the base core's 4, mirroring the app's casing(7)/
+    core(4)/span(6) ordering at this schematic's own thinner scale), AFTER
+    the route line and BEFORE the gate ticks — the same stacking order as
+    wayMapView.tsx's route -> trail -> sector-spans -> gate-ticks sources,
+    so an earned span outranks the base line and a gate tick still draws on
+    top of everything. This REPLACES tick-colouring, it does not supplement
+    it (WP-K, 2026-09-04): callers passing sector_colours also pass an
+    all-None gate_tiers.
     """
     x, y, w, h = rect_xywh
     gfill = ground_fill or t["card"]
@@ -510,6 +527,17 @@ def draw_map(parent, id_prefix, t, asset, rect_xywh, gate_tiers, rider_at=None,
             path(m, f"{id_prefix}_route_line", d, stroke=t["accent"], sw=4)
         else:
             path(m, f"{id_prefix}_route_line", d, stroke=t["accent"], sw=3)
+
+    # D2.2 (virgin-cycle5, WP-K sector-coloured trail): one earned-colour
+    # span per sector, painted over the base route line — see this
+    # function's own docstring for the stacking-order rationale.
+    if sector_colours:
+        for i in range(1, len(full_idx)):
+            col = sector_colours[i] if i < len(sector_colours) else None
+            if not col:
+                continue
+            seg_pts = pts[full_idx[i - 1]:full_idx[i] + 1]
+            path(m, f"{id_prefix}_sector_span_{i}", route_path_d(proj, seg_pts), stroke=col, sw=5)
 
     # gate ticks: thin perpendicular line, dim theme-neutral when unscored,
     # tier-coloured once scored (WP-E's target rendering — brief §2).
@@ -696,6 +724,23 @@ def chip_palette(tier: str, t: dict) -> tuple[str, str, str]:
     if tier == "est":
         return ("none", COLORS["grey"], COLORS["grey"])
     return ("none", "none", COLORS["grey"])
+
+
+def tier_line_colour(tier: str) -> str | None:
+    """Mirrors tierColour.ts's tierLineColour() exactly — the colour a tier
+    paints on a MAP LINE (sector-coloured trail), deliberately NOT
+    chip_palette(tier, t)[2]: purple's chip text is PURPLE_INK (near-black,
+    legible only against a filled purple chip background), which would
+    paint a purple sector's line almost black — tierLineColour.ts's own
+    documented 2026-09-02 DEMO-tab bug class. Used by D2.2's sector-span
+    drawing (draw_map's sector_colours) and by ride_detail's map."""
+    if tier == "purple":
+        return COLORS["purple"]
+    if tier == "green":
+        return COLORS["green"]
+    if tier == "yellow":
+        return COLORS["neutral"]
+    return None
 
 
 def draw_strip_slot(parent, id_prefix, x, y, w, h, t, tier, label, time=None, current=False):
@@ -996,8 +1041,29 @@ def tone_colour(tone: str) -> str:
 # --------------------------------------------------------------------------
 
 def build_routes(theme_name: str, repo_root: str) -> ET.Element:
+    """D2.1 (virgin-cycle5, re-transcribed 2026-09-08): RoutesScreen.tsx read
+    fresh — post-WP-K (tap-only, no expanded row) and post-WP-3 (route/way
+    vocabulary). Sport badge -> YOUR PLACES (every landmark, shared across
+    sports, dormant AND/OR "not used by this sport" flagged) -> ROUTES (one
+    plain card per catalog route, tap-only — no map, no gate count, no
+    delete button ever renders here; that content now lives on
+    CatalogDetailScreen, D3, out of scope here).
+
+    [ASSUMPTION] catalog.seed.json carries no sport of its own (see the D1
+    RESULTS-tab helpers' own note above) — FIXTURE_SPORT_LABEL stands in for
+    activeSportId()/sportLabel, and every one of its 13 routes is treated as
+    belonging to that one fixture sport, so `usedLandmarkIds` (and therefore
+    which landmark reads "not used by <sport>") comes out exactly as it
+    would for a real single-sport install: every landmark except
+    "family home (Puttestraat)" is referenced by at least one route.
+
+    [ASSUMPTION] draws every one of the catalog's 13 routes, unfiltered/
+    unsorted — RoutesScreen.tsx's own `.map()` over CATALOG.routes takes no
+    subset either. The drawn canvas therefore runs taller than the nominal
+    390x844 phone frame (same as a real ScrollView scrolling further) —
+    intentional, not a layout bug; Inkscape's canvas shows the overflow
+    fine. The tab bar (drawn last, fixed position) is unaffected."""
     t = THEMES[theme_name]
-    asset = load_way_asset(repo_root, "Morning")
     catalog = load_catalog(repo_root)
     svg = new_svg()
 
@@ -1005,78 +1071,80 @@ def build_routes(theme_name: str, repo_root: str) -> ET.Element:
     rect(bg, "bg_ground", 0, 0, VB_W, VB_H, fill=t["bg"])
 
     content = layer(svg, "content")
-    y = 20
+    y = 20.0
+    # Q5: bare sport-name badge, same convention as RIDES/RESULTS.
+    text_el(content, "content_sport_badge", 16, y, FIXTURE_SPORT_LABEL.upper(), 12, weight="700",
+            color=t["textDim"], letter_spacing=2, upper=True)
+    y += 24
+
     text_el(content, "content_places_heading", 16, y, "YOUR PLACES", 12, weight="700",
             color=t["textDim"], letter_spacing=2, upper=True)
     y += 16
 
     # Real catalog data (app/src/store/catalog.seed.json) — all 6 landmarks,
     # in catalog order, labels rendered verbatim (RoutesScreen.tsx: `{l.label}`,
-    # never re-cased), dormant computed by RoutesScreen.tsx's own rule.
+    # never re-cased). dormant + notUsedHere both computed by
+    # RoutesScreen.tsx's own rules; every row (including the last) carries a
+    # bottom divider — the real st.row style always sets borderBottomWidth,
+    # with no last-child exception.
+    used_landmark_ids = set()
+    for r in catalog["routes"]:
+        used_landmark_ids.add(r["startLandmarkId"])
+        used_landmark_ids.add(r["endLandmarkId"])
+
     card_top = y
     ry = y + 24
     landmarks = catalog["landmarks"]
     for i, l in enumerate(landmarks):
         dormant = landmark_dormant(l)
-        label_txt = l["label"] + ("  ·  dormant" if dormant else "")
+        not_used_here = l["id"] not in used_landmark_ids
+        label_txt = l["label"]
+        if dormant:
+            label_txt += "  · dormant"
+        if not_used_here:
+            label_txt += f"  · not used by {FIXTURE_SPORT_LABEL}"
         sub_txt = f"{l['lat']:.5f}, {l['lon']:.5f} · {l['radiusM']} m"
         text_el(content, f"content_places_row_{i+1}_label", 30, ry, label_txt, 14,
                 color=t["textDim"] if dormant else t["text"])
         text_el(content, f"content_places_row_{i+1}_sub", 30, ry + 16, sub_txt, 11.5, color=t["textDim"])
-        if i < len(landmarks) - 1:
-            line(content, f"content_places_row_{i+1}_divider", 30, ry + 28, VB_W - 30, ry + 28,
-                 t["cardBorder"], 1)
-        ry += 44
-    footnote_h = text_block(
-        content, "content_places_footnote", 30, ry + 6,
-        "Dormant places keep seeding history but are never offered at START. Radius is "
-        "measured, not guessed: p90 of the endpoint spread, capped at half the gap to the "
-        "nearest place.",
-        10.5, VB_W - 32 - 28, color=t["textDim"],
-    )
-    card_h = (ry + 6 + footnote_h + 12) - card_top
+        text_el(content, f"content_places_row_{i+1}_chev", VB_W - 30, ry + 4, "›", 14,
+                color=t["textDim"], anchor="middle")
+        line(content, f"content_places_row_{i+1}_divider", 30, ry + 24, VB_W - 30, ry + 24,
+             t["cardBorder"], 1)
+        ry += 38
+    card_h = (ry + 8) - card_top
     content.insert(0, E("rect", "content_places_card_bg", {
         "x": fmt(16), "y": fmt(card_top), "width": fmt(VB_W - 32), "height": fmt(card_h),
         "fill": t["card"], "stroke": t["cardBorder"], "stroke-width": fmt(1), "rx": fmt(16),
     }))
     y = card_top + card_h + 24
 
-    # D0 (virgin-cycle5): heading text corrected to match RoutesScreen.tsx:80
-    # ("ROUTES") verbatim, per WP-3's route/way swap — was "WAYS" pre-swap.
-    # The layout below it (one way expanded with its map/gate-count card) is
-    # otherwise UNTOUCHED here: RoutesScreen.tsx has since gone tap-only with
-    # no expanded row (WP-K) and this card's content now lives on
-    # CatalogDetailScreen instead — that redraw is D2.1, not this pass.
     text_el(content, "content_routes_heading", 16, y, "ROUTES", 12, weight="700",
             color=t["textDim"], letter_spacing=2, upper=True)
     y += 16
 
-    way_top = y
-    text_el(content, "content_way_header_label", 30, y + 26, "home → work", 15, color=t["text"])
-    text_el(content, "content_way_header_sub", 30, y + 44,
-            "2 ways · asks which one at START", 11.5, color=t["textDim"])
-    text_el(content, "content_way_chevron", VB_W - 34, y + 30, "▾", 14, color=t["textDim"], anchor="middle")
-
-    ry2 = y + 66
-    text_el(content, "content_route_entry_label", 30, ry2, way_label("Morning"), 13.5, color=t["text"])
-    text_el(content, "content_route_entry_sub", 30, ry2 + 16,
-            "6 ghost laps seeded · 4 sectors · START ~160 m in", 11.5, color=t["textDim"])
-
-    map_y = ry2 + 26
-    map_h = 260
-    draw_map(content, "content_route_map", t, asset, (30, map_y, VB_W - 60, map_h),
-             gate_tiers=[None, None, None, None, None], rider_at=None, label_note=True)
-    way_h = (map_y + map_h + 16) - way_top
-    content.insert(0, E("rect", "content_way_card_bg", {
-        "x": fmt(16), "y": fmt(way_top), "width": fmt(VB_W - 32), "height": fmt(way_h),
-        "fill": t["card"], "stroke": t["cardBorder"], "stroke-width": fmt(1), "rx": fmt(16),
-    }))
-
-    text_block(content, "content_footer_note", 16, way_top + way_h + 22,
-                "Way lines are pre-rendered from your own rides, with the measured gates "
-                "marked. Moving a middle gate keeps lap history comparable; moving START or "
-                "FINISH does not.",
-                10.5, VB_W - 32, color=t["textDim"])
+    # WP-K: tap-only — a plain bordered card per route (st.card: borderWidth
+    # 1, no left accent bar — that's RIDES/RESULTS' own row style, not this
+    # screen's), "{from} -> {to}" + "{N} way(s)[ - asks which one at
+    # START]", chevron. No map, no gate count, no delete affordance.
+    for i, r in enumerate(catalog["routes"]):
+        from_l = next(l for l in landmarks if l["id"] == r["startLandmarkId"])
+        to_l = next(l for l in landmarks if l["id"] == r["endLandmarkId"])
+        way_count = sum(1 for w in catalog["ways"] if w["routeId"] == r["id"])
+        rid = f"content_route_{i + 1}"
+        row_top = y
+        row_h = 60.0
+        g = group(content, rid, {})
+        rect(g, f"{rid}_bg", 16, row_top, VB_W - 32, row_h, fill="none", stroke=t["cardBorder"],
+             sw=1, rx=16)
+        text_el(g, f"{rid}_label", 29, row_top + 24, f"{from_l['label']} → {to_l['label']}", 15,
+                color=t["text"])
+        sub_txt = f"{way_count} way" + ("" if way_count == 1 else "s")
+        if way_count > 1:
+            sub_txt += " · asks which one at START"
+        text_el(g, f"{rid}_sub", 29, row_top + 42, sub_txt, 11.5, color=t["textDim"])
+        text_el(g, f"{rid}_chev", VB_W - 29, row_top + 30, "›", 14, color=t["textDim"], anchor="middle")
+        y += row_h + 10
 
     draw_tabbar(svg, t, "ROUTES")
     return svg
@@ -1314,6 +1382,22 @@ def build_record_setup(theme_name: str, repo_root: str) -> ET.Element:
              route_casing=True, gate_casing=True, placeholder_size=4)
     y += map_h + 18
 
+    # D2.2 (virgin-cycle5, 2026-09-08): RecordScreen.tsx:1264-1273's sport-pill
+    # row (Q3/WP-1) — setup phase only (armed/running are their own
+    # fullscreen builders below and never draw it), shown only with 2+
+    # sports AND settings.showSportPillOnRecord on (store/sports.ts's
+    # showSportPillRow()). [ASSUMPTION] two fixture sports, matching
+    # FIXTURE_SPORT_LABEL used by results/routes so every screen's sport
+    # badge agrees; the toggle default is assumed on (same "show the
+    # feature" convention as liveMap/redLight elsewhere in this file).
+    fixture_sports = [FIXTURE_SPORT_LABEL, "Running"]
+    if len(fixture_sports) >= 2:
+        text_el(content, "content_flow_sport_label", 20, y, "SPORT", 11, weight="600",
+                color=t["textDim"], letter_spacing=2)
+        y += 16
+        sport_items = [(sp, sp == FIXTURE_SPORT_LABEL) for sp in fixture_sports]
+        y += draw_pill_row(content, "content_sport", t, 20, y, VB_W - 40, sport_items) + 10
+
     text_el(content, "content_flow_from_label", 20, y, "DETECTED START", 11, weight="600",
             color=t["textDim"], letter_spacing=2)
     y += 16
@@ -1447,7 +1531,15 @@ def build_record_running(theme_name: str, repo_root: str) -> ET.Element:
     bar). One sector done: S1 purple, S2 in progress (ticking clock owns the
     big slot, per liveView.tsx — never tier-coloured while ticking), S3/S4
     not yet reached. settings.redLight defaults to 'auto', so the manual
-    red-light button is not shown (§18)."""
+    red-light button is not shown (§18).
+
+    D2.2 (virgin-cycle5, re-transcribed 2026-09-08): RecordScreen.tsx now
+    passes `gateColours={undefined}` on this map (WP-E, d7e925b) — ticks no
+    longer recolour by tier at all, every gate draws the same dim unscored
+    style gate_tiers=[None]*5 already produces with gate_casing=True. The
+    sector-coloured TRAIL (WP-K, sectorTrailModel.ts's liveSectorColours())
+    carries the verdict instead — the span between gates, not the gate
+    itself ("they are gates" — Nathan)."""
     t = THEMES[theme_name]
     asset = load_way_asset(repo_root, "Morning")
     svg = new_svg()
@@ -1476,7 +1568,8 @@ def build_record_running(theme_name: str, repo_root: str) -> ET.Element:
     # earlier dotted-ahead split was pulled back out; rider_ahead_dotted is
     # therefore False here too, not just at prestart).
     draw_map(content, "content_map", t, asset, (12, TOP_PAD, VB_W - 24, map_h),
-             gate_tiers=[None, chip_palette("purple", t)[2], None, None, None],
+             gate_tiers=[None] * 5,
+             sector_colours=[None, tier_line_colour("purple"), None, None, None],
              rider_at=0.28, rider_ahead_dotted=False,
              rider_fill=COLORS["riderBlue"], label_note=True,
              ground_fill=t["raceCard"], ground_border=t["raceBorder"],
@@ -1537,7 +1630,13 @@ def build_record_finished(theme_name: str, repo_root: str) -> ET.Element:
     whenever vm.posChip is non-null, which it is here (a clean Morning lap
     against real seeded ghost history). Drawn below accordingly, plus the
     (here-blank, matching st.phase==='finished' → contextLabel='') context
-    line liveView.tsx always reserves above the big slot."""
+    line liveView.tsx always reserves above the big slot.
+
+    D2.2 (virgin-cycle5, re-transcribed 2026-09-08): gate ticks no longer
+    carry the tier verdict (WP-E, gateColours={undefined}) — every tick
+    draws the same dim unscored style. The sector-coloured TRAIL
+    (sectorTrailModel.ts's storedSectorColours(), same shape as the live
+    map's) now shows all 4 earned sectors as coloured spans instead."""
     t = THEMES[theme_name]
     asset = load_way_asset(repo_root, "Morning")
     svg = new_svg()
@@ -1559,8 +1658,9 @@ def build_record_finished(theme_name: str, repo_root: str) -> ET.Element:
     map_h = VB_H - TOP_PAD - fixed_total
 
     draw_map(content, "content_map", t, asset, (12, TOP_PAD, VB_W - 24, map_h),
-             gate_tiers=[None, chip_palette("purple", t)[2], chip_palette("green", t)[2],
-                         chip_palette("yellow", t)[2], chip_palette("green", t)[2]],
+             gate_tiers=[None] * 5,
+             sector_colours=[None, tier_line_colour("purple"), tier_line_colour("green"),
+                             tier_line_colour("yellow"), tier_line_colour("green")],
              rider_at="FINISH", rider_ahead_dotted=False,
              rider_fill=COLORS["riderBlue"], label_note=True,
              ground_fill=t["raceCard"], ground_border=t["raceBorder"],
@@ -1989,16 +2089,51 @@ def build_results_detail(theme_name: str, repo_root: str) -> ET.Element:
     return svg
 
 
-def build_result(theme_name: str, repo_root: str) -> ET.Element:
-    """ResultScreen.tsx (WP-A3): "YOUR LAST RIDE" card (route, big lap
-    figure, rank line, VIEW TRACE link, RECORD ANOTHER) + "PERSONAL BESTS —
-    TAP A ROUTE" accordion, one route expanded with its ranking (dates, never
-    rideIds) and best-ever sectors. The big lap figure's colour is
-    ResultScreen.tsx's OWN local tierColour() (colors.purple/green/neutral,
-    NOT chips.tsx's chipColors) — unlike RIDES's sector rows, this one is
-    legible in both themes by construction; see build_rides's docstring for
-    the contrasting case."""
+def ride_detail_tier_colour(tier: str, t: dict) -> str:
+    """Mirrors RideDetailScreen.tsx's own LOCAL tierColour(tier,t) helper
+    verbatim — a fourth mapping in this file, deliberately distinct from
+    chip_palette()'s chipColors()-text mirror (build_rides' sector rows) and
+    from tier_line_colour()'s tierLineColour() mirror (map lines/spans):
+    'neutral' reads as t.accentText and the fallback (est/no-lap) as
+    t.textDim, neither of which the other two mirrors return."""
+    if tier == "purple":
+        return COLORS["purple"]
+    if tier == "green":
+        return COLORS["green"]
+    if tier == "yellow":
+        return COLORS["neutral"]
+    if tier == "neutral":
+        return t["accentText"]
+    return t["textDim"]
+
+
+def build_ride_detail(theme_name: str, repo_root: str) -> ET.Element:
+    """D2.3 (virgin-cycle5, 2026-09-08): ResultScreen.tsx is gone (WP-H) —
+    its per-ride board now lives inside RideDetailScreen.tsx, read fresh.
+    Full-screen, `‹ BACK`, no tab bar, opened right after STOP (source
+    'post-stop' -> primaryLabel 'RECORD ANOTHER'). Layout: top bar -> card
+    (way name, headline GATED lap coloured by the screen's OWN local
+    tierColour() — ride_detail_tier_colour() below, a THIRD distinct colour
+    mapping in this file, deliberately not chip_palette() or
+    tier_line_colour() — rank line, the ridden trace on a browse map with
+    the same sector-coloured spans D2.2 gave the live map, SECTORS split
+    table, ON THIS WAY personal bests) -> ACTIONS (Export GPX+ / Delete /
+    Ignore in ranking / Make this the reference of this way) -> RECORD
+    ANOTHER.
+
+    [ASSUMPTION] Continues the SAME fixture ride build_record_finished.svg
+    depicts (way "Morning"/Home Work Dry, LAP 14:31.2, green tier, P3 of 9,
+    sectors S1 purple/S2 green/S3 yellow/S4 green) — this is genuinely the
+    screen a rider lands on right after that recording, so the two mockups
+    tell one continuous story. [ASSUMPTION] the "Make this the reference of
+    this way" action is drawn even though rideDetailModel.ts's real
+    promoteTarget gate requires a USER-owned route (seed routes like
+    "Morning" never qualify) — included anyway because the brief's D2.3
+    explicitly lists it among the four actions to draw; treat this one
+    button as illustrating an available STATE of the screen, not this
+    specific fixture ride's actual eligibility."""
     t = THEMES[theme_name]
+    asset = load_way_asset(repo_root, "Morning")
     svg = new_svg()
 
     bg = layer(svg, "bg")
@@ -2006,105 +2141,142 @@ def build_result(theme_name: str, repo_root: str) -> ET.Element:
 
     content = layer(svg, "content")
     y = 24.0
-    text_el(content, "content_last_heading", 16, y, "YOUR LAST RIDE", 12, weight="700",
-            color=t["textDim"], letter_spacing=2, upper=True)
-    y += 16
-    card1_top = y
-    cy = y + 24
-    text_el(content, "content_last_route", VB_W / 2, cy, way_label("Morning"), 13, color=t["textDim"],
+    text_el(content, "content_back", 16, y, "‹ BACK", 14, weight="700", color=t["textDim"])
+    text_el(content, "content_top_title", VB_W / 2, y, "RIDE", 15, weight="800", color=t["text"],
+            anchor="middle", letter_spacing=2, upper=True)
+    # dateTimeLabel() format ('Tue 05 Aug · 08:31') — same ride as
+    # build_record_finished/build_rides' "Sat 22 Aug · 07:41" row.
+    date_time_label = f"{tower_date(_dt_ms(2026, 8, 22))} · 07:41"
+    text_el(content, "content_top_date", VB_W - 16, y, date_time_label, 12, color=t["textDim"],
+            anchor="end")
+    y += 26
+
+    card_top = y
+    cx = VB_W / 2
+    cy = card_top + 20
+    text_el(content, "content_way_name", cx, cy, way_label("Morning"), 13, color=t["textDim"],
             anchor="middle")
     cy += 30
-    text_el(content, "content_last_lap", VB_W / 2, cy, "14:02.5", 32, weight="800",
-            color=COLORS["purple"], anchor="middle", tabular=True)
+    lap_tier = "green"
+    text_el(content, "content_lap_big", cx, cy, "14:31.2", 34, weight="800",
+            color=ride_detail_tier_colour(lap_tier, t), anchor="middle", tabular=True)
+    cy += 22
+    text_el(content, "content_rank_line", cx, cy, "P3 of 9 on this way", 12.5, color=t["textDim"],
+            anchor="middle")
     cy += 20
-    text_el(content, "content_last_rank", VB_W / 2, cy, "P2 of 9 on this route", 12,
-            color=t["textDim"], anchor="middle")
-    cy += 26
-    text_el(content, "content_last_trace_link", VB_W / 2, cy, "VIEW TRACE ›", 11,
-            color=t["textDim"], anchor="middle", letter_spacing=1.5, upper=True)
-    cy += 24
-    btn_w, btn_h = 172.0, 40.0
-    btn = group(content, "content_last_record_another", {})
-    rect(btn, "content_last_record_another_bg", (VB_W - btn_w) / 2, cy, btn_w, btn_h,
-         fill=t["accent"], rx=10)
-    text_el(btn, "content_last_record_another_label", VB_W / 2, cy + 25, "RECORD ANOTHER", 12,
-            weight="800", color=t["onAccent"], anchor="middle", letter_spacing=1)
-    cy += btn_h + 16
-    card1_h = cy - card1_top
-    content.insert(0, E("rect", "content_last_card_bg", {
-        "x": fmt(16), "y": fmt(card1_top), "width": fmt(VB_W - 32), "height": fmt(card1_h),
-        "fill": t["card"], "stroke": t["cardBorder"], "stroke-width": fmt(1), "rx": fmt(16),
-    }))
-    y = card1_top + card1_h + 24
 
-    text_el(content, "content_pb_heading", 16, y, "PERSONAL BESTS — TAP A ROUTE", 12, weight="700",
+    map_x, map_w, map_h = 29.0, VB_W - 32.0 - 26.0, 220.0
+    ride_sector_colours = [None, tier_line_colour("purple"), tier_line_colour("green"),
+                            tier_line_colour("yellow"), tier_line_colour("green")]
+    draw_map(content, "content_map", t, asset, (map_x, cy, map_w, map_h),
+             gate_tiers=[None] * 5, sector_colours=ride_sector_colours,
+             rider_at=None, label_note=True, route_casing=True, gate_casing=True,
+             placeholder_size=4)
+    cy += map_h + 16
+
+    text_el(content, "content_sectors_heading", 29, cy, "SECTORS", 12, weight="700",
             color=t["textDim"], letter_spacing=2, upper=True)
-    y += 16
-    card2_top = y
-    ry = y
-
-    # Placeholder sample rows/detail (README convention) — never a real ride.
-    pb_rows = [
-        {"route": "Home Work Dry", "pb": "13:58.1", "n": 9, "open": True},
-        {"route": "Work Home Dry", "pb": "15:03.4", "n": 6, "open": False},
-        {"route": "Home Church", "pb": "10:41.0", "n": 5, "open": False},
+    cy += 18
+    sectors = [
+        (1, "purple", "3:02.1", "avg 3:15"),
+        (2, "green", "3:28.4", "avg 3:41"),
+        (3, "yellow", "3:51.0", "avg 3:44"),
+        (4, "green", "3:20.2", "avg 3:33"),
     ]
+    for si, tier, tval, avgl in sectors:
+        col = chip_palette(tier, t)[2]
+        text_el(content, f"content_sector_{si}_label", 29, cy, f"S{si}", 13, weight="700", color=col)
+        text_el(content, f"content_sector_{si}_time", 95, cy, tval, 13, color=col, anchor="end",
+                tabular=True)
+        text_el(content, f"content_sector_{si}_avg", VB_W - 29, cy, avgl, 12, color=t["textDim"],
+                anchor="end", tabular=True)
+        cy += 20
+    cy += 6
+
+    text_el(content, "content_onthisway_heading", 29, cy, "ON THIS WAY", 12, weight="700",
+            color=t["textDim"], letter_spacing=2, upper=True)
+    cy += 18
+    # PbDetail (rideHistoryModel.ts's buildPbDetail()) — rankingPoolFor()'s
+    # pool, this ride at P3 (matches the rank line above and
+    # build_record_finished's P3-of-9 posChip: one continuous fixture).
     ranking = [
-        ("P1", "Tue 12 Aug", "13:58", "", False),
-        ("P2", "today", "14:03", "+5s", True),
-        ("P3", "Fri 08 Aug", "14:11", "+13s", False),
+        ("P1", "Tue 12 Aug", "13:58", ""),
+        ("P2", "Fri 15 Aug", "14:11", "+13s"),
+        ("P3", "today", "14:31", "+33s"),
+        ("P4", "Wed 06 Aug", "14:38", "+40s"),
+        ("P5", "Sat 02 Aug", "14:44", "+46s"),
+        ("P6", "Tue 29 Jul", "14:50", "+52s"),
+        ("P7", "Fri 25 Jul", "14:55", "+57s"),
+        ("P8", "Mon 21 Jul", "15:01", "+63s"),
+        ("P9", "Thu 17 Jul", "15:08", "+70s"),
     ]
-    pb_sectors = [("S1", "3:00.4"), ("S2", "3:18.9"), ("S3", "3:34.2"), ("S4", "3:04.6")]
+    text_el(content, "content_pb_ranking_hint", 29, cy, f"last {len(ranking)} on this way", 11.5,
+            color=t["textDim"])
+    cy += 18
+    for pos, date, tval, gap in ranking:
+        today = date == "today"
+        suf = pos.lower()
+        text_el(content, f"content_pb_rank_{suf}_pos", 29, cy, pos, 13, weight="700", color=t["text"])
+        text_el(content, f"content_pb_rank_{suf}_date", 74, cy, date, 13,
+                color=t["accentText"] if today else t["textDim"])
+        text_el(content, f"content_pb_rank_{suf}_time", VB_W - 95, cy, tval, 13, color=t["text"],
+                anchor="end", tabular=True)
+        text_el(content, f"content_pb_rank_{suf}_gap", VB_W - 29, cy, gap, 13, color=t["textDim"],
+                anchor="end", tabular=True)
+        cy += 20
+    cy += 8
 
-    for pi, row in enumerate(pb_rows):
-        rid = f"content_pb_{pi + 1}"
-        text_el(content, f"{rid}_route", 30, ry + 20, row["route"], 15, weight="700", color=t["text"])
-        text_el(content, f"{rid}_hint", 30, ry + 36,
-                f"personal best {row['pb']} · {row['n']} rides on file", 11.5, color=t["textDim"])
-        text_el(content, f"{rid}_chev", VB_W - 30, ry + 22, "▾" if row["open"] else "›", 15,
-                color=t["textDim"], anchor="middle")
-        ry += 48
-        if row["open"]:
-            text_el(content, f"{rid}_ranking_hint", 30, ry + 10, f"last {len(ranking)} on this route",
-                    11.5, color=t["textDim"])
-            ry += 22
-            for pos, date, tval, gap_lbl, today in ranking:
-                suf = pos.lower()
-                text_el(content, f"{rid}_rank_{suf}_pos", 30, ry, pos, 13, weight="700", color=t["text"])
-                text_el(content, f"{rid}_rank_{suf}_date", 74, ry, date, 13,
-                        color=t["accentText"] if today else t["textDim"])
-                text_el(content, f"{rid}_rank_{suf}_time", VB_W - 90, ry, tval, 13, color=t["text"],
-                        anchor="end", tabular=True)
-                text_el(content, f"{rid}_rank_{suf}_gap", VB_W - 30, ry, gap_lbl, 13,
-                        color=t["textDim"], anchor="end", tabular=True)
-                ry += 20
-            ry += 8
-            text_el(content, f"{rid}_pbsectors_hint", 30, ry + 10, "personal best sectors", 11.5,
-                    color=t["textDim"])
-            ry += 22
-            for lbl, tval in pb_sectors:
-                suf = lbl.lower()
-                text_el(content, f"{rid}_pbsec_{suf}_label", 30, ry, lbl, 13, weight="700", color=t["text"])
-                text_el(content, f"{rid}_pbsec_{suf}_time", VB_W - 30, ry, tval, 13, color=t["text"],
-                        anchor="end", tabular=True)
-                ry += 20
-            ry += 6
-        if pi < len(pb_rows) - 1:
-            line(content, f"{rid}_divider", 16, ry, VB_W - 16, ry, t["cardBorder"], 1)
-        ry += 6
-    card2_h = ry - card2_top + 6
-    content.insert(0, E("rect", "content_pb_card_bg", {
-        "x": fmt(16), "y": fmt(card2_top), "width": fmt(VB_W - 32), "height": fmt(card2_h),
+    pb_sectors = [("S1", "3:00.4"), ("S2", "3:18.9"), ("S3", "3:34.2"), ("S4", "3:04.6")]
+    text_el(content, "content_pb_sectors_hint", 29, cy, "personal best sectors", 11.5,
+            color=t["textDim"])
+    cy += 18
+    for lbl, tval in pb_sectors:
+        suf = lbl.lower()
+        text_el(content, f"content_pb_sec_{suf}_label", 29, cy, lbl, 13, weight="700", color=t["text"])
+        text_el(content, f"content_pb_sec_{suf}_time", VB_W - 29, cy, tval, 13, color=t["text"],
+                anchor="end", tabular=True)
+        cy += 20
+    cy += 6
+
+    card_h = cy - card_top + 6
+    content.insert(0, E("rect", "content_card_bg", {
+        "x": fmt(16), "y": fmt(card_top), "width": fmt(VB_W - 32), "height": fmt(card_h),
         "fill": t["card"], "stroke": t["cardBorder"], "stroke-width": fmt(1), "rx": fmt(16),
     }))
-    y = card2_top + card2_h + 20
+    y = card_top + card_h + 16
 
-    text_block(content, "content_footer_note", 16, y,
-               "Position is a fact; colour is a judgement — a mid-pack ride is never dressed as "
-               "failure. Purple beats your best, green beats your recent average, yellow is an "
-               "ordinary lap.", 10.5, VB_W - 32, color=t["textDim"])
+    text_el(content, "content_actions_heading", 16, y, "ACTIONS", 12, weight="700",
+            color=t["textDim"], letter_spacing=2, upper=True)
+    y += 18
 
-    draw_tabbar(svg, t, "RESULTS")
+    def draw_action_btn(id_, x, label, w, filled):
+        g = group(content, id_, {})
+        if filled:
+            rect(g, f"{id_}_bg", x, y, w, 32, fill=t["accent"], rx=8)
+            text_el(g, f"{id_}_label", x + w / 2, y + 21, label, 13, weight="700",
+                    color=t["onAccent"], anchor="middle")
+        else:
+            rect(g, f"{id_}_bg", x, y, w, 32, fill="none", stroke=t["cardBorder"], sw=1, rx=8)
+            text_el(g, f"{id_}_label", x + w / 2, y + 21, label, 13, weight="700",
+                    color=t["textDim"], anchor="middle")
+        return w
+
+    gap = 8.0
+    x = 16.0
+    x += draw_action_btn("content_export_btn", x, "Export GPX+", 108.0, True) + gap
+    x += draw_action_btn("content_delete_btn", x, "Delete", 76.0, False) + gap
+    draw_action_btn("content_ignore_btn", x, "Ignore in ranking", 150.0, False)
+    y += 32 + 10
+
+    draw_action_btn("content_promote_btn", 16, "Make this the reference of this way", 262.0, False)
+    y += 32 + 20
+
+    btn_w, btn_h = 190.0, 44.0
+    btn = group(content, "content_primary_button", {})
+    rect(btn, "content_primary_button_bg", (VB_W - btn_w) / 2, y, btn_w, btn_h, fill=t["accent"], rx=10)
+    text_el(btn, "content_primary_button_label", VB_W / 2, y + 27, "RECORD ANOTHER", 12.5,
+            weight="800", color=t["onAccent"], anchor="middle", letter_spacing=1)
+
     return svg
 
 
@@ -2117,7 +2289,7 @@ BUILDERS = {
     "record_running": build_record_running,
     "record_finished": build_record_finished,
     "rides": build_rides,
-    "result": build_result,
+    "ride_detail": build_ride_detail,
     "results": build_results,
     "results_detail": build_results_detail,
 }

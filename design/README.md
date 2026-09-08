@@ -41,7 +41,7 @@ in the app today:
 
 | File | What it shows |
 |---|---|
-| `routes` | YOUR PLACES (your landmarks) + WAYS (the routes between them, one open showing its map with gate markers) |
+| `routes` | YOUR PLACES (your landmarks, shared across sports) + ROUTES (one plain card per route, tap-only — no row expands, no map, no delete button ever renders here; that content moved to the catalog detail screen, D3, not yet drawn) |
 | `settings` | Appearance, On The Bike, Starting A Ride, Scoring |
 | `demo` | the accelerated demo ride (Demo tab) |
 | `record_setup` | the idle/pre-ride screen — tab bar visible |
@@ -49,7 +49,7 @@ in the app today:
 | `record_running` | the live race column mid-ride — full screen, no tab bar |
 | `record_finished` | the moment a ride ends, before you press END — still the same full-screen span as armed/running, map unlocked, the LAP result in the big slot |
 | `rides` | ride history list, one row expanded to its sector splits |
-| `result` | last ride + Personal Bests, one route expanded (D2, virgin-cycle5, will retire this in favour of `ride_detail`) |
+| `ride_detail` | one ride's full board (D2, virgin-cycle5 — replaces the retired `result`/ResultScreen.tsx): route + date, headline GATED lap, rank line, the ridden trace with its sector-coloured spans, per-sector split table, ON THIS WAY personal bests, Export/Delete/Ignore/Make-reference actions — full screen, no tab bar |
 | `results` | RESULTS tab (WP-2, added virgin-cycle5 D1) — every way you've ridden, most-ridden first, ride count + best lap per row |
 | `results_detail` | RESULTS tab (WP-2, added virgin-cycle5 D1) — one way's scatterplot of recent rides + its all-time fastest-first board, full screen, no tab bar |
 
@@ -69,19 +69,23 @@ one shows a normal known-route ride instead.
 - **Colours** are pulled directly from the app's own theme file
   (`app/src/ui/theme.ts`) — nothing is invented. If you change a colour in
   Inkscape, that's a real proposed colour change, not a rendering quirk.
-- **Your places on the Routes screen are your real catalog data** (read
-  straight from `app/src/store/catalog.seed.json`, not typed in by hand) —
-  all six landmarks, their real coordinates and radii, labels exactly as you
-  named them (lowercase where you left them lowercase). "Dormant" is only
-  shown where the app itself would show it.
+- **Your places and routes on the Routes screen read the opt-in shipped
+  seed, used as fixture data** (`app/src/store/catalog.seed.json`, not typed
+  in by hand) — all six landmarks and all thirteen routes, their real
+  coordinates/radii/way-counts, labels exactly as they're named in the seed
+  (lowercase where the seed left them lowercase). "Dormant" and "not used by
+  <sport>" are only shown where the app itself would show them. The seed is
+  opt-in — a virgin/default install ships empty (`EXPO_PUBLIC_SEED_MODE=
+  empty`) — so this is honestly-labelled fixture data, not "your real data".
 - **Gate markers on the map** are drawn as short tick marks across the
   route line, each with a black outline (matching the route line's own
-  outline) so it reads clearly against any background: a thinner, dimmer
-  yellow tick where nothing has been scored yet, and a bolder, full-strength
-  tier colour (purple / green / amber-yellow) once that sector has been
-  ridden and judged — this changed on 2026-08-24, after you reported the
-  unscored grey ticks were almost invisible on your phone; this is literally
-  what your phone draws today.
+  outline). Every tick draws in the SAME dim, thin, translucent yellow style
+  whether or not that sector has been scored (WP-E, commit `d7e925b`) —
+  ticks no longer recolour by tier at all. The verdict now
+  shows on the RIDDEN TRAIL instead: the stretch of line between two gates
+  paints in the sector's earned tier colour (purple / green / yellow) once
+  that sector is clean and scored, on `record_running`, `record_finished`
+  and `ride_detail` alike — "they are gates," not scoreboards.
 - **The rider dot** is a distinct blue (`riderBlue` in the app's theme file)
   from any gate marker or the route line, so it never reads as a scored
   result; off-route it inverts (hollow white/blue ring) rather than greying
@@ -124,6 +128,7 @@ full-screen recording mode that hides the bar for the whole stretch from
 armed through running to the moment just after you finish, right up until
 you press END; only `record_setup` (before you press RECORD) keeps the bar.
 
-`results_detail` also has no tab bar — it's a full-screen overlay opened
-from a tap on a `results` row, same pattern as the catalog/ride detail
-screens, with its own `‹ BACK`/`BACK TO RESULTS` chrome instead.
+`results_detail` and `ride_detail` also have no tab bar — both are
+full-screen overlays (opened from a tap on a `results` row, and right after
+STOP or a tap on a `rides` row, respectively), each with its own
+`‹ BACK`/`BACK TO …` chrome instead.
