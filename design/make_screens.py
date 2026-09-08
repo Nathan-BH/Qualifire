@@ -6,16 +6,15 @@ Nathan's hand-edits live in design/edited/ and are mirrored back into THIS
 script (his edited file is the truth until mirrored). Re-run:
     python3 design/make_screens.py [--repo-root PATH]
 
-Cycle 024 / WP-J, RE-EMIT PASS (2026-08-24): the first pass (2026-08-22)
-deliberately deferred RECORD's four states plus RIDES/RESULT because this
-cycle's WP-A (RECORD/RIDES/RESULT redesign), WP-B (free-ride groundwork) and
-WP-E (live map rendering rewrite) had not landed yet — drawing them then
-would have meant redrawing them again a few days later. All three have now
-landed, and this pass draws the deferred six (record_setup, record_armed,
-record_running, record_finished, rides, result), reading RecordScreen.tsx,
-RidesScreen.tsx, ResultScreen.tsx, routeMapView.tsx, App.tsx and theme.ts
-FRESH at execution time rather than trusting the original brief's own
-(now-stale, pre-WP-A/B/E) description of what those screens show.
+History: cycle 024/WP-J's re-emit pass (2026-08-24) drew the RECORD (four
+phases), RIDES and RESULT screens once that cycle's WP-A/WP-B/WP-E had
+landed. This pass (virgin-cycle5, D0, 2026-09-08) is a mechanical repair
+only — no drawing changes — after WP-3 (2026-09-06) swapped the route/way
+vocabulary app-wide and the asset manifest moved from app/assets/routes/
+routes.json to app/assets/ways/ways.json, both of which had left this
+script unable to run. See cycles/virgin-cycle5/BRIEF-design-folder-plan.md
+§D0 for the fix list; D1/D2 (new RESULTS-tab drawings, re-transcribing
+ROUTES/RECORD/result->ride_detail) are separate, later passes.
 
 WP-B's free-ride "new" start/end option is UNRATIFIED (no agreed layout) and
 is deliberately not drawn anywhere in this file — every RECORD screen below
@@ -26,11 +25,29 @@ Implemented (9 screens x day/night = 18 files):
     record_setup, record_armed, record_running, record_finished,
     rides, result                                                 (pass 2)
 
+Current source files this script reads/mirrors (re-grep before editing —
+the tree moves fast):
+    app/assets/ways/ways.json       — the "Morning" way's map/gate asset
+    app/src/ui/theme.ts             — THEMES/COLORS token source of truth
+    app/src/ui/wayMapView.tsx       — CASING const + map/gate-tick styling
+    app/src/ui/chips.tsx            — tier chip colours (chipColors, PURPLE_INK)
+    app/src/ui/settings.tsx         — the '#fff' switch-knob literal
+    app/src/store/defaultWay.ts     — wayLabel()/wayVariantLabel(), mirrored
+                                       below as way_label()/way_variant_label()
+    app/src/store/catalog.seed.json — routes (parent) / ways (child) fixture
+    app/App.tsx                     — tab bar order + labels
+    app/src/ui/RoutesScreen.tsx     — ROUTES screen section headings
+    app/src/ui/RecordScreen.tsx     — RECORD screen phases
+    app/src/ui/RidesScreen.tsx      — RIDES screen row layout
+(ResultScreen.tsx no longer exists — build_result() below still mirrors its
+pre-WP-2 shape; re-transcribing it against RideDetailScreen.tsx and renaming
+its output files is D2.3, not done in this pass.)
+
 Requirements satisfied here (brief WP-J-svg-tab-recompositions.md §5):
  - stdlib only, Python 3.
  - one function per screen taking a `theme` dict; THEMES{} transcribed from
    app/src/ui/theme.ts (source of truth — re-transcribe, never fork).
- - reads app/assets/routes/routes.json for the map polyline; --repo-root
+ - reads app/assets/ways/ways.json for the map polyline; --repo-root
    overrides the relative path so this runs in the sandbox and on Nathan's
    machine alike.
  - deterministic output (stable dict/list ordering, fixed-precision floats).
@@ -38,9 +55,10 @@ Requirements satisfied here (brief WP-J-svg-tab-recompositions.md §5):
    so a late failure never leaves partial output on disk): id+label on every
    element, ids unique per file, nesting <=3 (layer -> group -> leaf), no
    <image>, every colour cross-checked against the hex literals actually
-   present in theme.ts/chips.tsx/settings.tsx (load_allowed_colors) — not
-   just against this script's own THEMES/COLORS transcription, which
-   couldn't catch a typo in itself. Exits non-zero listing violations.
+   present in theme.ts/chips.tsx/settings.tsx/wayMapView.tsx
+   (load_allowed_colors) — not just against this script's own THEMES/COLORS
+   transcription, which couldn't catch a typo in itself. Exits non-zero
+   listing violations.
 """
 from __future__ import annotations
 
@@ -84,9 +102,9 @@ COLORS = {
     "raceCardNight": "#141414",
     "raceBorderNight": "#232323",
     "white": "#FFFFFF",
-    # routeMapView.tsx's CASING const (2026-08-24 hotfix) — the black outline
+    # wayMapView.tsx's CASING const (2026-08-24 hotfix) — the black outline
     # under both the route line and gate ticks on the real map now. Lives in
-    # routeMapView.tsx, not theme.ts, so load_allowed_colors() below also
+    # wayMapView.tsx, not theme.ts, so load_allowed_colors() below also
     # scans that file for its cross-check to accept this literal.
     "casing": "#14120C",
 }
@@ -107,7 +125,7 @@ THEMES = {
     },
 }
 
-TABS = ["RECORD", "RIDES", "ROUTES", "RESULT", "SETTINGS", "DEMO"]
+TABS = ["RECORD", "RIDES", "ROUTES", "RESULTS", "SETTINGS", "DEMO"]
 
 # All 9 screens are implemented as of the re-emit pass (see module docstring).
 IMPLEMENTED = [
@@ -141,14 +159,25 @@ def load_allowed_colors(repo_root: str) -> set[str]:
     found: set[str] = {"none", "transparent"}
     for rel in (
         "app/src/ui/theme.ts", "app/src/ui/chips.tsx", "app/src/ui/settings.tsx",
-        # WP-J re-emit pass: the route/gate map rendering this pass draws now
-        # follows routeMapView.tsx's own CASING const (2026-08-24 hotfix), so
-        # that file is a legitimate additional colour source-of-truth here.
-        "app/src/ui/routeMapView.tsx",
+        # WP-J re-emit pass: the way/gate map rendering this pass draws now
+        # follows wayMapView.tsx's own CASING const (2026-08-24 hotfix, file
+        # renamed from routeMapView.tsx in WP-3), so that file is a
+        # legitimate additional colour source-of-truth here.
+        "app/src/ui/wayMapView.tsx",
     ):
         p = os.path.join(repo_root, rel)
         if not os.path.exists(p):
-            continue
+            # D0 (virgin-cycle5): this used to `continue` on a missing file,
+            # which is exactly what let this allow-list rot unnoticed when
+            # routeMapView.tsx was renamed to wayMapView.tsx — every
+            # map-bearing screen's colours then silently failed the
+            # validator's cross-check instead of failing loudly here. A
+            # missing source-of-truth file is a script bug, not something to
+            # skip past.
+            raise FileNotFoundError(
+                f"load_allowed_colors: expected colour source file missing: {p} "
+                "(a source file was renamed/moved — update the list above)"
+            )
         with open(p, "r", encoding="utf-8") as f:
             text = f.read()
         for m in _HEX_RE.finditer(text):
@@ -319,14 +348,14 @@ def text_block(parent, id_prefix, x, y, s, size, max_px, weight="400", color="#0
 
 
 # --------------------------------------------------------------------------
-# route asset loading + schematic projection
+# way asset loading + schematic projection
 # --------------------------------------------------------------------------
 
-def load_route_asset(repo_root: str, route_id: str = "Morning") -> dict:
-    p = os.path.join(repo_root, "app", "assets", "routes", "routes.json")
+def load_way_asset(repo_root: str, way_id: str = "Morning") -> dict:
+    p = os.path.join(repo_root, "app", "assets", "ways", "ways.json")
     with open(p, "r", encoding="utf-8") as f:
         manifest = json.load(f)
-    return manifest["routes"][route_id]
+    return manifest["ways"][way_id]
 
 
 # Frozen "now" for the RoutesScreen.tsx dormant check (`activeUntilMs < now`),
@@ -419,18 +448,18 @@ def draw_map(parent, id_prefix, t, asset, rect_xywh, gate_tiers, rider_at=None,
     fraction of the ridden path length to place the rider dot at.
     ground_fill/ground_border: default to the PADDOCK card/cardBorder tokens
     (browse surfaces: Routes/Settings/Demo); record_finished passes the RACE
-    raceCard/raceBorder tokens instead — routeMapView's frame always sits on
+    raceCard/raceBorder tokens instead — wayMapView's frame always sits on
     t.race.bg, never the paddock card colour (theme.ts's two-mode rule).
     rider_fill/rider_stroke: default to the pass-1 convention (ink fill on
     the ground colour, "so it never reads as a scored tier"), used unchanged
     by routes/demo. The RECORD screens (re-emit pass) pass
-    COLORS['riderBlue'] instead — routeMapView.tsx's real WP-E rider-dot
+    COLORS['riderBlue'] instead — wayMapView.tsx's real WP-E rider-dot
     colour, on-route solid riderBlue/white. rider_off_route=True mirrors its
     inverted convention (white fill, colour stroke) when rider_fill is given.
     route_casing/gate_casing (WP-J re-emit fix pass, 2026-08-24): default
     False so pass-1 callers (routes/settings/demo — frozen, never touched by
     this pass) render byte-identically to before. The RECORD screens pass
-    True for both, matching routeMapView.tsx's same-day hotfix: a black
+    True for both, matching wayMapView.tsx's same-day hotfix: a black
     CASING outline under the route line and under every gate tick, so the
     line/ticks read as one continuous solid design language instead of a
     bare colour stroke. gate_casing also changes the unscored-tick colour
@@ -439,7 +468,7 @@ def draw_map(parent, id_prefix, t, asset, rect_xywh, gate_tiers, rider_at=None,
     width/opacity in its earned tier colour — so a genuinely-scored ordinary/
     yellow-tier gate still reads visibly bolder than an unscored one (the
     same D-013/D-030 distinction the app's own hotfix makes; see
-    routeMapView.tsx's gate-ticks layer comment).
+    wayMapView.tsx's gate-ticks layer comment).
     placeholder_size: the schematic-map disclaimer rect's side length in px.
     Default 0 (pass-1's original zero-size leaf, unchanged). The RECORD
     screens pass a small nonzero value so the element is actually selectable
@@ -612,7 +641,7 @@ def draw_theme_pill(parent, t, mode_name: str):
 # byte) changes just because these were added.
 # --------------------------------------------------------------------------
 
-ROUTE_DISPLAY_ID = {
+WAY_DISPLAY_ID = {
     "Morning": "HomeWorkDry",
     "MorningB": "HomeWorkWet",
     "EveningA": "WorkHomeDry",
@@ -623,24 +652,28 @@ ROUTE_DISPLAY_ID = {
 }
 
 
-def route_label(route_id: str) -> str:
-    """Mirrors store/defaultRoute.ts's routeLabel() exactly: the ruled
+def way_label(way_id: str) -> str:
+    """Mirrors store/defaultWay.ts's wayLabel() exactly: the ruled
     display-name overlay (Nathan 2026-08-26) first, then split-on-capitals:
     'Morning' -> 'Home Work Dry', 'WorkChurchA' -> 'Work Church A'
     (no overlay entry, derived unchanged)."""
-    return re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", ROUTE_DISPLAY_ID.get(route_id, route_id))
+    return re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", WAY_DISPLAY_ID.get(way_id, way_id))
 
 
-def route_variant_label(route_id: str, way: dict) -> str:
-    """Mirrors store/defaultRoute.ts's routeVariantLabel() exactly: display id
-    (overlay applied) minus the way's capitalized landmark-id pair, split on
-    capitals — 'Morning' on home>work -> 'Dry', 'StationWorkStd' -> 'Std';
-    falls back to route_label() for any off-convention id."""
-    display = ROUTE_DISPLAY_ID.get(route_id, route_id)
-    prefix = way["startLandmarkId"].capitalize() + way["endLandmarkId"].capitalize()
+def way_variant_label(way_id: str, route: dict) -> str:
+    """Mirrors store/defaultWay.ts's wayVariantLabel() exactly (2-arg case —
+    no specs, not a user-minted id; every fixture way in this script is a
+    seeded one with no specs, so the specs/isUserMintedWayId branches added
+    to the real function never fire against this script's data and are not
+    reproduced here): display id (overlay applied) minus the route's
+    capitalized landmark-id pair, split on capitals — 'Morning' on
+    home>work -> 'Dry', 'StationWorkStd' -> 'Std'; falls back to
+    way_label() for any off-convention id."""
+    display = WAY_DISPLAY_ID.get(way_id, way_id)
+    prefix = route["startLandmarkId"].capitalize() + route["endLandmarkId"].capitalize()
     if display.startswith(prefix) and len(display) > len(prefix):
         return re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", display[len(prefix):])
-    return route_label(route_id)
+    return way_label(way_id)
 
 
 def chip_palette(tier: str, t: dict) -> tuple[str, str, str]:
@@ -714,7 +747,7 @@ def draw_pill_row(parent, id_prefix, t, x, y, max_w, items):
 
 def build_routes(theme_name: str, repo_root: str) -> ET.Element:
     t = THEMES[theme_name]
-    asset = load_route_asset(repo_root, "Morning")
+    asset = load_way_asset(repo_root, "Morning")
     catalog = load_catalog(repo_root)
     svg = new_svg()
 
@@ -758,18 +791,24 @@ def build_routes(theme_name: str, repo_root: str) -> ET.Element:
     }))
     y = card_top + card_h + 24
 
-    text_el(content, "content_ways_heading", 16, y, "WAYS", 12, weight="700",
+    # D0 (virgin-cycle5): heading text corrected to match RoutesScreen.tsx:80
+    # ("ROUTES") verbatim, per WP-3's route/way swap — was "WAYS" pre-swap.
+    # The layout below it (one way expanded with its map/gate-count card) is
+    # otherwise UNTOUCHED here: RoutesScreen.tsx has since gone tap-only with
+    # no expanded row (WP-K) and this card's content now lives on
+    # CatalogDetailScreen instead — that redraw is D2.1, not this pass.
+    text_el(content, "content_routes_heading", 16, y, "ROUTES", 12, weight="700",
             color=t["textDim"], letter_spacing=2, upper=True)
     y += 16
 
     way_top = y
     text_el(content, "content_way_header_label", 30, y + 26, "home → work", 15, color=t["text"])
     text_el(content, "content_way_header_sub", 30, y + 44,
-            "2 routes · asks which one at START", 11.5, color=t["textDim"])
+            "2 ways · asks which one at START", 11.5, color=t["textDim"])
     text_el(content, "content_way_chevron", VB_W - 34, y + 30, "▾", 14, color=t["textDim"], anchor="middle")
 
     ry2 = y + 66
-    text_el(content, "content_route_entry_label", 30, ry2, route_label("Morning"), 13.5, color=t["text"])
+    text_el(content, "content_route_entry_label", 30, ry2, way_label("Morning"), 13.5, color=t["text"])
     text_el(content, "content_route_entry_sub", 30, ry2 + 16,
             "6 ghost laps seeded · 4 sectors · START ~160 m in", 11.5, color=t["textDim"])
 
@@ -784,7 +823,7 @@ def build_routes(theme_name: str, repo_root: str) -> ET.Element:
     }))
 
     text_block(content, "content_footer_note", 16, way_top + way_h + 22,
-                "Route lines are pre-rendered from your own rides, with the measured gates "
+                "Way lines are pre-rendered from your own rides, with the measured gates "
                 "marked. Moving a middle gate keeps lap history comparable; moving START or "
                 "FINISH does not.",
                 10.5, VB_W - 32, color=t["textDim"])
@@ -899,7 +938,7 @@ def build_settings(theme_name: str, repo_root: str) -> ET.Element:
 
 def build_demo(theme_name: str, repo_root: str) -> ET.Element:
     t = THEMES[theme_name]
-    asset = load_route_asset(repo_root, "Morning")
+    asset = load_way_asset(repo_root, "Morning")
     svg = new_svg()
 
     bg = layer(svg, "bg")
@@ -987,7 +1026,7 @@ def build_record_setup(theme_name: str, repo_root: str) -> ET.Element:
     armed/running/ending report fullscreen; recordFlow.ts's isFullscreen()).
     settings defaults: startMode 'auto' (detected start), liveMap true."""
     t = THEMES[theme_name]
-    asset = load_route_asset(repo_root, "Morning")
+    asset = load_way_asset(repo_root, "Morning")
     catalog = load_catalog(repo_root)
     svg = new_svg()
 
@@ -1039,21 +1078,31 @@ def build_record_setup(theme_name: str, repo_root: str) -> ET.Element:
     to_items = [(l["label"], l["id"] == to_id) for l in to_candidates]
     y += draw_pill_row(content, "content_to", t, 20, y, VB_W - 40, to_items) + 10
 
-    way = next(w for w in catalog["ways"]
-               if w["startLandmarkId"] == from_id and w["endLandmarkId"] == to_id)
-    way_routes = [r for r in catalog["routes"] if r["wayId"] == way["id"]]
-    # §8a default: Morning is the only SEEDED (ghost-bearing) route on this
-    # way — the real defaultRouteFor() picks it on ghost count, same result.
-    picked_route_id = "Morning" if any(r["id"] == "Morning" for r in way_routes) else way_routes[0]["id"]
-    if len(way_routes) > 1:
-        text_el(content, "content_flow_route_label", 20, y, "WHICH ROUTE TODAY?", 11, weight="600",
+    # D0 (virgin-cycle5): catalog.seed.json's shape swapped under WP-3 —
+    # "routes" is now the parent (from->to, startLandmarkId/endLandmarkId,
+    # wayIds), "ways" the child (routeId FK) — the reverse of what this block
+    # assumed pre-swap. Fixed to read the current schema; this was a hard
+    # KeyError crash before the fix, not merely a stale label.
+    route = next(r for r in catalog["routes"]
+                 if r["startLandmarkId"] == from_id and r["endLandmarkId"] == to_id)
+    route_ways = [w for w in catalog["ways"] if w["routeId"] == route["id"]]
+    # §8a default: Morning is the only SEEDED (ghost-bearing) way on this
+    # route — the real defaultWayFor() picks it on ghost count, same result.
+    picked_way_id = "Morning" if any(w["id"] == "Morning" for w in route_ways) else route_ways[0]["id"]
+    if len(route_ways) > 1:
+        # RecordScreen.tsx's current label here is "WHICH WAY TODAY?" (was
+        # "WHICH ROUTE TODAY?" pre-WP-3) — fixed as a label-string-only
+        # change per the brief's D0.4 (RoutesScreen exception); the sport
+        # pill row/spec-pick UI RecordScreen.tsx has grown since is a D2.2
+        # layout change, not reproduced here.
+        text_el(content, "content_flow_way_label", 20, y, "WHICH WAY TODAY?", 11, weight="600",
                 color=t["textDim"], letter_spacing=2)
         y += 16
-        route_items = [(route_variant_label(r["id"], way), r["id"] == picked_route_id) for r in way_routes]
+        way_items = [(way_variant_label(w["id"], route), w["id"] == picked_way_id) for w in route_ways]
         # WP-J fix pass (2026-08-24): +8 left the hint's first-line ascender
         # colliding with the pill row's bottom edge — widened to +16.
-        y += draw_pill_row(content, "content_route", t, 20, y, VB_W - 40, route_items) + 16
-        y += text_block(content, "content_route_hint", cx, y,
+        y += draw_pill_row(content, "content_way", t, 20, y, VB_W - 40, way_items) + 16
+        y += text_block(content, "content_way_hint", cx, y,
                          "the pick is intent — ride a different road and the ride scores as the "
                          "road you actually took (§8a)", 12.5, VB_W - 40, color=t["text2"],
                          anchor="middle") + 8
@@ -1082,12 +1131,12 @@ def build_record_armed(theme_name: str, repo_root: str) -> ET.Element:
     """RecordScreen.tsx's 'armed' phase (WP-A2): route picked, location
     shown, nothing started — fullscreen (no tab bar, recordFlow.isFullscreen).
     Route line is drawn solid, casing + yellow core, full stop — matching
-    routeMapView.tsx's 2026-08-24 hotfix (the whole route used to read
+    wayMapView.tsx's 2026-08-24 hotfix (the whole route used to read
     dotted-ahead at 'prestart' via routeSplitFeatures; that split was pulled
     back out on-device after it rendered as broken oversized dash blobs, see
-    the routeMapView.tsx file header)."""
+    the wayMapView.tsx file header)."""
     t = THEMES[theme_name]
-    asset = load_route_asset(repo_root, "Morning")
+    asset = load_way_asset(repo_root, "Morning")
     svg = new_svg()
 
     bg = layer(svg, "bg")
@@ -1150,7 +1199,7 @@ def build_record_running(theme_name: str, repo_root: str) -> ET.Element:
     not yet reached. settings.redLight defaults to 'auto', so the manual
     red-light button is not shown (§18)."""
     t = THEMES[theme_name]
-    asset = load_route_asset(repo_root, "Morning")
+    asset = load_way_asset(repo_root, "Morning")
     svg = new_svg()
 
     bg = layer(svg, "bg")
@@ -1172,7 +1221,7 @@ def build_record_running(theme_name: str, repo_root: str) -> ET.Element:
     fixed_total = GAP1 + CONTEXT_H + CLOCK_H + STRIP_H + STRIP_GAP + STATUS_GAP + PAUSE_GAP + PAUSE_H + BOTTOM_PAD
     map_h = VB_H - TOP_PAD - fixed_total
 
-    # Route line solid, casing + yellow core, full stop — routeMapView.tsx's
+    # Route line solid, casing + yellow core, full stop — wayMapView.tsx's
     # 2026-08-24 hotfix (see build_record_armed's docstring for why the
     # earlier dotted-ahead split was pulled back out; rider_ahead_dotted is
     # therefore False here too, not just at prestart).
@@ -1207,7 +1256,7 @@ def build_record_running(theme_name: str, repo_root: str) -> ET.Element:
                          tier, lbl, tval, current)
     y += STRIP_H + STRIP_GAP
 
-    text_el(content, "content_status_line", VB_W / 2, y + 12, route_label("Morning").upper() + " · ROUTE LOCKED", 12,
+    text_el(content, "content_status_line", VB_W / 2, y + 12, way_label("Morning").upper() + " · ROUTE LOCKED", 12,
             weight="600", color=t["textDim"], anchor="middle", letter_spacing=1.5, upper=True)
     y += STATUS_GAP + PAUSE_GAP
 
@@ -1227,8 +1276,8 @@ def build_record_finished(theme_name: str, repo_root: str) -> ET.Element:
     'running' phase (recordFlow.ts), but the live engine has reached
     st.phase==='finished': the LAP result takes the big slot terminally
     (liveView.tsx) and the map unlocks (liveState 'finished' releases
-    routeMapView back to browse framing). Route line + gate ticks: solid
-    casing + core, matching routeMapView.tsx's 2026-08-24 hotfix (see
+    wayMapView back to browse framing). Route line + gate ticks: solid
+    casing + core, matching wayMapView.tsx's 2026-08-24 hotfix (see
     build_record_armed's docstring). All 4 sectors now scored.
     WP-J fix pass (2026-08-24): the prior pass omitted the P-position chip,
     reading live/towerSource.ts's stale header comment ("B-28 UNBUILT") at
@@ -1240,7 +1289,7 @@ def build_record_finished(theme_name: str, repo_root: str) -> ET.Element:
     (here-blank, matching st.phase==='finished' → contextLabel='') context
     line liveView.tsx always reserves above the big slot."""
     t = THEMES[theme_name]
-    asset = load_route_asset(repo_root, "Morning")
+    asset = load_way_asset(repo_root, "Morning")
     svg = new_svg()
 
     bg = layer(svg, "bg")
@@ -1322,7 +1371,7 @@ def build_record_finished(theme_name: str, repo_root: str) -> ET.Element:
                          tier, lbl, tval, False)
     y += STRIP_H + STRIP_GAP
 
-    text_el(content, "content_status_line", VB_W / 2, y + 12, route_label("Morning").upper() + " · ROUTE LOCKED", 12,
+    text_el(content, "content_status_line", VB_W / 2, y + 12, way_label("Morning").upper() + " · ROUTE LOCKED", 12,
             weight="600", color=t["textDim"], anchor="middle", letter_spacing=1.5, upper=True)
     y += STATUS_GAP + PAUSE_GAP
 
@@ -1473,7 +1522,7 @@ def build_result(theme_name: str, repo_root: str) -> ET.Element:
     y += 16
     card1_top = y
     cy = y + 24
-    text_el(content, "content_last_route", VB_W / 2, cy, route_label("Morning"), 13, color=t["textDim"],
+    text_el(content, "content_last_route", VB_W / 2, cy, way_label("Morning"), 13, color=t["textDim"],
             anchor="middle")
     cy += 30
     text_el(content, "content_last_lap", VB_W / 2, cy, "14:02.5", 32, weight="800",
@@ -1566,7 +1615,7 @@ def build_result(theme_name: str, repo_root: str) -> ET.Element:
                "failure. Purple beats your best, green beats your recent average, yellow is an "
                "ordinary lap.", 10.5, VB_W - 32, color=t["textDim"])
 
-    draw_tabbar(svg, t, "RESULT")
+    draw_tabbar(svg, t, "RESULTS")
     return svg
 
 
