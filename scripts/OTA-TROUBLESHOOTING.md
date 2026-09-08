@@ -44,9 +44,28 @@ doing anything else:
 
 - **Diff shows a real native change** (new dependency in package.json, an
   app.json/app.config.js plugin or permission, SDK bump) → this is the
-  fingerprint policy doing its job. Clone `build6.ps1` → `build7.ps1`,
-  run it (costs one EAS build slot), install the new APK; OTA publishing
-  then works against the new build.
+  fingerprint policy doing its job. Clone the highest-numbered
+  `scripts/buildN.ps1` to `build(N+1).ps1` (as of 2026-09-08 that is
+  `build7.ps1` → `build8.ps1`; build 7 was itself the build-6 → build-7
+  fingerprint re-anchor), run it (costs one EAS build slot), install the
+  new APK, then record the new fingerprint in the section below; OTA
+  publishing then works against the new build.
+
+## Known fingerprints by build
+
+- **Build 6** — fingerprint `251ddb86909e5bf8a0ac4842436fdfe64ce8b599`.
+  **Superseded** — do not use for `fingerprint:compare`. It drifted from
+  the tree (package-lock.json expo-updates 56.0.24 → 56.0.25 plus
+  virgin's app.config.js / eas.json additions), which silently blocked
+  OTA publishing until build 7.
+- **Build 7** (commit `03710eb`, the re-anchor build; the currently
+  installed preview APK and the build `publish-preview.ps1` targets) —
+  fingerprint `cc04b4582bf8d69ff768b7e897f786c7a1862e7f`. Confirmed
+  2026-09-08 via `eas-cli build:list --platform android --build-profile
+  preview --limit 1` (build id `223985de-67e1-4c28-99d1-a13b26765f49`);
+  matches the app's Runtime Version, as expected under
+  `runtimeVersion.policy: "fingerprint"`. This is the value to use for
+  `fingerprint:compare` while build 7 remains the installed Preview APK.
 
 ## Other gotchas seen on this machine
 

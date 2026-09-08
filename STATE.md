@@ -181,6 +181,8 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   `empty` explicitly as belt-and-braces. Only `EXPO_PUBLIC_SEED_MODE=shipped` (dev client,
   and the headless test suite via `tests/seedmode_pin.ts`) brings the Leuven seed back.
   Build7's OTA-fingerprint re-anchor is what makes `publish-preview.ps1` usable again.
+  Build 7's fingerprint is `cc04b4582bf8d69ff768b7e897f786c7a1862e7f` (confirmed
+  2026-09-08 via `eas-cli build:list`; recorded in `scripts/OTA-TROUBLESHOOTING.md`).
 - **Gate placement is honestly `origin: 'geometric'`, never `'measured'`.** Sector gates snap
   away from where the *single* reference ride sat stationary — a real proxy, but a one-ride
   proxy, not real traffic-signal data. `product/proposals/ROUTING-AND-SEGMENTATION.md` §3's
