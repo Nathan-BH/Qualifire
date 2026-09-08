@@ -62,6 +62,15 @@ replaced. Vocabulary is post-WP-3: a route is the from→to path, a way is one v
 - **Record build7's fingerprint in `scripts/OTA-TROUBLESHOOTING.md`** — the last cycle4 step
   per `cycles/virgin-cycle4/TOKEN-USAGE.md`, still not done (the seed-flip tail itself landed
   as `09a0aa0`).
+- **STATE.md's "no noise floor" rule is not what ships (virgin-cycle5, 2026-09-08).** STATE.md
+  says a way's first-ever ride should log all-purple sectors and one prior ride should compare
+  purple/yellow. As of this check, `app/src/ui/colourModel.ts` still enforces `MIN_HISTORY = 5`
+  (no colour below five comparable rides) and `app/src/store/routeCreation.ts` (l.24) says
+  deriving ride-1-as-reference into an all-purple first lap is "STILL deferred — a later
+  package." `marketing/index.html`'s noise-floor copy was left matching the code (five-ride
+  floor), per `cycles/virgin-cycle5/BRIEF-website-improvement-plan.md` (c) item 6's own
+  instruction to keep the site on the code's side when the two disagree. Either land the
+  all-purple-first-ride behaviour, or update STATE.md to describe what actually ships.
 
 ## Parked (scoped, not urgent)
 
