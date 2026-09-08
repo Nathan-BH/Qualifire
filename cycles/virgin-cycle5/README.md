@@ -53,6 +53,11 @@ a review + a brief for a future cycle to execute, per Nathan's ask.
 | `marketing/` (website) | `REVIEW-website.md` | `BRIEF-website-improvement-plan.md` (3 positioning options + no-regrets fixes + HYPERFRAMES disposition) |
 | `design/` | `REVIEW-design-folder.md` | `BRIEF-design-folder-plan.md` (D0-D6: repair the generator, add missing screens, re-transcribe changed ones, Nathan's palette call, housekeeping) |
 
+**`QUESTIONS-FOR-NATHAN.md`** collects every open question across all three briefs that needs
+an answer before execution (8 questions: a code-ruling reconfirmation, the website's
+positioning, the hero line, HYPERFRAMES disposition, and the two parallel unresolved palette
+explorations, plus a couple of small parked-or-drop calls) — answer inline there, not in chat.
+
 **Headline findings worth reading even before picking a brief up:**
 
 - **A real bug, not just doc drift:** STATE.md's ground rule says D-045 removed the "fewer
