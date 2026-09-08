@@ -25,9 +25,12 @@
  *    already a raced lap pulled from Nathan's own archive. On a genuinely
  *    blank virgin install the reference ride never raced anything, so
  *    D-045 ruling 1 (2026-08-26, executed NW-1 2026-09-08) gives it NO
- *    colour verdict ('neutral', via colourModel.ts's MIN_HISTORY floor) —
- *    it only earns a rank, once stored, as the comparison point for the
- *    ride after it.
+ *    colour verdict on the day it's ridden ('neutral', via colourModel.ts's
+ *    MIN_HISTORY floor) — it only earns a rank, once stored, as the
+ *    comparison point for the ride after it. Like every stored ride, it
+ *    re-enters the judged pool once later rides exist (B-44 exclusion is
+ *    by id, not by time), so revisiting it later CAN show a colour —
+ *    "no verdict" describes the moment it's ridden, not a permanent flag.
  *
  * Pure — no fs, no Date.now(); the caller supplies every fact.
  */

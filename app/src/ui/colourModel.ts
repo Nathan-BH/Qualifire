@@ -40,10 +40,16 @@ export const WINDOW_PREV = WINDOW_N - 1;
  * executed NW-1 2026-09-08) dropped this from 5 to 1 — a way's reference
  * ride (`Way.referenceRideId`, `store/routeCreation.ts`) has n=0 prior
  * rides and lands here same as any thinner-than-floor history, going
- * 'neutral' with no special-casing in `tierFor`: it did not race anything,
- * so it earns no verdict. It still gets RANKED once stored (see
- * `rankLineFor`/`getLiveTowerPosition`) — rank and colour are independent
- * facts, and only colour reads this floor. */
+ * 'neutral' with no special-casing in `tierFor`: on the day it's ridden it
+ * did not race anything, so it earns no verdict yet. It still gets RANKED
+ * once stored (see `rankLineFor`/`getLiveTowerPosition`) — rank and colour
+ * are independent facts, and only colour reads this floor. NOTE: like
+ * every stored ride, `ghostsFor`'s window excludes the judged ride BY ID,
+ * not by time (B-44) — so once later rides exist, re-opening the
+ * reference ride's own RESULT judges it against the window same as any
+ * other ride, and it CAN pick up a purple/green/yellow verdict then. The
+ * "no verdict" guarantee is for the moment it's ridden, not a permanent
+ * exemption. */
 export const MIN_HISTORY = 1;
 
 export type UiTier = 'purple' | 'green' | 'neutral' | 'yellow' | 'est';
@@ -144,10 +150,10 @@ export function sectorValues(wayId: string, index: number, excludeRideId?: strin
  * D-008's noise floor survives D-045 ruling 1, just lowered to MIN_HISTORY=1
  * (NW-1, 2026-09-08): too little history means NO verdict at all —
  * 'neutral', which renders as plain ink rather than a colour. n=0 (a way's
- * reference ride, which never raced anything) lands here same as any
- * history thinner than the floor — no special-casing needed. n=1 can only
- * be purple or yellow (best and mean coincide at a pool of one, so green is
- * not reachable until n>=2).
+ * reference ride, on the day it's ridden, before anything else exists to
+ * compare it to) lands here same as any history thinner than the floor —
+ * no special-casing needed. n=1 can only be purple or yellow (best and
+ * mean coincide at a pool of one, so green is not reachable until n>=2).
  */
 export function tierFor(value: number | null, history: number[]): UiTier {
   if (value === null) return 'est';

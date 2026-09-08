@@ -148,11 +148,12 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
 - **Single-user personal app, no accounts, no social, no store distribution** — except
   "someone else can use it from a blank install" is now the top-priority goal above; that's
   a capability, not a multi-user/social pivot.
-- **Scoring:** three colour tiers (purple/green/yellow), F1 palette. No noise floor: a
-  way's first-ever ride logs all-purple sectors (you can't have lost to anyone yet); one
-  prior ride compares purple/yellow; two or more run the full model on the average of that
-  way's rides on record. The ranking window is the 9 most recent previous rides plus the
-  current one — never a global ranking, never "of 11".
+- **Scoring:** three colour tiers (purple/green/yellow), F1 palette. No noise floor below
+  a single ride (D-045 ruling 1, built as NW-1, 2026-09-08): a way's reference ride (ride 1)
+  gets no colour verdict on the day it's ridden — it earns a rank once stored, but nothing to
+  compare against yet — one prior ride compares purple/yellow only; two or more run the full
+  model on the average of that way's rides on record. The ranking window is the 9 most recent
+  previous rides plus the current one — never a global ranking, never "of 11".
 - **Sectors:** every way has exactly 4, gates at 25/50/75% of the way's distance — never
   scaled by length. Gates snap away from traffic-signal-controlled intersections
   (≥150 m clear) since a gate at a red light corrupts that sector's times. Adjustment UI is
