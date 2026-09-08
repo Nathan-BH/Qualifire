@@ -2,113 +2,83 @@
 
 Short and curated toward one goal: a working prototype Nathan can hand to someone else.
 Rewritten 2026-08-31 replacing the 152-item historical backlog (still on `main`'s
-`product/BACKLOG.md`, unabridged, if something old ever needs a second look — nothing here
-was deleted, just not carried forward). Keep this list current: strike items as they land,
-add new ones as they surface, don't let it grow back into what it replaced.
+`product/BACKLOG.md`, unabridged — nothing was deleted, just not carried forward); reconciled
+against `cycles/virgin-cycle1..4/` on 2026-09-08 (virgin-cycle5). Keep this list current:
+strike items as they land, add new ones as they surface, don't let it grow back into what it
+replaced. Vocabulary is post-WP-3: a route is the from→to path, a way is one variant of it.
 
 ---
 
+## Landed so far — pointers only; the narrative lives in `cycles/`
+
+- 2026-08-31 (branch cut): empty-seed install path; retroactive route creation +
+  ride-1-as-reference; save-flow gates + real reference line; debug export. Briefs in
+  `briefs/` (legacy location — every later cycle keeps its briefs in `cycles/<name>/`).
+- virgin-cycle1 (2026-09-04): delete/reset, sector-coloured trail, gate-card map scrub, ride
+  detail screen, virgin manifest leak and more — `cycles/virgin-cycle1/README.md`.
+- virgin-cycle2 (2026-09-05): 13 WPs from Nathan's 09-03/09-04 test rounds plus most of the
+  old Parked list — `cycles/virgin-cycle2/README.md`.
+- virgin-cycle3 (2026-09-06): way/route inversion, multi-sport, RESULTS tab —
+  `cycles/virgin-cycle3/README.md`.
+- virgin-cycle4 (2026-09-06/08): build7 — Preview rebuilt in place as a permanently
+  blank-seed install, OTA fingerprint re-anchored; dry run clean, real EAS build run by Nathan
+  and completed; seed default flipped to 'empty' — `cycles/virgin-cycle4/README.md`.
+
 ## The virgin-prototype path, in order
 
-1. ~~Empty-seed install path~~ — **DONE 2026-08-31.** The catalog/results store reads at
-   call time, not import time; hardcoded fallbacks resolve to nothing on a blank install
-   instead of leaking Nathan's data; a `virgin` EAS profile exists.
-2. ~~Retroactive way creation + ride-1-as-reference~~ — **DONE 2026-08-31.** Record a ride
-   with no matching landmark/way, name the start and end at STOP, and it becomes a real
-   `Way` + provisional `Route`, marked as its own reference ride. Two briefs
-   (`briefs/BRIEF-retroactive-way-creation.md` + `-part2-ui.md`), independently inspected:
-   PASS WITH FINDINGS, all non-blocking (logged in `STATE.md` -> "Known stubs/footguns").
-   **Still owed:** Nathan's on-device pass (card renders correctly, keyboard doesn't cover
-   the input on the 'ending' screen, a save actually shows up on ROUTES).
-3. ~~Save-flow gate UI + provisional gates~~ — **DONE 2026-08-31.** A freshly-created route
-   now builds a real reference line from the reference ride's own GPS track and seeds 4
-   sector gates at 25/50/75% chainage, nudged away from wherever that ride sat stationary
-   (a zero-network proxy for traffic-signal avoidance — real OSM-signal-based `'measured'`
-   placement is parked below), with tap-then-nudge adjustment per `SETUP-UX.md` §4. Three
-   briefs, independently inspected: PASS WITH FINDINGS, all non-blocking (see `STATE.md` ->
-   "Known stubs/footguns"). **Still owed:** Nathan's on-device pass (adjust card renders and
-   nudges correctly, a route seeded today actually shows 4 sectors on ROUTES/live).
-   A small debug-export mechanism landed alongside it (see item 5 below) so tomorrow's
-   on-device test produces something inspectable afterward.
-4. **Empty-state pass.** "0 rides found", no route lock on ride 1, and whatever DEMO should
-   say when a stranger sees the bundled 'Morning' ride on an otherwise-blank install.
-   (WP-E: DEMO no longer reads the bundled manifest; its copy now says "A real archived
-   commute lap".)
-5. **Whole-app export/import.** ~~Zip the catalog...~~ still parked as described below — but a
-   **smaller debug-export now exists (2026-08-31, part of item 3's work)**: Settings can
-   share `catalog.user.json` and `refs.user.json` directly, and per-ride GPX+ (already
-   existed) carries rich session diagnostics. That covers "get today's state and one ride's
-   trace off the phone for feedback" without needing the full zip/import/overwrite machinery
-   below, which stays scoped for when a lost/replaced phone or a friend's setup actually needs
-   it:
+1. **Build7 — install it and confirm the blank first launch.** The EAS build completed
+   (Nathan, 2026-09-06/07). Not recorded anywhere yet: the APK installed on the phone, first
+   launch showing no sports / no places / no rides, and an OTA publish via
+   `publish-preview.ps1` landing on it. Nathan only.
+   `cycles/virgin-cycle4/BUILD7-PREVIEW-BLANK-SEED.md`.
+2. **Nathan's on-device pass on the post-cycle3 app.** Nothing since the 2026-09-04 test
+   round has been seen on a phone, and cycles 2 and 3 changed most screens. Checklist:
+   the swapped route/way wording reads right everywhere (RECORD, ROUTES, RIDES, RESULTS, the
+   naming card, both detail screens); create a sport, switch sports, the RECORD block message
+   with zero sports; RESULTS board → tap a way → ranked history + scatterplot; the gate-adjust
+   card on the real map (nudge, long-press repeat, start/finish gates) and gate editing on a
+   saved way from ROUTES; `refs.user.json` survives an app restart; WP-B's GPX+ check on the
+   WorkHomeWet/281e ride; overlapping gate tap-targets on an out-and-back ride; whether the
+   old pale-purple contrast bug is really gone (cycle2's code check found no trace). Findings
+   go in a `data/activities/TEST in virgin-app rides/` notes file, as before.
+3. **Empty-state pass.** "0 rides found" and no lock on the first ride of a new route — what
+   the blank Preview says and shows to a stranger before any history exists.
+4. **Whole-app export/import.** Still parked as described below. A smaller debug-export exists
+   (2026-08-31): SETTINGS → DATA shares `catalog.user.json` and `refs.user.json`, and per-ride
+   GPX+ from RIDES carries rich session diagnostics — enough for "get today's state and one
+   ride's trace off the phone for feedback" without the full machinery, which stays scoped for
+   when a lost/replaced phone or a friend's setup actually needs it:
    Zip the catalog, ride-history store, free-ride cache, and settings into one file; a
    checkbox for whether to include raw ride recordings (they're append-only, so this can grow
    large — get a real size estimate before promising it); import is overwrite, not merge,
    gated behind an explicit confirm listing what dies plus an automatic pre-import backup of
    current state. Version-stamp both directions — refuse or migrate an unknown schema, never
    guess. This is what makes a lost/replaced phone, or handing your exact setup to a friend,
-   survivable — separate from item 2 above, which is what lets a total stranger start from
-   nothing.
+   survivable — separate from retroactive route creation, which is what lets a total stranger
+   start from nothing.
 
 ## Parked (scoped, not urgent)
 
-- **`rideDetailModel.ts`'s `lineColourFor` duplicates `chips.tsx`'s `tierLineColour`
-  by hand** (WP-K inspection, 2026-09-04) — the live map injects the real `tierLineColour`
-  as `paint`, but the ride-detail screen still goes through a hand-synced copy since
-  `chips.tsx` can't load headlessly (JSX). Verified byte-equivalent today. Clean fix: move
-  `tierLineColour`/`YELLOW_TIER` into a pure `.ts` module, re-export from `chips.tsx`, pass
-  as `paint` everywhere. Small follow-up WP.
-- **Live gate ticks still recolour by tier (`gateColours`)** — now that sector-coloured
-  spans exist everywhere (WP-K), Nathan's own "gates should not change colour" rule points
-  at retiring that memo too (a one-line `gateColours={undefined}` on the live map). Not
-  done as part of WP-K since it wasn't in that brief's scope; worth a decision.
-- **Free-ride "new>>new" design** — picking an unknown place at *both* ends of a ride has
-  no ratified layout yet. Small-to-medium design pass.
-- **A real contrast bug** — pale purple text on a bare background in the Rides screen's
-  sector rows and the Record screen's gate-colour memo. Small, confirmed by inspection,
-  just needs doing.
-- **Residual GPS re-acquisition hole** — hops ≤245 m can still slip through the live
-  engine's teleport guard uncounted, in theory. Cheap: one field + one line.
-- **Raw-time scoring default, the implementation half** — the *rule* (raw wall-clock time
-  is the default) is settled (see `STATE.md`); colours/ranks still compare moving time in
-  code. Needs the actual switch.
-- **Two small polish items from the way-creation inspection** — the naming card's loop
-  copy always says "one new place" even when the loop starts at an existing landmark
-  (cosmetic); two `wayCreation.ts` matching branches (end-side sliver-reuse, both-endpoints-
-  already-loop) are correct but not directly test-covered.
 - **Real (OSM-signal-based) `'measured'` gate placement.** Today's sector gates snap away from
   the reference ride's own stops — a real but one-ride proxy, honestly flagged
   `origin: 'geometric'`. Getting to `'measured'` needs either a real traffic-signal data
   source (Overpass/OSM query, network + caching design) or the ≥5-clean-rides re-scoring
-  ROUTING-AND-SEGMENTATION §3 describes. Not urgent — geometric gates are usable now.
+  `product/proposals/ROUTING-AND-SEGMENTATION.md` §3 describes. Geometric gates are usable now.
 - **`expo-sharing` native module.** The debug-export share buttons work today via the existing
   SAF/share-text mechanism; a real native share sheet needs an APK rebuild to add the
-  dependency. Cosmetic/convenience upgrade only.
-- **WP-I gate-adjust pad: button labels may overflow on a narrow phone.** The 4-button pad's
-  labels grew from `−10`/`−50` to `−0.1%`/`−1%`; RN rows don't wrap by default, so the row
-  may spill past the card border on a ~360px-wide phone. Suggested fix: `padBtn: { flex: 1,
-  minWidth: 0 }` or similar. Also worth checking: Nathan's wording ("two buttons are big …
-  the smaller ones") may want the ±1% pair visibly larger, not just labelled differently — all
-  four are currently the same size. Needs an on-device look.
-- **WP-I gate-adjust card: overlapping gate hit-areas on an out-and-back ride.** Two gates at
-  mirrored chainages (e.g. outbound km 3 / return km 3) can render on the same pixel on the
-  small card map; their 44px tap targets overlap and only the later-rendered one is reliably
-  tappable. Doesn't affect what can be saved, only which gate a tap selects on that ride
-  shape. Needs an on-device look on a real out-and-back route.
-- **WP-G route-specs on the shipped seed build.** Not built or tested on `main`/shipped
-  (only on `virgin`) — if a shipped seed way ever gains a spec'd variant, several plain seed
-  routes sharing that way would collapse into one grouped pill, hiding all but
-  `defaultRouteFor`'s pick. Only matters if specs are ever added to a shipped way; no action
-  needed on `virgin`.
-
-## Needs Nathan, whenever he gets to it — not blocking
-
-- On-device visual checks the app has been waiting on for a few cycles now (day-mode
-  remount, footer-overlap fix, WP-E's prestart-dotted-preview, `riderBlue` ratification,
-  full both-themes map check).
-- A battery A/B (PNG map rung vs MapLibre, two back-to-back commutes) — needed before any
-  standalone-APK map work leans on the answer either way.
-- The §29 fork (type a destination, get a raceable track) and a handful of route-naming
-  triage calls (station/church/fosh alternates vs detours) — his eye, not a coding task.
-- A few small taste checks that have sat parked for a while: the REF badge, whether the
-  quali-card auto-collapses, real (non-generic) sector names.
+  dependency. Deliberately not part of build7. Cosmetic/convenience upgrade only.
+- **Overlapping gate hit-areas on an out-and-back ride.** Two gates at mirrored chainages can
+  render on the same pixel; only the later-rendered tap target wins. The card has since been
+  redesigned with a zoomable map (cycle2 WP-J), which may already resolve it — on the item 2
+  checklist; fix only if it's still reproducible.
+- **`placeDetailFor` is not sport-scoped** (`CatalogDetailScreen.tsx`): a place's detail can
+  list another sport's routes/ways. Needs a product decision — split "what's listed" from
+  "what's deletable" — before a code fix (cycle3 WP-1 Inspect, non-blocking).
+- **GPX+ naming after WP-3.** Two event-literal renames outside WP-3's scope affect exports of
+  pre-WP-3 rides; a few sub-attributes carry a minor v2 naming inconsistency (cycle3 WP-3
+  Inspect, non-blocking, left as-is on purpose).
+- **Gate-placement prevention (cycle2 WP-B "Part C").** The fix reads fixes in chronological
+  order; nothing yet guards against a future write path reintroducing on-disk-order
+  dependence.
+- **Type a destination and race it (`IDEAS.md` §29).** Product fork, Nathan's call — would
+  need a routing engine, and there is no maintained Expo binding for one.

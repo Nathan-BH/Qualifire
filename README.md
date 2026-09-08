@@ -12,10 +12,12 @@ top-priority goal — see `STATE.md`.
 ## How this repository is organised
 
 `virgin` branch (2026-08-31 onward, the primary line of work): a working-prototype-first
-cut of the project. No named agent roles, no cycle ceremony — just Nathan, a chat, and the
-model-tier pipeline in `process/CONVENTIONS.md`. The full archive-powered original (624-ride
-GPX dataset, its analysis tooling, and the complete decision/backlog history) still lives on
-`main`, untouched.
+cut of the project. No named agent roles and no ceremony — just Nathan, a chat, and the
+model-tier pipeline in `process/CONVENTIONS.md`; work is grouped into `cycles/<name>/`
+folders only so each batch's briefs and findings have one home. The full archive-powered
+original (624-ride GPX dataset, its analysis tooling, and the complete decision/backlog
+history) still lives on `main`, untouched. `legacy-virgin` is a second frozen branch: this
+branch as it was before WP-3 swapped the words "way" and "route" (2026-09-06).
 
 ```
 Qualifire/
@@ -28,8 +30,13 @@ Qualifire/
 ├── CLAUDE.md               Instructions for any Claude session working in this repo.
 │
 ├── app/                 What actually runs on the phone (React Native / Expo).
-├── data/                Just data/activities/TEST in app rides/ — Nathan's own notes from
-│                        app-recorded test rides. The full GPS archive stays on `main`.
+├── briefs/              Legacy: the five 2026-09-01 briefs from the branch cut. Every later
+│                        brief lives inside its cycle folder — nothing new goes here.
+├── cycles/              One folder per work cycle (virgin-cycle1, 2, …): briefs, decisions,
+│                        Inspect findings, token usage. Start with the newest README.md.
+├── data/                data/README.md plus data/activities/TEST in app rides/ and
+│                        TEST in virgin-app rides/ — Nathan's notes and exports from
+│                        app-recorded test rides. The Strava GPS archive lives on `main` only.
 ├── design/              Editable SVG mirror of every app screen (Nathan's Inkscape round-trip).
 ├── Nathan/              Nathan's own notes and future plans — agents read-only, never write here.
 ├── process/             CONVENTIONS.md — the model-tier pipeline, honesty rules, file ownership.
@@ -53,6 +60,7 @@ Qualifire/
 
 - Current status, ground rules, known issues → `STATE.md`
 - What's actually left to build → `OPEN-ITEMS.md`
+- What just happened → the newest `cycles/<name>/README.md`
 - The idea → `product/CONCEPT.md`
 - How the app is put together → `HOW-THE-APP-IS-BUILT.md`
 - A word defined → `GLOSSARY.md`
