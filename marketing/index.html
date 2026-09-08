@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Qualifire — the commute, reframed as a qualifying lap.</title>
-<meta name="description" content="Qualifire turns your everyday bike routes into a friendly race against your own last ten rides. Press start, ride, save — a bit better every day.">
+<meta name="description" content="Qualifire splits your everyday rides into sectors and times each one against your own last ten trips on that route. Press start, ride, save — a bit better every day.">
 <style>
   :root{
     /* Paddock — default page mood */
@@ -95,52 +95,8 @@
     border-radius:6px;
     cursor:pointer;
   }
-  .btn-start.small{
-    padding:9px 18px;
-    font-size:.74rem;
-  }
   @media (max-width: 560px){
     .site-header .brand span{ display:none; }
-  }
-
-  /* ---------- DEMO ---------- */
-  #demo{ background:var(--pad-bg); border-top:1px solid var(--pad-border); }
-  .demo-frame{
-    margin-top:40px;
-    background:var(--race-card);
-    border:1px solid var(--race-border);
-    border-radius:14px;
-    min-height:600px;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    gap:16px;
-    position:relative;
-    overflow:hidden;
-    padding:28px 20px;
-  }
-  .demo-mockup-frame{
-    width:390px;
-    max-width:100%;
-    height:min(840px, 78vh);
-    min-height:560px;
-    border:none;
-    border-radius:26px;
-    background:#0d0d0f;
-    box-shadow: 0 20px 60px -20px rgba(0,0,0,.6);
-  }
-  .demo-caption{
-    margin:0;
-    font-size:.78rem;
-    text-transform:uppercase;
-    letter-spacing:.12em;
-    color:var(--grey);
-    text-align:center;
-  }
-  @media (max-width:760px){
-    .demo-frame{ min-height:520px; padding:22px 12px; }
-    .demo-mockup-frame{ height:min(720px, 82vh); }
   }
 
   .num{
@@ -501,18 +457,6 @@
   .sector-card.tier-green .time{ color:var(--green); }
   .sector-card.tier-yellow .time{ color:var(--yellow); }
 
-  .ideal-line{
-    margin-top:20px;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:16px 20px;
-    border:1px dashed var(--pad-border);
-    border-radius:10px;
-    color:var(--grey);
-  }
-  .ideal-line .time{ color:var(--grey); font-size:1.1rem; }
-
   /* ---------- PHILOSOPHY ---------- */
   #philosophy{
     background:var(--pad-recessed);
@@ -577,7 +521,6 @@
   </a>
   <div class="actions">
     <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false">☀️ Day</button>
-    <a class="btn-start small" href="#demo">Try it out</a>
   </div>
 </header>
 
@@ -615,7 +558,7 @@
       <div class="step">
         <div class="n">2</div>
         <h4>Invisible gates split it into sectors</h4>
-        <p>Lines drawn perpendicular across your path, downstream of junctions, never at stop lines. You never see them. You only feel the moment one falls behind you.</p>
+        <p>Lines drawn perpendicular across your path, placed at the quarter points of your route and nudged away from anywhere your reference ride stood still — a red light, a crossing. You never see them. You only feel the moment one falls behind you.</p>
       </div>
       <div class="step">
         <div class="n">3</div>
@@ -645,38 +588,6 @@
   </div>
 </section>
 
-<!-- ================= DEMO ================= -->
-<section id="demo">
-  <div class="wrap">
-    <div class="kicker">Try it live</div>
-    <h2>See a lap before you ride one</h2>
-    <p class="wrap-narrow" style="font-size:1rem;">Get a feel for the app right here — no install, no account, just a taste of what pressing start actually looks like.</p>
-
-    <!--
-      LIVE DEMO — embeds the real interactive mockup (demos/mockup.html) via
-      iframe rather than inlining its markup/CSS/JS here. The mockup ships
-      its own :root variables, a bare `body{background:#000}` rule, and
-      reused class/id names (.card, .btn, .clock, .slot, #screen, #map,
-      global start()/stop()/render() functions, a document-level click
-      delegate) that would collide with this page's own styles and scripts
-      if pasted in place. The iframe keeps the mockup fully self-contained
-      and untouched — same functionality, zero collision risk. Lazy-loaded
-      so it doesn't slow down first paint. Path assumes marketing/index.html
-      and demos/mockup.html keep their sibling-folder layout on deploy.
-    -->
-    <div class="demo-frame">
-      <iframe
-        class="demo-mockup-frame"
-        src="../demos/mockup.html"
-        title="Qualifire interactive app mockup — press START to try a simulated lap"
-        loading="lazy"
-        referrerpolicy="no-referrer"
-      ></iframe>
-      <p class="demo-caption">Interactive — press START, then poke around Rides / Routes / Settings</p>
-    </div>
-  </div>
-</section>
-
 <!-- ================= LIVE / RACE MODE ================= -->
 <section id="live">
   <div class="wrap">
@@ -700,7 +611,7 @@
     <div class="race-caption">
       <div><strong>One glance, maximum.</strong> Never a stare.</div>
       <div><strong>Zero touch targets</strong> while moving.</div>
-      <div><strong>Sound carries the story</strong> — E-major earcons, not a screen you're meant to read.</div>
+      <div><strong>A buzz at every gate</strong> — never a screen you're meant to read.</div>
     </div>
   </div>
 </section>
@@ -710,7 +621,7 @@
   <div class="wrap">
     <div class="kicker">Earned colour</div>
     <h2>How today's ride gets its colour.</h2>
-    <p class="wrap-narrow" style="font-size:1rem;">Every sector is measured against a comparison window: your last <strong style="color:var(--ink);">10</strong> rides on that exact track.</p>
+    <p class="wrap-narrow" style="font-size:1rem;">Every sector is measured against a comparison window: your last <strong style="color:var(--ink);">10</strong> rides on that exact route.</p>
 
     <div class="swatches">
       <div class="swatch purple">
@@ -731,7 +642,7 @@
     </div>
 
     <div class="noise-floor">
-      <p>Colour only shows once there's enough history to trust it — a result should never come down to luck-of-the-GPS. Fewer than five comparable rides on a track and the sector simply stays plain ink, no colour yet, until there's enough to compare against.</p>
+      <p>Colour only shows once there's enough history to trust it — a result should never come down to luck-of-the-GPS. Fewer than five comparable rides on a route and the sector simply stays plain ink, no colour yet, until there's enough to compare against.</p>
     </div>
   </div>
 </section>
@@ -741,7 +652,7 @@
   <div class="wrap">
     <div class="kicker">After you ride</div>
     <h2>The timing tower</h2>
-    <p class="wrap-narrow" style="font-size:1rem;">No delta plot. Your lap slots into a ranked classification of your own last rides on this track — exactly where it landed, nothing dressed up.</p>
+    <p class="wrap-narrow" style="font-size:1rem;">No delta plot. Your lap slots into a ranked classification of your own last rides on this route — exactly where it landed, nothing dressed up.</p>
 
     <div class="tower-head">
       <div class="headline">Today: <span class="num">P2</span> of your last <span class="num">10</span> commutes</div>
@@ -751,9 +662,9 @@
     <div class="tower-list">
       <div class="tower-row">
         <div class="pos num">P1</div>
-        <div>Reference lap</div>
-        <div class="time num">14:19.4</div>
-        <div class="badge">REF</div>
+        <div>—</div>
+        <div class="time num">14:19.4<span style="color:var(--purple);" aria-hidden="true"> ●</span></div>
+        <div></div>
       </div>
       <div class="tower-row today">
         <div class="pos num">P2</div>
@@ -799,11 +710,6 @@
         <div class="time num">4:20.0</div>
       </div>
     </div>
-
-    <div class="ideal-line">
-      <div class="label" style="margin:0;">Ideal lap · best sectors combined, untiered</div>
-      <div class="time num">13:58.2</div>
-    </div>
   </div>
 </section>
 
@@ -826,8 +732,8 @@
       </svg>
       <span>QUALIFIRE</span>
     </div>
-    <p>Qualifire is a personal project. Your own routes, your own history, zero servers. It runs off a single archive of one person's own commute data and exists to make an ordinary ride worth riding again — nothing more.</p>
-    <p class="fine">Not available on any app store. Not a company. Not for sale. This page is a mock, built to show what the app looks and feels like, not to sell it to anyone but its one user.</p>
+    <p>Qualifire is a personal project. Your own routes, your own history, zero servers. It exists to make an ordinary ride worth riding again — nothing more.</p>
+    <p class="fine">Not available on any app store. Not a company. Not for sale. This page is a mock, built to show what the app looks and feels like.</p>
   </div>
 </footer>
 
