@@ -20,3 +20,18 @@ executed nothing beyond documented chores.
 **Total subagent tokens (tracked dispatches only):** ~804,000
 
 **Commits landed:** `eeab73f`, `210abdd`, `9497f66` on `virgin`, local only — push to `origin/virgin` failed with a `403` from this device's proxy (network restriction, not credential/repo issue); 3 commits ahead of origin, push manually when convenient.
+
+## Part 2 — product/design/website review (planning only)
+
+| Tier | Model | Mandate | Tokens | Outcome |
+|---|---|---|---|---|
+| Chore (coordinator, direct) | Sonnet (this session) | Recon: locate the website (found on `main` as `marketing/`, absent on `virgin`); inventory `product/` and `design/` | untracked (chore) | Confirmed scope for the 3 digests below; copied `marketing/` to `virgin` unchanged (`0fb4a1c`) |
+| Digest | Haiku | Condense `product/` docs (8 files + proposals/ + brand/) into a factual, line-anchored digest | 134,151 (+ one follow-up reply for the full per-file breakdown, not separately metered) | Digest used for the product-docs review/brief |
+| Digest | Haiku | Condense `design/` and `marketing/` into a factual digest | 82,366 | Digest used for both the design and website reviews/briefs |
+| Plan (brief) | Fable | Review + brief for `product/` doc cleanup and new work packages | 236,325 | `REVIEW-product-docs.md`, `BRIEF-product-docs-cleanup.md` (11 doc WPs + 3 new non-doc WPs); found the `MIN_HISTORY=5` vs. STATE.md D-045 contradiction and the dangling BACKLOG/DECISIONS/superseded/ references |
+| Plan (brief) | Fable | Review + improvement plan for the website (`marketing/`) | 107,100 | `REVIEW-website.md`, `BRIEF-website-improvement-plan.md`; found 3 factual breaks beyond the digest (dead demo link, unshipped earcons, wrong reference-lap tower mockup) |
+| Plan (brief) | Fable | Review + forward plan for `design/` | 104,887 | `REVIEW-design-folder.md`, `BRIEF-design-folder-plan.md`; found the generator script would crash as-is (renamed source files) |
+| Chore (coordinator, direct) | Sonnet (this session) | Drop stale "uncommitted" flags in STATE.md/OPEN-ITEMS.md now that Nathan's `09a0aa0` landed; write this README/TOKEN-USAGE update | untracked (chore) | Commit `eb2e2da`; this commit |
+
+**Part 2 total (tracked dispatches):** ~665,000 tokens
+**Cycle grand total (Part 1 + Part 2, tracked dispatches):** ~1,469,000 tokens
