@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844" width="390" height="844">
+  <g id="bg" inkscape:label="bg" inkscape:groupmode="layer">
+    <rect id="bg_ground" inkscape:label="bg_ground" x="0" y="0" width="390" height="844" fill="#17171b" />
+  </g>
+  <g id="content" inkscape:label="content" inkscape:groupmode="layer">
+    <text id="content_back" inkscape:label="content_back" x="16" y="24" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="700" fill="#9a978f" text-anchor="start">‹ BACK</text>
+    <text id="content_top_title" inkscape:label="content_top_title" x="195" y="24" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="15" font-weight="800" fill="#F4F2EC" text-anchor="middle" letter-spacing="2" style="text-transform:uppercase">RESULTS</text>
+    <text id="content_top_count" inkscape:label="content_top_count" x="374" y="24" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="400" fill="#9a978f" text-anchor="end">10 rides</text>
+    <text id="content_way_name" inkscape:label="content_way_name" x="16" y="50" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="22" font-weight="800" fill="#F4F2EC" text-anchor="start">Home Work Dry</text>
+    <text id="content_window_heading" inkscape:label="content_window_heading" x="16" y="80" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="700" fill="#9a978f" text-anchor="start" letter-spacing="2" style="text-transform:uppercase">LAST 9 RIDES</text>
+    <text id="content_window_hint_l1" inkscape:label="content_window_hint_l1" x="16" y="98" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="400" fill="#9a978f" text-anchor="start">purple = fastest of these · green / yellow = faster /</text>
+    <text id="content_window_hint_l2" inkscape:label="content_window_hint_l2" x="16" y="113.6" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="400" fill="#9a978f" text-anchor="start">slower than their average</text>
+    <g id="content_plot" inkscape:label="content_plot">
+      <rect id="content_plot_frame_bg" inkscape:label="content_plot_frame_bg" x="16" y="137.2" width="358" height="298" fill="none" stroke="#41414c" stroke-width="1" rx="16" />
+      <text id="content_plot_ytick_1" inkscape:label="content_plot_ytick_1" x="64" y="177.98" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10" font-weight="400" fill="#9a978f" text-anchor="end">13:50</text>
+      <text id="content_plot_ytick_2" inkscape:label="content_plot_ytick_2" x="64" y="221.17" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10" font-weight="400" fill="#9a978f" text-anchor="end">14:00</text>
+      <text id="content_plot_ytick_4" inkscape:label="content_plot_ytick_4" x="64" y="307.55" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10" font-weight="400" fill="#9a978f" text-anchor="end">14:20</text>
+      <text id="content_plot_ytick_5" inkscape:label="content_plot_ytick_5" x="64" y="350.74" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10" font-weight="400" fill="#9a978f" text-anchor="end">14:30</text>
+      <text id="content_plot_avg_label" inkscape:label="content_plot_avg_label" x="64" y="261.96" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10" font-weight="600" fill="#9a978f" text-anchor="end">avg 14:09</text>
+      <line id="content_plot_avg_line" inkscape:label="content_plot_avg_line" x1="68" y1="258.96" x2="366" y2="258.96" stroke="#9a978f" stroke-width="2" stroke-linecap="round" stroke-dasharray="2,4" />
+      <circle id="content_plot_point_1" inkscape:label="content_plot_point_1" cx="80" cy="282.95" r="4" fill="#F5C542" />
+      <circle id="content_plot_point_2" inkscape:label="content_plot_point_2" cx="104.18" cy="257.04" r="4" fill="#3ED598" />
+      <circle id="content_plot_point_3" inkscape:label="content_plot_point_3" cx="136.41" cy="226.81" r="4" fill="#3ED598" />
+      <circle id="content_plot_point_4" inkscape:label="content_plot_point_4" cx="160.59" cy="308.87" r="4" fill="#F5C542" />
+      <circle id="content_plot_point_5" inkscape:label="content_plot_point_5" cx="192.82" cy="209.53" r="5" fill="#A667F0" />
+      <circle id="content_plot_point_6" inkscape:label="content_plot_point_6" cx="217" cy="270" r="4" fill="#F5C542" />
+      <circle id="content_plot_point_7" inkscape:label="content_plot_point_7" cx="249.24" cy="244.08" r="4" fill="#3ED598" />
+      <circle id="content_plot_point_8" inkscape:label="content_plot_point_8" cx="273.41" cy="295.91" r="4" fill="#F5C542" />
+      <circle id="content_plot_point_9" inkscape:label="content_plot_point_9" cx="354" cy="235.45" r="4" fill="#3ED598" />
+      <text id="content_plot_xtick_1" inkscape:label="content_plot_xtick_1" x="116.26" y="383.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10" font-weight="400" fill="#9a978f" text-anchor="middle">03 Aug</text>
+      <text id="content_plot_xtick_2" inkscape:label="content_plot_xtick_2" x="172.68" y="383.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10" font-weight="400" fill="#9a978f" text-anchor="middle">10 Aug</text>
+      <text id="content_plot_xtick_3" inkscape:label="content_plot_xtick_3" x="229.09" y="383.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10" font-weight="400" fill="#9a978f" text-anchor="middle">17 Aug</text>
+      <text id="content_plot_xtick_4" inkscape:label="content_plot_xtick_4" x="285.5" y="383.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10" font-weight="400" fill="#9a978f" text-anchor="middle">24 Aug</text>
+      <text id="content_plot_xtick_5" inkscape:label="content_plot_xtick_5" x="341.91" y="383.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="10" font-weight="400" fill="#9a978f" text-anchor="middle">31 Aug</text>
+      <line id="content_plot_caption_divider" inkscape:label="content_plot_caption_divider" x1="24" y1="391.2" x2="366" y2="391.2" stroke="#41414c" stroke-width="1" stroke-linecap="round" />
+      <text id="content_plot_caption" inkscape:label="content_plot_caption" x="24" y="409.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12.5" font-weight="400" fill="#9a978f" text-anchor="start">tap a point for that ride</text>
+    </g>
+    <text id="content_board_heading" inkscape:label="content_board_heading" x="16" y="451.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="700" fill="#9a978f" text-anchor="start" letter-spacing="2" style="text-transform:uppercase">ALL 10 RIDES · fastest first</text>
+    <g id="content_board_row_1" inkscape:label="content_board_row_1">
+      <text id="content_board_row_1_pos" inkscape:label="content_board_row_1_pos" x="16" y="484.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#9a978f" text-anchor="start" style="font-variant-numeric:tabular-nums">P1</text>
+      <text id="content_board_row_1_date" inkscape:label="content_board_row_1_date" x="52" y="484.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#9a978f" text-anchor="start">Wed 12 Aug</text>
+      <circle id="content_board_row_1_pbdot" inkscape:label="content_board_row_1_pbdot" cx="282" cy="480.2" r="3" fill="#A667F0" />
+      <text id="content_board_row_1_time" inkscape:label="content_board_row_1_time" x="294" y="484.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#F4F2EC" text-anchor="end" style="font-variant-numeric:tabular-nums">13:58</text>
+      <text id="content_board_row_1_gap" inkscape:label="content_board_row_1_gap" x="374" y="484.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="400" fill="#9a978f" text-anchor="end" style="font-variant-numeric:tabular-nums">—</text>
+    </g>
+    <line id="content_board_row_1_divider" inkscape:label="content_board_row_1_divider" x1="16" y1="489.2" x2="374" y2="489.2" stroke="#41414c" stroke-width="1" stroke-linecap="round" />
+    <g id="content_board_row_2" inkscape:label="content_board_row_2">
+      <text id="content_board_row_2_pos" inkscape:label="content_board_row_2_pos" x="16" y="514.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#9a978f" text-anchor="start" style="font-variant-numeric:tabular-nums">P2</text>
+      <text id="content_board_row_2_date" inkscape:label="content_board_row_2_date" x="52" y="514.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#9a978f" text-anchor="start">Wed 05 Aug</text>
+      <text id="content_board_row_2_time" inkscape:label="content_board_row_2_time" x="294" y="514.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#F4F2EC" text-anchor="end" style="font-variant-numeric:tabular-nums">14:02</text>
+      <text id="content_board_row_2_gap" inkscape:label="content_board_row_2_gap" x="374" y="514.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="400" fill="#9a978f" text-anchor="end" style="font-variant-numeric:tabular-nums">+4s</text>
+    </g>
+    <line id="content_board_row_2_divider" inkscape:label="content_board_row_2_divider" x1="16" y1="519.2" x2="374" y2="519.2" stroke="#41414c" stroke-width="1" stroke-linecap="round" />
+    <g id="content_board_row_3" inkscape:label="content_board_row_3">
+      <text id="content_board_row_3_pos" inkscape:label="content_board_row_3_pos" x="16" y="544.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#9a978f" text-anchor="start" style="font-variant-numeric:tabular-nums">P3</text>
+      <text id="content_board_row_3_date" inkscape:label="content_board_row_3_date" x="52" y="544.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#9a978f" text-anchor="start">Tue 01 Sep</text>
+      <text id="content_board_row_3_time" inkscape:label="content_board_row_3_time" x="294" y="544.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#F4F2EC" text-anchor="end" style="font-variant-numeric:tabular-nums">14:04</text>
+      <text id="content_board_row_3_gap" inkscape:label="content_board_row_3_gap" x="374" y="544.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="400" fill="#9a978f" text-anchor="end" style="font-variant-numeric:tabular-nums">+6s</text>
+    </g>
+    <line id="content_board_row_3_divider" inkscape:label="content_board_row_3_divider" x1="16" y1="549.2" x2="374" y2="549.2" stroke="#41414c" stroke-width="1" stroke-linecap="round" />
+    <g id="content_board_row_4" inkscape:label="content_board_row_4">
+      <text id="content_board_row_4_pos" inkscape:label="content_board_row_4_pos" x="16" y="574.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#9a978f" text-anchor="start" style="font-variant-numeric:tabular-nums">P4</text>
+      <text id="content_board_row_4_date" inkscape:label="content_board_row_4_date" x="52" y="574.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#9a978f" text-anchor="start">Wed 19 Aug</text>
+      <text id="content_board_row_4_time" inkscape:label="content_board_row_4_time" x="294" y="574.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#F4F2EC" text-anchor="end" style="font-variant-numeric:tabular-nums">14:06</text>
+      <text id="content_board_row_4_gap" inkscape:label="content_board_row_4_gap" x="374" y="574.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="400" fill="#9a978f" text-anchor="end" style="font-variant-numeric:tabular-nums">+8s</text>
+    </g>
+    <line id="content_board_row_4_divider" inkscape:label="content_board_row_4_divider" x1="16" y1="579.2" x2="374" y2="579.2" stroke="#41414c" stroke-width="1" stroke-linecap="round" />
+    <g id="content_board_row_5" inkscape:label="content_board_row_5">
+      <text id="content_board_row_5_pos" inkscape:label="content_board_row_5_pos" x="16" y="604.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#9a978f" text-anchor="start" style="font-variant-numeric:tabular-nums">P5</text>
+      <text id="content_board_row_5_date" inkscape:label="content_board_row_5_date" x="52" y="604.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#9a978f" text-anchor="start">Sat 01 Aug</text>
+      <text id="content_board_row_5_time" inkscape:label="content_board_row_5_time" x="294" y="604.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#F4F2EC" text-anchor="end" style="font-variant-numeric:tabular-nums">14:09</text>
+      <text id="content_board_row_5_gap" inkscape:label="content_board_row_5_gap" x="374" y="604.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="400" fill="#9a978f" text-anchor="end" style="font-variant-numeric:tabular-nums">+11s</text>
+    </g>
+    <line id="content_board_row_5_divider" inkscape:label="content_board_row_5_divider" x1="16" y1="609.2" x2="374" y2="609.2" stroke="#41414c" stroke-width="1" stroke-linecap="round" />
+    <g id="content_board_row_6" inkscape:label="content_board_row_6">
+      <text id="content_board_row_6_pos" inkscape:label="content_board_row_6_pos" x="16" y="634.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#9a978f" text-anchor="start" style="font-variant-numeric:tabular-nums">P6</text>
+      <text id="content_board_row_6_date" inkscape:label="content_board_row_6_date" x="52" y="634.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#9a978f" text-anchor="start">Sat 15 Aug</text>
+      <text id="content_board_row_6_time" inkscape:label="content_board_row_6_time" x="294" y="634.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#F4F2EC" text-anchor="end" style="font-variant-numeric:tabular-nums">14:12</text>
+      <text id="content_board_row_6_gap" inkscape:label="content_board_row_6_gap" x="374" y="634.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="400" fill="#9a978f" text-anchor="end" style="font-variant-numeric:tabular-nums">+14s</text>
+    </g>
+    <line id="content_board_row_6_divider" inkscape:label="content_board_row_6_divider" x1="16" y1="639.2" x2="374" y2="639.2" stroke="#41414c" stroke-width="1" stroke-linecap="round" />
+    <g id="content_board_row_7" inkscape:label="content_board_row_7">
+      <text id="content_board_row_7_pos" inkscape:label="content_board_row_7_pos" x="16" y="664.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#9a978f" text-anchor="start" style="font-variant-numeric:tabular-nums">P7</text>
+      <text id="content_board_row_7_date" inkscape:label="content_board_row_7_date" x="52" y="664.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#9a978f" text-anchor="start">Wed 29 Jul</text>
+      <text id="content_board_row_7_time" inkscape:label="content_board_row_7_time" x="294" y="664.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#F4F2EC" text-anchor="end" style="font-variant-numeric:tabular-nums">14:15</text>
+      <text id="content_board_row_7_gap" inkscape:label="content_board_row_7_gap" x="374" y="664.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="400" fill="#9a978f" text-anchor="end" style="font-variant-numeric:tabular-nums">+17s</text>
+    </g>
+    <line id="content_board_row_7_divider" inkscape:label="content_board_row_7_divider" x1="16" y1="669.2" x2="374" y2="669.2" stroke="#41414c" stroke-width="1" stroke-linecap="round" />
+    <g id="content_board_row_8" inkscape:label="content_board_row_8">
+      <text id="content_board_row_8_pos" inkscape:label="content_board_row_8_pos" x="16" y="694.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#9a978f" text-anchor="start" style="font-variant-numeric:tabular-nums">P8</text>
+      <text id="content_board_row_8_date" inkscape:label="content_board_row_8_date" x="52" y="694.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#9a978f" text-anchor="start">Sat 22 Aug</text>
+      <text id="content_board_row_8_time" inkscape:label="content_board_row_8_time" x="294" y="694.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#F4F2EC" text-anchor="end" style="font-variant-numeric:tabular-nums">14:18</text>
+      <text id="content_board_row_8_gap" inkscape:label="content_board_row_8_gap" x="374" y="694.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="400" fill="#9a978f" text-anchor="end" style="font-variant-numeric:tabular-nums">+20s</text>
+    </g>
+    <line id="content_board_row_8_divider" inkscape:label="content_board_row_8_divider" x1="16" y1="699.2" x2="374" y2="699.2" stroke="#41414c" stroke-width="1" stroke-linecap="round" />
+    <g id="content_board_row_9" inkscape:label="content_board_row_9">
+      <text id="content_board_row_9_pos" inkscape:label="content_board_row_9_pos" x="16" y="724.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#9a978f" text-anchor="start" style="font-variant-numeric:tabular-nums">P9</text>
+      <text id="content_board_row_9_date" inkscape:label="content_board_row_9_date" x="52" y="724.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#9a978f" text-anchor="start">Sat 08 Aug</text>
+      <text id="content_board_row_9_time" inkscape:label="content_board_row_9_time" x="294" y="724.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#F4F2EC" text-anchor="end" style="font-variant-numeric:tabular-nums">14:21</text>
+      <text id="content_board_row_9_gap" inkscape:label="content_board_row_9_gap" x="374" y="724.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="400" fill="#9a978f" text-anchor="end" style="font-variant-numeric:tabular-nums">+23s</text>
+    </g>
+    <line id="content_board_row_9_divider" inkscape:label="content_board_row_9_divider" x1="16" y1="729.2" x2="374" y2="729.2" stroke="#41414c" stroke-width="1" stroke-linecap="round" />
+    <g id="content_board_row_10" inkscape:label="content_board_row_10">
+      <text id="content_board_row_10_pos" inkscape:label="content_board_row_10_pos" x="16" y="754.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="700" fill="#9a978f" text-anchor="start" style="font-variant-numeric:tabular-nums">P10</text>
+      <text id="content_board_row_10_date" inkscape:label="content_board_row_10_date" x="52" y="754.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="13" font-weight="400" fill="#9a978f" text-anchor="start">Sat 25 Jul</text>
+      <text id="content_board_row_10_time" inkscape:label="content_board_row_10_time" x="294" y="754.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="14" font-weight="400" fill="#F4F2EC" text-anchor="end" style="font-variant-numeric:tabular-nums">14:23</text>
+      <text id="content_board_row_10_gap" inkscape:label="content_board_row_10_gap" x="374" y="754.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12" font-weight="400" fill="#9a978f" text-anchor="end" style="font-variant-numeric:tabular-nums">+25s</text>
+    </g>
+    <g id="content_back_button" inkscape:label="content_back_button">
+      <rect id="content_back_button_bg" inkscape:label="content_back_button_bg" x="100" y="783.2" width="190" height="40" fill="#F5C542" rx="10" />
+      <text id="content_back_button_label" inkscape:label="content_back_button_label" x="195" y="808.2" font-family="Inter, 'Segoe UI', system-ui, sans-serif" font-size="12.5" font-weight="800" fill="#17171b" text-anchor="middle" letter-spacing="1">BACK TO RESULTS</text>
+    </g>
+  </g>
+</svg>

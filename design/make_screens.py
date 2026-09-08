@@ -69,6 +69,7 @@ import os
 import re
 import sys
 import xml.etree.ElementTree as ET
+from datetime import datetime, timedelta, timezone
 
 # --------------------------------------------------------------------------
 # canvas / namespaces
@@ -127,11 +128,13 @@ THEMES = {
 
 TABS = ["RECORD", "RIDES", "ROUTES", "RESULTS", "SETTINGS", "DEMO"]
 
-# All 9 screens are implemented as of the re-emit pass (see module docstring).
+# D1 (virgin-cycle5, 2026-09-08): added results/results_detail (new — see
+# module docstring). D2 renames result -> ride_detail separately.
 IMPLEMENTED = [
     "routes", "settings", "demo",
     "record_setup", "record_armed", "record_running", "record_finished",
     "rides", "result",
+    "results", "results_detail",
 ]
 DEFERRED: list[str] = []
 
@@ -739,6 +742,253 @@ def draw_pill_row(parent, id_prefix, t, x, y, max_w, items):
                 color=t["accentText"] if active else t["textDim"], anchor="middle")
         cx += w + gap
     return (cy - y) + pill_h
+
+
+# --------------------------------------------------------------------------
+# D1 (virgin-cycle5, 2026-09-08): RESULTS tab helpers — a faithful Python
+# mirror of resultsPlotModel.ts's buildPlotModel() (never a hand-sketched
+# scatter), plus colourModel.fmt()/towerModel.towerDate() re-transcribed so
+# the RESULTS screens' placeholder times/dates print in the app's own
+# formats. Kept in its own block, separate from the pass-1/re-emit-pass
+# helpers above, since nothing before D1 needs a time-series plot.
+# --------------------------------------------------------------------------
+
+def fmt_time(s: float, decimals: int = 0) -> str:
+    """Mirrors colourModel.ts's fmt() exactly: round BEFORE splitting
+    minutes (rounding after produces "9:60"-style overflow)."""
+    if decimals == 1:
+        whole = math.floor(s * 10) / 10
+    else:
+        whole = float(round(s))
+    m = math.floor(whole / 60)
+    rest = whole - m * 60
+    sec = ("%.1f" % rest) if decimals == 1 else str(int(round(rest)))
+    pad = "0" if rest < 10 else ""
+    return f"{int(m)}:{pad}{sec}"
+
+
+_WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+_DAY_MS = 86_400_000
+
+
+def _dt_ms(y: int, mo: int, d: int, h: int = 12) -> float:
+    """A fixture ride's timestamp, ms since epoch, UTC noon (the hour is
+    arbitrary — only relative spacing/weekday matter for these placeholder
+    rides, never a real one — README rule)."""
+    return datetime(y, mo, d, h, tzinfo=timezone.utc).timestamp() * 1000.0
+
+
+def tower_date(ms: float) -> str:
+    """Mirrors towerModel.ts's towerDate() exactly: 'Tue 05 Aug'. getDay()
+    (JS, Sun=0) <-> Python's weekday() (Mon=0) via (weekday()+1) % 7."""
+    d = datetime.fromtimestamp(ms / 1000.0, tz=timezone.utc)
+    dow = (d.weekday() + 1) % 7
+    return f"{_WEEKDAYS[dow]} {d.day:02d} {_MONTHS[d.month - 1]}"
+
+
+# ------------------------------------------------ resultsPlotModel.ts mirror
+
+PLOT_N = 9  # colourModel.ts's WINDOW_PREV (WINDOW_N=10 minus the judged ride)
+PAD_L, PAD_R = 12.0, 12.0
+PLOT_H = 220.0
+GUTTER_W = 44.0
+MIN_SPAN_S = 30.0
+MIN_SPAN_FRAC = 0.05
+PAD_FRAC = 0.10
+TICK_STEPS_S = [5, 10, 15, 20, 30, 60, 120, 300, 600, 900]
+MAX_Y_TICKS = 5
+MAX_X_TICKS = 6
+WEEKLY_TICKS_UNDER_DAYS = 45
+LABEL_COLLISION_PX = 12.0
+POINT_R = 4.0
+FASTEST_R = 5.0
+
+
+def _mean(values: list[float]) -> float:
+    return sum(values) / len(values)
+
+
+def _median(values: list[float]) -> float:
+    s = sorted(values)
+    n = len(s)
+    mid = n // 2
+    return (s[mid - 1] + s[mid]) / 2 if n % 2 == 0 else s[mid]
+
+
+def fit_domain(times: list[float]) -> tuple[float, float, float]:
+    """Mirrors fitDomain(): the window's own range widened to include the
+    mean, floored to a minimum span, then padded 10% each side."""
+    mean_s = _mean(times)
+    with_mean = times + [mean_s]
+    lo, hi = min(with_mean), max(with_mean)
+    span = hi - lo
+    min_span = max(MIN_SPAN_S, MIN_SPAN_FRAC * _median(times))
+    if span < min_span:
+        mid = (lo + hi) / 2
+        lo, hi = mid - min_span / 2, mid + min_span / 2
+        span = min_span
+    pad = PAD_FRAC * span
+    return lo - pad, hi + pad, mean_s
+
+
+def tone_for(times: list[float], mean_s: float) -> list[str]:
+    """Mirrors toneFor(): 'fastest' = the minimum (ties: oldest/first
+    occurrence); else faster/slower than the window's own mean."""
+    min_t = min(times)
+    fastest_idx = times.index(min_t)
+    return ["fastest" if i == fastest_idx else ("faster" if t < mean_s else "slower")
+            for i, t in enumerate(times)]
+
+
+def _x_at(ms: float, t_oldest: float, t_newest: float, plot_w: float) -> float:
+    denom = t_newest - t_oldest
+    if denom == 0:
+        return plot_w - PAD_R
+    return PAD_L + ((ms - t_oldest) / denom) * (plot_w - PAD_L - PAD_R)
+
+
+def _y_at(time_s: float, y_min: float, y_max: float) -> float:
+    return ((time_s - y_min) / (y_max - y_min)) * PLOT_H
+
+
+def _tick_count_for_step(y_min: float, y_max: float, step: float) -> int:
+    first = math.ceil(y_min / step) * step
+    count = 0
+    v = first
+    while v <= y_max + 1e-9:
+        count += 1
+        v += step
+    return count
+
+
+def build_y_ticks(y_min: float, y_max: float, mean_y: float) -> list[tuple[float, str | None]]:
+    step = TICK_STEPS_S[-1]
+    for cand in TICK_STEPS_S:
+        if _tick_count_for_step(y_min, y_max, cand) <= MAX_Y_TICKS:
+            step = cand
+            break
+    first = math.ceil(y_min / step) * step
+    ticks: list[tuple[float, str | None]] = []
+    v = first
+    while v <= y_max + 1e-9:
+        at = _y_at(v, y_min, y_max)
+        label = None if abs(at - mean_y) <= LABEL_COLLISION_PX else fmt_time(v)
+        ticks.append((at, label))
+        v += step
+    return ticks
+
+
+def _add_months(y: int, mo: int, n: int) -> tuple[int, int]:
+    idx = (mo - 1) + n
+    return y + idx // 12, idx % 12 + 1
+
+
+def _month_boundaries_in_range(from_ms: float, to_ms: float) -> list[float]:
+    start = datetime.fromtimestamp(from_ms / 1000.0, tz=timezone.utc)
+    y, mo = start.year, start.month
+    d_ms = datetime(y, mo, 1, tzinfo=timezone.utc).timestamp() * 1000.0
+    if d_ms < from_ms:
+        y, mo = _add_months(y, mo, 1)
+        d_ms = datetime(y, mo, 1, tzinfo=timezone.utc).timestamp() * 1000.0
+    out: list[float] = []
+    while d_ms <= to_ms:
+        out.append(d_ms)
+        y, mo = _add_months(y, mo, 1)
+        d_ms = datetime(y, mo, 1, tzinfo=timezone.utc).timestamp() * 1000.0
+    return out
+
+
+def _mondays_in_range(from_ms: float, to_ms: float) -> list[float]:
+    start = datetime.fromtimestamp(from_ms / 1000.0, tz=timezone.utc)
+    d = datetime(start.year, start.month, start.day, tzinfo=timezone.utc)
+    dow = (d.weekday() + 1) % 7  # JS getDay() equivalent, Sun=0
+    d = d + timedelta(days=(1 - dow + 7) % 7)
+    out: list[float] = []
+    while d.timestamp() * 1000.0 <= to_ms:
+        ms = d.timestamp() * 1000.0
+        if ms >= from_ms:
+            out.append(ms)
+        d = d + timedelta(days=7)
+    return out
+
+
+def _keep_every_nth(arr: list[float], n: int) -> list[float]:
+    """Keeps every n-th element counting BACK from the newest — the newest
+    candidate always survives (mirrors keepEveryNth())."""
+    out: list[float] = []
+    i = len(arr) - 1
+    while i >= 0:
+        out.insert(0, arr[i])
+        i -= n
+    return out
+
+
+def _month_label(ms: float, is_first: bool) -> str:
+    d = datetime.fromtimestamp(ms / 1000.0, tz=timezone.utc)
+    mon = _MONTHS[d.month - 1]
+    with_year = is_first or d.month == 1
+    return f"{mon} {str(d.year)[-2:]}" if with_year else mon
+
+
+def _monday_label(ms: float) -> str:
+    d = datetime.fromtimestamp(ms / 1000.0, tz=timezone.utc)
+    return f"{d.day:02d} {_MONTHS[d.month - 1]}"
+
+
+def build_x_ticks(t_oldest: float, t_newest: float, plot_w: float) -> list[tuple[float, str]]:
+    span_days = (t_newest - t_oldest) / _DAY_MS
+    weekly = span_days < WEEKLY_TICKS_UNDER_DAYS
+    candidates = (_mondays_in_range(t_oldest, t_newest) if weekly
+                  else _month_boundaries_in_range(t_oldest, t_newest))
+    if not candidates:
+        return [(_x_at(t_oldest, t_oldest, t_newest, plot_w), tower_date(t_oldest)),
+                (_x_at(t_newest, t_oldest, t_newest, plot_w), tower_date(t_newest))]
+    if len(candidates) > MAX_X_TICKS:
+        candidates = _keep_every_nth(candidates, math.ceil(len(candidates) / MAX_X_TICKS))
+    return [(_x_at(ms, t_oldest, t_newest, plot_w),
+              _monday_label(ms) if weekly else _month_label(ms, i == 0))
+            for i, ms in enumerate(candidates)]
+
+
+def build_plot_model(rides: list[tuple[float, float]], plot_w: float) -> dict:
+    """`rides`: (startedAtMs, timeS) ascending, already the plotWindow (the
+    last <=PLOT_N ranked rides — see plotWindow() in resultsPlotModel.ts,
+    mirrored by the caller choosing the fixture's own window). Mirrors
+    buildPlotModel() field-for-field so every pixel on results_detail's
+    scatterplot comes from this projection, never a hand-placed dot."""
+    window_n = len(rides)
+    if window_n == 0:
+        return {"points": [], "plot_w": plot_w, "plot_h": PLOT_H, "y_min": 0.0, "y_max": 0.0,
+                "mean_s": None, "mean_y": None, "y_ticks": [], "x_ticks": [], "window_n": 0,
+                "empty": "no-ranked"}
+    times = [r[1] for r in rides]
+    y_min, y_max, mean_s = fit_domain(times)
+    tones = tone_for(times, mean_s)
+    t_oldest, t_newest = rides[0][0], rides[-1][0]
+    points = [
+        {"ms": ms, "time_s": ts, "x": _x_at(ms, t_oldest, t_newest, plot_w),
+         "y": _y_at(ts, y_min, y_max), "tone": tone}
+        for (ms, ts), tone in zip(rides, tones)
+    ]
+    mean_y = _y_at(mean_s, y_min, y_max)
+    return {
+        "points": points, "plot_w": plot_w, "plot_h": PLOT_H, "y_min": y_min, "y_max": y_max,
+        "mean_s": mean_s, "mean_y": mean_y,
+        "y_ticks": build_y_ticks(y_min, y_max, mean_y),
+        "x_ticks": build_x_ticks(t_oldest, t_newest, plot_w),
+        "window_n": window_n, "empty": "none",
+    }
+
+
+def tone_colour(tone: str) -> str:
+    """Mirrors resultsPlot.tsx's toneColour(): fastest=purple,
+    faster=green, else YELLOW_TIER (tierColour.ts: colors.neutral)."""
+    if tone == "fastest":
+        return COLORS["purple"]
+    if tone == "faster":
+        return COLORS["green"]
+    return COLORS["neutral"]
 
 
 # --------------------------------------------------------------------------
@@ -1500,6 +1750,245 @@ def build_rides(theme_name: str, repo_root: str) -> ET.Element:
     return svg
 
 
+# --------------------------------------------------------------------------
+# D1 (virgin-cycle5, 2026-09-08): RESULTS tab — an entire tab shipped (WP-2,
+# 2026-09-06) with zero design representation until now. Two new screens:
+# the way-list (ResultsScreen.tsx) and the per-way detail (Results
+# DetailScreen.tsx, whose scatterplot mirrors resultsPlotModel.ts/
+# resultsPlot.tsx via the build_plot_model() helper above). Both read fresh
+# off ResultsScreen.tsx/ResultsDetailScreen.tsx at execution time, not off
+# this comment — re-grep before editing.
+#
+# [ASSUMPTION] catalog.seed.json carries no sport of its own (sports are a
+# separate runtime store — store/sportStore.ts — seeded empty in a virgin
+# install); RESULTS/RIDES/ROUTES all draw a bare sport-name badge line
+# (WP-1) that has no fixture value to read here. FIXTURE_SPORT_LABEL below
+# invents one plausible single-sport label ("Cycling") for every screen in
+# this file that draws that badge (this pass: results/results_detail; D2.1:
+# routes), so the mockups agree with each other rather than each guessing
+# separately.
+#
+# [ASSUMPTION] Fixture ways/numbers reuse the RIDES mockup's own placeholder
+# ways per the brief's D1.1 ("so the two screens tell one story"): "Home
+# Work Dry" (Morning) and "Work Home Dry" (EveningA), plus a third seeded
+# way ("Home Church") with zero rides so the list's "N more ways with no
+# rides yet" footer has something honest to count. The detail screen's
+# scatterplot/board fixture (RESULTS_DETAIL_RIDES below) is a fabricated but
+# internally-consistent 10-ride history on "Home Work Dry" — every date,
+# time, tone and rank is computed by this file's own
+# build_plot_model()/tower ranking mirror from that one ride list, never
+# hand-placed, so the drawing is a faithful projection of SOME data even
+# though the data itself is invented (README rule: never a real ride
+# result).
+# --------------------------------------------------------------------------
+
+FIXTURE_SPORT_LABEL = "Cycling"
+
+# (startedAtMs, scoredS) ascending, ten rides on "Home Work Dry" — the oldest
+# (2026-07-25) falls outside the scatterplot's PLOT_N=9 window (plotWindow()
+# keeps only the last 9 ranked rides) but still counts in the RESULTS list's
+# "10 rides" and the detail board's "ALL 10 RIDES".
+RESULTS_DETAIL_RIDES = [
+    (_dt_ms(2026, 7, 25), 863.0),
+    (_dt_ms(2026, 7, 29), 855.0),
+    (_dt_ms(2026, 8, 1), 849.0),
+    (_dt_ms(2026, 8, 5), 842.0),
+    (_dt_ms(2026, 8, 8), 861.0),
+    (_dt_ms(2026, 8, 12), 838.0),  # all-time best (PB)
+    (_dt_ms(2026, 8, 15), 852.0),
+    (_dt_ms(2026, 8, 19), 846.0),
+    (_dt_ms(2026, 8, 22), 858.0),
+    (_dt_ms(2026, 9, 1), 844.0),  # most recent
+]
+RESULTS_DETAIL_BEST_S = min(t for _, t in RESULTS_DETAIL_RIDES)
+
+
+def draw_results_row(parent, id_prefix, t, x, y, w, label, rides_n, best_label, last_label):
+    """One ResultsScreen.tsx row: card (left accent bar, same shape as
+    RidesScreen.tsx's own row — brief D1.1), title + 'best X · last Y' sub,
+    ride count + chevron on the right. Returns the row height."""
+    pad_h, pad_v = 14.0, 12.0
+    title_h, sub_gap = 17.0 * 1.15, 4.0
+    row_h = pad_v * 2 + title_h + sub_gap + 14.0 * 1.15
+    g = group(parent, id_prefix, {})
+    rect(g, f"{id_prefix}_bg", x, y, w, row_h, fill=t["card"], stroke=t["cardBorder"], sw=1, rx=16)
+    rect(g, f"{id_prefix}_accent", x, y, 3, row_h, fill=t["accent"])
+    tx = x + pad_h + 3
+    text_el(g, f"{id_prefix}_title", tx, y + pad_v + 12, label, 17, weight="800", color=t["text"])
+    sub_txt = (f"best {best_label} · " if best_label is not None else "") + f"last {last_label}"
+    text_el(g, f"{id_prefix}_sub", tx, y + pad_v + 12 + sub_gap + 14, sub_txt, 14, color=t["text2"],
+            tabular=True)
+    rides_txt = f"{rides_n} ride" + ("" if rides_n == 1 else "s")
+    text_el(g, f"{id_prefix}_rides", x + w - 16 - 14, y + pad_v + 12, rides_txt, 15, weight="700",
+            color=t["textDim"], anchor="end", tabular=True)
+    text_el(g, f"{id_prefix}_chev", x + w - 16, y + pad_v + 12, "›", 16, color=t["textDim"],
+            anchor="middle")
+    return row_h
+
+
+def build_results(theme_name: str, repo_root: str) -> ET.Element:
+    """ResultsScreen.tsx (WP-2 Phase A, §3.8): the way-list — sport badge,
+    header RESULTS, one row per way with >=1 stored result (most-ridden
+    first, ties by most-recent-ride then label — resultsListModel.ts's
+    buildResultsList()), a footer counting ways with zero rides. Tab bar
+    visible; RESULTS sits 4th of 6 (App.tsx) so draw_tabbar's own offset
+    math already keeps it in view with no special-casing needed here."""
+    t = THEMES[theme_name]
+    svg = new_svg()
+
+    bg = layer(svg, "bg")
+    rect(bg, "bg_ground", 0, 0, VB_W, VB_H, fill=t["bg"])
+
+    content = layer(svg, "content")
+    y = 24.0
+    text_el(content, "content_title", 16, y, "RESULTS", 26, weight="800", color=t["text"],
+            letter_spacing=2, upper=True)
+    y += 34
+    # Q5/WP-1: bare sport-name badge, same convention as ROUTES/RIDES.
+    text_el(content, "content_sport_badge", 16, y, FIXTURE_SPORT_LABEL.upper(), 14, color=t["text2"],
+            tabular=True)
+    y += 26
+
+    rows = [
+        ("Morning", 10, RESULTS_DETAIL_BEST_S, tower_date(RESULTS_DETAIL_RIDES[-1][0])),
+        ("EveningA", 6, 903.4, tower_date(_dt_ms(2026, 8, 21))),
+    ]
+    unridden_ways = 1  # "Home Church" — seeded, zero stored results
+
+    for i, (way_id, rides_n, best_s, last_label) in enumerate(rows):
+        row_h = draw_results_row(
+            content, f"content_row_{i + 1}", t, 16, y, VB_W - 32,
+            way_label(way_id), rides_n, fmt_time(best_s), last_label,
+        )
+        y += row_h + 10
+
+    text_el(content, "content_footer", VB_W / 2, y + 8,
+            f"{unridden_ways} more way with no rides yet — see ROUTES", 13, color=t["textDim"],
+            anchor="middle")
+
+    draw_tabbar(svg, t, "RESULTS")
+    return svg
+
+
+def build_results_detail(theme_name: str, repo_root: str) -> ET.Element:
+    """ResultsDetailScreen.tsx (WP-2 §3.10): one way's history — top bar
+    (‹ BACK / RESULTS / ride count), way name, LAST N RIDES (windowCaption)
+    + hint + the scatterplot (resultsPlotModel.ts's buildPlotModel(), mirrored
+    faithfully by build_plot_model() above — same fixture rides the RESULTS
+    list's first row uses, so the two screens agree), ALL N RIDES · fastest
+    first (the unbounded all-time board — store/results.ts's tower(), sorted
+    fastest-first, NOT chronological), BACK TO RESULTS. No map (Nathan, Q2 —
+    ResultsDetailScreen.tsx imports no WayMapView). Default/unselected state:
+    no board row has the accent bar, the plot's caption reads 'tap a point
+    for that ride' — a selected-point state is not drawn (same 'do not draw
+    every UI state' convention as record_setup's collapsed way-picker)."""
+    t = THEMES[theme_name]
+    svg = new_svg()
+
+    bg = layer(svg, "bg")
+    rect(bg, "bg_ground", 0, 0, VB_W, VB_H, fill=t["bg"])
+
+    content = layer(svg, "content")
+    y = 24.0
+    text_el(content, "content_back", 16, y, "‹ BACK", 14, weight="700", color=t["textDim"])
+    text_el(content, "content_top_title", VB_W / 2, y, "RESULTS", 15, weight="800", color=t["text"],
+            anchor="middle", letter_spacing=2, upper=True)
+    total_rides = len(RESULTS_DETAIL_RIDES)
+    text_el(content, "content_top_count", VB_W - 16, y, f"{total_rides} rides", 12, color=t["textDim"],
+            anchor="end")
+    y += 26
+
+    text_el(content, "content_way_name", 16, y, way_label("Morning"), 22, weight="800", color=t["text"])
+    y += 30
+
+    window = RESULTS_DETAIL_RIDES[-PLOT_N:]
+    text_el(content, "content_window_heading", 16, y, f"LAST {len(window)} RIDES", 12, weight="700",
+            color=t["textDim"], letter_spacing=2, upper=True)
+    y += 18
+    y += text_block(content, "content_window_hint", 16, y,
+                     "purple = fastest of these · green / yellow = faster / slower than their average",
+                     12, VB_W - 32, color=t["textDim"]) + 8
+
+    # ---- scatterplot (resultsPlot.tsx's frame: border card, paddingTop 12,
+    # paddingHorizontal 8; y-axis gutter (GUTTER_W) + plot area, x-axis strip,
+    # caption row) ----
+    frame_x, frame_w = 16.0, VB_W - 32.0
+    frame_top = y
+    plot_w = frame_w - 16.0 - GUTTER_W
+    model = build_plot_model(window, plot_w)
+    gutter_x = frame_x + 8.0
+    plot_x = gutter_x + GUTTER_W
+    plot_top = frame_top + 12.0
+
+    plot = group(content, "content_plot", {})
+    for i, (at, label) in enumerate(model["y_ticks"]):
+        if label is not None:
+            text_el(plot, f"content_plot_ytick_{i + 1}", gutter_x + GUTTER_W - 4, plot_top + at + 3,
+                    label, 10, color=t["textDim"], anchor="end")
+    if model["mean_y"] is not None:
+        text_el(plot, "content_plot_avg_label", gutter_x + GUTTER_W - 4, plot_top + model["mean_y"] + 3,
+                f"avg {fmt_time(model['mean_s'])}", 10, weight="600", color=t["textDim"], anchor="end")
+        line(plot, "content_plot_avg_line", plot_x, plot_top + model["mean_y"], plot_x + plot_w,
+             plot_top + model["mean_y"], t["textDim"], 2, dash="2,4")
+    for i, p in enumerate(model["points"]):
+        r = FASTEST_R if p["tone"] == "fastest" else POINT_R
+        circle(plot, f"content_plot_point_{i + 1}", plot_x + p["x"], plot_top + p["y"], r,
+               fill=tone_colour(p["tone"]))
+    x_axis_y = plot_top + PLOT_H + 14.0
+    for i, (at, label) in enumerate(model["x_ticks"]):
+        text_el(plot, f"content_plot_xtick_{i + 1}", plot_x + at, x_axis_y, label, 10,
+                color=t["textDim"], anchor="middle")
+    frame_bottom_pre_caption = x_axis_y + 6.0
+    plot.insert(0, E("rect", "content_plot_frame_bg", {
+        "x": fmt(frame_x), "y": fmt(frame_top), "width": fmt(frame_w),
+        "height": fmt(frame_bottom_pre_caption - frame_top + 46.0),
+        "fill": "none", "stroke": t["cardBorder"], "stroke-width": fmt(1), "rx": fmt(16),
+    }))
+    cap_y = frame_bottom_pre_caption + 10.0
+    line(plot, "content_plot_caption_divider", frame_x + 8, cap_y - 8, frame_x + frame_w - 8, cap_y - 8,
+         t["cardBorder"], 1)
+    text_el(plot, "content_plot_caption", frame_x + 8, cap_y + 10, "tap a point for that ride", 12.5,
+            color=t["textDim"])
+    y = frame_top + (frame_bottom_pre_caption - frame_top + 46.0) + 16
+
+    # ---- ALL-time board (resultsListModel.ts's buildHistoryBoard(): tower()
+    # sorted fastest-first, PB = the first row equalling the all-time best) ----
+    board_rows = sorted(RESULTS_DETAIL_RIDES, key=lambda r: r[1])
+    text_el(content, "content_board_heading", 16, y, f"ALL {len(board_rows)} RIDES · fastest first",
+            12, weight="700", color=t["textDim"], letter_spacing=2, upper=True)
+    y += 20
+    pb_assigned = False
+    for i, (ms, ts) in enumerate(board_rows):
+        pos = i + 1
+        gap_label = "—" if pos == 1 else f"+{round(ts - board_rows[0][1])}s"
+        is_pb = (not pb_assigned) and ts == RESULTS_DETAIL_BEST_S
+        if is_pb:
+            pb_assigned = True
+        row = group(content, f"content_board_row_{pos}", {})
+        text_el(row, f"content_board_row_{pos}_pos", 16, y + 13, f"P{pos}", 13, weight="700",
+                color=t["textDim"], tabular=True)
+        text_el(row, f"content_board_row_{pos}_date", 52, y + 13, tower_date(ms), 13, color=t["textDim"])
+        if is_pb:
+            circle(row, f"content_board_row_{pos}_pbdot", VB_W - 108, y + 9, 3, fill=COLORS["purple"])
+        text_el(row, f"content_board_row_{pos}_time", VB_W - 96, y + 13, fmt_time(ts), 14, color=t["text"],
+                anchor="end", tabular=True)
+        text_el(row, f"content_board_row_{pos}_gap", VB_W - 16, y + 13, gap_label, 12, color=t["textDim"],
+                anchor="end", tabular=True)
+        y += 30
+        if i < len(board_rows) - 1:
+            line(content, f"content_board_row_{pos}_divider", 16, y - 12, VB_W - 16, y - 12,
+                 t["cardBorder"], 1)
+
+    y += 12
+    btn_w, btn_h = 190.0, 40.0
+    btn = group(content, "content_back_button", {})
+    rect(btn, "content_back_button_bg", (VB_W - btn_w) / 2, y, btn_w, btn_h, fill=t["accent"], rx=10)
+    text_el(btn, "content_back_button_label", VB_W / 2, y + 25, "BACK TO RESULTS", 12.5, weight="800",
+            color=t["onAccent"], anchor="middle", letter_spacing=1)
+
+    return svg
+
+
 def build_result(theme_name: str, repo_root: str) -> ET.Element:
     """ResultScreen.tsx (WP-A3): "YOUR LAST RIDE" card (route, big lap
     figure, rank line, VIEW TRACE link, RECORD ANOTHER) + "PERSONAL BESTS —
@@ -1629,6 +2118,8 @@ BUILDERS = {
     "record_finished": build_record_finished,
     "rides": build_rides,
     "result": build_result,
+    "results": build_results,
+    "results_detail": build_results_detail,
 }
 
 

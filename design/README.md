@@ -36,8 +36,8 @@ file with a colour-swap layer) — easier to open and edit independently.
 
 ## Which screens are here
 
-All 9 screens (18 files, day + night) are drawn, from what's actually
-running in the app today:
+11 screens (22 files, day + night) are drawn, from what's actually running
+in the app today:
 
 | File | What it shows |
 |---|---|
@@ -49,7 +49,9 @@ running in the app today:
 | `record_running` | the live race column mid-ride — full screen, no tab bar |
 | `record_finished` | the moment a ride ends, before you press END — still the same full-screen span as armed/running, map unlocked, the LAP result in the big slot |
 | `rides` | ride history list, one row expanded to its sector splits |
-| `result` | last ride + Personal Bests, one route expanded |
+| `result` | last ride + Personal Bests, one route expanded (D2, virgin-cycle5, will retire this in favour of `ride_detail`) |
+| `results` | RESULTS tab (WP-2, added virgin-cycle5 D1) — every way you've ridden, most-ridden first, ride count + best lap per row |
+| `results_detail` | RESULTS tab (WP-2, added virgin-cycle5 D1) — one way's scatterplot of recent rides + its all-time fastest-first board, full screen, no tab bar |
 
 `routes`/`settings`/`demo` were drawn in the first pass; the six RECORD/
 RIDES/RESULT screens above were drawn in a second pass ("WP-J re-emit"),
@@ -121,3 +123,7 @@ all** — that's not an omission either. Pressing RECORD arms a genuine
 full-screen recording mode that hides the bar for the whole stretch from
 armed through running to the moment just after you finish, right up until
 you press END; only `record_setup` (before you press RECORD) keeps the bar.
+
+`results_detail` also has no tab bar — it's a full-screen overlay opened
+from a tap on a `results` row, same pattern as the catalog/ride detail
+screens, with its own `‹ BACK`/`BACK TO RESULTS` chrome instead.
