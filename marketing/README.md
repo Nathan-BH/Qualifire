@@ -1,19 +1,70 @@
-# marketing/ — the public-facing site and brand assets
+# Qualifire marketing — status
 
-| File | What it is |
-|---|---|
-| `index.html` | The marketing site — outward-facing copy and layout. Rewritten cycle 022 to match `product/BRAND.md`'s current framing (no scarcity language, no F1 name-dropping — see that file's rewrite, cycle 024). |
-| `HYPERFRAMES-PLAN.md` | Plan for the "hyperframes" motion/teaser assets used on the site. |
-| `assets/` | Static brand assets used by the site (logo PNG/SVG). |
-| `hyperframes/` | Rendered teaser assets and the render script (`render.ps1`) that builds them. |
+*(2026-09-09)*
 
-Read by: whoever touches outward-facing copy or the site — cross-check against
-`product/BRAND.md` before changing tone or claims, since the site was already
-corrected once (cycle 022) for exactly this kind of drift.
+## Right now
+All four compositions in the slate are built. `teaser` was revised today
+(fade transitions in place of shrink/travel, plus a hard-kill contract fix)
+but its render in `renders/` still predates that revision — the render
+environment (Nathan's PC, via `device_bash`) could not be reached this
+session, so it needs a fresh render. `gate`, `purple` and `tour` are newly
+built and have never been rendered. The exact commands to run are below and
+in `hyperframes/COMMANDS.md`; see `cycles/01_first-slate/OPEN-ITEMS.md` for
+the full note on why rendering didn't happen automatically this round.
 
-**Provenance note (virgin-cycle5, 2026-09-08).** `index.html` was brought over from `main`
-unchanged in `0fb4a1c` (2026-09-08) and reviewed for `virgin`-correctness in
-`cycles/virgin-cycle5/REVIEW-website.md`; its no-regrets fixes landed the same cycle
-(`cycles/virgin-cycle5/BRIEF-website-improvement-plan.md` part (c)). The "cycle 022 / cycle
-024" references above are `main`'s cycle numbers, not `virgin`'s — kept as-is for
-provenance, not deleted.
+## Current cycle
+`cycles/01_first-slate/` — open until Nathan reviews the gate/purple/tour
+renders (and the revised teaser) from this cycle.
+
+## Videos
+| Composition | State | Current render | Cycle |
+|---|---|---|---|
+| teaser (idea 2) | built, revised per feedback, **render pending** (existing mp4 predates the fix) | `hyperframes/teaser/renders/teaser_2026-09-09_09-14-01.mp4` (stale) | 01 |
+| gate (idea 1) | built, **not yet rendered** | — | 01 |
+| purple (idea 4) | built, **not yet rendered**, awaiting feedback | — | 01 |
+| tour (idea 3) | built, **not yet rendered**, awaiting feedback | — | 01 |
+
+To render all four, from `marketing/hyperframes/` on Nathan's PC:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name teaser -Render
+powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name gate -Render
+powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name purple -Render
+powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name tour -Render
+```
+
+## Folder map
+```
+marketing/
+├── README.md            # this file
+├── PLAN.md               # the slate plan
+├── index.html            # the site
+├── assets/               # brand assets
+├── hyperframes/           # HyperFrames compositions
+│   ├── COMMANDS.md, STUDIO-GUIDE.md, render.ps1
+│   └── teaser/ gate/ purple/ tour/
+├── guides/
+│   └── VIDEO-EDITING-GUIDE.md
+├── cycles/
+│   └── 01_first-slate/    # this cycle's record + feedback
+└── archive/               # superseded renders & composition sources
+```
+
+## The workflow loop
+idea recorded in `PLAN.md` → build in `hyperframes/<comp>/` →
+`npx hyperframes preview` to check, `render.ps1 -Name <comp> -Render` to
+render → Nathan reviews the mp4 → feedback recorded in the current cycle
+folder → revise → cycle closes.
+
+## The rules
+- **One-render rule:** `hyperframes/<comp>/renders/` holds only the current
+  render. A new render supersedes the old one — move the old mp4 to
+  `archive/renders/<comp>/` (keep its original filename) before/when a new
+  one lands.
+- **Archive before a substantive rewrite:** copy the composition's
+  `index.html` to `archive/compositions/<comp>/<date>_cycleNN_index.html`
+  before a rewrite that changes its structure (not needed for small tweaks).
+- **Never delete.** Superseded material moves to `archive/`, always.
+- **Closing a cycle:** (1) write the cycle's `README.md` record, (2) confirm
+  the feedback doc is filed in the cycle folder, (3) move any superseded
+  renders/sources to `archive/`, (4) update `PLAN.md` statuses, (5) update
+  this file's table and "Current cycle" pointer.

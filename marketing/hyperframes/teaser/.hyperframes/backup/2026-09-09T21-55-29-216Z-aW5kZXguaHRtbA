@@ -200,6 +200,7 @@
     var RING_R = 118;
     var CIRC = 2 * Math.PI * RING_R; // ~741.42
     gsap.set('#ring', { strokeDasharray: CIRC });
+    gsap.set("#wordmark", { x: 1, y: -40 });
     var tl = gsap.timeline({ paused: true });
 
     // 0–1.65 gate draws

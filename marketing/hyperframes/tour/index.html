@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Qualifire — a tour (HyperFrames)</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #0A0A0A; }
+  * { box-sizing: border-box; }
+
+  #stage {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+    background: #0A0A0A;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #F4F2EC;
+  }
+
+  .clip { position: absolute; }
+  .clip.full { top: 0; left: 0; width: 1920px; height: 1080px; }
+  .clip .inner { opacity: 0; }
+
+  /* first beat starts immediately, so it starts visible */
+  #hero .inner { opacity: 1; }
+
+  svg.full-svg { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; display: block; }
+
+  .caption {
+    position: absolute; top: 920px; left: 0; width: 1920px; margin: 0; text-align: center;
+    font-size: 44px; font-weight: 600; letter-spacing: 0.5px; color: #F4F2EC; opacity: 0; line-height: 1.3;
+  }
+  .caption.second { top: 985px; }
+
+  .mark-wrap {
+    position: absolute; top: 50%; left: 50%; width: 400px; height: 400px; margin: -200px 0 0 -200px;
+    opacity: 0;
+  }
+  .mark-wrap svg { width: 100%; height: 100%; display: block; }
+  .mark-wrap.hero { margin-top: -300px; }
+  #slash-a { opacity: 0; }
+
+  .start {
+    position: absolute; top: 720px; left: 50%; width: 320px; height: 100px; margin-left: -160px;
+    border: 0; border-radius: 50px; background: #F5C542; color: #0A0A0A;
+    font: 800 38px/100px inherit; font-family: inherit; letter-spacing: 2px; text-align: center; opacity: 0;
+  }
+
+  .endword {
+    position: absolute; top: 660px; left: 0; width: 1920px; margin: 0; text-align: center;
+    font-size: 84px; font-weight: 800; letter-spacing: 24px; color: #F5C542; opacity: 0;
+  }
+  .tagline {
+    position: absolute; top: 780px; left: 0; width: 1920px; margin: 0; text-align: center;
+    font-size: 34px; font-weight: 500; letter-spacing: 1px; color: #9a978f; opacity: 0;
+  }
+
+  /* ---- rank fragment ---- */
+  .tower-frag { position: absolute; top: 380px; left: 50%; width: 760px; margin-left: -380px; height: 176px; }
+  .row {
+    position: absolute; left: 0; width: 760px; height: 88px; display: flex; align-items: center;
+    gap: 36px; padding: 0 24px; border-bottom: 2px solid #232323;
+  }
+  .pos { width: 70px; font-size: 52px; font-weight: 800; color: #F4F2EC; position: relative; }
+  .pos .p2 { position: absolute; left: 0; top: 0; opacity: 0; }
+  .time { font-size: 56px; font-weight: 800; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; color: #F4F2EC; }
+  .tier-purple { color: #A667F0; }
+  .tier-green { color: #3ED598; }
+  .tier-yellow { color: #F5C542; }
+  .pb { font-size: 20px; color: #F4F2EC; opacity: 0; }
+  .date { margin-left: auto; font-size: 28px; color: #9a978f; }
+  .headline {
+    position: absolute; top: 600px; left: 0; width: 1920px; margin: 0; text-align: center;
+    font-size: 72px; font-weight: 800; color: #F4F2EC; opacity: 0;
+  }
+
+  /* ---- tower fill (10 rows) ---- */
+  .tower10 { position: absolute; top: 150px; left: 50%; width: 760px; margin-left: -380px; }
+  .tower10 .row { position: static; height: 66px; opacity: 0; }
+  .tower10 .pos { width: 40px; font-size: 40px; }
+  .tower10 .time { font-size: 44px; }
+  .tower10 .date { font-size: 24px; }
+</style>
+</head>
+<body>
+
+<div id="stage" data-composition-id="tour" data-start="0" data-width="1920" data-height="1080">
+
+  <!-- Beat 1 — Hero (0-5s): the gate mark draws, a single "Start" button --
+       universally understandable, no kicker/paragraph, per Nathan's direct
+       feedback. -->
+  <div id="hero" class="clip full" data-start="0" data-duration="5" data-track-index="0">
+    <div class="inner">
+      <div class="mark-wrap hero">
+        <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+          <circle id="ring-a" cx="256" cy="218" r="118" fill="none" stroke="#F4F2EC" stroke-width="30" stroke-linecap="round" transform="rotate(-90 256 218)" />
+          <line id="slash-a" x1="291.355" y1="253.355" x2="387.5206" y2="349.5206" fill="none" stroke="#F5C542" stroke-width="30" stroke-linecap="round" />
+        </svg>
+      </div>
+      <button class="start" type="button">Start</button>
+    </div>
+  </div>
+
+  <!-- Beats 2/3/4 — Map (5-35s): an abstract route, not a real map/tiles. -->
+  <div id="map" class="clip full" data-start="5" data-duration="30" data-track-index="1">
+    <div class="inner">
+      <svg class="full-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+        <path id="route-ghost" d="M 360 720 C 560 420, 760 940, 960 620 S 1360 300, 1560 400" fill="none" stroke="#232323" stroke-width="8" stroke-linecap="round" opacity="0" />
+        <path id="route-hist" d="M 360 720 C 560 420, 760 940, 960 620 S 1360 300, 1560 400" fill="none" stroke="#F5C542" stroke-width="8" stroke-linecap="round" />
+        <g id="gates"></g>
+        <circle id="lm-start" cx="360" cy="720" r="16" fill="#0A0A0A" stroke="#F4F2EC" stroke-width="6" opacity="0" />
+        <circle id="lm-end" cx="1560" cy="400" r="16" fill="#0A0A0A" stroke="#F4F2EC" stroke-width="6" opacity="0" />
+        <circle id="dot-halo" cx="360" cy="720" r="26" fill="#58B7FF" opacity="0" />
+        <circle id="dot" cx="360" cy="720" r="14" fill="#58B7FF" opacity="0" />
+      </svg>
+    </div>
+  </div>
+
+  <div id="cap-ride" class="clip full" data-start="5" data-duration="10" data-track-index="2">
+    <div class="inner"><p class="caption">Ride your normal route.</p></div>
+  </div>
+  <div id="cap-save" class="clip full" data-start="15" data-duration="4" data-track-index="2">
+    <div class="inner"><p class="caption">Save the start and end — it splits into sectors automatically.</p></div>
+  </div>
+  <div id="cap-next" class="clip full" data-start="19" data-duration="3" data-track-index="2">
+    <div class="inner"><p class="caption">Next time, you've got something to go for.</p></div>
+  </div>
+  <div id="cap-know" class="clip full" data-start="32" data-duration="3" data-track-index="2">
+    <div class="inner"><p class="caption">Now you know how you did.</p></div>
+  </div>
+
+  <!-- Rank fragment (30-35s) -->
+  <div id="rank" class="clip full" data-start="30" data-duration="5" data-track-index="3">
+    <div class="inner">
+      <div class="tower-frag">
+        <div class="row" id="r-ref"><span class="pos"><span class="p1">1</span><span class="p2">2</span></span><span class="time">4:12.8</span><span class="date">Mon</span></div>
+        <div class="row" id="r-today"><span class="pos">1</span><span class="time tier-purple">4:05.3</span><span class="pb">●</span><span class="date">Today</span></div>
+      </div>
+      <p class="headline">P1 of 2</p>
+    </div>
+  </div>
+
+  <!-- Tower fill (35-45s) -->
+  <div id="tower" class="clip full" data-start="35" data-duration="10" data-track-index="4">
+    <div class="inner">
+      <div class="tower10">
+        <div class="row"><span class="pos">1</span><span class="time tier-purple">3:58.4</span><span class="pb" style="opacity:1">●</span><span class="date">Today</span></div>
+        <div class="row"><span class="pos">2</span><span class="time tier-green">4:01.7</span><span class="date">Sun</span></div>
+        <div class="row"><span class="pos">3</span><span class="time tier-green">4:03.2</span><span class="date">Thu</span></div>
+        <div class="row"><span class="pos">4</span><span class="time tier-yellow">4:05.3</span><span class="date">Tue</span></div>
+        <div class="row"><span class="pos">5</span><span class="time tier-yellow">4:06.9</span><span class="date">Sat</span></div>
+        <div class="row"><span class="pos">6</span><span class="time tier-green">4:08.0</span><span class="date">Wed</span></div>
+        <div class="row"><span class="pos">7</span><span class="time tier-yellow">4:10.4</span><span class="date">Fri</span></div>
+        <div class="row"><span class="pos">8</span><span class="time tier-yellow">4:11.6</span><span class="date">Mon</span></div>
+        <div class="row"><span class="pos">9</span><span class="time">4:12.8</span><span class="date">Mon</span></div>
+        <div class="row"><span class="pos">10</span><span class="time tier-yellow">4:15.1</span><span class="date">Thu</span></div>
+      </div>
+    </div>
+  </div>
+  <div id="cap-more" class="clip full" data-start="35" data-duration="10" data-track-index="2">
+    <div class="inner"><p class="caption">The more you ride it, the more you've got to race.</p></div>
+  </div>
+
+  <!-- Close (45-50s) -->
+  <div id="close" class="clip full" data-start="45" data-duration="5" data-track-index="0">
+    <div class="inner">
+      <div class="mark-wrap">
+        <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+          <circle id="ring-b" cx="256" cy="218" r="118" fill="none" stroke="#F4F2EC" stroke-width="30" stroke-linecap="round" transform="rotate(-90 256 218)" />
+          <line id="slash-b" x1="291.355" y1="253.355" x2="387.5206" y2="349.5206" fill="none" stroke="#F5C542" stroke-width="30" stroke-linecap="round" />
+        </svg>
+      </div>
+      <p class="endword">QUALIFIRE</p>
+      <p class="tagline">Same road. New meaning.</p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script>
+    var tl = gsap.timeline({ paused: true });
+
+    // ---------- Beat 1: hero (0-5) ----------
+    var CIRC_A = 2 * Math.PI * 118;
+    gsap.set('#ring-a', { strokeDasharray: CIRC_A });
+    tl.fromTo('#ring-a', { strokeDashoffset: CIRC_A }, { strokeDashoffset: 0, duration: 1.3, ease: 'power2.inOut' }, 0);
+    tl.fromTo('#slash-a', { opacity: 0 }, { opacity: 1, duration: 0.35, ease: 'power1.out' }, 1.3);
+    tl.fromTo('.start', { opacity: 0, y: 16, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.45, ease: 'back.out(1.6)' }, 2.2);
+    tl.to('#hero .inner', { opacity: 0, duration: 0.4, ease: 'power1.in' }, 4.6);
+    tl.set('#hero .inner', { opacity: 0 }, 5.0);
+
+    // ---------- Map runtime setup (route length, gate placement) ----------
+    var hist = document.getElementById('route-hist');
+    var LEN = hist.getTotalLength();
+    gsap.set(hist, { strokeDasharray: LEN, strokeDashoffset: LEN });
+    var ride = { p: 0 };
+    function placeDot() {
+      var pt = hist.getPointAtLength(ride.p * LEN);
+      gsap.set(['#dot', '#dot-halo'], { attr: { cx: pt.x, cy: pt.y } });
+    }
+    var GATE_F = [0.25, 0.5, 0.75];
+    GATE_F.forEach(function (f, i) {
+      var l = f * LEN, a = hist.getPointAtLength(Math.max(0, l - 1)), b = hist.getPointAtLength(Math.min(LEN, l + 1));
+      var dx = b.x - a.x, dy = b.y - a.y, m = Math.hypot(dx, dy) || 1, nx = -dy / m, ny = dx / m, c = hist.getPointAtLength(l);
+      var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('id', 'gate-' + (i + 1));
+      g.setAttribute('opacity', '0');
+      g.innerHTML = '<line x1="' + (c.x - nx * 22) + '" y1="' + (c.y - ny * 22) + '" x2="' + (c.x + nx * 22) + '" y2="' + (c.y + ny * 22) + '" stroke="#F4F2EC" stroke-width="8" stroke-linecap="round"/>' +
+                    '<circle class="gate-ring" cx="' + c.x + '" cy="' + c.y + '" r="10" fill="none" stroke="#F4F2EC" stroke-width="4" opacity="0"/>';
+      document.getElementById('gates').appendChild(g);
+      gsap.set(g, { transformOrigin: c.x + 'px ' + c.y + 'px' });
+    });
+
+    // ---------- Beat 2: first ride (5-22) ----------
+    tl.set('#map .inner', { opacity: 1 }, 5.0);
+    tl.to('#dot-halo', { opacity: 0.25, duration: 0.3 }, 5.2);
+    tl.to('#dot', { opacity: 1, duration: 0.3 }, 5.2);
+    tl.to(ride, { p: 1, duration: 8, ease: 'power1.inOut', onUpdate: function () { placeDot(); gsap.set(hist, { strokeDashoffset: LEN * (1 - ride.p) }); } }, 5.8);
+
+    tl.fromTo('#cap-ride .caption', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 6.0);
+    tl.to('#cap-ride .inner', { opacity: 0, duration: 0.4 }, 14.6);
+    tl.set('#cap-ride .inner', { opacity: 0 }, 15.0);
+
+    // ---------- Beat 3: landmarks + gates appear (15-22) ----------
+    tl.fromTo('#lm-start', { opacity: 0, scale: 0 }, { opacity: 1, scale: 1, duration: 0.4, ease: 'back.out(2)', transformOrigin: '50% 50%' }, 15.3);
+    tl.fromTo('#lm-end', { opacity: 0, scale: 0 }, { opacity: 1, scale: 1, duration: 0.4, ease: 'back.out(2)', transformOrigin: '50% 50%' }, 15.7);
+    ['#gate-1', '#gate-2', '#gate-3'].forEach(function (sel, i) {
+      tl.fromTo(sel, { opacity: 0, scale: 0 }, { opacity: 1, scale: 1, duration: 0.35, ease: 'back.out(1.8)' }, 17.2 + i * 0.3);
+    });
+
+    tl.set('#cap-save .inner', { opacity: 1 }, 15.0);
+    tl.fromTo('#cap-save .caption', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 15.6);
+    tl.to('#cap-save .inner', { opacity: 0, duration: 0.4 }, 18.6);
+    tl.set('#cap-save .inner', { opacity: 0 }, 19.0);
+
+    tl.set('#cap-next .inner', { opacity: 1 }, 19.0);
+    tl.fromTo('#cap-next .caption', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 19.2);
+    tl.to('#cap-next .inner', { opacity: 0, duration: 0.4 }, 21.6);
+    tl.set('#cap-next .inner', { opacity: 0 }, 22.0);
+
+    tl.to(['#dot', '#dot-halo'], { opacity: 0, duration: 0.3 }, 21.0);
+    tl.set(['#dot', '#dot-halo'], { opacity: 0 }, 21.3);
+
+    // ---------- Beat 4: second ride (22-35) ----------
+    tl.to(ride, { p: 0, duration: 0.001, onUpdate: placeDot }, 22.0); // reset without a visible jump; route-hist stays fully drawn
+    tl.to(['#dot', '#dot-halo'], { opacity: 1, duration: 0.3 }, 22.3);
+    tl.to(ride, { p: 1, duration: 7, ease: 'none', onUpdate: placeDot }, 22.6);
+
+    GATE_F.forEach(function (f, i) {
+      var t = 22.6 + f * 7;
+      tl.fromTo('#gate-' + (i + 1), { scale: 1 }, { scale: 1.5, duration: 0.14, yoyo: true, repeat: 1, ease: 'power1.out' }, t);
+      tl.fromTo('#gate-' + (i + 1) + ' .gate-ring', { opacity: 0.7, attr: { r: 10 } }, { opacity: 0, attr: { r: 44 }, duration: 0.5, ease: 'power2.out' }, t);
+    });
+
+    tl.to('#map .inner', { opacity: 0.25, duration: 0.4 }, 30.0);
+    tl.to('#map .inner', { opacity: 0, duration: 0.4 }, 34.6);
+    tl.set('#map .inner', { opacity: 0 }, 35.0);
+
+    // ---------- Rank fragment (30-35) ----------
+    tl.set('#rank .inner', { opacity: 1 }, 30.0);
+    tl.fromTo('#r-ref', { opacity: 0 }, { opacity: 1, duration: 0.3 }, 30.4);
+    tl.fromTo('#r-today', { y: 176, opacity: 0.35 }, { y: 0, duration: 0.7, ease: 'power2.out' }, 30.9);
+    tl.to('#r-ref', { y: 88, duration: 0.7, ease: 'power2.out' }, 30.9);
+    tl.to('#r-today', { opacity: 1, duration: 0.2 }, 31.6);
+    tl.set('#r-ref .p1', { opacity: 0 }, 31.6);
+    tl.set('#r-ref .p2', { opacity: 1 }, 31.6);
+    tl.to('#r-today .pb', { opacity: 1, duration: 0.2 }, 31.9);
+    tl.fromTo('.headline', { opacity: 0 }, { opacity: 1, duration: 0.4 }, 32.2);
+    tl.to('#rank .inner', { opacity: 0, duration: 0.4 }, 34.6);
+    tl.set('#rank .inner', { opacity: 0 }, 35.0);
+
+    tl.set('#cap-know .inner', { opacity: 1 }, 32.0);
+    tl.fromTo('#cap-know .caption', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 32.6);
+    tl.to('#cap-know .inner', { opacity: 0, duration: 0.4 }, 34.6);
+    tl.set('#cap-know .inner', { opacity: 0 }, 35.0);
+
+    // ---------- Tower fill (35-45) ----------
+    tl.set('#tower .inner', { opacity: 1 }, 35.0);
+    var towerRows = document.querySelectorAll('#tower .tower10 .row');
+    towerRows.forEach(function (row, i) {
+      tl.fromTo(row, { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.35, ease: 'back.out(1.4)' }, 35.6 + i * 0.18);
+    });
+    tl.to('#tower .inner', { opacity: 0, duration: 0.4 }, 44.6);
+    tl.set('#tower .inner', { opacity: 0 }, 45.0);
+
+    tl.set('#cap-more .inner', { opacity: 1 }, 35.0);
+    tl.fromTo('#cap-more .caption', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 38.2);
+    tl.to('#cap-more .inner', { opacity: 0, duration: 0.4 }, 44.6);
+    tl.set('#cap-more .inner', { opacity: 0 }, 45.0);
+
+    // ---------- Close (45-50) ----------
+    var CIRC_B = 2 * Math.PI * 118;
+    gsap.set('#ring-b', { strokeDasharray: CIRC_B, strokeDashoffset: 0 });
+    tl.set('#close .inner', { opacity: 1 }, 45.0);
+    tl.fromTo('#close .mark-wrap', { opacity: 0 }, { opacity: 1, duration: 0.6 }, 45.2);
+    tl.fromTo('#close .endword', { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 45.6);
+    tl.fromTo('#close .tagline', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 46.0);
+    tl.to('#close .inner', { opacity: 0, duration: 0.5 }, 49.5);
+    tl.set('#close .inner', { opacity: 0 }, 50.0);
+
+    window.__timelines = window.__timelines || {};
+    window.__timelines.tour = tl;
+  </script>
+
+</div>
+
+</body>
+</html>

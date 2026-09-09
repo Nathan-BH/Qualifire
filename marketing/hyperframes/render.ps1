@@ -1,27 +1,37 @@
 <#
 .SYNOPSIS
-    Preflight-checks Node.js and FFmpeg, then previews or renders the
-    Qualifire HyperFrames brand teaser (marketing\hyperframes\teaser).
+    Preflight-checks Node.js and FFmpeg, then previews or renders a
+    Qualifire HyperFrames composition (marketing\hyperframes\<name>).
 
 .DESCRIPTION
     HyperFrames (github.com/heygen-com/hyperframes) needs Node.js 22+ and
     FFmpeg on PATH. This script checks both with clear error messages, then
     runs `npx hyperframes preview` (default, live-reload in the browser) or
-    `npx hyperframes render` (renders teaser\ to an MP4) with -Render.
+    `npx hyperframes render` (renders <name>\ to an MP4) with -Render.
 
     Windows-only; run from a PowerShell prompt on Nathan's PC (the cloud
     sandbox that authored this repo cannot reach npm).
 
+.PARAMETER Name
+    Which composition folder under marketing\hyperframes\ to preview or
+    render (e.g. teaser, gate, purple, tour). Defaults to 'teaser' for
+    backward compatibility.
+
 .PARAMETER Render
-    Render the teaser to MP4 instead of opening the live preview.
+    Render the composition to MP4 instead of opening the live preview.
 
 .EXAMPLE
     .\render.ps1
     .\render.ps1 -Render
+    .\render.ps1 -Name gate
+    .\render.ps1 -Name gate -Render
+    .\render.ps1 -Name purple -Render
+    .\render.ps1 -Name tour -Render
 #>
 
 [CmdletBinding()]
 param(
+    [string]$Name = 'teaser',
     [switch]$Render
 )
 
@@ -32,7 +42,7 @@ function Test-CommandExists {
     return [bool](Get-Command -Name $Name -ErrorAction SilentlyContinue)
 }
 
-Write-Host 'Qualifire HyperFrames teaser -- preflight checks' -ForegroundColor Cyan
+Write-Host "Qualifire HyperFrames $Name -- preflight checks" -ForegroundColor Cyan
 
 # --- Node.js 22+ ---------------------------------------------------------
 if (-not (Test-CommandExists -Name 'node')) {
@@ -64,21 +74,21 @@ if (-not (Test-CommandExists -Name 'ffmpeg')) {
 
 Write-Host '  FFmpeg -- OK' -ForegroundColor Green
 
-# --- Run HyperFrames in the teaser folder -----------------------------------
-$teaserDir = Join-Path -Path $PSScriptRoot -ChildPath 'teaser'
-if (-not (Test-Path -Path $teaserDir)) {
-    Write-Error "Could not find the teaser composition folder at '$teaserDir'."
+# --- Run HyperFrames in the target composition folder -----------------------
+$targetDir = Join-Path -Path $PSScriptRoot -ChildPath $Name
+if (-not (Test-Path -Path $targetDir)) {
+    Write-Error "Could not find the '$Name' composition folder at '$targetDir'."
     exit 1
 }
 
-Push-Location -Path $teaserDir
+Push-Location -Path $targetDir
 try {
     if ($Render) {
-        Write-Host 'Rendering teaser to MP4 (npx hyperframes render)...' -ForegroundColor Cyan
+        Write-Host "Rendering $Name to MP4 (npx hyperframes render)..." -ForegroundColor Cyan
         npx --yes hyperframes render
     }
     else {
-        Write-Host 'Opening teaser preview (npx hyperframes preview)...' -ForegroundColor Cyan
+        Write-Host "Opening $Name preview (npx hyperframes preview)..." -ForegroundColor Cyan
         npx --yes hyperframes preview
     }
 
