@@ -1,0 +1,6 @@
+file '../../parts/01-opening/rounds/v1/opening_v1.mp4'
+file '../../parts/02-start-ride/rounds/v1/start-ride_v1.mp4'
+file '../../parts/03-gates-saving/rounds/v1/gates-saving_v1.mp4'
+file '../../parts/04-ranking/rounds/v1/ranking_v1.mp4'
+file '../../parts/05-colours/rounds/v1/colours_v1.mp4'
+file '../../parts/06-closing/rounds/v1/closing_v1.mp4'

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Qualifire — Gates & saving (HyperFrames)</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #0A0A0A; }
+  * { box-sizing: border-box; }
+
+  #stage {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+    background: #0A0A0A;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #F4F2EC;
+  }
+
+  .clip { position: absolute; }
+  .clip.full { top: 0; left: 0; width: 1920px; height: 1080px; }
+  .clip .inner { opacity: 1; }
+
+  /* ---- map layer: static basemap PNG (see ../_map/README.md) + SVG overlay in the app's casing+core style ---- */
+  #basemap { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; display: block; }
+  svg.full-svg { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; display: block; }
+  #scrim-bottom {
+    position: absolute; left: 0; top: 780px; width: 1920px; height: 300px;
+    background: linear-gradient(to bottom, rgba(10,10,10,0) 0%, rgba(10,10,10,0.92) 100%);
+  }
+  #attrib {
+    position: absolute; right: 24px; bottom: 14px; margin: 0;
+    font-size: 15px; letter-spacing: 0.3px; color: #9a978f; opacity: 0.85;
+  }
+  #dim { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; background: #0A0A0A; opacity: 0; }
+
+  .caption {
+    position: absolute; top: 920px; left: 0; width: 1920px; margin: 0; text-align: center;
+    font-size: 44px; font-weight: 600; letter-spacing: 0.5px; color: #F4F2EC; opacity: 0; line-height: 1.3;
+    text-shadow: 0 2px 12px rgba(10,10,10,0.6);
+  }
+
+  /* ---- START button: RecordScreen.tsx values at exactly 2x (150→300 tall, 40→80px label) ---- */
+  #start-btn {
+    position: absolute; left: 510px; top: 390px; width: 900px; height: 300px;
+    border-radius: 48px; border: 4px solid #F5C542; background: #F5C542;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+    opacity: 0;
+  }
+  #start-btn .label { margin: 0; font-size: 80px; font-weight: 800; letter-spacing: 10px; text-indent: 10px; line-height: 1; color: #17171b; }
+  #start-btn .sub   { margin: 0; font-size: 24px; letter-spacing: 2px; text-indent: 2px; color: #17171b; opacity: 0.75; }
+
+  /* ---- cards (ranking scene) ---- */
+  .card {
+    position: absolute; background: #141414; border: 2px solid #232323; border-radius: 24px; opacity: 0;
+  }
+  .card .hdr { position: absolute; left: 40px; right: 40px; top: 28px; display: flex; justify-content: space-between; align-items: baseline; }
+  .card .lbl { font-size: 22px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: #9a978f; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  #rank-card { left: 560px; top: 300px; width: 800px; height: 330px; }
+  #rank-pos { font-size: 40px; font-weight: 800; color: #A667F0; opacity: 0; }
+  .rnum { position: absolute; left: 40px; width: 60px; font-size: 48px; font-weight: 800; color: #F4F2EC; line-height: 80px; }
+  .rrow { position: absolute; left: 110px; right: 40px; height: 80px; display: flex; justify-content: space-between; align-items: center; opacity: 0; }
+  .rrow .who  { font-size: 32px; font-weight: 600; color: #F4F2EC; }
+  .rrow .time { font-size: 52px; font-weight: 800; color: #F4F2EC; }
+  .rrow.today .who, .rrow.today .time { color: #A667F0; }
+
+  #tower { left: 560px; top: 110px; width: 800px; height: 700px; }
+  #tower .rows { position: absolute; left: 40px; right: 40px; top: 84px; }
+  .trow { display: flex; align-items: center; height: 60px; opacity: 0; }
+  .trow .rk   { width: 70px; font-size: 30px; font-weight: 800; color: #9a978f; }
+  .trow .who  { flex: 1; font-size: 26px; font-weight: 600; color: #F4F2EC; }
+  .trow .time { font-size: 34px; font-weight: 800; color: #F4F2EC; }
+  .trow.today .rk, .trow.today .who, .trow.today .time { color: #A667F0; }
+</style>
+</head>
+<body>
+
+<div id="stage" data-composition-id="gatessaving" data-start="0" data-width="1920" data-height="1080">
+
+  <!-- Map layer: basemap PNG (captured once via ../_map/map-capture.html) + route/gates/rider as SVG.
+       Casing+core convention and colours are the app's (see product code, RecordScreen / way map). -->
+  <div id="map" class="clip full" data-start="0" data-duration="14.8" data-track-index="0">
+    <div class="inner">
+      <img id="basemap" src="map.png" alt="" onerror="this.style.display='none'">
+      <svg id="mapsvg" class="full-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+        <path id="route-casing" fill="none" stroke="#14120C" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+        <path id="route-core"   fill="none" stroke="#F5C542" stroke-width="6"  stroke-linejoin="round" stroke-linecap="round" />
+        <path class="sector" id="sec1" fill="none" stroke="#A667F0" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+        <path class="sector" id="sec2" fill="none" stroke="#F5C542" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+        <path class="sector" id="sec3" fill="none" stroke="#A667F0" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+        <path class="sector" id="sec4" fill="none" stroke="#A667F0" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+        <g class="gate" id="gate1" opacity="0"><line class="gc" stroke="#14120C" stroke-width="8" stroke-linecap="round" /><line class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
+        <g class="gate" id="gate2" opacity="0"><line class="gc" stroke="#14120C" stroke-width="8" stroke-linecap="round" /><line class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
+        <g class="gate" id="gate3" opacity="0"><line class="gc" stroke="#14120C" stroke-width="8" stroke-linecap="round" /><line class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
+        <circle id="ring-start" r="13" fill="#14120C" stroke="#F4F2EC" stroke-width="4" opacity="0" />
+        <circle id="ring-end"   r="13" fill="#14120C" stroke="#F4F2EC" stroke-width="4" opacity="0" />
+        <circle id="rider" r="11" fill="#2F7DE1" stroke="#FFFFFF" stroke-width="3" opacity="0" />
+      </svg>
+      <div id="scrim-bottom"></div>
+      <div id="dim"></div>
+      <p id="attrib">© OpenStreetMap contributors · OpenFreeMap</p>
+    </div>
+  </div>
+
+  <div id="ui" class="clip full" data-start="0" data-duration="14.8" data-track-index="1">
+    <div class="inner">
+      <p class="caption" id="capA">Save the start and end — it splits into sectors automatically.</p>
+      <p class="caption" id="capB">Next time, you've got something to go for.</p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script>
+    // ---- shared constants (identical in ../_map/map-capture.html) ----
+    // Route: qualifire-20260903-1828.gpx (pre-start + warm-up points dropped), projected to
+    // 1920x1080 frame px at MAP_CENTER / MAP_ZOOM below (Web Mercator, 512-px tiles, no bearing/pitch).
+    // Douglas-Peucker 0.7 px, 70 points. Do NOT edit by hand; regenerate from the GPX if the framing changes.
+    var MAP_CENTER = [4.663233, 50.84662];   // [lon, lat]
+    var MAP_ZOOM   = 13.4;
+    var ROUTE = "1343.0,131.3 1341.7,133.9 1332.6,139.2 1329.1,137.2 1329.0,132.5 1325.4,127.7 1319.1,122.9 1308.0,128.8 1291.2,133.5 1279.4,139.9 1273.0,145.5 1269.3,146.9 1240.0,173.1 1237.1,174.3 1235.6,171.3 1233.0,170.1 1201.7,194.5 1164.9,220.8 1135.3,228.4 1089.3,249.7 1083.3,246.4 1071.8,244.2 1065.8,244.4 1061.4,246.1 984.6,327.2 944.3,359.3 931.8,374.0 931.5,386.8 935.2,391.2 942.2,395.5 961.7,402.7 965.8,400.3 970.9,400.8 1004.7,413.4 1005.6,417.0 1003.5,421.5 997.5,429.1 995.6,434.3 997.1,437.4 996.1,438.6 993.9,439.6 990.1,439.0 983.8,435.0 970.2,430.0 965.4,427.2 942.5,419.0 933.8,423.8 873.8,472.6 856.8,487.4 831.7,540.7 821.0,559.3 810.1,574.3 795.9,591.1 790.1,601.1 770.4,624.6 759.0,643.7 757.0,645.0 727.6,649.2 699.3,677.1 676.2,702.7 671.6,711.9 669.3,720.2 648.0,746.4 646.4,760.8 640.6,761.3 606.4,791.5 600.5,793.2 595.9,797.1 577.2,786.7 575.0,786.9";
+    var GATES = [0.24, 0.63, 0.84];                                  // fractions of route length (clear of the 0.40-0.57 self-loop)
+    var SECTOR_COLORS = ['#A667F0', '#F5C542', '#A667F0', '#A667F0'];  // sector k ends at gate k; sector 4 ends at the finish
+    // -------------------------------------------------------------------
+
+    // Build the overlay geometry from ROUTE (runs once, before the timeline).
+    var pts = ROUTE.split(' ').map(function (s) { var a = s.split(','); return [parseFloat(a[0]), parseFloat(a[1])]; });
+    var dAttr = 'M' + pts.map(function (p) { return p[0] + ',' + p[1]; }).join(' L');
+    ['route-casing', 'route-core', 'sec1', 'sec2', 'sec3', 'sec4'].forEach(function (id) { document.getElementById(id).setAttribute('d', dAttr); });
+    var core = document.getElementById('route-core');
+    var L = core.getTotalLength();
+    function at(len) { return core.getPointAtLength(Math.max(0, Math.min(L, len))); }
+    var P0 = at(0), P1 = at(L);
+
+    // Scored-sector overlays: one dash window per sector on a copy of the route path.
+    var bounds = [0].concat(GATES).concat([1]);
+    for (var s = 0; s < 4; s++) {
+      var a = bounds[s] * L, b = bounds[s + 1] * L, el = document.getElementById('sec' + (s + 1));
+      el.setAttribute('stroke-dasharray', (b - a) + ' ' + L);
+      el.setAttribute('stroke-dashoffset', -a);
+    }
+
+    // Gates: 44-px tick perpendicular to the local heading, centred exactly on the route point.
+    var GATE_PT = [];
+    GATES.forEach(function (f, i) {
+      var p = at(f * L), q1 = at(f * L - 8), q2 = at(f * L + 8);
+      var ang = Math.atan2(q2.y - q1.y, q2.x - q1.x) + Math.PI / 2;
+      var dx = Math.cos(ang) * 22, dy = Math.sin(ang) * 22;
+      var g = document.getElementById('gate' + (i + 1));
+      Array.prototype.forEach.call(g.querySelectorAll('line'), function (ln) {
+        ln.setAttribute('x1', p.x - dx); ln.setAttribute('y1', p.y - dy);
+        ln.setAttribute('x2', p.x + dx); ln.setAttribute('y2', p.y + dy);
+      });
+      GATE_PT.push(p);
+    });
+
+    gsap.set('#ring-start', { attr: { cx: P0.x, cy: P0.y } });
+    gsap.set('#ring-end',   { attr: { cx: P1.x, cy: P1.y } });
+    gsap.set('#rider',      { attr: { cx: P0.x, cy: P0.y } });
+
+    // Rider along the route at constant speed: 240 short linear tweens (no callbacks, no plugins,
+    // so a frame-seeking renderer always lands on the right point).
+    function ride(tl, start, dur) {
+      var N = 240, prev = at(0);
+      for (var i = 1; i <= N; i++) {
+        var p = at(i / N * L);
+        tl.fromTo('#rider', { attr: { cx: prev.x, cy: prev.y } },
+          { attr: { cx: p.x, cy: p.y }, duration: dur / N, ease: 'none', immediateRender: false, lazy: false },
+          start + (i - 1) * dur / N);
+        prev = p;
+      }
+    }
+    // Static colour swap when a gate is crossed (the app has no gate pulse).
+    function scoreGate(tl, k, t) {
+      tl.set('#gate' + k + ' .gk', { attr: { stroke: SECTOR_COLORS[k - 1], 'stroke-width': 5, opacity: 1 } }, t);
+    }
+
+    var tl = gsap.timeline({ paused: true });
+
+    // Frame 0: the finished first ride — route fully drawn, no rider, nothing saved yet.
+
+    // Beat 1 (0.05-0.5): start/end landmark rings pop in.
+    tl.fromTo('#ring-start', { opacity: 0, scale: 0, svgOrigin: P0.x + ' ' + P0.y }, { opacity: 1, scale: 1, duration: 0.4, ease: 'back.out(2)' }, 0.05);
+    tl.fromTo('#ring-end',   { opacity: 0, scale: 0, svgOrigin: P1.x + ' ' + P1.y }, { opacity: 1, scale: 1, duration: 0.4, ease: 'back.out(2)' }, 0.15);
+
+    // Beat 2 (0.6-3.9): caption + three gate ticks pop in, centred on the route.
+    tl.fromTo('#capA', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 0.6);
+    GATE_PT.forEach(function (p, i) {
+      tl.fromTo('#gate' + (i + 1), { opacity: 0, scale: 0, svgOrigin: p.x + ' ' + p.y },
+        { opacity: 1, scale: 1, duration: 0.4, ease: 'back.out(2)' }, 0.9 + i * 0.3);
+    });
+    tl.to('#capA', { opacity: 0, duration: 0.4 }, 3.5);
+    tl.set('#capA', { opacity: 0 }, 3.9);
+
+    // Beat 3 (4.0-6.9): caption.
+    tl.fromTo('#capB', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 4.0);
+    tl.to('#capB', { opacity: 0, duration: 0.4 }, 6.5);
+    tl.set('#capB', { opacity: 0 }, 6.9);
+
+    // Beat 4 (7.0-14.3): second ride. Crossing a gate = static colour swap + the sector paints its tier.
+    var RIDE_T0 = 7.4, RIDE_DUR = 6.9;
+    tl.fromTo('#rider', { opacity: 0 }, { opacity: 1, duration: 0.3 }, 7.0);
+    ride(tl, RIDE_T0, RIDE_DUR);
+    GATES.forEach(function (f, i) {
+      var t = RIDE_T0 + f * RIDE_DUR;
+      scoreGate(tl, i + 1, t);
+      tl.to('#sec' + (i + 1), { opacity: 1, duration: 0.25 }, t);
+    });
+    tl.to('#sec4', { opacity: 1, duration: 0.25 }, RIDE_T0 + RIDE_DUR);
+    // hold to 14.8
+    tl.set('#rider', { opacity: 1 }, 14.8);
+
+    window.__timelines = window.__timelines || {};
+    window.__timelines.gatessaving = tl;
+  </script>
+
+</div>
+
+</body>
+</html>

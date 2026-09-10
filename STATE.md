@@ -22,6 +22,16 @@ have the app turn that ride into a real route (name the endpoints, get gates, ge
 and — separately — export/import the whole app so it can move between phones. "Someone else
 besides Nathan can use this app" is a top-priority goal, not just a design lens.
 
+**Pivot, 2026-09-09 (Nathan):** "it is not a personal app for myself anymore, but something
+i want people to be able to try out." Qualifire is no longer being kept working for Nathan
+alone — the empty-seed `virgin` build (autonomous from a blank install, nothing of Nathan's
+baked in), the `deployment/` folder's distribution work, and a separately-run `marketing/`
+effort (video teasers + a landing page, its own cycle process — see `marketing/README.md`)
+all exist *because of* this goal, not as separate side-quests. See
+`deployment/DEPLOYMENT-OPTIONS.md` and `deployment/QUESTIONS-FOR-NATHAN.md` for the actual
+distribution route and what's still open; Nathan answered most of the open questions the same
+day (below).
+
 ## Vocabulary and data model (since virgin-cycle3, 2026-09-06)
 
 - **Route = the from→to path between two landmarks (parent). Way = one named variant of
@@ -145,9 +155,29 @@ needs a second look.
 Distilled from `main`'s decision log 2026-08-31 — only what still actually constrains the
 virgin prototype. Full rationale/history for any of these is on `main` if ever needed.
 
-- **Single-user personal app, no accounts, no social, no store distribution** — except
-  "someone else can use it from a blank install" is now the top-priority goal above; that's
-  a capability, not a multi-user/social pivot.
+- **Distribution decisions locked in 2026-09-09** (Nathan's answers, folded from
+  `deployment/QUESTIONS-FOR-NATHAN.md`): targeting **Google Play** (closed testing first, not
+  a public listing yet) — sideloading's Android "unknown sources" warning is too much friction
+  for new testers. **5–10 testers to start, Android only** (iPhone testers explicitly
+  deferred). The Play listing will use the **clean package name `com.nathanbonher.qualifire`
+  and the name "Qualifire"** (dropping "Preview") — no testers have received a build yet
+  (confirmed 2026-09-09, Q10: Nathan hasn't sent the APK/link to anyone), so this only affects
+  **Nathan's own phone**, which has the `.preview` install; it isn't a tester-facing cost.
+  **$25 one-time Play developer fee approved**; no timeline pressure.
+  Confirmed by code check the same day: **the app requests background location**, not just
+  foreground (`expo-location` plugin config + `ACCESS_BACKGROUND_LOCATION` +
+  `Location.startLocationUpdatesAsync`/`TaskManager` in `app/src/location/index.ts`) — this
+  adds Play's prominent-disclosure/justification/demo-video review requirements to the Play
+  route (see `deployment/DEPLOYMENT-OPTIONS.md`). **Signing decided 2026-09-10: Google
+  generates the Play app-signing key** (not the existing EAS one) — the clean package becomes
+  Play-only permanently (no interchangeable sideload), which matches "everyone gets it from
+  Play" (Q1). **No keystore backup scheduled** — Play holds its own copy of the key it
+  generates, so losing the Expo account wouldn't strand the Play-distributed app; the one
+  narrow exception is Nathan's own `.preview` phone, which Step 3 of the plan retires anyway.
+  Nothing on distribution route or signing is open — see `deployment/QUESTIONS-FOR-NATHAN.md`
+  for the full record and `deployment/DEPLOYMENT-OPTIONS.md` §0 for what's left to actually do.
+- **"No accounts, no social" still stands** — the pivot and the above are about distribution
+  reach, not the in-app model; that's a separate call Nathan hasn't made.
 - **Scoring:** three colour tiers (purple/green/yellow), F1 palette. No noise floor below
   a single ride (D-045 ruling 1, built as NW-1, 2026-09-08): a way's reference ride (ride 1)
   gets no colour verdict on the day it's ridden — it earns a rank once stored, but nothing to

@@ -37,6 +37,32 @@ powershell -ExecutionPolicy Bypass -File .\render.ps1              # preview tea
 powershell -ExecutionPolicy Bypass -File .\render.ps1 -Render       # render teaser
 ```
 
+## The three product scenes (start-ride, gates-saving, ranking)
+
+They draw on a real map. One-time step first — capture the basemap (needs internet, ~1 min;
+full instructions in `_map\README.md`): double-click `_map\map-capture.html`, wait for
+**READY**, click **Download map.png**, then copy it into the three folders:
+
+```powershell
+$src = "$env:USERPROFILE\Downloads\map.png"
+$hf  = "C:\Users\natha\Claude personal projects\Qualifire\marketing\hyperframes"
+foreach ($c in 'start-ride','gates-saving','ranking') { Copy-Item $src (Join-Path $hf "$c\map.png") -Force }
+```
+
+Then preview / render as usual:
+
+```powershell
+cd "C:\Users\natha\Claude personal projects\Qualifire\marketing\hyperframes"
+powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name start-ride              # preview
+powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name start-ride -Render      # render
+powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name gates-saving -Render
+powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name ranking -Render
+```
+
+If a preview shows the route on plain black, `map.png` is missing from that folder (or wasn't
+served) — `npx hyperframes check` inside the folder will name the missing media. Copy the
+finished MP4s to `<scene>\rounds\v2\<scene>_v2.mp4` for review.
+
 ## Scaffolding a brand-new composition folder
 
 Only needed once per new idea (run from `marketing/hyperframes/`, not inside an existing
@@ -58,6 +84,28 @@ cd "C:\Users\natha\Claude personal projects\Qualifire\marketing\hyperframes\<fol
 npx hyperframes preview     # live preview
 npx hyperframes render      # render to MP4
 ```
+
+## Before experimenting in Studio: checkpoint, then diff or discard
+
+Studio autosaves straight into a composition's `index.html`. So a good habit before you
+click around in there: commit a checkpoint first, so you can always see exactly what you
+changed afterward — and throw it away cleanly if you don't like it.
+
+```powershell
+cd "C:\Users\natha\Claude personal projects\Qualifire\marketing\hyperframes"
+powershell -ExecutionPolicy Bypass -File .\checkpoint.ps1
+```
+
+Then open Studio and experiment as much as you want. When you're done:
+
+```powershell
+git diff marketing              # see exactly what changed, line by line
+git checkout -- marketing       # DISCARD it — back to the checkpoint
+git add marketing; git commit -m "..."   # KEEP it — a normal commit, once you're happy
+```
+
+`checkout` and `commit` go in opposite directions — `checkout` throws the changes away,
+`commit` keeps them. Only run `checkout` when you're sure you don't want what's there.
 
 ## Why double-clicking `index.html` doesn't work
 

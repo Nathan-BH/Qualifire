@@ -64,6 +64,33 @@ replaced. Vocabulary is post-WP-3: a route is the from→to path, a way is one v
    survivable — separate from retroactive route creation, which is what lets a total stranger
    start from nothing.
 
+## Distribution (2026-09-09 pivot — see `deployment/`)
+
+Nathan answered most of `deployment/QUESTIONS-FOR-NATHAN.md` on 2026-09-09; folded into
+`STATE.md`'s ground rules. What that adds here:
+
+- **Package rename to the clean `com.nathanbonher.qualifire` / "Qualifire"** (dropping
+  "Preview") is decided, for the eventual Play listing. **Correction (2026-09-09, Q10):** no
+  testers have a build yet — Nathan hasn't sent the APK/link to anyone — so the reinstall/
+  history-loss cost of this rename lands only on **Nathan's own `.preview` phone**, not on
+  testers. Cleanest order: do the rename before the first hand-off, so no one but Nathan ever
+  sees the old package name. Item 4 (whole-app export/import) is still worth having before
+  Nathan does that rename himself, so he doesn't lose his own ride history in the process.
+- **Sentry crash reporting** (Q8, Nathan wants it) — a normal app work package, not deployment
+  config: one new APK build, works the same for sideloaded and Play installs. Needs its own
+  `cycles/` folder when picked up; not started.
+- **Background location confirmed requested** (code check, 2026-09-09):
+  `app/src/location/index.ts` uses `TaskManager` + `Location.startLocationUpdatesAsync`, and
+  `app.json` sets `isAndroidBackgroundLocationEnabled: true` + `ACCESS_BACKGROUND_LOCATION`.
+  This raises the cost of the Play route (prominent-disclosure copy, written justification,
+  usually a demo video in review) — factored into `deployment/DEPLOYMENT-OPTIONS.md`.
+- **Signing decided 2026-09-10:** Google generates the Play app-signing key (Q6); no keystore
+  backup needed for the Play-signed key (Q7) — Play keeps its own copy. Nothing left open on
+  distribution route or signing. Real remaining work, tracked in
+  `deployment/DEPLOYMENT-OPTIONS.md` §0: a `play` EAS build profile, the background-location
+  in-app disclosure UI (can ride along with the Sentry native build), a privacy policy page,
+  the Play Console setup itself, and the written background-location justification for review.
+
 ## Housekeeping (agent-side, no phone needed)
 
 - **Record build7's fingerprint in `scripts/OTA-TROUBLESHOOTING.md`** — the last cycle4 step

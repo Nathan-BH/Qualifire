@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Qualifire — map capture (run once in Chrome, saves map.png)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.css">
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.js"></script>
+<style>
+  body { margin: 0; background: #0A0A0A; color: #F4F2EC; font-family: "Segoe UI", Arial, sans-serif; }
+  #bar { padding: 12px 16px; font-size: 15px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  #dl { font-size: 16px; padding: 8px 18px; background: #F5C542; color: #17171b; border: 0; border-radius: 8px; font-weight: 800; letter-spacing: 1px; cursor: pointer; }
+  #dl:disabled { opacity: .4; cursor: default; }
+  #status { color: #9a978f; }
+  #wrap { position: relative; width: 1920px; height: 1080px; }
+  #map { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+  #overlay { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <b>Qualifire map capture</b>
+  <span id="status">Loading tiles…</span>
+  <button id="dl" disabled>Download map.png</button>
+  <span>Check that the yellow route sits on the roads (scroll to see the whole 1920×1080 frame), then download.</span>
+</div>
+<div id="wrap">
+  <div id="map"></div>
+  <!-- Alignment check only — NOT part of the saved PNG. Same polyline as the three compositions. -->
+  <svg id="overlay" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+    <polyline id="chk-casing" fill="none" stroke="#14120C" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+    <polyline id="chk-core"   fill="none" stroke="#F5C542" stroke-width="6"  stroke-linejoin="round" stroke-linecap="round" />
+  </svg>
+</div>
+<script>
+  // ---- shared constants (identical in start-ride / gates-saving / ranking index.html) ----
+  // Route: qualifire-20260903-1828.gpx (pre-start + warm-up points dropped), projected to
+  // 1920x1080 frame px at MAP_CENTER / MAP_ZOOM below (Web Mercator, 512-px tiles, no bearing/pitch).
+  // Douglas-Peucker 0.7 px, 70 points. Do NOT edit by hand; regenerate from the GPX if the framing changes.
+  var MAP_CENTER = [4.663233, 50.84662];   // [lon, lat]
+  var MAP_ZOOM   = 13.4;
+  var ROUTE = "1343.0,131.3 1341.7,133.9 1332.6,139.2 1329.1,137.2 1329.0,132.5 1325.4,127.7 1319.1,122.9 1308.0,128.8 1291.2,133.5 1279.4,139.9 1273.0,145.5 1269.3,146.9 1240.0,173.1 1237.1,174.3 1235.6,171.3 1233.0,170.1 1201.7,194.5 1164.9,220.8 1135.3,228.4 1089.3,249.7 1083.3,246.4 1071.8,244.2 1065.8,244.4 1061.4,246.1 984.6,327.2 944.3,359.3 931.8,374.0 931.5,386.8 935.2,391.2 942.2,395.5 961.7,402.7 965.8,400.3 970.9,400.8 1004.7,413.4 1005.6,417.0 1003.5,421.5 997.5,429.1 995.6,434.3 997.1,437.4 996.1,438.6 993.9,439.6 990.1,439.0 983.8,435.0 970.2,430.0 965.4,427.2 942.5,419.0 933.8,423.8 873.8,472.6 856.8,487.4 831.7,540.7 821.0,559.3 810.1,574.3 795.9,591.1 790.1,601.1 770.4,624.6 759.0,643.7 757.0,645.0 727.6,649.2 699.3,677.1 676.2,702.7 671.6,711.9 669.3,720.2 648.0,746.4 646.4,760.8 640.6,761.3 606.4,791.5 600.5,793.2 595.9,797.1 577.2,786.7 575.0,786.9";
+  var GATES = [0.24, 0.63, 0.84];                                  // fractions of route length (clear of the 0.40-0.57 self-loop)
+  var SECTOR_COLORS = ['#A667F0', '#F5C542', '#A667F0', '#A667F0'];  // sector k ends at gate k; sector 4 ends at the finish
+  // ---------------------------------------------------------------------------------------
+  var STYLE = 'https://tiles.openfreemap.org/styles/dark';      // the app's night style; day = https://tiles.openfreemap.org/styles/positron
+  var PIXEL_RATIO = 2;                                           // PNG comes out 3840x2160 for a 1920x1080 frame
+
+  document.getElementById('chk-casing').setAttribute('points', ROUTE);
+  document.getElementById('chk-core').setAttribute('points', ROUTE);
+
+  var status = document.getElementById('status'), btn = document.getElementById('dl');
+  var map = new maplibregl.Map({
+    container: 'map', style: STYLE, center: MAP_CENTER, zoom: MAP_ZOOM, bearing: 0, pitch: 0,
+    interactive: false, attributionControl: false, fadeDuration: 0,
+    preserveDrawingBuffer: true, pixelRatio: PIXEL_RATIO
+  });
+  map.on('error', function (e) { status.textContent = 'ERROR: ' + ((e && e.error && e.error.message) || e); });
+  map.once('idle', function () {
+    setTimeout(function () {
+      var c = map.getCanvas();
+      status.textContent = 'READY — tiles loaded, canvas ' + c.width + 'x' + c.height;
+      btn.disabled = false;
+    }, 1500);
+  });
+  btn.onclick = function () {
+    map.getCanvas().toBlob(function (blob) {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'map.png';
+      document.body.appendChild(a); a.click(); a.remove();
+      status.textContent = 'Saved map.png to your Downloads folder.';
+    }, 'image/png');
+  };
+</script>
+</body>
+</html>

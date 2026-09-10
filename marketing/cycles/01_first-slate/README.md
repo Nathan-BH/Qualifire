@@ -36,3 +36,12 @@ Rendering could not be completed this session — `device_bash` (the bridge to N
 
 ## Next
 Cycle 02 starts once Nathan reviews all four renders (teaser's revision, plus gate/purple/tour for the first time) — which first requires the pending render pass above.
+
+## Superseded by the per-composition round scheme (2026-09-09, later same session)
+All four renders landed later this same day, and feedback tracking moved to
+a finer-grained scheme: each composition now has its own
+`hyperframes/<comp>/rounds/v1/FEEDBACK.md` (render copy + a detailed,
+timestamped description + a place for Nathan's notes), indexed from that
+composition's own README. This cycle folder is kept as the historical
+record of what round 1 actually delivered and why — see the top-level
+`marketing/README.md` for where feedback lives going forward.

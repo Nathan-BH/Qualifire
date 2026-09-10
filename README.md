@@ -4,8 +4,9 @@ A mobile app that applies **F1 qualifying** logic to a daily bike commute: track
 GPS, split the route into sectors, and colour each sector by whether you beat your own
 benchmark.
 
-Personal app first, but "someone else can use this from a blank install" is now a
-top-priority goal — see `STATE.md`.
+Started as a personal app. As of 2026-09-09, Nathan wants other people to actually be
+able to try it — see `STATE.md` for the pivot and `deployment/` for how distribution is
+being worked out.
 
 ---
 
@@ -37,7 +38,12 @@ Qualifire/
 ├── data/                data/README.md plus data/activities/TEST in app rides/ and
 │                        TEST in virgin-app rides/ — Nathan's notes and exports from
 │                        app-recorded test rides. The Strava GPS archive lives on `main` only.
+├── deployment/          Standing folder for how to actually ship/distribute the app (Expo
+│                        Dev Client, EAS Build/Update, Play Store, or other) — current state,
+│                        options, open questions for Nathan, and a running token/cycle log.
 ├── design/              Editable SVG mirror of every app screen (Nathan's Inkscape round-trip).
+├── marketing/           Video teasers, landing page (index.html), brand assets — run with its
+│                        own cycle process, separate from `cycles/`. Start with its README.md.
 ├── Nathan/              Nathan's own notes and future plans — agents read-only, never write here.
 ├── process/             CONVENTIONS.md — the model-tier pipeline, honesty rules, file ownership.
 ├── product/             CONCEPT.md, DATA-MODEL.md, LAYOUT.md, MAP-CONTRACT.md, MAP-TILES.md,
