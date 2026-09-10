@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Qualifire — route candidate: CURRENT production route (2026-09-03 18:28, work to home) (preview only, not the final map.png tool)</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.css">
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.js"></script>
+<style>
+  body { margin: 0; background: #0A0A0A; color: #F4F2EC; font-family: "Segoe UI", Arial, sans-serif; }
+  #bar { padding: 12px 16px; font-size: 15px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  #bar b { color: #F5C542; }
+  #stats { color: #cfcac0; }
+  #status { color: #9a978f; }
+  #wrap { position: relative; width: 1920px; height: 1080px; }
+  #map { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <b>ROUTE CANDIDATE — CURRENT production route (2026-09-03 18:28, work to home)</b>
+  <span id="stats">5.80 km &middot; 62 pts &middot; center [4.66324, 50.84990] zoom 13.49</span>
+  <span id="status">Loading tiles…</span>
+  <span>This is a shape/framing preview only — not the map.png capture tool. If you like this route, say so and it becomes the new ROUTE/MAP_CENTER/MAP_ZOOM in _map/map-capture.html + the three scene index.html files.</span>
+</div>
+<div id="wrap">
+  <div id="map"></div>
+</div>
+<script>
+  // ---- candidate route: qualifire-20260903/qualifire-20260903-1828.gpx ----
+  // This is the route already used in start-ride / gates-saving / ranking v2. Shown here at the same bearing:180 framing purely so it can be compared side by side with the alternative below.
+  // Projected to 1920x1080 frame px (Web Mercator, 512-px tiles, bearing 180, no pitch), reflected
+  // through the frame centre to match the bottom-left -> top-right convention already in use.
+  // Preview only — GATES/SECTOR_COLORS below are placeholders (evenly spaced), not tuned per-route.
+  var MAP_CENTER = [4.6632374, 50.84990365];
+  var MAP_ZOOM   = 13.49;
+  var ROUTE = "550.2,886.9 553.3,891.6 552.2,891.2 553.8,887.1 563.4,881.5 567.2,883.7 567.4,888.6 571.1,893.8 577.8,898.8 589.6,892.6 607.5,887.5 630.9,873.3 662.1,845.4 665.1,844.2 666.7,847.4 669.5,848.6 742.0,794.6 773.5,786.5 822.4,763.9 828.9,767.4 841.0,769.7 852.2,767.7 933.8,681.4 976.8,647.2 990.1,631.6 990.4,618.0 986.5,613.2 979.1,608.7 958.3,601.1 953.9,603.6 948.4,603.0 912.5,589.7 911.5,585.8 920.2,573.0 922.2,567.4 920.6,564.1 921.6,562.9 928.1,562.4 954.3,575.0 978.7,583.6 988.0,578.5 1051.8,526.6 1070.0,510.9 1096.6,454.1 1108.0,434.4 1134.7,400.5 1141.0,389.9 1161.9,364.8 1174.0,344.6 1176.1,343.2 1207.4,338.7 1237.5,309.0 1262.1,281.8 1269.5,263.1 1292.1,235.2 1293.8,219.9 1300.1,219.4 1336.4,187.3 1342.7,185.4 1347.7,181.3 1367.5,192.4 1369.8,191.8";
+  var GATES = [0.25, 0.5, 0.75];
+  var SECTOR_COLORS = ['#A667F0', '#F5C542', '#A667F0', '#A667F0'];
+  var STYLE = 'https://tiles.openfreemap.org/styles/dark';
+  var PIXEL_RATIO = 2;
+
+  var status = document.getElementById('status');
+  var map = new maplibregl.Map({
+    container: 'map', style: STYLE, center: MAP_CENTER, zoom: MAP_ZOOM, bearing: 180, pitch: 0,
+    interactive: true, attributionControl: false, fadeDuration: 0
+  });
+  // Route as a native MapLibre source+layer so it pans/zooms with the map. ROUTE is in 1920x1080 frame px
+  // at the INITIAL view (MAP_CENTER / MAP_ZOOM / bearing 180), so unproject it once, right here, before any
+  // user interaction can change the transform. (The old static SVG overlay only lined up at the initial view.)
+  var routeLngLat = ROUTE.split(' ').map(function (s) {
+    var a = s.split(','), ll = map.unproject([parseFloat(a[0]), parseFloat(a[1])]);
+    return [ll.lng, ll.lat];
+  });
+  map.on('load', function () {
+    map.addSource('route', { type: 'geojson', data: { type: 'Feature', properties: {},
+      geometry: { type: 'LineString', coordinates: routeLngLat } } });
+    map.addLayer({ id: 'route-casing', type: 'line', source: 'route',
+      layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#14120C', 'line-width': 10 } });
+    map.addLayer({ id: 'route-core', type: 'line', source: 'route',
+      layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#F5C542', 'line-width': 6 } });
+  });
+  map.on('error', function (e) { status.textContent = 'ERROR: ' + ((e && e.error && e.error.message) || e); });
+  map.once('idle', function () { status.textContent = 'READY — pan/zoom to inspect.'; });
+</script>
+</body>
+</html>

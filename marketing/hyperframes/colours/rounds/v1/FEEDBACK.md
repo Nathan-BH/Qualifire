@@ -33,4 +33,14 @@ Nothing — the file has no audio track at all (video stream only). All the "nar
 ## Nathan's feedback
 *(blank — write your notes below, overall or beat-by-beat)*
 
--
+-remove entirely the steps1&2 about the gates. animation can start directly with building the chart
+- instead of adding best and average afterwards, add it directly when the lines are being drawn for it. also remove best, just average as dotted line and avg next to it is enough
+- overall from here on the animation pauses for too long, so everything can be a bit quicker.
+- "Yellow is slower than your average" = verbatim only text needed, remove "yellow just means.."
+-  green is already better, enough to just say "Faster than your average." but I would put the green "Green." text above it instead of below the "Faster than your average." text. (also do the same for yellow, add a yellow "Yellow." text)
+- for purple again put the purple "Purple." above the explanatory text; the text itself is fine
+
+I would personally stop the colour explanation here as the rolling window is a separate thing to explain. It could be its own standalone render, where i want to explain how i keep it fun over time, rollover means a excepetional ride does not stay forever and you can go for it again quickly. >> make a new folder in C:\Users\natha\Claude personal projects\Qualifire\marketing\hyperframes and make a v1 render for it
+- remove the "purple isnt a lifetime record. Its the new bar to beat." text entirely
+
+also remove the end animation about purple being rare by design, I never liked it and it does not make sense anyways.

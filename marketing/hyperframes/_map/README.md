@@ -36,3 +36,15 @@ python -m http.server 8123
 then open http://localhost:8123/map-capture.html and continue from step 2.
 
 To switch to the day look, change `STYLE` in `map-capture.html` to the `positron` URL, re-download, re-copy.
+
+## Why map-capture.html never had the drifting-route bug (2026-09-10)
+
+The two route-candidate previews (`route-current_0903-1828.html`, `route-alt-wet-loop_0904-2144.html`) originally
+drew the route the same way `map-capture.html` does: the pixel-space `ROUTE` string written once into a fixed SVG
+`<polyline>` laid over the map. That only lines up at the initial view. `map-capture.html` is `interactive: false`
+— its map can never pan or zoom after load, so the one-time overlay is always correct there. The previews are
+`interactive: true` by design (they exist to be panned/zoomed), so the first scroll moved the map canvas and left
+the SVG behind. Fix (2026-09-10): the previews now unproject `ROUTE` to lon/lat once at construction and add it as
+a native MapLibre GeoJSON source with two `line` layers (casing #14120C/10px, core #F5C542/6px), which MapLibre keeps
+registered under any pan/zoom. `map-capture.html` keeps its static overlay on purpose: the overlay is an alignment
+check that must NOT end up in the captured PNG, and a non-interactive map cannot drift.

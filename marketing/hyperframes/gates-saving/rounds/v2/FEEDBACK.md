@@ -23,4 +23,6 @@ Nathan renders it (`COMMANDS.md` → "The three product scenes") and copies the 
 ## Nathan's feedback
 *(blank — write your notes below, overall or beat-by-beat)*
 
--
+- the white text overlaps with the route drawing >> fix it (text lower or drawing higher ?)
+- update the first text with
+  - "Save your route as reference."

@@ -39,6 +39,7 @@
     font-size: 44px; font-weight: 600; letter-spacing: 0.5px; color: #F4F2EC; opacity: 0; line-height: 1.3;
     text-shadow: 0 2px 12px rgba(10,10,10,0.6);
   }
+  .caption em { font-style: italic; font-weight: 600; }
 
   /* ---- START button: RecordScreen.tsx values at exactly 2x (150→300 tall, 40→80px label) ---- */
   #start-btn {
@@ -81,7 +82,7 @@
 
   <!-- Map layer: basemap PNG (captured once via ../_map/map-capture.html) + route/gates/rider as SVG.
        Casing+core convention and colours are the app's (see product code, RecordScreen / way map). -->
-  <div id="map" class="clip full" data-start="0" data-duration="15.2" data-track-index="0">
+  <div id="map" class="clip full" data-start="0" data-duration="10" data-track-index="0">
     <div class="inner">
       <img id="basemap" src="map.png" alt="" onerror="this.style.display='none'">
       <svg id="mapsvg" class="full-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
@@ -104,7 +105,7 @@
     </div>
   </div>
 
-  <div id="ui" class="clip full" data-start="0" data-duration="15.2" data-track-index="1">
+  <div id="ui" class="clip full" data-start="0" data-duration="10" data-track-index="1">
     <div class="inner">
       <div id="rank-card" class="card">
         <div class="hdr"><span class="lbl">This ride</span><span id="rank-pos" class="num">P1 of 10</span></div>
@@ -128,8 +129,8 @@
           <div class="trow"><span class="rk num">10</span><span class="who">19 Aug</span><span class="time num">18:33.5</span></div>
         </div>
       </div>
-      <p class="caption" id="capA">Now you know how you did.</p>
-      <p class="caption" id="capB">The more you ride it, the more you've got to race.</p>
+      <p class="caption" id="capA">Compare directly to your previous ride</p>
+      <p class="caption" id="capB">Compare against your<em>selfs</em></p>
     </div>
   </div>
 
@@ -137,11 +138,13 @@
   <script>
     // ---- shared constants (identical in ../_map/map-capture.html) ----
     // Route: qualifire-20260903-1828.gpx (pre-start + warm-up points dropped), projected to
-    // 1920x1080 frame px at MAP_CENTER / MAP_ZOOM below (Web Mercator, 512-px tiles, no bearing/pitch).
-    // Douglas-Peucker 0.7 px, 70 points. Do NOT edit by hand; regenerate from the GPX if the framing changes.
+    // 1920x1080 frame px at MAP_CENTER / MAP_ZOOM below (Web Mercator, 512-px tiles, bearing 180, no pitch).
+    // Douglas-Peucker 0.7 px, 70 points, then reflected through the frame centre (x,y)->(1920-x,1080-y) to
+    // match the capture page's bearing:180 (2026-09-10, per Nathan: ride should run bottom-left to top-right).
+    // Do NOT edit by hand; regenerate from the GPX if the framing changes.
     var MAP_CENTER = [4.663233, 50.84662];   // [lon, lat]
     var MAP_ZOOM   = 13.4;
-    var ROUTE = "1343.0,131.3 1341.7,133.9 1332.6,139.2 1329.1,137.2 1329.0,132.5 1325.4,127.7 1319.1,122.9 1308.0,128.8 1291.2,133.5 1279.4,139.9 1273.0,145.5 1269.3,146.9 1240.0,173.1 1237.1,174.3 1235.6,171.3 1233.0,170.1 1201.7,194.5 1164.9,220.8 1135.3,228.4 1089.3,249.7 1083.3,246.4 1071.8,244.2 1065.8,244.4 1061.4,246.1 984.6,327.2 944.3,359.3 931.8,374.0 931.5,386.8 935.2,391.2 942.2,395.5 961.7,402.7 965.8,400.3 970.9,400.8 1004.7,413.4 1005.6,417.0 1003.5,421.5 997.5,429.1 995.6,434.3 997.1,437.4 996.1,438.6 993.9,439.6 990.1,439.0 983.8,435.0 970.2,430.0 965.4,427.2 942.5,419.0 933.8,423.8 873.8,472.6 856.8,487.4 831.7,540.7 821.0,559.3 810.1,574.3 795.9,591.1 790.1,601.1 770.4,624.6 759.0,643.7 757.0,645.0 727.6,649.2 699.3,677.1 676.2,702.7 671.6,711.9 669.3,720.2 648.0,746.4 646.4,760.8 640.6,761.3 606.4,791.5 600.5,793.2 595.9,797.1 577.2,786.7 575.0,786.9";
+    var ROUTE = "577.0,948.7 578.3,946.1 587.4,940.8 590.9,942.8 591.0,947.5 594.6,952.3 600.9,957.1 612.0,951.2 628.8,946.5 640.6,940.1 647.0,934.5 650.7,933.1 680.0,906.9 682.9,905.7 684.4,908.7 687.0,909.9 718.3,885.5 755.1,859.2 784.7,851.6 830.7,830.3 836.7,833.6 848.2,835.8 854.2,835.6 858.6,833.9 935.4,752.8 975.7,720.7 988.2,706.0 988.5,693.2 984.8,688.8 977.8,684.5 958.3,677.3 954.2,679.7 949.1,679.2 915.3,666.6 914.4,663.0 916.5,658.5 922.5,650.9 924.4,645.7 922.9,642.6 923.9,641.4 926.1,640.4 929.9,641.0 936.2,645.0 949.8,650.0 954.6,652.8 977.5,661.0 986.2,656.2 1046.2,607.4 1063.2,592.6 1088.3,539.3 1099.0,520.7 1109.9,505.7 1124.1,488.9 1129.9,478.9 1149.6,455.4 1161.0,436.3 1163.0,435.0 1192.4,430.8 1220.7,402.9 1243.8,377.3 1248.4,368.1 1250.7,359.8 1272.0,333.6 1273.6,319.2 1279.4,318.7 1313.6,288.5 1319.5,286.8 1324.1,282.9 1342.8,293.3 1345.0,293.1";
     var GATES = [0.24, 0.63, 0.84];                                  // fractions of route length (clear of the 0.40-0.57 self-loop)
     var SECTOR_COLORS = ['#A667F0', '#F5C542', '#A667F0', '#A667F0'];  // sector k ends at gate k; sector 4 ends at the finish
     // -------------------------------------------------------------------
@@ -230,10 +233,10 @@
       tl.fromTo('#tower .trow:nth-child(' + (r + 1) + ')', { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.35, ease: 'power2.out' }, 5.9 + r * 0.15);
     }
 
-    // Beat 4 (8.25-15.2): caption, hold.
-    tl.fromTo('#capB', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 8.25);
-    tl.to('#capB', { opacity: 0, duration: 0.4 }, 14.8);
-    tl.set('#capB', { opacity: 0 }, 15.2);
+    // Beat 4 (7.5-10.0): caption as the last tower row lands (7.6), short hold, out at the 10.0 end (Nathan: stop at 10 s).
+    tl.fromTo('#capB', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 7.5);
+    tl.to('#capB', { opacity: 0, duration: 0.4 }, 9.6);
+    tl.set('#capB', { opacity: 0 }, 10.0);
 
     window.__timelines = window.__timelines || {};
     window.__timelines.ranking = tl;

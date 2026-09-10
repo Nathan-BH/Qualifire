@@ -23,4 +23,7 @@ Nathan renders it (`COMMANDS.md` → "The three product scenes") and copies the 
 ## Nathan's feedback
 *(blank — write your notes below, overall or beat-by-beat)*
 
--
+-only texts changes here, the animations I would keep for now
+  - first text >> "Compare directly to your previous ride"
+  - second text >> "Compare against your*selfs* (with only "selfs" in italic)"
+- also the hold at the end can be shorter. it can stop at 10 seconds

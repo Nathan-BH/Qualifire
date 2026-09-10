@@ -24,4 +24,5 @@ Nothing — no audio stream.
 ## Nathan's feedback
 *(blank — write your notes below, overall or beat-by-beat)*
 
--
+-remove the P2 leftover of the first frames, just leave the proper closing animation.
+- add under the qualifier text, the tagline "Same road. New meaning." same as in the "C:\Users\natha\Claude personal projects\Qualifire\marketing\hyperframes\brandmark\opening\rounds\v2\opening_v2.mp4" file

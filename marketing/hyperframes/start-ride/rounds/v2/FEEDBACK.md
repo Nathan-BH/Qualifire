@@ -22,4 +22,6 @@ Nathan renders it (`COMMANDS.md` → "The three product scenes") and copies the 
 ## Nathan's feedback
 *(blank — write your notes below, overall or beat-by-beat)*
 
--
+- there should be like a virtual arrow hoovering and clicking on the start button, otherwise it looks weird that its being clicked with no input
+- there is a kind of shading on the sides which makes the ride beginning more transparent, fix it so it is uniform.
+- also the current map taken is quite big, we have lots of space on the sides that are unused, and it would be maybe more dynamic if we were a bit more zoomed in, and we would "move" with the dot instead of having a overview view of the whole ride (not too much that it is laggy, but a bit more zoomed in)

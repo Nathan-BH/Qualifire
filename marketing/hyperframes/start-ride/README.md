@@ -14,4 +14,5 @@ Duration: 13.0s.
 | Round | Render | Date | Status |
 |---|---|---|---|
 | [v1](rounds/v1/FEEDBACK.md) | start-ride_v1.mp4 | 2026-09-10 | Awaiting feedback |
-| [v2](rounds/v2/FEEDBACK.md) | start-ride_v2.mp4 | 2026-09-10 | Built, awaiting Nathan's render |
+| [v2](rounds/v2/FEEDBACK.md) | start-ride_v2.mp4 | 2026-09-10 | Feedback received (cursor, tint, camera) |
+| [v3](rounds/v3/FEEDBACK.md) | start-ride_v3.mp4 | 2026-09-10 | Built, awaiting Nathan's render |

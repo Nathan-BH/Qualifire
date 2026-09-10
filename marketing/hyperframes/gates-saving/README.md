@@ -1,7 +1,7 @@
 # gates-saving — product scene (HyperFrames composition)
 
 One of the three product scenes of the app preview; position 3 of ../teaser/.
-Feedback for this scene goes in the most recent round's FEEDBACK.md here (currently v2).
+Feedback for this scene goes in the most recent round's FEEDBACK.md here (currently v3).
 
 Source code: `index.html` here (built 2026-09-10 from scratch — the legacy `tour/index.html`
 no longer exists). Needs `map.png` next to it, captured once via `../_map/map-capture.html`
@@ -15,3 +15,4 @@ Duration: 14.8s.
 |---|---|---|---|
 | [v1](rounds/v1/FEEDBACK.md) | gates-saving_v1.mp4 | 2026-09-10 | Awaiting feedback |
 | [v2](rounds/v2/FEEDBACK.md) | gates-saving_v2.mp4 | 2026-09-10 | Built, awaiting Nathan's render |
+| [v3](rounds/v3/FEEDBACK.md) | gates-saving_v3.mp4 | 2026-09-10 | Built, awaiting Nathan's render |

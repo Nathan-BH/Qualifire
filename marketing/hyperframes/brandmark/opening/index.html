@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Qualifire — Opening (HyperFrames)</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #0A0A0A; }
+  * { box-sizing: border-box; }
+
+  #stage {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+    background: #0A0A0A;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #F4F2EC;
+  }
+
+  .clip { position: absolute; }
+  .clip.full { top: 0; left: 0; width: 1920px; height: 1080px; }
+  #open .inner { opacity: 1; }
+
+  /* logo mark (ring + slash), centred */
+  #mark { position: absolute; top: 50%; left: 50%; width: 400px; height: 400px; margin: -200px 0 0 -200px; }
+  #mark svg { width: 100%; height: 100%; display: block; }
+  #slash { opacity: 0; }
+
+  /* wordmark + tagline, centred, same block the mark occupied */
+  #wordmark { position: absolute; top: 50%; left: 0; width: 1920px; text-align: center; transform: translateY(-40px); }
+  #wordmark .word    { font-size: 96px; font-weight: 800; letter-spacing: 22px; color: #F4F2EC; margin: 0 0 22px 0; opacity: 0; }
+  #wordmark .tagline { font-size: 34px; font-weight: 500; letter-spacing: 1px;  color: #9a978f; margin: 0; opacity: 0; }
+</style>
+</head>
+<body>
+
+<div id="stage" data-composition-id="opening" data-start="0" data-width="1920" data-height="1080">
+
+  <!-- Opening (5.5s): ring draws, yellow tail lands, mark fades OUT completely, a beat of black, then the
+       QUALIFIRE wordmark + tagline fade IN. Split out 2026-09-10 from ../../teaser/index.html (0-5.0s of the
+       old 11.2s brand teaser); v2 spaces the mark-out and wordmark-in apart per Nathan's v1 feedback.
+       Geometry inlined from product/brand/logos/qualifire_logo_5_monogram_wordmark.svg (512x512 viewBox). -->
+  <div id="open" class="clip full" data-start="0" data-duration="5.5" data-track-index="0">
+    <div class="inner">
+      <div id="mark">
+        <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+          <circle id="ring" cx="256" cy="218" r="118" fill="none" stroke="#F4F2EC" stroke-width="30" stroke-linecap="round" transform="rotate(-90 256 218)" />
+          <line id="slash" x1="291.355" y1="253.355" x2="387.5206" y2="349.5206" fill="none" stroke="#F5C542" stroke-width="30" stroke-linecap="round" />
+        </svg>
+      </div>
+      <div id="wordmark">
+        <p class="word">QUALIFIRE</p>
+        <p class="tagline">Same road. New meaning.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script>
+    var CIRC = 2 * Math.PI * 118;
+    gsap.set('#ring', { strokeDasharray: CIRC });
+    var tl = gsap.timeline({ paused: true });
+
+    // Beat 1 (0-1.65): ring draws clockwise, yellow tail lands. Hold to 2.0.
+    tl.fromTo('#ring', { strokeDashoffset: CIRC }, { strokeDashoffset: 0, duration: 1.3, ease: 'power2.inOut' }, 0);
+    tl.fromTo('#slash', { opacity: 0 }, { opacity: 1, duration: 0.35, ease: 'power1.out' }, 1.3);
+
+    // Beat 2 (2.0-2.45): mark fades out in place and is completely gone before anything else appears.
+    tl.to('#mark', { opacity: 0, duration: 0.45, ease: 'power1.inOut' }, 2.0);
+    tl.set('#mark', { opacity: 0 }, 2.45);
+
+    // 2.45-2.8: empty frame — the spacing Nathan asked for (v1 cross-faded these).
+
+    // Beat 3 (2.8-3.55): wordmark in, then tagline.
+    tl.fromTo('#wordmark .word',    { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 2.8);
+    tl.fromTo('#wordmark .tagline', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 3.05);
+
+    // Beat 4 (3.55-5.1): hold. Beat 5 (5.1-5.5): fade to black, hard-killed at the clip end.
+    tl.to('#open .inner', { opacity: 0, duration: 0.4, ease: 'power1.in' }, 5.1);
+    tl.set('#open .inner', { opacity: 0 }, 5.5);
+
+    window.__timelines = window.__timelines || {};
+    window.__timelines.opening = tl;
+  </script>
+
+</div>
+
+</body>
+</html>
