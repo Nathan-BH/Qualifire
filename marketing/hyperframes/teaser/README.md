@@ -6,7 +6,33 @@ ingredient compositions listed below, in this order. Order and in/out points are
 a property of this file, not of the ingredient folders — each ingredient is a
 standalone composition with its own README, render and feedback rounds.
 
-## Cut sheet (v4 — rounds/v4/teaser_v4.mp4, 64.8s) — current
+## Cut sheet (v5 — rounds/v5/teaser_v5.mp4, 46.9s planned) — current
+**Not yet assembled**: none of the five ingredient renders exist yet this session
+(`device_bash` was unreachable). `rounds/v5/concat.txt` and `rounds/v5/FEEDBACK.md` are
+built against the ingredients' PLANNED durations — the same way v4's own FEEDBACK.md
+was drafted for several of its ingredients before they existed. Confirm every duration
+by ffprobe once the renders land, before assembling.
+
+| # | Ingredient | Source render | Length | Plays at |
+|---|---|---|---|---|
+| 1 | brandmark/opening | opening_v3.mp4 | 6.500s | 0:00.000–0:06.500 |
+| 2 | start-ride | start-ride_v4.mp4 | 14.000s | 0:06.500–0:20.500 |
+| 3 | gates-saving | gates-saving_v4.mp4 | 12.400s | 0:20.500–0:32.900 |
+| 4 | ranking | ranking_v4.mp4 | 10.000s | 0:32.900–0:42.900 |
+| 5 | brandmark/closing | closing_v2.mp4 | 4.000s | 0:42.900–0:46.900 |
+
+Total: **46.900s** (1407 frames at 30fps) — planned, not yet confirmed by an actual build.
+
+v5 — colours dropped from the cut (composition kept standalone, just no longer plays
+here); opening v3, start-ride v4, gates-saving v4, ranking v4, closing v2 (first
+standalone closing) replace their v4 predecessors. Not yet assembled — awaiting the
+five ingredient renders. `rounds/v5/concat.txt` + re-encode recipe: see
+`rounds/v5/FEEDBACK.md`. Feedback on the assembly as a whole: `rounds/v5/FEEDBACK.md`.
+Feedback on an individual scene: that scene's own `rounds/v3/FEEDBACK.md`
+(brandmark/opening), `rounds/v4/FEEDBACK.md` (start-ride, gates-saving, ranking), or
+`rounds/v2/FEEDBACK.md` (brandmark/closing).
+
+## Cut sheet (v4 — rounds/v4/teaser_v4.mp4, 64.8s) — superseded by v5
 **Built and confirmed** (2026-09-10): `rounds/v4/teaser_v4.mp4` exists; ffprobe reads
 64.800000s / 1944 frames, matching the six-part sum exactly. Concat list and recipe in
 `rounds/v4/FEEDBACK.md`.
@@ -105,4 +131,5 @@ it should eventually move to `archive/`.
 | [v1](rounds/v1/FEEDBACK.md) | teaser_v1.mp4 | 2026-09-09 | Awaiting feedback |
 | [v2](rounds/v2/FEEDBACK.md) | teaser_v2.mp4 | 2026-09-10 | Skeleton (ffmpeg assembly of parts) — superseded by v3 |
 | [v3](rounds/v3/FEEDBACK.md) | teaser_v3.mp4 | 2026-09-10 | Real-map beats swapped in — superseded by v4 |
-| [v4](rounds/v4/FEEDBACK.md) | teaser_v4.mp4 | 2026-09-10 | Built, 64.8s confirmed — awaiting Nathan's feedback |
+| [v4](rounds/v4/FEEDBACK.md) | teaser_v4.mp4 | 2026-09-10 | Built, 64.8s confirmed — colours-section feedback received — superseded by v5 |
+| [v5](rounds/v5/FEEDBACK.md) | teaser_v5.mp4 | 2026-09-10 | Not yet assembled (5 ingredient renders pending) — colours dropped per Nathan's v4 feedback |

@@ -34,6 +34,7 @@
     font-size: 15px; letter-spacing: 0.3px; color: #9a978f; opacity: 0.85;
   }
   #dim { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; background: #0A0A0A; opacity: 0; }
+  #blackout { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; background: #0A0A0A; opacity: 1; pointer-events: none; }
 
   .caption {
     position: absolute; top: 920px; left: 0; width: 1920px; margin: 0; text-align: center;
@@ -45,11 +46,10 @@
   #start-btn {
     position: absolute; left: 510px; top: 390px; width: 900px; height: 300px;
     border-radius: 48px; border: 4px solid #F5C542; background: #F5C542;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+    display: flex; align-items: center; justify-content: center;
     opacity: 0;
   }
   #start-btn .label { margin: 0; font-size: 80px; font-weight: 800; letter-spacing: 10px; text-indent: 10px; line-height: 1; color: #17171b; }
-  #start-btn .sub   { margin: 0; font-size: 24px; letter-spacing: 2px; text-indent: 2px; color: #17171b; opacity: 0.75; }
 
   /* ---- cards (ranking scene) ---- */
   .card {
@@ -82,7 +82,7 @@
 
   <!-- Map layer: basemap PNG (captured once via ../_map/map-capture.html) + route/gates/rider as SVG.
        Casing+core convention and colours are the app's (see product code, RecordScreen / way map). -->
-  <div data-hf-id="hf-t7t1" id="map" class="clip full" data-start="0" data-duration="13" data-track-index="0">
+  <div data-hf-id="hf-t7t1" id="map" class="clip full" data-start="0" data-duration="14.0" data-track-index="0">
     <div data-hf-id="hf-lm34" class="inner">
       <div id="cam">
         <img data-hf-id="hf-25zy" id="basemap" src="map.png" alt="" onerror="this.style.display='none'">
@@ -90,10 +90,10 @@
         <svg data-hf-id="hf-68up" id="mapsvg" class="full-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
           <path data-hf-id="hf-03su" id="route-casing" fill="none" stroke="#14120C" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" />
           <path data-hf-id="hf-ze3x" id="route-core" fill="none" stroke="#F5C542" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
-          <path data-hf-id="hf-pfcd" class="sector" id="sec1" fill="none" stroke="#A667F0" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+          <path data-hf-id="hf-pfcd" class="sector" id="sec1" fill="none" stroke="#3ED598" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
           <path data-hf-id="hf-si8b" class="sector" id="sec2" fill="none" stroke="#F5C542" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
           <path data-hf-id="hf-ofvj" class="sector" id="sec3" fill="none" stroke="#A667F0" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
-          <path data-hf-id="hf-sgbe" class="sector" id="sec4" fill="none" stroke="#A667F0" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+          <path data-hf-id="hf-sgbe" class="sector" id="sec4" fill="none" stroke="#3ED598" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
           <g data-hf-id="hf-f0p9" class="gate" id="gate1" opacity="0"><line data-hf-id="hf-c7by" class="gc" stroke="#14120C" stroke-width="8" stroke-linecap="round" /><line data-hf-id="hf-qy5d" class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
           <g data-hf-id="hf-4pe2" class="gate" id="gate2" opacity="0"><line data-hf-id="hf-2a6a" class="gc" stroke="#14120C" stroke-width="8" stroke-linecap="round" /><line data-hf-id="hf-sa5x" class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
           <g data-hf-id="hf-eh3b" class="gate" id="gate3" opacity="0"><line data-hf-id="hf-2ohb" class="gc" stroke="#14120C" stroke-width="8" stroke-linecap="round" /><line data-hf-id="hf-th30" class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
@@ -107,13 +107,15 @@
     </div>
   </div>
 
-  <div data-hf-id="hf-tk7i" id="ui" class="clip full" data-start="0" data-duration="13" data-track-index="1">
+  <div data-hf-id="hf-tk7i" id="ui" class="clip full" data-start="0" data-duration="14.0" data-track-index="1">
     <div data-hf-id="hf-bug8" class="inner">
-      <div data-hf-id="hf-lzxk" id="start-btn"><p data-hf-id="hf-ppnx" class="label">START</p><p data-hf-id="hf-an4o" class="sub">the clock runs from here</p></div>
+      <div data-hf-id="hf-lzxk" id="start-btn"><p data-hf-id="hf-ppnx" class="label">START</p></div>
       <svg id="cursor" viewBox="0 0 28 42" xmlns="http://www.w3.org/2000/svg"><polygon points="1,1 1,35 9.5,27 15.5,41 21,38.5 15,25 26,25" fill="#FFFFFF" stroke="#17171b" stroke-width="2" stroke-linejoin="round"/></svg>
       <p data-hf-id="hf-5s91" class="caption" id="cap1">Ride your normal route.</p>
     </div>
   </div>
+
+  <div data-hf-id="hf-blku" id="blackout"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
   <script>
@@ -127,7 +129,7 @@
     var MAP_ZOOM   = 13.4;
     var ROUTE = "577.0,948.7 578.3,946.1 587.4,940.8 590.9,942.8 591.0,947.5 594.6,952.3 600.9,957.1 612.0,951.2 628.8,946.5 640.6,940.1 647.0,934.5 650.7,933.1 680.0,906.9 682.9,905.7 684.4,908.7 687.0,909.9 718.3,885.5 755.1,859.2 784.7,851.6 830.7,830.3 836.7,833.6 848.2,835.8 854.2,835.6 858.6,833.9 935.4,752.8 975.7,720.7 988.2,706.0 988.5,693.2 984.8,688.8 977.8,684.5 958.3,677.3 954.2,679.7 949.1,679.2 915.3,666.6 914.4,663.0 916.5,658.5 922.5,650.9 924.4,645.7 922.9,642.6 923.9,641.4 926.1,640.4 929.9,641.0 936.2,645.0 949.8,650.0 954.6,652.8 977.5,661.0 986.2,656.2 1046.2,607.4 1063.2,592.6 1088.3,539.3 1099.0,520.7 1109.9,505.7 1124.1,488.9 1129.9,478.9 1149.6,455.4 1161.0,436.3 1163.0,435.0 1192.4,430.8 1220.7,402.9 1243.8,377.3 1248.4,368.1 1250.7,359.8 1272.0,333.6 1273.6,319.2 1279.4,318.7 1313.6,288.5 1319.5,286.8 1324.1,282.9 1342.8,293.3 1345.0,293.1";
     var GATES = [0.24, 0.63, 0.84];                                  // fractions of route length (clear of the 0.40-0.57 self-loop)
-    var SECTOR_COLORS = ['#A667F0', '#F5C542', '#A667F0', '#A667F0'];  // sector k ends at gate k; sector 4 ends at the finish
+    var SECTOR_COLORS = ['#3ED598', '#F5C542', '#A667F0', '#3ED598'];  // sector k ends at gate k; sector 4 ends at the finish
     // -------------------------------------------------------------------
 
     // Build the overlay geometry from ROUTE (runs once, before the timeline).
@@ -205,7 +207,7 @@
     gsap.set('#dim', { opacity: 0.6 });
     gsap.set('#cam', { x: 0, y: 0, scale: 1, transformOrigin: '50% 50%' });   // frame 0: overview
 
-    // Beat 1 (0.0-3.0): START button in, pressed, out.
+    // Beat 1 (1.0-4.0): START button in, pressed, out.
     tl.fromTo('#start-btn', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 0.2);
     tl.to('#start-btn', { scale: 0.96, duration: 0.15, ease: 'power2.out', transformOrigin: '50% 50%' }, 2.2);
     tl.to('#start-btn', { scale: 1, duration: 0.2, ease: 'power2.out' }, 2.35);
@@ -222,21 +224,28 @@
     tl.to('#cursor', { opacity: 0, duration: 0.45, ease: 'power1.in' }, 2.55);
     tl.set('#cursor', { opacity: 0 }, 3.0);
 
-    // Camera push-in (2.8-4.1): overview -> 2x on the start of the route, as the START overlay clears.
+    // Camera push-in (3.8-5.1): overview -> 2x on the start of the route, as the START overlay clears.
     var cam0 = camXY(camAt(0), CAM_S);
     tl.to('#cam', { x: cam0.x, y: cam0.y, scale: CAM_S, duration: 1.3, ease: 'power2.inOut' }, 2.8);
 
-    // Beat 2 (3.0-4.3): rider waits at the start (already there). Caption in.
+    // Beat 2 (4.0-5.3): rider waits at the start (already there). Caption in.
     tl.fromTo('#cap1', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 3.6);
 
-    // Beat 3 (4.3-12.8): route draws behind the rider, constant speed.
+    // Beat 3 (5.3-13.8): route draws behind the rider, constant speed.
     tl.fromTo(['#route-casing', '#route-core'], { strokeDasharray: L, strokeDashoffset: L },
       { strokeDashoffset: 0, duration: 8.5, ease: 'none' }, 4.3);
     ride(tl, 4.3, 8.5);
 
-    // Beat 4 (12.8-13.0): hold at the finish; caption out.
+    // Beat 4 (13.8-14.0): hold at the finish; caption out.
     tl.to('#cap1', { opacity: 0, duration: 0.4 }, 12.6);
     tl.set('#cap1', { opacity: 0 }, 13.0);
+
+    // 1.0s blank lead-in: shift every beat above by +1.0s in one move (all camera/rider motion is
+    // driven by these tween start times, not by absolute-clock reads, so a single shiftChildren is
+    // exact), then add the blackout hold/reveal as new tweens positioned AFTER the shift so they land
+    // at their own literal times (0.0-0.4 hold, 0.4-1.0 reveal) instead of being shifted again.
+    tl.shiftChildren(1.0, true);
+    tl.to('#blackout', { opacity: 0, duration: 0.6, ease: 'power1.inOut' }, 0.4);
 
     window.__timelines = window.__timelines || {};
     window.__timelines.startride = tl;

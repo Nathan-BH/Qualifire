@@ -24,6 +24,7 @@
   /* ---- map layer: static basemap PNG (see ../_map/README.md) + SVG overlay in the app's casing+core style ---- */
   #basemap { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; display: block; }
   svg.full-svg { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; display: block; }
+  #cam { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 50% 50%; }
   #scrim-bottom {
     position: absolute; left: 0; top: 780px; width: 1920px; height: 300px;
     background: linear-gradient(to bottom, rgba(10,10,10,0) 0%, rgba(10,10,10,0.92) 100%);
@@ -39,6 +40,8 @@
     font-size: 44px; font-weight: 600; letter-spacing: 0.5px; color: #F4F2EC; opacity: 0; line-height: 1.3;
     text-shadow: 0 2px 12px rgba(10,10,10,0.6);
   }
+  .caption .em-i { font-style: italic; font-weight: 600; }
+  .caption .em-b { font-weight: 700; font-style: normal; }
 
   /* ---- START button: RecordScreen.tsx values at exactly 2x (150→300 tall, 40→80px label) ---- */
   #start-btn {
@@ -81,33 +84,35 @@
 
   <!-- Map layer: basemap PNG (captured once via ../_map/map-capture.html) + route/gates/rider as SVG.
        Casing+core convention and colours are the app's (see product code, RecordScreen / way map). -->
-  <div id="map" class="clip full" data-start="0" data-duration="14.8" data-track-index="0">
+  <div id="map" class="clip full" data-start="0" data-duration="12.4" data-track-index="0">
     <div class="inner">
-      <img id="basemap" src="map.png" alt="" onerror="this.style.display='none'">
-      <svg id="mapsvg" class="full-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
-        <path id="route-casing" fill="none" stroke="#14120C" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
-        <path id="route-core"   fill="none" stroke="#F5C542" stroke-width="6"  stroke-linejoin="round" stroke-linecap="round" />
-        <path class="sector" id="sec1" fill="none" stroke="#A667F0" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
-        <path class="sector" id="sec2" fill="none" stroke="#F5C542" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
-        <path class="sector" id="sec3" fill="none" stroke="#A667F0" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
-        <path class="sector" id="sec4" fill="none" stroke="#A667F0" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
-        <g class="gate" id="gate1" opacity="0"><line class="gc" stroke="#14120C" stroke-width="8" stroke-linecap="round" /><line class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
-        <g class="gate" id="gate2" opacity="0"><line class="gc" stroke="#14120C" stroke-width="8" stroke-linecap="round" /><line class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
-        <g class="gate" id="gate3" opacity="0"><line class="gc" stroke="#14120C" stroke-width="8" stroke-linecap="round" /><line class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
-        <circle id="ring-start" r="13" fill="#14120C" stroke="#F4F2EC" stroke-width="4" opacity="0" />
-        <circle id="ring-end"   r="13" fill="#14120C" stroke="#F4F2EC" stroke-width="4" opacity="0" />
-        <circle id="rider" r="11" fill="#2F7DE1" stroke="#FFFFFF" stroke-width="3" opacity="0" />
-      </svg>
+      <div id="cam">
+        <img id="basemap" src="map.png" alt="" onerror="this.style.display='none'">
+        <svg id="mapsvg" class="full-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+          <path id="route-casing" fill="none" stroke="#14120C" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+          <path id="route-core"   fill="none" stroke="#F5C542" stroke-width="6"  stroke-linejoin="round" stroke-linecap="round" />
+          <path class="sector" id="sec1" fill="none" stroke="#3ED598" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+          <path class="sector" id="sec2" fill="none" stroke="#F5C542" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+          <path class="sector" id="sec3" fill="none" stroke="#A667F0" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+          <path class="sector" id="sec4" fill="none" stroke="#3ED598" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+          <g class="gate" id="gate1" opacity="0"><line class="gc" stroke="#14120C" stroke-width="8" stroke-linecap="round" /><line class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
+          <g class="gate" id="gate2" opacity="0"><line class="gc" stroke="#14120C" stroke-width="8" stroke-linecap="round" /><line class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
+          <g class="gate" id="gate3" opacity="0"><line class="gc" stroke="#14120C" stroke-width="8" stroke-linecap="round" /><line class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
+          <circle id="ring-start" r="13" fill="#14120C" stroke="#F4F2EC" stroke-width="4" opacity="0" />
+          <circle id="ring-end"   r="13" fill="#14120C" stroke="#F4F2EC" stroke-width="4" opacity="0" />
+          <circle id="rider" r="11" fill="#2F7DE1" stroke="#FFFFFF" stroke-width="3" opacity="0" />
+        </svg>
+      </div>
       <div id="scrim-bottom"></div>
       <div id="dim"></div>
       <p id="attrib">© OpenStreetMap contributors · OpenFreeMap</p>
     </div>
   </div>
 
-  <div id="ui" class="clip full" data-start="0" data-duration="14.8" data-track-index="1">
+  <div id="ui" class="clip full" data-start="0" data-duration="12.4" data-track-index="1">
     <div class="inner">
       <p class="caption" id="capA">Save your route as reference.</p>
-      <p class="caption" id="capB">Next time, you've got something to go for.</p>
+      <p class="caption" id="capB">Next time. Start racing <span class="em-i">your</span><span class="em-b">self</span>.</p>
     </div>
   </div>
 
@@ -123,7 +128,7 @@
     var MAP_ZOOM   = 13.4;
     var ROUTE = "577.0,948.7 578.3,946.1 587.4,940.8 590.9,942.8 591.0,947.5 594.6,952.3 600.9,957.1 612.0,951.2 628.8,946.5 640.6,940.1 647.0,934.5 650.7,933.1 680.0,906.9 682.9,905.7 684.4,908.7 687.0,909.9 718.3,885.5 755.1,859.2 784.7,851.6 830.7,830.3 836.7,833.6 848.2,835.8 854.2,835.6 858.6,833.9 935.4,752.8 975.7,720.7 988.2,706.0 988.5,693.2 984.8,688.8 977.8,684.5 958.3,677.3 954.2,679.7 949.1,679.2 915.3,666.6 914.4,663.0 916.5,658.5 922.5,650.9 924.4,645.7 922.9,642.6 923.9,641.4 926.1,640.4 929.9,641.0 936.2,645.0 949.8,650.0 954.6,652.8 977.5,661.0 986.2,656.2 1046.2,607.4 1063.2,592.6 1088.3,539.3 1099.0,520.7 1109.9,505.7 1124.1,488.9 1129.9,478.9 1149.6,455.4 1161.0,436.3 1163.0,435.0 1192.4,430.8 1220.7,402.9 1243.8,377.3 1248.4,368.1 1250.7,359.8 1272.0,333.6 1273.6,319.2 1279.4,318.7 1313.6,288.5 1319.5,286.8 1324.1,282.9 1342.8,293.3 1345.0,293.1";
     var GATES = [0.24, 0.63, 0.84];                                  // fractions of route length (clear of the 0.40-0.57 self-loop)
-    var SECTOR_COLORS = ['#A667F0', '#F5C542', '#A667F0', '#A667F0'];  // sector k ends at gate k; sector 4 ends at the finish
+    var SECTOR_COLORS = ['#3ED598', '#F5C542', '#A667F0', '#3ED598'];  // sector k ends at gate k; sector 4 ends at the finish
     // -------------------------------------------------------------------
 
     // Build the overlay geometry from ROUTE (runs once, before the timeline).
@@ -159,7 +164,27 @@
 
     gsap.set('#ring-start', { attr: { cx: P0.x, cy: P0.y } });
     gsap.set('#ring-end',   { attr: { cx: P1.x, cy: P1.y } });
-    gsap.set('#rider',      { attr: { cx: P0.x, cy: P0.y } });
+    // Rider carries over from start-ride's finishing frame: starts at the route's finish point, full opacity,
+    // then fades out over the zoom-out lead-in before fading back in for this scene's own ride (see below).
+    gsap.set('#rider',      { attr: { cx: P1.x, cy: P1.y, r: 7, 'stroke-width': 2 }, opacity: 1 });
+
+    // ---- camera (ported verbatim from start-ride, for the zoom-out lead-in match-cut) ----
+    var CAM_S = 2.0;
+    var CAM_MIN_X = 960 / CAM_S, CAM_MAX_X = 1920 - 960 / CAM_S;   // 480..1440
+    var CAM_MIN_Y = 540 / CAM_S, CAM_MAX_Y = 1080 - 540 / CAM_S;   // 270..810
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+    function camAt(len) {   // mean of the route over +/-5% of L around len, clamped to the basemap
+      var W = 0.05 * L, sx = 0, sy = 0, n = 0;
+      for (var k = -10; k <= 10; k++) { var q = at(len + k / 10 * W); sx += q.x; sy += q.y; n++; }
+      return { x: clamp(sx / n, CAM_MIN_X, CAM_MAX_X), y: clamp(sy / n, CAM_MIN_Y, CAM_MAX_Y) };
+    }
+    function camXY(c, s) { return { x: s * (960 - c.x), y: s * (540 - c.y) }; }   // for transform-origin 50% 50%
+
+    // camStart = camera centred on the route's finish (camAt(L)) at 2x -- reproduces start-ride's own
+    // final camera position almost exactly, so the lead-in continues that frame instead of cutting to it.
+    var camStart = camXY(camAt(L), CAM_S);
+    gsap.set('#cam', { x: 0, y: 0, scale: 1, transformOrigin: '50% 50%' });
+    gsap.set('#cam', { x: camStart.x, y: camStart.y, scale: CAM_S });
 
     // Rider along the route at constant speed: 240 short linear tweens (no callbacks, no plugins,
     // so a frame-seeking renderer always lands on the right point).
@@ -180,29 +205,41 @@
 
     var tl = gsap.timeline({ paused: true });
 
-    // Frame 0: the finished first ride — route fully drawn, no rider, nothing saved yet.
+    // Frame 0: continuing from start-ride's finishing 2x frame -- zoomed in on the route's finish,
+    // rider still there (fades out over the lead-in below); route already fully drawn, nothing saved yet.
 
-    // Beat 1 (0.05-0.5): start/end landmark rings pop in.
-    tl.fromTo('#ring-start', { opacity: 0, scale: 0, svgOrigin: P0.x + ' ' + P0.y }, { opacity: 1, scale: 1, duration: 0.4, ease: 'back.out(2)' }, 0.05);
-    tl.fromTo('#ring-end',   { opacity: 0, scale: 0, svgOrigin: P1.x + ' ' + P1.y }, { opacity: 1, scale: 1, duration: 0.4, ease: 'back.out(2)' }, 0.15);
+    // Beat 0 (0-1.0): zoom-out lead-in, continuing the camera from start-ride's end frame down to this
+    // scene's normal framing. Stroke widths crossfade from start-ride's 2x-reduced values (7/4) to
+    // gates-saving's normal values (10/6) over the same 1.0s. Rider (left over from start-ride) fades out.
+    tl.fromTo('#cam', { x: camStart.x, y: camStart.y, scale: CAM_S }, { x: 0, y: 0, scale: 1, duration: 1.0, ease: 'power2.inOut' }, 0);
+    tl.fromTo('#route-casing', { attr: { 'stroke-width': 7 } }, { attr: { 'stroke-width': 10 }, duration: 1.0, ease: 'power2.inOut' }, 0);
+    tl.fromTo('#route-core', { attr: { 'stroke-width': 4 } }, { attr: { 'stroke-width': 6 }, duration: 1.0, ease: 'power2.inOut' }, 0);
+    tl.to('#rider', { opacity: 0, duration: 0.5, ease: 'power1.in' }, 0);
+    // Snap the (now-invisible) rider back to the route's start point, so its 4.4s fade-in for the
+    // second ride reappears at the start line rather than jumping there from the finish at 4.8s.
+    tl.set('#rider', { attr: { cx: P0.x, cy: P0.y, r: 11, 'stroke-width': 3 } }, 0.5);
 
-    // Beat 2 (0.6-3.9): caption + three gate ticks pop in, centred on the route.
-    tl.fromTo('#capA', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 0.6);
+    // Beat 1 (1.05-1.55): start/end landmark rings pop in.
+    tl.fromTo('#ring-start', { opacity: 0, scale: 0, svgOrigin: P0.x + ' ' + P0.y }, { opacity: 1, scale: 1, duration: 0.4, ease: 'back.out(2)' }, 1.05);
+    tl.fromTo('#ring-end',   { opacity: 0, scale: 0, svgOrigin: P1.x + ' ' + P1.y }, { opacity: 1, scale: 1, duration: 0.4, ease: 'back.out(2)' }, 1.15);
+
+    // Beat 2 (1.6-4.9): caption + three gate ticks pop in, centred on the route.
+    tl.fromTo('#capA', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 1.6);
     GATE_PT.forEach(function (p, i) {
       tl.fromTo('#gate' + (i + 1), { opacity: 0, scale: 0, svgOrigin: p.x + ' ' + p.y },
-        { opacity: 1, scale: 1, duration: 0.4, ease: 'back.out(2)' }, 0.9 + i * 0.3);
+        { opacity: 1, scale: 1, duration: 0.4, ease: 'back.out(2)' }, 1.9 + i * 0.3);
     });
-    tl.to('#capA', { opacity: 0, duration: 0.4 }, 3.5);
-    tl.set('#capA', { opacity: 0 }, 3.9);
+    tl.to('#capA', { opacity: 0, duration: 0.4 }, 4.5);
+    tl.set('#capA', { opacity: 0 }, 4.9);
 
-    // Beat 3 (4.0-6.9): caption.
-    tl.fromTo('#capB', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 4.0);
-    tl.to('#capB', { opacity: 0, duration: 0.4 }, 6.5);
-    tl.set('#capB', { opacity: 0 }, 6.9);
+    // Beat 3 (5.2-12.3): caption B -- fades in while the second ride (started 4.8) is already running.
+    tl.fromTo('#capB', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 5.2);
+    tl.to('#capB', { opacity: 0, duration: 0.4 }, 11.9);
+    tl.set('#capB', { opacity: 0 }, 12.3);
 
-    // Beat 4 (7.0-14.3): second ride. Crossing a gate = static colour swap + the sector paints its tier.
-    var RIDE_T0 = 7.4, RIDE_DUR = 6.9;
-    tl.fromTo('#rider', { opacity: 0 }, { opacity: 1, duration: 0.3 }, 7.0);
+    // Beat 4 (4.8-11.7): second ride. Crossing a gate = static colour swap + the sector paints its tier.
+    var RIDE_T0 = 4.8, RIDE_DUR = 6.9;
+    tl.fromTo('#rider', { opacity: 0 }, { opacity: 1, duration: 0.3, immediateRender: false }, 4.4);
     ride(tl, RIDE_T0, RIDE_DUR);
     GATES.forEach(function (f, i) {
       var t = RIDE_T0 + f * RIDE_DUR;
@@ -210,8 +247,8 @@
       tl.to('#sec' + (i + 1), { opacity: 1, duration: 0.25 }, t);
     });
     tl.to('#sec4', { opacity: 1, duration: 0.25 }, RIDE_T0 + RIDE_DUR);
-    // hold to 14.8
-    tl.set('#rider', { opacity: 1 }, 14.8);
+    // hold to 12.4
+    tl.set('#rider', { opacity: 1 }, 11.70);
 
     window.__timelines = window.__timelines || {};
     window.__timelines.gatessaving = tl;

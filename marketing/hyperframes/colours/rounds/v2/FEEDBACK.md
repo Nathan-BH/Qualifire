@@ -71,5 +71,4 @@ ffprobe -v error -show_entries format=duration -of csv=p=0 colours\rounds\v2\col
 ```
 
 ## Nathan's feedback
-
-*(blank — write your notes below, overall or beat-by-beat)*
+- 

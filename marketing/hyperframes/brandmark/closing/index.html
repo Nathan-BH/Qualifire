@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Qualifire — Closing (HyperFrames)</title>
+<style>
+  html, body { margin: 0; padding: 0; background: #0A0A0A; }
+  * { box-sizing: border-box; }
+
+  #stage {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+    background: #0A0A0A;
+    overflow: hidden;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #F4F2EC;
+  }
+
+  .clip { position: absolute; }
+  .clip.full { top: 0; left: 0; width: 1920px; height: 1080px; }
+
+  #stack {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 48px;
+  }
+
+  /* logo mark (ring + slash), rendered in its finished state and faded in as a unit */
+  #mark { height: 280px; width: auto; opacity: 0; }
+  #mark svg { width: 280px; height: 280px; display: block; }
+
+  #wordmark-text { font-size: 96px; font-weight: 800; letter-spacing: 22px; color: #F5C542; margin: 0; opacity: 0; }
+  #tagline-text  { font-size: 34px; font-weight: 500; letter-spacing: 1px;  color: #9a978f; margin: 0; opacity: 0; }
+
+  /* end-fade overlay, above #stack in z-order */
+  #fade { position: absolute; inset: 0; background: #0A0A0A; opacity: 0; pointer-events: none; }
+</style>
+</head>
+<body>
+
+<div id="stage" data-composition-id="closing" data-start="0" data-width="1920" data-height="1080">
+
+  <!-- Closing (4.0s): mark fades in (already fully drawn), QUALIFIRE wordmark fades in beneath it, tagline
+       fades in beneath that, holds, fades to black. Split out 2026-09-10 as a standalone HyperFrames
+       composition — v1 was an ffmpeg cut of the old teaser (10.5-11.2s) with stray leftover frames from the
+       previous card baked in; this is the first real render of closing on its own. Geometry inlined from
+       product/brand/logos/qualifire_logo_5_monogram_wordmark.svg (512x512 viewBox), same as ../opening/. -->
+  <div id="close" class="clip full" data-start="0" data-duration="4.0" data-track-index="0">
+    <div id="stack">
+      <div id="mark">
+        <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+          <circle id="ring" cx="256" cy="218" r="118" fill="none" stroke="#F4F2EC" stroke-width="30" stroke-linecap="round" transform="rotate(-90 256 218)" />
+          <line id="slash" x1="291.355" y1="253.355" x2="387.5206" y2="349.5206" fill="none" stroke="#F5C542" stroke-width="30" stroke-linecap="round" />
+        </svg>
+      </div>
+      <p id="wordmark-text">QUALIFIRE</p>
+      <p id="tagline-text">Same road. New meaning.</p>
+    </div>
+    <div id="fade"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+  <script>
+    // Ring is rendered fully drawn from frame 0 — no draw-on animation here, that's opening's job.
+    var CIRC = 2 * Math.PI * 118;
+    gsap.set('#ring', { strokeDasharray: CIRC, strokeDashoffset: 0 });
+
+    var tl = gsap.timeline({ paused: true });
+
+    // Beat 1 (0.00-0.60): mark fades in with a slight scale-up.
+    tl.fromTo('#mark', { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.6, ease: 'power1.inOut', transformOrigin: '50% 50%' }, 0);
+
+    // Beat 2 (0.60-1.40): QUALIFIRE wordmark fades in.
+    tl.fromTo('#wordmark-text', { opacity: 0 }, { opacity: 1, duration: 0.8, ease: 'power1.inOut' }, 0.6);
+
+    // Beat 3 (1.20-1.90): tagline fades in, overlapping the wordmark's tail.
+    tl.fromTo('#tagline-text', { opacity: 0 }, { opacity: 1, duration: 0.7, ease: 'power1.inOut' }, 1.2);
+
+    // Beat 4 (1.90-3.50): hold — no tween.
+
+    // Beat 5 (3.50-4.00): fade to black.
+    tl.fromTo('#fade', { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'power1.inOut' }, 3.5);
+    tl.set('#fade', { opacity: 1 }, 4.0);
+
+    window.__timelines = window.__timelines || {};
+    window.__timelines.closing = tl;
+  </script>
+
+</div>
+</body>
+</html>
