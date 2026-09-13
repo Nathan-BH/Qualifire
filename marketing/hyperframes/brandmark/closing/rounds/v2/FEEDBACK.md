@@ -32,4 +32,4 @@ ffprobe -v error -show_entries format=duration -of csv=p=0 brandmark\closing\rou
 ```
 
 ## Nathan's feedback
-<!-- write your notes below, overall or beat-by-beat -->
+I dont like the closing now, it should be tighter and appear more together like it was in v1

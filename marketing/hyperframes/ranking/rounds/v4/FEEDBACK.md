@@ -72,4 +72,4 @@ ffprobe -v error -show_entries format=duration -of csv=p=0 rounds\v4\ranking_v4.
 ```
 
 ## Nathan's feedback
-<!-- write your notes below, overall or beat-by-beat -->
+I would like to try to have the "today's ride" come up through the tower instead of appearing at P2.

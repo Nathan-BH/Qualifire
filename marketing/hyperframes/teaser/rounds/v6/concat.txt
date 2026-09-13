@@ -1,0 +1,5 @@
+file '../../../brandmark/opening/rounds/v3/opening_v3.mp4'
+file '../../../start-ride/rounds/v4/start-ride_v4.mp4'
+file '../../../gates-saving/rounds/v5/gates-saving_v5.mp4'
+file '../../../ranking/rounds/v5/ranking_v5.mp4'
+file '../../../brandmark/closing/rounds/v3/closing_v3.mp4'

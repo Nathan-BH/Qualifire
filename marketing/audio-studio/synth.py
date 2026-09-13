@@ -207,6 +207,60 @@ def finish(master, duration, wet=0.22, soften_passes=1, peak=0.9, sr=SR):
     return master
 
 
+# --- added for the 2026-09 gate-draw / brand-stinger feedback round --------
+def sweep(f0, f1, dur, amp=0.3, attack=0.02, release=0.05, warmth=True, sr=SR):
+    """A continuous pitch sweep from f0 to f1 over dur seconds - sonifies a
+    line being drawn (a stroke-dashoffset reveal, a gate tick, a logo ring).
+    Builds the instantaneous phase by integrating a linearly-interpolated
+    frequency curve (so the pitch glide is exact, not just an FM trick)."""
+    n = int(sr * dur)
+    freqs = np.linspace(f0, f1, n)
+    phase = 2 * np.pi * np.cumsum(freqs) / sr
+    sig = amp * 0.6 * np.sin(phase)
+    if warmth:
+        sig = sig + amp * 0.4 * np.sin(phase * 1.004 + 0.3)
+    sig *= envelope(n, attack, release, sr=sr)
+    return sig
+
+
+def sub_hit(freq, dur=0.9, amp=0.55, attack=0.004, release=0.75, sr=SR):
+    """A low, punchy 'boom' - the low half of the Netflix-style two-beat
+    brand stinger (see BRAND_STINGER_LOW below). Unlike click() (a short UI
+    tap), this has real sustain and a touch of second-harmonic weight."""
+    sig = sine(freq, dur, amp=0.7, sr=sr) + sine(freq * 2, dur, amp=0.15, phase=0.2, sr=sr)
+    sig *= envelope(len(sig), attack, release, sr=sr)
+    return sig * amp
+
+
+def droplet_run(f0, f1, n, t0, t1, amp=0.3, shrink=0.82, sr=SR):
+    """A run of n short 'droplet' plucks rising in pitch (f0->f1, musically/
+    geometrically interpolated) while accelerating - the gap between drops
+    shrinks by `shrink` each step, so the run both rises AND speeds up, a
+    literal "goes up in pitch + speeds up" crescendo. Volume also ramps up
+    slightly across the run for a real crescendo feel, not just a pitch
+    glide. Returns a buffer covering [0, t1 + a short pluck tail]."""
+    total_len = int(sr * (t1 + 0.4))
+    buf = np.zeros(total_len)
+    span = t1 - t0
+    if n > 1 and shrink != 1:
+        interval0 = span * (1 - shrink) / (1 - shrink ** (n - 1))
+    elif n > 1:
+        interval0 = span / (n - 1)
+    else:
+        interval0 = 0
+    t = t0
+    for i in range(n):
+        u = i / max(1, n - 1)
+        freq = f0 * (f1 / f0) ** u
+        a = amp * (0.6 + 0.7 * u)
+        dur = max(0.09, 0.32 - 0.02 * i)
+        sig = pluck(freq, dur=dur, amp=a, brightness=0.85, decay=0.9975, sr=sr)
+        s = int(t * sr)
+        buf[s:s + len(sig)] += sig[: max(0, len(buf) - s)]
+        t += interval0 * (shrink ** i)
+    return buf[: int(sr * (t1 + 0.4))]
+
+
 # --- shared C-major chord/note vocabulary, reused across scenes for a ------
 # --- consistent sonic identity (see APPROACH.md "brand chord vocabulary") -
 NOTES = {
@@ -231,6 +285,17 @@ CMAJ_RESOLVE = [NOTES["C4"], NOTES["E4"], NOTES["G4"], NOTES["C5"]]
 # open two-note interval - simple enough to be recognizable on its own.
 BRAND_CHIME_RISE = [NOTES["G4"], NOTES["C5"]]
 BRAND_CHIME_LAND = [NOTES["C4"], NOTES["G4"], NOTES["C5"]]
+
+# The brand's two-beat "Netflix-style" stinger (added 2026-09-13, Nathan's
+# opening/closing feedback): a low sub "boom" (sub_hit at BRAND_STINGER_LOW)
+# answered ~0.35-0.45s later by a bright ringing chord (chime at
+# BRAND_STINGER_HIGH, which reuses BRAND_CHIME_LAND so it stays inside the
+# same brand vocabulary) - exactly two beats, for a moment where exactly two
+# things appear right after each other (opening's wordmark+tagline; closing's
+# whole reveal). Shared by brandmark/opening (soundv2) and brandmark/closing
+# (soundv2) so it reads as the same brand sound in both places.
+BRAND_STINGER_LOW = NOTES["C2"]
+BRAND_STINGER_HIGH = BRAND_CHIME_LAND
 
 # Tier colours (gates-saving, colours, ranking all use these three):
 # yellow = plain/neutral, green = good, purple = best. Kept in one place so

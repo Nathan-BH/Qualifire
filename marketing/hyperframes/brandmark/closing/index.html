@@ -45,10 +45,12 @@
 
 <div id="stage" data-composition-id="closing" data-start="0" data-width="1920" data-height="1080">
 
-  <!-- Closing (4.0s): mark fades in (already fully drawn), QUALIFIRE wordmark fades in beneath it, tagline
-       fades in beneath that, holds, fades to black. Split out 2026-09-10 as a standalone HyperFrames
-       composition — v1 was an ffmpeg cut of the old teaser (10.5-11.2s) with stray leftover frames from the
-       previous card baked in; this is the first real render of closing on its own. Geometry inlined from
+  <!-- Closing (4.0s): mark fades in (already fully drawn), QUALIFIRE wordmark fades in, tagline fades in,
+       all tightly overlapping (v3: "tighter, more together" per Nathan's v2 feedback, closer to v1's feel),
+       holds, fades to black. Split out 2026-09-10 as a standalone HyperFrames composition — v1 was an ffmpeg
+       cut of the old teaser (10.5-11.2s) with stray leftover frames from the previous card baked in; v2 was
+       the first real render of closing on its own but staggered the reveal over ~1.9s, which read as too
+       slow/separate; v3 compresses it back to ~0.75s. Geometry inlined from
        product/brand/logos/qualifire_logo_5_monogram_wordmark.svg (512x512 viewBox), same as ../opening/. -->
   <div id="close" class="clip full" data-start="0" data-duration="4.0" data-track-index="0">
     <div id="stack">
@@ -72,16 +74,16 @@
 
     var tl = gsap.timeline({ paused: true });
 
-    // Beat 1 (0.00-0.60): mark fades in with a slight scale-up.
-    tl.fromTo('#mark', { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.6, ease: 'power1.inOut', transformOrigin: '50% 50%' }, 0);
+    // Beat 1 (0.00-0.50): mark fades/scales up — tight, together reveal (v1 feel).
+    tl.fromTo('#mark', { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.5, ease: 'power2.out', transformOrigin: '50% 50%' }, 0);
 
-    // Beat 2 (0.60-1.40): QUALIFIRE wordmark fades in.
-    tl.fromTo('#wordmark-text', { opacity: 0 }, { opacity: 1, duration: 0.8, ease: 'power1.inOut' }, 0.6);
+    // Beat 2 (0.10-0.60): QUALIFIRE wordmark fades in, overlapping the mark.
+    tl.fromTo('#wordmark-text', { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'power1.out' }, 0.10);
 
-    // Beat 3 (1.20-1.90): tagline fades in, overlapping the wordmark's tail.
-    tl.fromTo('#tagline-text', { opacity: 0 }, { opacity: 1, duration: 0.7, ease: 'power1.inOut' }, 1.2);
+    // Beat 3 (0.25-0.75): tagline fades in, overlapping both — everything on screen by 0.75s.
+    tl.fromTo('#tagline-text', { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'power1.out' }, 0.25);
 
-    // Beat 4 (1.90-3.50): hold — no tween.
+    // Beat 4 (0.75-3.50): hold — no tween.
 
     // Beat 5 (3.50-4.00): fade to black.
     tl.fromTo('#fade', { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'power1.inOut' }, 3.5);

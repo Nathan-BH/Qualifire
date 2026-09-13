@@ -39,4 +39,4 @@ ffprobe -v error -show_entries format=duration -of csv=p=0 rounds\v4\gates-savin
 ```
 
 ## Nathan's feedback
-<!-- write your notes below, overall or beat-by-beat -->
+I would like to try having the gates as white colour (the idea is to mimick how the qualifier logo gets drawn now: yellow line color and then a white gate across). I would also try to draw the gates across the line similarly to how the logo is drawn (instead of dropping them into place or whatever it is doing now)

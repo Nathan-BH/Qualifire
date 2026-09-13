@@ -41,4 +41,6 @@ Pure numpy/scipy synthesis, no real instrument samples — see `../APPROACH.md`.
   on screen (timing was estimated from extracted frames, not frame-exact).
 
 ## Nathan's feedback
-<!-- write notes below -->
+1)No sound before clicking the button.
+2) upon clicking add a clicking sound
+3) more upbeat music during the ride, not this mellow piano. More something like how a mario kart soundtracj would be during a race?

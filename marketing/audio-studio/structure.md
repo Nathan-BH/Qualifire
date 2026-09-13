@@ -33,8 +33,9 @@ disposable preview.
 Shared building blocks (envelopes, notes, chords, pluck/pad/reverb, plus the brand
 chime and tier-colour tones) live once in `synth.py` at this folder's root, so a
 scene's `soundtrack.py` imports from it instead of redefining tones — see
-`APPROACH.md` for what's in there and why. `gates-saving/soundtrack.py` predates
-that extraction and still has its own inline copy; every other scene imports it.
+`APPROACH.md` for what's in there and why. `gates-saving/soundtrack.py` migrated
+off its own inline copy onto the shared `synth.py` in soundv3 (2026-09-13); every
+scene now imports it.
 
 A scene folder is:
 ```
@@ -78,13 +79,13 @@ inside those two reaches the shared `synth.py`, one level further up than usual.
 
 | Folder | Status | Feedback goes to |
 |---|---|---|
-| `gates-saving/` | in progress — soundv1 (pulse + single chord), soundv2 (chord progression + plucked arpeggio + reverb) | `gates-saving/soundv2/FEEDBACK.md` |
-| `brandmark/opening/` | in progress — soundv1 | `brandmark/opening/soundv1/FEEDBACK.md` |
-| `brandmark/closing/` | in progress — soundv1 | `brandmark/closing/soundv1/FEEDBACK.md` |
+| `gates-saving/` | in progress — soundv1 (pulse + single chord), soundv2 (chord progression + plucked arpeggio + reverb), soundv3 (whoosh on zoom-out, start-ride's C-G-Am-F loop boosted to 165-210bpm, migrated onto shared `synth.py`) — muxed onto `gates-saving_v5.mp4` | `gates-saving/soundv3/FEEDBACK.md` |
+| `brandmark/opening/` | in progress — soundv1, soundv2 (ring-draw pitch sweep, swoosh, new two-beat BRAND_STINGER replacing the old chime pair) — muxed onto the existing `opening_v3.mp4` | `brandmark/opening/soundv2/FEEDBACK.md` |
+| `brandmark/closing/` | in progress — soundv1, soundv2 (full two-beat BRAND_STINGER reusing opening's soundv2 motif, retimed to the new v3 visual) — muxed onto `closing_v3.mp4` | `brandmark/closing/soundv2/FEEDBACK.md` |
 | `colours/` | in progress — soundv1 | `colours/soundv1/FEEDBACK.md` |
-| `ranking/` | in progress — soundv1 | `ranking/soundv1/FEEDBACK.md` |
-| `start-ride/` | in progress — soundv1 | `start-ride/soundv1/FEEDBACK.md` |
-| `teaser/` | in progress — soundv1 (independent composition, not a concat — see `APPROACH.md`) | `teaser/soundv1/FEEDBACK.md` |
+| `ranking/` | in progress — soundv1, soundv2 (new `droplet_run()` rising/accelerating crescendo synced to the new v5 climb) — muxed onto `ranking_v5.mp4` | `ranking/soundv2/FEEDBACK.md` |
+| `start-ride/` | in progress — soundv1, soundv2 (true silence before the button click, click on press, driving C-G-Am-F loop at 155bpm) — muxed onto the existing `start-ride_v4.mp4` | `start-ride/soundv2/FEEDBACK.md` |
+| `teaser/` | in progress — soundv1 (independent composition, not a concat — see `APPROACH.md`), soundv2 (rebuilt for the 47.6s teaser_v6 cut, each section now echoes its scene's current motif at the exact right instant) | `teaser/soundv2/FEEDBACK.md` |
 
 ## The one rule
 

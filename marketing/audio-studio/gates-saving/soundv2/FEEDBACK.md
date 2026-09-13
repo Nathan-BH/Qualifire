@@ -62,4 +62,5 @@ for the full picture; worth revisiting if that opens back up.
   they're tuned into the chord instead of standing alone.
 
 ## Nathan's feedback
-<!-- write notes below -->
+1) if possible some kind of whoosh sound while zooming out ?(or something that fits)
+2) for the second ride ideally I want something close to the first ride but more updbeat. Think about how in mario kart when you get the star boost, the music is more fast paced and happy, while the music is actually the same, that kind of idea here

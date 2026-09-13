@@ -34,4 +34,4 @@ samples. See `../../APPROACH.md` for the soundfont/fluidsynth situation.
   more definitively for a "the end" feeling.
 
 ## Nathan's feedback
-<!-- write notes below -->
+Should use the same Netflix type sound as In the beginning to close it off.

@@ -95,9 +95,9 @@
           <path class="sector" id="sec2" fill="none" stroke="#F5C542" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
           <path class="sector" id="sec3" fill="none" stroke="#A667F0" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
           <path class="sector" id="sec4" fill="none" stroke="#3ED598" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
-          <g class="gate" id="gate1" opacity="0"><line class="gc" stroke="#14120C" stroke-width="8" stroke-linecap="round" /><line class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
-          <g class="gate" id="gate2" opacity="0"><line class="gc" stroke="#14120C" stroke-width="8" stroke-linecap="round" /><line class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
-          <g class="gate" id="gate3" opacity="0"><line class="gc" stroke="#14120C" stroke-width="8" stroke-linecap="round" /><line class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
+          <g class="gate" id="gate1" opacity="0"><line class="gc" stroke="#14120C" stroke-width="8" stroke-linecap="round" /><line class="gk" stroke="#F4F2EC" stroke-width="4" stroke-linecap="round" opacity="1" /></g>
+          <g class="gate" id="gate2" opacity="0"><line class="gc" stroke="#14120C" stroke-width="8" stroke-linecap="round" /><line class="gk" stroke="#F4F2EC" stroke-width="4" stroke-linecap="round" opacity="1" /></g>
+          <g class="gate" id="gate3" opacity="0"><line class="gc" stroke="#14120C" stroke-width="8" stroke-linecap="round" /><line class="gk" stroke="#F4F2EC" stroke-width="4" stroke-linecap="round" opacity="1" /></g>
           <circle id="ring-start" r="13" fill="#14120C" stroke="#F4F2EC" stroke-width="4" opacity="0" />
           <circle id="ring-end"   r="13" fill="#14120C" stroke="#F4F2EC" stroke-width="4" opacity="0" />
           <circle id="rider" r="11" fill="#2F7DE1" stroke="#FFFFFF" stroke-width="3" opacity="0" />
@@ -161,6 +161,10 @@
       });
       GATE_PT.push(p);
     });
+    // Each tick is exactly 44 px long (±22 px about the route point, see dx/dy above). Seed the
+    // same stroke-dash reveal the brand mark's ring uses: dasharray = length, offset = length = hidden.
+    var GATE_LEN = 44;
+    gsap.set('.gate line', { strokeDasharray: GATE_LEN, strokeDashoffset: GATE_LEN });
 
     gsap.set('#ring-start', { attr: { cx: P0.x, cy: P0.y } });
     gsap.set('#ring-end',   { attr: { cx: P1.x, cy: P1.y } });
@@ -225,9 +229,13 @@
 
     // Beat 2 (1.6-4.9): caption + three gate ticks pop in, centred on the route.
     tl.fromTo('#capA', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 1.6);
+    // Gates draw across the route the way the brand mark's ring draws on (stroke-dash reveal),
+    // casing and tick together as one stroke. Same stagger points as before (1.9 / 2.2 / 2.5).
     GATE_PT.forEach(function (p, i) {
-      tl.fromTo('#gate' + (i + 1), { opacity: 0, scale: 0, svgOrigin: p.x + ' ' + p.y },
-        { opacity: 1, scale: 1, duration: 0.4, ease: 'back.out(2)' }, 1.9 + i * 0.3);
+      var t0 = 1.9 + i * 0.3;
+      tl.set('#gate' + (i + 1), { opacity: 1 }, t0);
+      tl.fromTo('#gate' + (i + 1) + ' line', { strokeDashoffset: GATE_LEN },
+        { strokeDashoffset: 0, duration: 0.4, ease: 'power2.out' }, t0);
     });
     tl.to('#capA', { opacity: 0, duration: 0.4 }, 4.5);
     tl.set('#capA', { opacity: 0 }, 4.9);

@@ -37,4 +37,5 @@ to the end of the clip.
   whether the landing chord's sustain reads as covering the tagline too.
 
 ## Nathan's feedback
-<!-- write notes below -->
+1) the logo drawing should also have a sound, since it is in two parts it is pretty easy, a sound for the drawing and then maybe a kind of swoosh for the gate ?
+2) for the second text part, it should be only a two-beat sound(similarly to the Netflix sound) because only two things are being shown right after eachother

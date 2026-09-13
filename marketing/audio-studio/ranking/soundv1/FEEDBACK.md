@@ -40,4 +40,4 @@ Pure numpy/scipy synthesis, no real instrument samples — see `../APPROACH.md`.
   screen for a while.
 
 ## Nathan's feedback
-<!-- write notes below -->
+Dont like this piano. I would want some kind of "droplet crescendo" I dont know how to describe it. Since I want it going up in the ranking, some kind of sound that goes from low to high pitch + goes up in speed (shorter intervals)?

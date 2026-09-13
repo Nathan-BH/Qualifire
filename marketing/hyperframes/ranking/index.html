@@ -74,6 +74,7 @@
   .trow { position: absolute; left: 70px; right: 0; height: 60px; display: flex; align-items: center; justify-content: space-between; opacity: 0; }
   .trow .who  { font-size: 26px; font-weight: 600; color: #F4F2EC; }
   .trow .time { font-size: 34px; font-weight: 800; color: #F4F2EC; }
+  .trow.today { z-index: 2; }
   .trow.today .who, .trow.today .time { color: #A667F0; }
 </style>
 </head>
@@ -83,7 +84,7 @@
 
   <!-- Map layer: basemap PNG (captured once via ../_map/map-capture.html) + route/gates/rider as SVG.
        Casing+core convention and colours are the app's (see product code, RecordScreen / way map). -->
-  <div id="map" class="clip full" data-start="0" data-duration="10" data-track-index="0">
+  <div id="map" class="clip full" data-start="0" data-duration="10.8" data-track-index="0">
     <div class="inner">
       <img id="basemap" src="map.png" alt="" onerror="this.style.display='none'">
       <svg id="mapsvg" class="full-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
@@ -106,7 +107,7 @@
     </div>
   </div>
 
-  <div id="ui" class="clip full" data-start="0" data-duration="10" data-track-index="1">
+  <div id="ui" class="clip full" data-start="0" data-duration="10.8" data-track-index="1">
     <div class="inner">
       <div id="tower" class="card">
         <div class="hdr"><span class="lbl">Last ten rides</span><span class="lbl">this route</span></div>
@@ -131,7 +132,7 @@
           <div class="trow" id="trow-8" style="top:420px"><span class="who">21 Aug</span><span class="time num">18:20.8</span></div>
           <div class="trow" id="trow-9" style="top:480px"><span class="who">19 Aug</span><span class="time num">18:33.5</span></div>
           <div class="trow" id="trow-10" style="top:540px"><span class="who">12 Aug</span><span class="time num">18:48.1</span></div>
-          <div class="trow today" id="trow-today" style="top:60px"><span class="who">Today</span><span class="time num">17:08.9</span></div>
+          <div class="trow today" id="trow-today" style="top:600px"><span class="who">Today</span><span class="time num">17:08.9</span></div>
         </div>
       </div>
       <p class="caption" id="capA">Compare directly to your previous ride</p>
@@ -216,10 +217,10 @@
     gsap.set('#rider', { opacity: 1, attr: { cx: P1.x, cy: P1.y } });
 
     // Tower row ids, in slot order (slot 1 = trow-1 ... slot 10 = trow-10). trow-today is a purely
-    // absolutely-positioned 11th row parked at slot 2's coordinates (top:60px) and stays opacity:0
-    // (its base .trow state) until Beat 2 reveals it — never touched by the DOM, never moved by JS,
-    // only ever tweened, so frame-seeking always lands correctly (same "no callbacks" discipline
-    // the rider tween above already relies on).
+    // absolutely-positioned 11th row parked below slot 10 (top:600px) and stays opacity:0 (its base
+    // .trow state) until Beat 2 reveals it and climbs it into slot 2 — never touched by the DOM,
+    // never moved by a callback, only ever tweened, so frame-seeking always lands correctly (same
+    // "no callbacks" discipline the rider tween above already relies on).
     var TOWER_ROWS = ['trow-1', 'trow-2', 'trow-3', 'trow-4', 'trow-5', 'trow-6', 'trow-7', 'trow-8', 'trow-9', 'trow-10'];
 
     // Beat 1 (0.0-0.7): map dims, timing tower fades in, then its ten rows (Mon...12 Aug) fill top-down.
@@ -230,27 +231,32 @@
     }
     // hold 2.50-3.00
 
-    // Beat 2 (3.0-3.5): "Today" slides into slot 2. Old P10 (12 Aug / trow-10) fades out and drops
-    // off the bottom; rows 2-9 (Sat...19 Aug) shift down one slot — 60px, this tower's row pitch
-    // (.trow/.tnum are 60px tall with no gap; NOT the 88px used by the old rank-card's .rrow, which
-    // was a different, taller row style) — to become the new P3-P10. The .tnum rank numerals never
-    // move and never change text, so no row is ever seen showing the wrong rank mid-slide.
+    // Beat 2 (3.0-5.4): "Today" climbs the tower. Old P10 (12 Aug / trow-10) fades out and drops
+    // off the bottom first; Today emerges just below slot 10 (top:600px) and rides 540px up to
+    // slot 2 in one continuous glide (power1.inOut, 2.2 s). Each row it overtakes steps down one
+    // slot (60px, this tower's row pitch), centred on the moment Today crosses it. Step times are
+    // pre-computed from the climb's easing (quad inOut inverse) — no callbacks, frame-seek safe.
     tl.to('#trow-10', { opacity: 0, y: 60, duration: 0.35, ease: 'power2.in' }, 3.00);
-    for (var r2 = 1; r2 <= 8; r2++) {
-      tl.to('#' + TOWER_ROWS[r2], { y: 60, duration: 0.5, ease: 'power2.inOut' }, 3.00);
-    }
-    tl.fromTo('#trow-today', { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.5, ease: 'power2.out' }, 3.00);
-    // hold 3.5-4.6
+    var CLIMB_T0 = 3.20, CLIMB_DUR = 2.2;
+    tl.fromTo('#trow-today', { y: 0 }, { y: -540, duration: CLIMB_DUR, ease: 'power1.inOut' }, CLIMB_T0);
+    tl.fromTo('#trow-today', { opacity: 0 }, { opacity: 1, duration: 0.4, ease: 'power1.out' }, CLIMB_T0);
+    // [row, start] — start = (CLIMB_T0 + u_cross * CLIMB_DUR) - 0.15, where u_cross is when Today's
+    // top is half a slot below that row's top (Today at slot 10 pitch, rows at 60*(k-1)).
+    var STEP_DOWN = [[9, 3.69], [8, 3.87], [7, 4.02], [6, 4.15], [5, 4.28], [4, 4.43], [3, 4.62], [2, 4.88]];
+    STEP_DOWN.forEach(function (s) {
+      tl.to('#trow-' + s[0], { y: 60, duration: 0.3, ease: 'power2.inOut' }, s[1]);
+    });
+    // hold 5.4-5.9
 
-    // Beat 3 (4.6-6.8): caption.
-    tl.fromTo('#capA', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 4.60);
-    tl.to('#capA', { opacity: 0, duration: 0.4 }, 6.50);
-    tl.set('#capA', { opacity: 0 }, 6.80);
+    // Beat 3 (5.9-7.9): caption.
+    tl.fromTo('#capA', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 5.90);
+    tl.to('#capA', { opacity: 0, duration: 0.4 }, 7.50);
+    tl.set('#capA', { opacity: 0 }, 7.90);
 
-    // Beat 4 (7.2-10.0): caption, out at the 10.0 end (Nathan: stop at 10 s).
-    tl.fromTo('#capB', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 7.20);
-    tl.to('#capB', { opacity: 0, duration: 0.4 }, 9.70);
-    tl.set('#capB', { opacity: 0 }, 10.0);
+    // Beat 4 (8.2-10.8): caption, out at the 10.8 end.
+    tl.fromTo('#capB', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 8.20);
+    tl.to('#capB', { opacity: 0, duration: 0.4 }, 10.40);
+    tl.set('#capB', { opacity: 0 }, 10.8);
 
     window.__timelines = window.__timelines || {};
     window.__timelines.ranking = tl;
