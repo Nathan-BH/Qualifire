@@ -1,7 +1,7 @@
 # audio-studio — structure
 
 This folder is the sound design for the same Qualifire marketing compositions as
-`../hyperframes/`. One folder per teaser ingredient, same names, same set: `brandmark`,
+`../silent-studio/`. One folder per teaser ingredient, same names, same set: `brandmark`,
 `colours`, `gates-saving`, `ranking`, `start-ride`, `teaser`.
 
 `all-renders/` is the one folder both directions touch. Nathan drops the current picked
@@ -14,10 +14,10 @@ only for a scene nobody's touched yet. Nathan did this by hand once, for gates-s
 soundv2; every other round (including first-pass soundv1s) is Claude's job as soon as
 that round is built — no "is it good enough yet" gate.
 
-**This folder has a silent twin: `../hyperframes/all-renders/`**, which holds the
+**This folder has a silent twin: `../silent-studio/all-renders/`**, which holds the
 same set of current picked renders but without audio (flat filenames, no
 `_with_sound_vN` suffix). The two track the same "what's current" state from two
-angles and both need updating together — see `../hyperframes/structure.md`'s
+angles and both need updating together — see `../silent-studio/structure.md`'s
 all-renders section (READ THAT before any cleanup/"what's superseded" pass, it has
 the full checklist and the story of how this got missed once already).
 
@@ -79,7 +79,7 @@ Nathan's quick-look copy of Claude's latest work, not a gate for "is it good eno
 One exception to "one folder per teaser ingredient": `brandmark/` splits into two
 sub-scenes, `brandmark/opening/` and `brandmark/closing/`, each its own full scene
 folder (own `soundtrack.py`, `README.md`, `soundvN/`) — matching how
-`../hyperframes/brandmark/` is itself split. `sys.path.insert(0, "../..")` from
+`../silent-studio/brandmark/` is itself split. `sys.path.insert(0, "../..")` from
 inside those two reaches the shared `synth.py`, one level further up than usual.
 
 ## Folder map

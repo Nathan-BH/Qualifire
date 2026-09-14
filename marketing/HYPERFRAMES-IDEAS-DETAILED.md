@@ -27,7 +27,7 @@ heavy numbers and colour.
 
 ## Idea 2 — "Reframed" (brand teaser, \~11–12 s) — BUILT, RENDERED
 
-**Status:** Already built (`marketing/hyperframes/teaser/index.html`) and rendered
+**Status:** Already built (`marketing/silent-studio/teaser/index.html`) and rendered
 successfully on 2026-09-09 — first-ever render, so this is the proof that the whole
 HyperFrames pipeline (Chrome → FFmpeg → .mp4) works on your PC. Only leftovers: three
 non-blocking lint warnings about exit tweens. Not blocked.

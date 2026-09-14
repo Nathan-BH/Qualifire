@@ -1,12 +1,12 @@
 # Cycle 05 — audio-studio launch (first cycle to track audio alongside visual)
 
 First cycle recorded in this shared log for the new `audio-studio/` sound-design
-project, not just `hyperframes/` visual edits — per Nathan's request, `cycles/` is
+project, not just `silent-studio/` visual edits — per Nathan's request, `cycles/` is
 now the one running track for both.
 
 ## Goal
 Stand up `audio-studio/` as a working, iterable sound-design project (mirroring
-`hyperframes/`'s own conventions), get gates-saving through two real rounds, then
+`silent-studio/`'s own conventions), get gates-saving through two real rounds, then
 give every other teaser ingredient — `brandmark/opening`, `brandmark/closing`,
 `colours`, `ranking`, `start-ride`, and the full `teaser` — a first-pass ("soundv1")
 soundtrack so there's a starting point to react to everywhere, not just gates-saving.
@@ -36,9 +36,9 @@ not a multi-file codebase edit) that it didn't call for one.
    to be most of what makes it sound "produced" rather than "synthesized." Nathan
    swapped `gates-saving_v4_with_sound_v2.mp4` into `all-renders/` himself.
 2. **Folder-convention corrections, twice, both from Nathan reviewing the actual
-   layout against `hyperframes/`:** rounds are named `soundv1`/`soundv2` (not
+   layout against `silent-studio/`:** rounds are named `soundv1`/`soundv2` (not
    `rounds/vN`), and a round folder holds only `FEEDBACK.md` (no `README.md`) —
-   matching `hyperframes/gates-saving/rounds/v3`, which has no README either, so
+   matching `silent-studio/gates-saving/rounds/v3`, which has no README either, so
    feedback never means switching files. Both corrections applied retroactively to
    gates-saving's existing rounds; the second one also merged each round's README
    content into its FEEDBACK.md.
@@ -79,7 +79,7 @@ not a multi-file codebase edit) that it didn't call for one.
 Plus: `audio-studio/synth.py` (new shared toolkit), `structure.md` and `APPROACH.md`
 both rewritten to current state, every scene's top-level `README.md` written or
 updated, `brandmark/` split into `brandmark/opening/` + `brandmark/closing/`
-sub-scenes (mirroring how `hyperframes/brandmark/` is itself split).
+sub-scenes (mirroring how `silent-studio/brandmark/` is itself split).
 
 ## Known open items and what Nathan needs to do next
 See `OPEN-ITEMS.md` in this folder.

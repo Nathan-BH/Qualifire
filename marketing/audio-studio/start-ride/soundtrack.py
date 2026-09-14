@@ -3,7 +3,7 @@ start-ride - soundv2
 
 Source: start-ride_v4.mp4, 14.0s, 1920x1080, no audio (unchanged from soundv1
 - this round only touches the audio, not the picture).
-Visual (re-read directly from ../../hyperframes/start-ride/index.html's actual
+Visual (re-read directly from ../../silent-studio/start-ride/index.html's actual
 timeline, not from sampled frames this time): 0.0-0.4s black hold, 0.4-1.0s
 reveal, START button fades in at 1.2s, virtual cursor glides onto it and
 presses it at 3.2s (button scales down 3.2-3.35, back up 3.35-3.55, both

@@ -87,12 +87,12 @@ is the site's most-repeated sentence (title, meta, h1, the teaser video) and its
 keep it (it is memorable and the name's own gloss); swap in the ratified "Same road. New
 meaning." (sport-neutral, BRAND-anointed, currently buried as an h2); or keep the qualifying
 sentence but drop "commute" for something broader. This is taste. Whatever is chosen must be
-applied to `index.html` (title, meta, h1), `hyperframes/teaser/index.html` (tagline element),
+applied to `index.html` (title, meta, h1), `silent-studio/teaser/index.html` (tagline element),
 and `HYPERFRAMES-PLAN.md` idea 2 together — three copies of one line.
 
 **Nathan's ruling (2026-09-08): swap.** "Same road. New meaning." leads everywhere; "The commute,
 reframed as a qualifying lap." is retired — his words, it "aligns the strongest with my current
-vision." Apply to all three copies (`index.html` title/meta/h1, `hyperframes/teaser/index.html`
+vision." Apply to all three copies (`index.html` title/meta/h1, `silent-studio/teaser/index.html`
 tagline, `HYPERFRAMES-PLAN.md` idea 2) as one pass, per the original sequencing note.
 
 ---
@@ -236,7 +236,7 @@ a personal sideloaded app, not a store listing" — is still true. Its slate is 
 | Idea | Status on virgin | Original recommendation | Folded into the restructure as |
 |---|---|---|---|
 | 1 The Gate (logo sting) | Brand-only, no data | Keep as-is | Keep as-is — needs nothing from virgin data |
-| 2 Reframed (teaser) | Built (`hyperframes/teaser/`); hard-codes the hero line and "of your last 10 commutes" | Keep; update the tagline together with (a)'s hero decision | Keep; retag with "Same road. New meaning." (the hero swap above); "P2 · of your last 10" stays true |
+| 2 Reframed (teaser) | Built (`silent-studio/teaser/`); hard-codes the hero line and "of your last 10 commutes" | Keep; update the tagline together with (a)'s hero decision | Keep; retag with "Same road. New meaning." (the hero swap above); "P2 · of your last 10" stays true |
 | 3 Qualifire, a tour | Tours `index.html` "once finalized" | Keep, blocked on this brief landing first | Keep — now genuinely unblocked once (b)/(c) land; still the most virgin-native idea on the slate |
 | 4 Why purple is rare | Sources D-030 + `colourModel.ts` `WINDOW_N` | Keep; repoint the `product/DECISIONS.md` source to GLOSSARY.md + `colourModel.ts` | Keep; also now depends on however NW-1 (colour model, `BRIEF-product-docs-cleanup.md`) resolves — note the dependency explicitly rather than assume today's `MIN_HISTORY=5` behaviour |
 | 5 624 commutes | Needs `data/activities/` (624 GPX), route PNGs, `data/analysis/` — all `main`-only, gone from virgin builds | Strike or re-home as "a `main`-branch video" | Re-home explicitly: this idea belongs to `main`'s history, not virgin's plan. Its honest virgin-native successor is a *first-ride* piece (one blank install → one ride → one route appearing), written up as a **new** idea in the restructured plan, flagged as needing on-device footage that doesn't exist yet (`OPEN-ITEMS.md` item 3) |
@@ -261,7 +261,7 @@ again and looks stale for the third time.
 2. Do (c) 1–9 in one pass — they are independent of (a) except where (b) says otherwise.
 3. Do the (b) changes for Option 2 (the "If Option 2" block). Write copy fresh, in BRAND.md's
    voice; reuse the site's existing sentences wherever they are still true (most are).
-4. Propagate the hero swap to `hyperframes/teaser/index.html` and `HYPERFRAMES-PLAN.md` idea 2.
+4. Propagate the hero swap to `silent-studio/teaser/index.html` and `HYPERFRAMES-PLAN.md` idea 2.
 5. Inspect: a fresh Fable pass reads the rendered page top to bottom as the reader Option 2
    targets (anyone with the app, not specifically Nathan), checks every behavioural claim
    against `STATE.md` ground rules and the code pointers in this brief, and runs the grep in (c).

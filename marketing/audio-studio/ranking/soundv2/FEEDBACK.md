@@ -2,7 +2,7 @@
 
 **Render:** ranking_v5_with_sound_v2.mp4 — **NOT YET BUILT.** ranking's visual
 v5 (the "Today climbs the tower" redesign — see
-`../../../hyperframes/ranking/rounds/v5/FEEDBACK.md`) hasn't been rendered by
+`../../../silent-studio/ranking/rounds/v5/FEEDBACK.md`) hasn't been rendered by
 Nathan yet (device_bash was unreachable this session). This round ships the
 standalone `soundtrack_v2.wav` only, built against v5's exact planned timeline
 (read directly from the new `index.html`, including the precise 3.2-5.4s climb

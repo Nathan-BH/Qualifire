@@ -13,7 +13,7 @@ draws on the shared `../synth.py` toolkit).
 
 soundv1 was built from sampled frames and got the scene's actual structure
 wrong (it described a simple "black → dot → route draws" arc with no START
-button at all). This round was built by reading `../../hyperframes/start-ride/index.html`'s
+button at all). This round was built by reading `../../silent-studio/start-ride/index.html`'s
 actual GSAP timeline directly, so the button-press moment is exact: the
 START button fades in at 1.2s, the cursor presses it at **3.2s** (the button
 scales down then back up, both button and cursor fade out by 4.0s), the

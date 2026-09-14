@@ -1,6 +1,6 @@
 # brandmark — sound design
 
-Two sub-scenes, mirroring `../../hyperframes/brandmark/`: `opening/` (the teaser's
+Two sub-scenes, mirroring `../../silent-studio/brandmark/`: `opening/` (the teaser's
 intro lockup) and `closing/` (the sign-off lockup). Each has its own `soundtrack.py`
 and rounds, same shape as any other scene folder — see `../structure.md`.
 

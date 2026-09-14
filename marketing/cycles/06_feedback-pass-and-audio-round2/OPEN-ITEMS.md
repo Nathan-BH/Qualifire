@@ -90,7 +90,7 @@ v1-v2) are permanent history by convention — nothing to clean up there, ever.
 - **ranking/soundv2**: whether the droplet run (9 drops, A3→~G6, ratio 0.82) reads
   as "droplet crescendo"; whether the purple landing chime at 5.4s carries enough
   weight as the arrival moment — now that it's actually muxed onto the real v5 render.
-- **hyperframes/ranking v5**: Inspect flagged the STEP_DOWN transitions are
+- **silent-studio/ranking v5**: Inspect flagged the STEP_DOWN transitions are
   centered on each row-crossing point (start = crossing − duration/2) rather than
   starting exactly at the crossing — a definition nuance, not a bug; worth a look
   now that it's rendered.
@@ -107,7 +107,7 @@ v1-v2) are permanent history by convention — nothing to clean up there, ever.
   top-line `Duration:` still stop at v3 (10.0s / 14.8s) — don't reflect v5's new
   round or the actual confirmed durations (12.3s / 10.8s). `brandmark/closing/README.md`'s
   table stops at v2.
-- `hyperframes/teaser/README.md` — not checked this cycle, may still describe v5
+- `silent-studio/teaser/README.md` — not checked this cycle, may still describe v5
   as the current cut.
 - None of these affect rendering or Nathan-visible behaviour — left for a future
   pass rather than spending more mechanical-edit budget on them now.

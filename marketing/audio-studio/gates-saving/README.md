@@ -4,7 +4,7 @@ Source video: `../all-renders/gates-saving_v4.mp4` (12.3s, 1920x1080, silent —
 picked HyperFrames render, position 3 of the teaser).
 
 Source code: `soundtrack.py` here — the canonical synthesis script, edited in place
-each round (mirrors how `index.html` works in `../../hyperframes/gates-saving/`).
+each round (mirrors how `index.html` works in `../../silent-studio/gates-saving/`).
 
 ## Rounds
 | Round | Render | Status |

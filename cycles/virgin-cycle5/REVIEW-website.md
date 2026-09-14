@@ -2,7 +2,7 @@
 
 **Tier:** Plan (Fable) · 2026-09-08 · virgin-cycle5
 **Scope:** `marketing/index.html` (copy + structure, not the CSS), `marketing/HYPERFRAMES-PLAN.md`,
-`marketing/hyperframes/teaser/`, `marketing/README.md` — all copied unchanged from `main` in
+`marketing/silent-studio/teaser/`, `marketing/README.md` — all copied unchanged from `main` in
 `0fb4a1c`. Cross-checked against `product/BRAND.md` (voice rules), `STATE.md`, `GLOSSARY.md`,
 `OPEN-ITEMS.md`, and the app code where a claim on the site is a claim about behaviour
 (`app/src/ui/colourModel.ts`, `app/src/location/index.ts`, `app/src/ui/tower.tsx`,
@@ -143,7 +143,7 @@ positioning question; it is a bug.
   cycle1 WP-E). Idea 6 depends on a `spike/maplibre` PR that is `main`-era history. Idea 7
   storyboards against `demos/mockup.html` (absent). Ideas 1, 2, 4 are brand-only and fine.
   The plan's own framing ("a personal, sideloaded app, not a store listing") is still true.
-- `hyperframes/teaser/index.html` hard-codes "The commute, reframed as a qualifying lap." and
+- `silent-studio/teaser/index.html` hard-codes "The commute, reframed as a qualifying lap." and
   "P2 · of your last 10 commutes" — it inherits whatever the hero decision is.
 - `marketing/README.md` is fine but should say the folder was brought over from `main` in
   `0fb4a1c` and reviewed this cycle, so the next reader doesn't assume it was written here.

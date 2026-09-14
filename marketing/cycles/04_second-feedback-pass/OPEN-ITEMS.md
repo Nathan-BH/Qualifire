@@ -6,7 +6,7 @@
 ### 1. Render the five updated compositions
 
 ```powershell
-cd "C:\Users\natha\Claude personal projects\Qualifire\marketing\hyperframes"
+cd "C:\Users\natha\Claude personal projects\Qualifire\marketing\silent-studio"
 powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name brandmark\closing -Render
 powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name brandmark\opening -Render
 powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name start-ride -Render
@@ -38,7 +38,7 @@ Expected durations: closing_v2 4.0s, opening_v3 6.5s, start-ride_v4 14.0s, gates
 ### 2. Build teaser_v5, once all five renders above exist
 
 `concat.txt` already exists at `teaser\rounds\v5\concat.txt` — no need to create it. From
-`marketing\hyperframes\`:
+`marketing\silent-studio\`:
 
 ```powershell
 cd teaser\rounds\v5

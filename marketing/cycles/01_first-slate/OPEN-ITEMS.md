@@ -14,7 +14,7 @@ Judgment calls made without interrupting Nathan. He reads this whenever; nothing
 ## Blockers this session
 
 - **`device_bash` (the remote-devices shell to Nathan's PC) never recovered this session.** Every call — including trivial ones with no file I/O — failed with `sandbox-helper: no Plan9 drive shares mounted under /mnt/.virtiofs-root/shared`, across roughly a dozen attempts spread through the whole run. This is worse than the documented "mount hiccup on a file op": the shell itself never came up, so there was no way to run `powershell`/`npx` remotely at all. All file reads/writes/moves were done successfully via the `device_stage_files` / `device_commit_files` / `device_list_dir` fallbacks instead — those are unaffected. Two things are still outstanding because of this and need Nathan to run them (or a future session once `device_bash` is back):
-  1. **Render all four compositions.** From `marketing/hyperframes/` on Nathan's PC:
+  1. **Render all four compositions.** From `marketing/silent-studio/` on Nathan's PC:
      ```powershell
      powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name teaser -Render
      powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name gate -Render

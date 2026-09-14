@@ -1,7 +1,7 @@
 # VIDEO-EDITING-GUIDE — your four questions, answered
 
 Written 2026-09-09 after you watched the first teaser render
-(`marketing/hyperframes/teaser/renders/teaser_2026-09-09_09-14-01.mp4`).
+(`marketing/silent-studio/teaser/renders/teaser_2026-09-09_09-14-01.mp4`).
 Free-tool facts below were checked against current pages today; sources at the bottom.
 
 ## Recommendation (short version)
@@ -9,7 +9,7 @@ Free-tool facts below were checked against current pages today; sources at the b
 Two tracks, two tools. No single tool does both.
 
 1. **Graphics-only videos (ideas 1, 2, 3, 4)** — you already have the Inkscape-style
-   answer. The teaser is `marketing/hyperframes/teaser/index.html`: one plain-text
+   answer. The teaser is `marketing/silent-studio/teaser/index.html`: one plain-text
    HTML/CSS/JS file. Every colour, duration and piece of text is a literal in that file.
    You edit it (or I do), `npx hyperframes preview` shows it live in a browser, `render.ps1`
    makes the MP4. Nothing new to install. This is the whole workflow for four of the six videos.
@@ -33,7 +33,7 @@ Yes for the video you just watched, and you already have it. The teaser is not a
 video project; it is this text file:
 
 ```
-marketing/hyperframes/teaser/index.html
+marketing/silent-studio/teaser/index.html
 ```
 
 Open it in any text editor. It has three kinds of things you can change:
@@ -54,7 +54,7 @@ Positions and sizes are ordinary CSS (`top`, `left`, `width`, `font-size`). Moti
 ordinary GSAP tweens (`x`, `y`, `scale`, `opacity`). If you can edit an SVG's XML you can
 edit this; it is the same idea with a time axis added.
 
-To see a change: from `marketing/hyperframes/teaser/`, run `npx hyperframes preview`.
+To see a change: from `marketing/silent-studio/teaser/`, run `npx hyperframes preview`.
 It opens the composition in your browser with a scrubber and live-reloads on every save.
 To make the MP4: `..\render.ps1` (or `npx hyperframes render`).
 

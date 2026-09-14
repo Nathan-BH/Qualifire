@@ -68,7 +68,7 @@ valid; idea 5 is a *new* idea in the old slot; idea 6 is gone (§6).
 
 ### 1 · The Gate (logo sting)
 
-**Status: BUILT.** Built 2026-09-09 at `hyperframes/gate/`, not yet rendered
+**Status: BUILT.** Built 2026-09-09 at `silent-studio/gate/`, not yet rendered
 (5 s bumper: draw, wordmark, cut to black).
 
 *What it is.* The ring-draws-clockwise, slash-lands-last motion — Qualifire's
@@ -88,9 +88,9 @@ the timing and geometry there are the numbers to match, not reinvent.
 further candidate uses of the same motion, unruled — if Nathan picks one,
 it may become a second sting.
 
-*How it'd get built.* Lift the first ~2s of `marketing/hyperframes/teaser/
+*How it'd get built.* Lift the first ~2s of `marketing/silent-studio/teaser/
 index.html` into its own composition folder (`npx hyperframes init gate`,
-from `marketing/hyperframes/`), extend the hold, end on the wordmark rather
+from `marketing/silent-studio/`), extend the hold, end on the wordmark rather
 than cutting to sector slots.
 
 *Blocked on.* Nothing.
@@ -104,7 +104,7 @@ wrapper + `tl.set` hard kills (see StaticGuard errors he saw in the preview
 console). The one existing render (2026-09-09 09:14) predates this fix, so
 the current file needs a fresh render before anyone trusts what's on screen.
 
-*What it is.* Built and checked in at `marketing/hyperframes/teaser/
+*What it is.* Built and checked in at `marketing/silent-studio/teaser/
 index.html` (see its README): logo sting → wordmark + tagline → four sector
 slots filling yellow→green→yellow→purple with big tabular sector times → a
 timing-tower line ("P2 · of your last 10 rides") → yellow endcard. ~12s,
@@ -121,7 +121,7 @@ road. New meaning."** — the hero-line swap was applied to all three copies
 *Needs.* Nothing further. The only external asset is the GSAP CDN script.
 
 *How it'd get built.* It is built. The first thing anyone does with this
-slate is render it — `marketing\hyperframes\render.ps1 -Name teaser -Render`
+slate is render it — `marketing\silent-studio\render.ps1 -Name teaser -Render`
 from a PowerShell prompt on Nathan's PC (§4) — because that one render
 proves the pipeline (Node 22+, FFmpeg, headless Chrome) before any other
 idea spends time on it. That render already happened once (2026-09-09
@@ -137,12 +137,12 @@ feedback — the original site-scroll-cut-sequence approach was dropped; now a
 6-beat abstract narrative: Gate + Start button → first ride draws a route
 (blue dot, yellow history line) → landmarks + automatic sector gates →
 second ride with gate pulses + ranking reveal → tower filling to 10 rows →
-close. Built at `hyperframes/tour/`. Colour/tier explanation, sport choice
+close. Built at `silent-studio/tour/`. Colour/tier explanation, sport choice
 and day/night mode deliberately deferred to other videos (idea 4 covers
 colour) per Nathan's confirmation.
 
 *Current spec (2026-09-09) — the 6 beats actually built, see
-`hyperframes/tour/README.md` for the same list with the render commands:*
+`silent-studio/tour/README.md` for the same list with the render commands:*
 - **0-5s** — Gate mark draws, a single yellow "Start" button; no kicker, no
   paragraph — "universally understandable" per Nathan.
 - **5-22s** — First ride: a route draws itself as a blue dot travels it.
@@ -175,7 +175,7 @@ voice; `cycles/virgin-cycle5/BRIEF-website-improvement-plan.md` for why the
 copy says what it says.
 
 *How it'd get built.* `npx hyperframes init tour` from `marketing/
-hyperframes/`, then `/product-launch-video` pointed at the site; keep any
+silent-studio/`, then `/product-launch-video` pointed at the site; keep any
 narration in BRAND.md's register (no scarcity, no "get it now" — there is
 nothing to link to).
 
@@ -187,7 +187,7 @@ blank install.
 
 ### 4 · Why purple is rare
 
-**Status: BUILT.** Built 2026-09-09 at `hyperframes/purple/`, not yet
+**Status: BUILT.** Built 2026-09-09 at `silent-studio/purple/`, not yet
 rendered, exactly as originally spec'd; awaiting Nathan's viewing/feedback
 (he asked to see it before judging).
 
@@ -389,7 +389,7 @@ installs each creation-workflow skill on demand). Non-interactive/agent run
 instead: `npx hyperframes skills update`.
 
 **Per-project loop.** `npx hyperframes init <name>` scaffolds a new
-composition folder — run it from `marketing/hyperframes/` (the parent),
+composition folder — run it from `marketing/silent-studio/` (the parent),
 never from inside an existing composition. Then `cd` into it and run:
 ```
 npx hyperframes preview            # live-reload in the browser
@@ -398,15 +398,15 @@ npx hyperframes render             # deterministic MP4 via headless Chrome + FFm
 Requirements: Node.js 22+, FFmpeg on PATH.
 
 **Render status (2026-09-09).** The first render test — `marketing/
-hyperframes/teaser/`, run before its later fade/hard-kill fix — already
+silent-studio/teaser/`, run before its later fade/hard-kill fix — already
 happened and worked: a clean MP4 came out, proving the pipeline (Node 22+,
-FFmpeg, headless Chrome). `marketing\hyperframes\render.ps1` now takes
+FFmpeg, headless Chrome). `marketing\silent-studio\render.ps1` now takes
 `-Name <comp>` to target any composition folder — `teaser`, `gate`, `purple`
 or `tour` (see COMMANDS.md) — rather than always defaulting to the teaser;
 add `-Render` to render instead of preview. Three more compositions
 (`gate`, `purple`, `tour`) are now built and are awaiting their first
 render, and the fixed `teaser` needs a fresh one of its own (idea 2's status
-note, §2). Run, per composition, from `marketing/hyperframes/`:
+note, §2). Run, per composition, from `marketing/silent-studio/`:
 ```
 powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name <comp> -Render
 ```

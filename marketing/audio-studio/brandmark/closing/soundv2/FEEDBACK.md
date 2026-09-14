@@ -2,7 +2,7 @@
 
 **Render:** closing_v3_with_sound_v2.mp4 — **NOT YET BUILT.** brandmark/closing's
 visual v3 (the "tighter, more together" redesign — see
-`../../../hyperframes/brandmark/closing/rounds/v3/FEEDBACK.md`) hasn't been
+`../../../silent-studio/brandmark/closing/rounds/v3/FEEDBACK.md`) hasn't been
 rendered by Nathan yet (device_bash was unreachable this session, so nothing
 could render on his PC). This round ships the standalone `soundtrack_v2.wav`
 only, built against v3's planned timeline (read directly from its

@@ -45,8 +45,8 @@ judgment calls logged for Nathan's review, cleanup he needs to do by hand (anyth
 are the reference examples for this whole structure.
 
 **When any composition gets a new round, its cleanup section must check BOTH
-`hyperframes/all-renders/` (silent) and `audio-studio/all-renders/` (with sound)
+`silent-studio/all-renders/` (silent) and `audio-studio/all-renders/` (with sound)
 — they're siblings tracking the same "current" set from two angles, and it's easy
 to update one and forget the other (this happened in cycle 06: only the with-sound
-superseded files got caught at first). See `hyperframes/structure.md`'s all-renders
+superseded files got caught at first). See `silent-studio/structure.md`'s all-renders
 section for the full checklist before writing a cleanup section.

@@ -4,10 +4,10 @@
 Build the brand teaser, get Nathan's feedback, then build the rest of the slate's cheap/unblocked ideas.
 
 ## Delivered
-- **teaser** (idea 2, "Reframed") — revised per feedback; composition source is done, but its render at `hyperframes/teaser/renders/teaser_2026-09-09_09-14-01.mp4` predates the revision and needs a fresh render (see Open items below).
-- **gate** (idea 1, "The Gate") — built at `hyperframes/gate/`; not yet rendered.
-- **purple** (idea 4, "Why purple is rare") — built at `hyperframes/purple/`; not yet rendered.
-- **tour** (idea 3, "Qualifire, a tour") — built at `hyperframes/tour/`, restructured; not yet rendered.
+- **teaser** (idea 2, "Reframed") — revised per feedback; composition source is done, but its render at `silent-studio/teaser/renders/teaser_2026-09-09_09-14-01.mp4` predates the revision and needs a fresh render (see Open items below).
+- **gate** (idea 1, "The Gate") — built at `silent-studio/gate/`; not yet rendered.
+- **purple** (idea 4, "Why purple is rare") — built at `silent-studio/purple/`; not yet rendered.
+- **tour** (idea 3, "Qualifire, a tour") — built at `silent-studio/tour/`, restructured; not yet rendered.
 
 ## Feedback
 Full record in `IDEAS-AND-FEEDBACK.md`. Summary of what drove this cycle's changes:
@@ -40,7 +40,7 @@ Cycle 02 starts once Nathan reviews all four renders (teaser's revision, plus ga
 ## Superseded by the per-composition round scheme (2026-09-09, later same session)
 All four renders landed later this same day, and feedback tracking moved to
 a finer-grained scheme: each composition now has its own
-`hyperframes/<comp>/rounds/v1/FEEDBACK.md` (render copy + a detailed,
+`silent-studio/<comp>/rounds/v1/FEEDBACK.md` (render copy + a detailed,
 timestamped description + a place for Nathan's notes), indexed from that
 composition's own README. This cycle folder is kept as the historical
 record of what round 1 actually delivered and why — see the top-level

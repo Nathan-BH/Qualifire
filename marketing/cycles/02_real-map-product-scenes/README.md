@@ -6,7 +6,7 @@ background; a "way bigger" START button matching the real app's), and carry the 
 fix to `gates-saving` and `ranking` since all three share the same visual language.
 
 ## What triggered it
-Nathan's feedback in `hyperframes/start-ride/rounds/v1/FEEDBACK.md`:
+Nathan's feedback in `silent-studio/start-ride/rounds/v1/FEEDBACK.md`:
 > - it does not look like how the app is actually build. For the start button I would be
 >   okay just showing a yellow button but "START" word should be way bigger inside the
 >   button >>look at how the app sizes it
@@ -31,20 +31,20 @@ bigger job than "implement the feedback" sounded like at the start.
 ## Delivered
 All three scenes now have their own `index.html` (previously none did — they only existed
 as READMEs + rounds/v1 renders cut from the lost `tour` composition):
-- **start-ride** (`hyperframes/start-ride/index.html`) — real OpenFreeMap-styled basemap
+- **start-ride** (`silent-studio/start-ride/index.html`) — real OpenFreeMap-styled basemap
   with the route/rider drawn as SVG on top; START button rebuilt at exactly 2x the real
   app's `RecordScreen.tsx` button (300px tall, 80px "START", `#F5C542`/`#17171b`); adds the
   "Ride your normal route." caption Nathan asked for back in idea-3 feedback.
-- **gates-saving** (`hyperframes/gates-saving/index.html`) — same map; gates rebuilt as
+- **gates-saving** (`silent-studio/gates-saving/index.html`) — same map; gates rebuilt as
   perpendicular ticks centred on the route (the app's actual representation), which retires
   the v1 "gates detach by up to 450px" bug as a side effect of rebuilding correctly, not as
   extra scope. Crossing a gate is a static colour swap (the real app has no gate-pulse
   animation — v1's pulsing was never faithful to the app).
-- **ranking** (`hyperframes/ranking/index.html`) — same map, dimmed; rank fragment and
+- **ranking** (`silent-studio/ranking/index.html`) — same map, dimmed; rank fragment and
   timing tower rebuilt with consistent numbers throughout (v1 had a continuity bug: 4:05.3
   in the fragment vs 3:58.4 in the tower 3s later — now 16:41.3 everywhere) and a fixed
   rank-slot layout so the fragment can't show both rows as rank 1 during the swap (a v1 bug).
-- **`hyperframes/_map/`** (new) — `map-capture.html`, a one-time page Nathan runs in Chrome
+- **`silent-studio/_map/`** (new) — `map-capture.html`, a one-time page Nathan runs in Chrome
   to render the real OpenFreeMap "dark" style (the app's own tile source) at the exact
   framing the three scenes use, and save it as `map.png`. This mirrors the app's own
   fallback rendering path (`PngWayMap`) for when live map tiles aren't available — the

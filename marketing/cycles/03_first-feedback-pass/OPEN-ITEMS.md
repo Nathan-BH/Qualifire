@@ -58,7 +58,7 @@ existing on disk — was never met). Everything below needs Nathan, or a future 
 ### 1. Render the five updated compositions
 
 ```powershell
-cd "C:\Users\natha\Claude personal projects\Qualifire\marketing\hyperframes"
+cd "C:\Users\natha\Claude personal projects\Qualifire\marketing\silent-studio"
 powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name brandmark\opening -Render
 powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name start-ride -Render
 powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name gates-saving -Render
@@ -89,7 +89,7 @@ Expected durations: opening_v2 5.5s, start-ride_v3 13.0s, gates-saving_v3 14.8s,
 
 ### 2. Confirm the map-scroll fix (needs Chrome, no rendering)
 
-Double-click `marketing\hyperframes\_map\route-current_0903-1828.html` and
+Double-click `marketing\silent-studio\_map\route-current_0903-1828.html` and
 `route-alt-wet-loop_0904-2144.html` in Chrome; scroll/pan each. The yellow route should now
 stay locked to the roads under it at every zoom level (it previously stayed fixed in place
 while the map moved underneath).
@@ -97,7 +97,7 @@ while the map moved underneath).
 ### 3. Build teaser_v4, once all five renders above exist
 
 ```powershell
-cd "C:\Users\natha\Claude personal projects\Qualifire\marketing\hyperframes\teaser\rounds"
+cd "C:\Users\natha\Claude personal projects\Qualifire\marketing\silent-studio\teaser\rounds"
 mkdir v4
 cd v4
 ```

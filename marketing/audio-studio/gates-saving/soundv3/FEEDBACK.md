@@ -3,7 +3,7 @@
 **Render:** gates-saving_v4_with_sound_v3.mp4 — this round's soundtrack muxed
 onto the existing gates-saving_v4.mp4 render. Note: the visual side of
 gates-saving is also being reworked this cycle (white draw-across gates
-instead of colour pop-ins — see `../../../hyperframes/gates-saving/rounds/v5/FEEDBACK.md`),
+instead of colour pop-ins — see `../../../silent-studio/gates-saving/rounds/v5/FEEDBACK.md`),
 but that change **does not alter this scene's timing at all** (same 12.4s
 duration, same beat times), so this audio is already correct for the
 upcoming v5 render too — once Nathan renders v5, just re-mux this same

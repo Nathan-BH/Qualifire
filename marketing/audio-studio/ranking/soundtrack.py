@@ -2,7 +2,7 @@
 ranking - soundv2
 
 Source: ranking_v5.mp4 (not rendered yet - built against the NEW v5 timeline
-in ../../hyperframes/ranking/index.html, 10.8s, 1920x1080; see that file's
+in ../../silent-studio/ranking/index.html, 10.8s, 1920x1080; see that file's
 rounds/v5/FEEDBACK.md for the visual redesign this pairs with).
 Visual: map dims, tower fades in (0-0.7s), ten rows fill top-down (0.8-2.5s),
 old #10 drops off (3.0-3.35s), "Today" rises from below the list and climbs

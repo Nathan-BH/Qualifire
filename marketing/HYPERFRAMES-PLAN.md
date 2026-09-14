@@ -73,16 +73,16 @@ the timing and geometry there are the numbers to match, not reinvent.
 further candidate uses of the same motion, unruled — if Nathan picks one,
 it may become a second sting.
 
-*How it'd get built.* Lift the first ~2s of `marketing/hyperframes/teaser/
+*How it'd get built.* Lift the first ~2s of `marketing/silent-studio/teaser/
 index.html` into its own composition folder (`npx hyperframes init gate`,
-from `marketing/hyperframes/`), extend the hold, end on the wordmark rather
+from `marketing/silent-studio/`), extend the hold, end on the wordmark rather
 than cutting to sector slots.
 
 *Blocked on.* Nothing.
 
 ### 2 · Reframed (brand teaser)
 
-*What it is.* Built and checked in at `marketing/hyperframes/teaser/
+*What it is.* Built and checked in at `marketing/silent-studio/teaser/
 index.html` (see its README): logo sting → wordmark + tagline → four sector
 slots filling yellow→green→yellow→purple with big tabular sector times → a
 timing-tower line ("P2 · of your last 10 commutes") → yellow endcard. ~12s,
@@ -102,7 +102,7 @@ the site's Option 2 copy now says *rides* (`index.html` §tower, "of your last
 *Needs.* Nothing further. The only external asset is the GSAP CDN script.
 
 *How it'd get built.* It is built. The first thing anyone does with this
-slate is render it — `marketing\hyperframes\render.ps1 -Render` from a
+slate is render it — `marketing\silent-studio\render.ps1 -Render` from a
 PowerShell prompt on Nathan's PC (§4) — because that one render proves the
 pipeline (Node 22+, FFmpeg, headless Chrome) before any other idea spends
 time on it.
@@ -131,7 +131,7 @@ voice; `cycles/virgin-cycle5/BRIEF-website-improvement-plan.md` for why the
 copy says what it says.
 
 *How it'd get built.* `npx hyperframes init tour` from `marketing/
-hyperframes/`, then `/product-launch-video` pointed at the site; keep any
+silent-studio/`, then `/product-launch-video` pointed at the site; keep any
 narration in BRAND.md's register (no scarcity, no "get it now" — there is
 nothing to link to).
 
@@ -333,7 +333,7 @@ installs each creation-workflow skill on demand). Non-interactive/agent run
 instead: `npx hyperframes skills update`.
 
 **Per-project loop.** `npx hyperframes init <name>` scaffolds a new
-composition folder — run it from `marketing/hyperframes/` (the parent),
+composition folder — run it from `marketing/silent-studio/` (the parent),
 never from inside an existing composition. Then `cd` into it and run:
 ```
 npx hyperframes preview            # live-reload in the browser
@@ -341,8 +341,8 @@ npx hyperframes render             # deterministic MP4 via headless Chrome + FFm
 ```
 Requirements: Node.js 22+, FFmpeg on PATH.
 
-**First render test**: `marketing/hyperframes/teaser/` is built and checked
-in. `marketing\hyperframes\render.ps1` (add `-Render` to render instead of
+**First render test**: `marketing/silent-studio/teaser/` is built and checked
+in. `marketing\silent-studio\render.ps1` (add `-Render` to render instead of
 preview) checks Node/FFmpeg with clear errors, then runs the two commands
 above from the teaser folder. If that one render produces a clean MP4, the
 rest of the slate is just more compositions in more folders.

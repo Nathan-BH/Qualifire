@@ -1,9 +1,9 @@
 # Cycle 06 — gates-saving/ranking/closing feedback + audio round 2
 
 Implements Nathan's 8-item feedback request from 2026-09-13:
-1. `hyperframes/gates-saving/rounds/v4/FEEDBACK.md`
-2. `hyperframes/ranking/rounds/v4/FEEDBACK.md`
-3. `hyperframes/brandmark/closing/rounds/v2/FEEDBACK.md` (accompanies the named `closing_v2.mp4`)
+1. `silent-studio/gates-saving/rounds/v4/FEEDBACK.md`
+2. `silent-studio/ranking/rounds/v4/FEEDBACK.md`
+3. `silent-studio/brandmark/closing/rounds/v2/FEEDBACK.md` (accompanies the named `closing_v2.mp4`)
 4. `audio-studio/brandmark/opening/soundv1/FEEDBACK.md`
 5. `audio-studio/start-ride/soundv1/FEEDBACK.md`
 6. `audio-studio/gates-saving/soundv2/FEEDBACK.md`
@@ -75,7 +75,7 @@ merely reported.
 
 ## What shipped
 
-**Video (`hyperframes/`)** — all committed to the PC:
+**Video (`silent-studio/`)** — all committed to the PC:
 - `gates-saving/index.html` — gate ticks redrawn as a white stroke-draw-on animation
   (was a colour pop-in) — `gates-saving/rounds/v5/FEEDBACK.md`
 - `ranking/index.html` — new "Today climbs the tower" mechanic replacing the old
@@ -123,7 +123,7 @@ was unblocked and finished in the same session:
   soundtrack, so this round echoes each scene's current motif (the brand
   stinger, the boosted ride, the droplet crescendo) at the exact right instant
   rather than just "in spirit." See `audio-studio/teaser/soundv2/FEEDBACK.md`.
-- Both teaser masters now exist and are current: `hyperframes/teaser/rounds/v6/teaser_v6.mp4`
+- Both teaser masters now exist and are current: `silent-studio/teaser/rounds/v6/teaser_v6.mp4`
   (silent) and `audio-studio/all-renders/teaser_v6_with_sound_v2.mp4` (with audio) —
   this is the literal "update both teasers, with and without audio" ask, now done.
 
@@ -147,11 +147,11 @@ exist yet.
 
 **What to do:**
 1. Run `render.ps1` for the three new rounds (exact commands are in each round's
-   `FEEDBACK.md`, e.g. `hyperframes/gates-saving/rounds/v5/FEEDBACK.md`):
+   `FEEDBACK.md`, e.g. `silent-studio/gates-saving/rounds/v5/FEEDBACK.md`):
    - `gates-saving` → v5
    - `ranking` → v5
    - `brandmark/closing` → v3
-2. Once those land in `hyperframes/all-renders/` (or wherever your render step
+2. Once those land in `silent-studio/all-renders/` (or wherever your render step
    drops them), say so and I'll:
    - mux `audio-studio/ranking/soundv2/soundtrack_v2.wav` onto `ranking_v5.mp4`
    - mux `audio-studio/brandmark/closing/soundv2/soundtrack_v2.wav` onto `closing_v3.mp4`

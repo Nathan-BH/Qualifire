@@ -34,7 +34,7 @@ a reply unless he wants something different from what was picked.
    dimming overlay (looked washed-out); moved to draw on top so it stays legible throughout.
 8. **map.png in git:** each captured basemap PNG will be a few MB, ×3 scenes. Not committed or
    ignored by this session — left for Nathan to decide (commit them so a fresh clone renders
-   without re-capturing, or add `marketing/hyperframes/*/map.png` to `.gitignore`).
+   without re-capturing, or add `marketing/silent-studio/*/map.png` to `.gitignore`).
 9. **Unverified until Nathan renders** (nothing here could be tested without a shell on his PC):
    that HyperFrames' renderer actually resolves the relative `map.png` path at render time
    (its own docs only say "missing media → wrong path", implying local media generally works);
@@ -57,11 +57,11 @@ for every file this cycle touched.
 session.** Three things need Nathan (or a future session once `device_bash` is back):
 
 1. **Capture the basemap** (needs Chrome + internet, ~1 minute) — double-click
-   `marketing\hyperframes\_map\map-capture.html`, wait for "READY", click "Download map.png",
+   `marketing\silent-studio\_map\map-capture.html`, wait for "READY", click "Download map.png",
    then:
    ```powershell
    $src = "$env:USERPROFILE\Downloads\map.png"
-   $hf  = "C:\Users\natha\Claude personal projects\Qualifire\marketing\hyperframes"
+   $hf  = "C:\Users\natha\Claude personal projects\Qualifire\marketing\silent-studio"
    foreach ($c in 'start-ride','gates-saving','ranking') { Copy-Item $src (Join-Path $hf "$c\map.png") -Force }
    ```
    If the capture page shows only black / an error (Chrome refusing tiles from a `file://`
@@ -70,7 +70,7 @@ session.** Three things need Nathan (or a future session once `device_bash` is b
 
 2. **Render all three scenes:**
    ```powershell
-   cd "C:\Users\natha\Claude personal projects\Qualifire\marketing\hyperframes"
+   cd "C:\Users\natha\Claude personal projects\Qualifire\marketing\silent-studio"
    powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name start-ride -Render
    powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name gates-saving -Render
    powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name ranking -Render

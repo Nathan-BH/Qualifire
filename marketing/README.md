@@ -5,7 +5,7 @@
 ## Right now
 All four compositions in the slate are built AND rendered. Each composition
 now has its own **round-tracked feedback doc** at
-`hyperframes/<comp>/rounds/v1/FEEDBACK.md`, written against the actual
+`silent-studio/<comp>/rounds/v1/FEEDBACK.md`, written against the actual
 current render, with a place for Nathan's notes. `teaser`'s current render
 (`teaser_2026-09-09_18-08-41.mp4`) is the post-revision one (fade
 transitions in place of shrink/travel, plus the hard-kill contract fix);
@@ -14,7 +14,7 @@ sits in `renders/` pending an archive pass. Feedback tracking has moved
 from whole-slate cycles to a per-composition round scheme — see below.
 
 ## Feedback rounds (replaces "Current cycle")
-Each composition tracks its own rounds under `hyperframes/<comp>/rounds/`:
+Each composition tracks its own rounds under `silent-studio/<comp>/rounds/`:
 `v1/` holds that round's render copy + its `FEEDBACK.md`; a `v2/` gets
 added once Nathan's v1 feedback drives a revision, and so on. Each
 composition's own `README.md` has a "Feedback rounds" table linking to
@@ -26,12 +26,12 @@ current.
 ## Videos
 | Composition | State | Current render | Round |
 |---|---|---|---|
-| gate (idea 1) | built, rendered | `hyperframes/gate/renders/gate_2026-09-09_18-09-25.mp4` | [v1](hyperframes/gate/rounds/v1/FEEDBACK.md) — awaiting feedback |
-| teaser (idea 2) | built, revised per feedback, rendered | `hyperframes/teaser/renders/teaser_2026-09-09_18-08-41.mp4` | [v1](hyperframes/teaser/rounds/v1/FEEDBACK.md) — awaiting feedback |
-| tour (idea 3) | built, restructured, rendered | `hyperframes/tour/renders/tour_2026-09-09_23-16-48.mp4` | [v1](hyperframes/tour/rounds/v1/FEEDBACK.md) — awaiting feedback |
-| purple (idea 4) | built, rendered | `hyperframes/purple/renders/purple_2026-09-09_18-09-50.mp4` | [v1](hyperframes/purple/rounds/v1/FEEDBACK.md) — awaiting feedback |
+| gate (idea 1) | built, rendered | `silent-studio/gate/renders/gate_2026-09-09_18-09-25.mp4` | [v1](silent-studio/gate/rounds/v1/FEEDBACK.md) — awaiting feedback |
+| teaser (idea 2) | built, revised per feedback, rendered | `silent-studio/teaser/renders/teaser_2026-09-09_18-08-41.mp4` | [v1](silent-studio/teaser/rounds/v1/FEEDBACK.md) — awaiting feedback |
+| tour (idea 3) | built, restructured, rendered | `silent-studio/tour/renders/tour_2026-09-09_23-16-48.mp4` | [v1](silent-studio/tour/rounds/v1/FEEDBACK.md) — awaiting feedback |
+| purple (idea 4) | built, rendered | `silent-studio/purple/renders/purple_2026-09-09_18-09-50.mp4` | [v1](silent-studio/purple/rounds/v1/FEEDBACK.md) — awaiting feedback |
 
-To re-render any of these after a revision, from `marketing/hyperframes/`
+To re-render any of these after a revision, from `marketing/silent-studio/`
 on Nathan's PC:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name teaser -Render
@@ -47,7 +47,7 @@ marketing/
 ├── PLAN.md               # the slate plan
 ├── index.html            # the site
 ├── assets/               # brand assets
-├── hyperframes/           # HyperFrames compositions
+├── silent-studio/           # HyperFrames compositions
 │   ├── COMMANDS.md, STUDIO-GUIDE.md, render.ps1
 │   └── teaser/ gate/ purple/ tour/
 │       ├── index.html, README.md (has a "Feedback rounds" table)
@@ -61,14 +61,14 @@ marketing/
 ```
 
 ## The workflow loop
-idea recorded in `PLAN.md` → build in `hyperframes/<comp>/` →
+idea recorded in `PLAN.md` → build in `silent-studio/<comp>/` →
 `npx hyperframes preview` to check, `render.ps1 -Name <comp> -Render` to
-render → a round doc is written in `hyperframes/<comp>/rounds/vN/` →
+render → a round doc is written in `silent-studio/<comp>/rounds/vN/` →
 Nathan reviews the mp4 and fills in `FEEDBACK.md` → revise → next round
 (`vN+1`) repeats the loop.
 
 ## The rules
-- **One-render rule:** `hyperframes/<comp>/renders/` holds only the current
+- **One-render rule:** `silent-studio/<comp>/renders/` holds only the current
   render. A new render supersedes the old one — move the old mp4 to
   `archive/renders/<comp>/` (keep its original filename) before/when a new
   one lands.

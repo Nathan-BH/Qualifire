@@ -52,7 +52,7 @@ versions play correctly.
   over by scoring the teaser as if `colours` were in it.
 - **`brandmark` was split into `brandmark/opening/` and `brandmark/closing/`**
   sub-scene folders rather than one flat `brandmark/` folder with two soundtracks
-  inside it, matching how `hyperframes/brandmark/` is itself already split. Each
+  inside it, matching how `silent-studio/brandmark/` is itself already split. Each
   nested sub-scene reaches the shared `synth.py` with `sys.path.insert(0, "../..")`
   instead of the usual `".."`, documented in `structure.md`.
 - **Every soundv1 stays deliberately restrained** relative to what a full "final"

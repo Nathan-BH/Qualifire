@@ -2,7 +2,7 @@
 brandmark/closing - soundv2
 
 Source: closing_v3.mp4 (not rendered yet - built against the NEW v3 timeline
-in ../../hyperframes/brandmark/closing/index.html, 4.0s, 1920x1080; see that
+in ../../silent-studio/brandmark/closing/index.html, 4.0s, 1920x1080; see that
 file's rounds/v3/FEEDBACK.md for the visual redesign this pairs with: mark,
 wordmark, and tagline now all arrive together within 0.75s instead of
 soundv1's ~1.9s staggered reveal).
