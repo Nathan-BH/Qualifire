@@ -45,6 +45,7 @@ import { useSettings } from './settings';
 import { chipColors, tierLineColour, type Tier } from './chips';
 import { ALL_YELLOW, liveSectorColours } from './sectorTrailModel.ts';
 import { fmt, ghostsFor, lapValues, sectorValues, tierFor } from './colourModel';
+import { loadSelfTracks, selfDotsAt, selfLivePosition, type SelfDot, type SelfTrack } from './selfRaceModel.ts';
 import { dropRecorded, rememberRide } from './lastRide';
 import { rememberFreeRide } from '../store/freeRides';
 import { findWayWithSpecs, type RouteCreationDraft, type RouteNames } from '../store/routeCreation';
@@ -67,7 +68,7 @@ import { RouteNamingCard } from './routeNamingCard';
 import { deleteRide } from '../storage';
 import { removeStoredResult } from '../store/resultsStore';
 import { currentCatalog } from '../store/catalogStore';
-import { freeRideWayIds, landmarkAt } from '../store/catalog';
+import { freeRideWayIds, gateSetFor, landmarkAt } from '../store/catalog';
 import { effectiveRideSportId, setActiveSport, showSportPillRow, wayIdsOfSport } from '../store/sports';
 import { afterSportSwitch } from '../store/sportSwitch';
 import { activeCatalog, activeSportId, currentSports, saveSports } from '../store/sportStore';
@@ -850,6 +851,64 @@ export default function RecordScreen({
     [live.sectors, live.track, settings.sectorColours, settings.timing],
   );
 
+  // virgin-cycle6 (self racing), Task 5. Loading: fire-and-forget, same
+  // discipline as initRideHistory's backfill (never blocks, never throws
+  // into the screen) — re-runs whenever the locked way, mode or the setting
+  // changes; clears (and the tick effect below stops) the moment any of
+  // those says "no selfs" (free mode, setting off, or no lock yet). Gate-set
+  // version: the same gateSetFor(currentCatalog(), wayId) lookup
+  // lastRide.ts's rememberRide uses for the identical "this way's CURRENT
+  // gate set" question (rememberRide, store/derive.ts's Task-2 sibling both
+  // need the same fact) — sectorColours's own history callback (above) does
+  // not itself need a gate-set version, so there is no second lookup of that
+  // exact shape to mirror; this is the established one.
+  const [selfTracks, setSelfTracks] = useState<SelfTrack[]>([]);
+  useEffect(() => {
+    if (live.track === null || live.mode !== 'route' || !settings.selfDots) {
+      setSelfTracks([]);
+      return;
+    }
+    let cancelled = false;
+    const gateSetVersion = gateSetFor(currentCatalog(), live.track)?.version ?? 1;
+    void loadSelfTracks(live.track, gateSetVersion, createExpoFsAdapter()).then((tracks) => {
+      if (!cancelled) setSelfTracks(tracks);
+    });
+    return () => { cancelled = true; };
+    // settings.timing: same reason sectorColours above depends on it — a
+    // self's lapS (which one is purple) is scoredS under the CURRENT mode
+    // (R7); the loader's cache re-reads lapS, so this re-run is cheap.
+  }, [live.track, live.mode, settings.selfDots, settings.timing]);
+
+  // Tick: 250 ms while running (not 10 Hz — the rider dot itself only moves
+  // per GPS fix; four frames a second is smooth enough for a 5 px dot and
+  // keeps the map re-render cheap). Skipped entirely when there is nothing
+  // to animate. live.startGateT is a plain number|null, so this effect only
+  // restarts the interval when it actually changes (lock/gate-0 fire), not
+  // on every fix.
+  const [selfDots, setSelfDots] = useState<SelfDot[]>([]);
+  useEffect(() => {
+    if (phase !== 'running' || selfTracks.length === 0) {
+      setSelfDots([]);
+      return;
+    }
+    const tick = () => {
+      const elapsedMs = live.startGateT === null ? null : Date.now() - live.startGateT * 1000;
+      setSelfDots(selfDotsAt(selfTracks, elapsedMs));
+    };
+    tick();
+    const id = setInterval(tick, 250);
+    return () => clearInterval(id);
+  }, [phase, selfTracks, live.startGateT]);
+
+  // follow-up (live PX, R10): 'P4' among the selfs on the map, by chainage —
+  // null before START, once the lap lands (the handover PosChip then owns
+  // the fact), off the route, or with self dots off.
+  const livePos = useMemo(() => {
+    if (live.mode !== 'route' || !settings.selfDots || live.startGateT === null || live.lap !== null) return null;
+    const p = selfLivePosition(selfDots, live.chainageM);
+    return p === null ? null : `P${p}`;
+  }, [selfDots, live.chainageM, live.startGateT, live.lap, live.mode, settings.selfDots]);
+
   const startable = CATALOG.landmarks.filter((l) => l.offerAtStart);
 
   // DETECTED start: the real one, from the last fix through the catalog. Null
@@ -1090,6 +1149,7 @@ export default function RecordScreen({
               crossedGates={live.freeCrossings}
               gateWayIds={rideFreeWayIds}
               trail={mapOverlay.showTrail ? trail : undefined}
+              selfs={settings.selfDots && live.mode === 'route' ? selfDots : undefined}
               variant="live"
               liveState={live.phase === 'finished' ? 'finished' : (stationary ? 'stopped' : 'moving')}
               fill
@@ -1109,6 +1169,7 @@ export default function RecordScreen({
             realTimebase(session.startedAtMs),
             getLiveTowerPosition(live), // real position once the lap lands
             tierOf,
+            livePos,
           )}
           showLap={showLap}
         />

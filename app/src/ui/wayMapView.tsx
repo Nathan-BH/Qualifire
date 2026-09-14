@@ -95,6 +95,8 @@ import {
   wayLineFeature, sectorSpansFeatureCollection, trailBounds,
 } from './wayMapGeo.ts';
 import { trailLineFeature, type TrailPoint } from './trailModel.ts';
+import { selfsFeatureCollection, type SelfDot } from './selfRaceModel.ts';
+import { tierLineColour } from './tierColour.ts';
 import { patchMapStyle } from './wayMapStyle.ts';
 import { colors, radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
@@ -257,6 +259,11 @@ type WayMapProps = {
    * MapLibre rung draws it — the PNG rung has no equivalent (see file
    * header's rung notes) and is unaffected. */
   trail?: readonly TrailPoint[];
+  /** virgin-cycle6: past rides of this way replayed as dots (selfRaceModel.ts).
+   * Drawn by the MapLibre rung only, BELOW the rider dot (mount order).
+   * undefined/[] = the source still mounts, empty. The PNG rung ignores it
+   * (accepted degradation, same as sectorColours). */
+  selfs?: readonly SelfDot[];
   /** WP-J (gate-adjust card, 2026-09-05): gate selection on a browse map.
    * `selected` is the gate index to ring (null = none); `onPress` fires with
    * the tapped gate's index (MapLibre rung only — the PNG rung has no
@@ -500,6 +507,15 @@ function MapLibreWayMap(props: WayMapProps & {
     return { type: 'FeatureCollection' as const, features: f ? [f] : [] };
   }, [props.trail, props.lat, props.lon]);
 
+  // virgin-cycle6 (self racing): always-mounted, possibly-empty
+  // FeatureCollection — same Rules-of-Hooks / mount-order reasoning as
+  // trailFC above (must run before the riderOnly guard below, and must not
+  // be conditional on props.selfs or its source would mount AFTER the rider
+  // source and paint over the dot — see the comment block above trailFC).
+  const selfsFC = useMemo(() => {
+    return selfsFeatureCollection(props.selfs ?? []);
+  }, [props.selfs]);
+
   // WP-J (gate-adjust card): the selected gate's ring — always-mounted when
   // gateSelect is given (empty when nothing is selected) so it takes a mount
   // slot ABOVE the gate-ticks source (mount order, see trailFC's comment
@@ -726,24 +742,20 @@ function MapLibreWayMap(props: WayMapProps & {
           </M.GeoJSONSource>
         ) : gateTicksFC ? (
           // WP-E: circles replaced with a short tick perpendicular to the
-          // route. Reverted 2026-08-24 (Nathan, live device feedback): the
-          // unscored fallback used to be t.textDim (a dim theme-aware grey)
-          // which read as almost invisible on device — now every tick gets
-          // the same casing+core treatment as the route line itself
-          // (gate-ticks-casing: a black outline, drawn first/underneath;
-          // gate-ticks: a yellow core, colors.neutral, same as the route
-          // line's own colour) until the sector is scored.
-          // Opus verification catch (2026-08-24, same pass): colors.neutral
-          // IS the yellow tier's colour (chips.tsx's YELLOW_TIER), so a gate
-          // genuinely scored to the ordinary/yellow tier would otherwise be
-          // pixel-identical to an unscored gate — a real D-013/D-030 honesty
-          // regression, not just a style nit (a route with no scored history
-          // must never look like a scored ordinary lap; chips.tsx makes the
-          // same call for 'neutral'). Unscored ticks stay yellow (Nathan
-          // asked for that, and the casing alone already fixes the
-          // visibility complaint) but thinner and slightly translucent, so a
-          // genuinely-earned tier colour (full width, full opacity — any
-          // tier, yellow included) still reads as visibly different/bolder.
+          // route (gateTicksFeatureCollection). Casing+core like the route
+          // line so a tick is never invisible on the night basemap (Nathan
+          // 2026-08-24 device feedback — the earlier t.textDim fallback read
+          // as nothing).
+          // Gates-white (Nathan 2026-09-14, matching the marketing
+          // gates-saving render: yellow line, white gate across): the core
+          // is colors.white, a structural-marker colour that is not a tier
+          // colour. Gate ticks never change colour (STATE.md; cycle2 WP-E
+          // retired the tier-coloured tick 2026-09-05), so the old
+          // D-013/D-030 concern — an unscored yellow tick being
+          // pixel-identical to an earned yellow-tier tick — no longer arises
+          // and the thin/translucent fallback it justified is gone (opacity
+          // 1). The ['has','colour'] branch is kept only because the
+          // gateColours prop still exists; no caller supplies it.
           // WP-N: line-cap round on both layers, matching the route line
           // itself (which was already round) — was 'butt' on these two.
           <M.GeoJSONSource
@@ -761,9 +773,9 @@ function MapLibreWayMap(props: WayMapProps & {
               paint={{ 'line-color': CASING, 'line-width': 5 }}
               layout={{ 'line-cap': 'round' }} />
             <M.Layer id="gate-ticks" type="line" paint={{
-              'line-color': ['case', ['has', 'colour'], ['get', 'colour'], colors.neutral],
+              'line-color': ['case', ['has', 'colour'], ['get', 'colour'], colors.white],
               'line-width': ['case', ['has', 'colour'], 3, 2],
-              'line-opacity': ['case', ['has', 'colour'], 1, 0.6],
+              'line-opacity': 1,
             }} layout={{ 'line-cap': 'round' }} />
           </M.GeoJSONSource>
         ) : null}
@@ -784,6 +796,33 @@ function MapLibreWayMap(props: WayMapProps & {
             }} />
           </M.GeoJSONSource>
         ) : null}
+        {/* virgin-cycle6 (self racing): always-mounted, possibly-empty source
+            (selfsFC — see its comment above) so it claims its mount slot
+            BELOW the rider dot (mount order, same z-stacking rule as
+            trailFC/gateSelectedFC above) whether or not props.selfs is
+            given. NOT conditional on props.selfs — a conditionally-mounted
+            source here would mount AFTER the rider source and paint over
+            it. follow-up: layout `circle-sort-key` (R5‴, from the feature's
+            `sortKey = 100 - rank`) stacks P1 above P2 ... P9 within this one
+            layer — the rider still paints above every self via mount order
+            alone (untouched). */}
+        <M.GeoJSONSource key="selfs" id="selfs" data={selfsFC}>
+          <M.Layer id="self-dot" type="circle"
+            layout={{ 'circle-sort-key': ['get', 'sortKey'] }}
+            paint={{
+              'circle-radius': 5,
+              // R5′: the app's one tier rule, tokens from tierColour.ts (never chipColors().text).
+              'circle-color': ['match', ['get', 'tier'],
+                'purple', tierLineColour('purple') as string,
+                'green', tierLineColour('green') as string,
+                tierLineColour('yellow') as string],
+              // R5″: state-only opacity; every self sits under the rider's 1.0.
+              'circle-opacity': ['case', ['==', ['get', 'state'], 'finished'], 0.35, 0.7],
+              'circle-stroke-color': CASING,
+              'circle-stroke-width': 1.5,
+              'circle-stroke-opacity': ['case', ['==', ['get', 'state'], 'finished'], 0.35, 0.7],
+            }} />
+        </M.GeoJSONSource>
         {showRider && here ? (
           <M.GeoJSONSource key="rider" id="rider" data={riderFeature(props.lat as number, props.lon as number)}>
             {/* WP-E: the rider dot no longer shares colors.neutral with the

@@ -332,6 +332,16 @@ export interface LiveEngineState {
    * "writing history" instead of "detecting route…" while this is false —
    * a "nothing known recognised so far" indicator, never a verdict. */
   anyAnchored: boolean;
+  /** virgin-cycle6 (self racing): epoch SECONDS the displayed candidate
+   * (`track`) crossed gate 0, estimated crossings included; null before
+   * that crossing, in free mode, and whenever `track` is null. Read-only
+   * mirror of that candidate's own gate-0 event — never feeds any timing
+   * arithmetic. */
+  startGateT: number | null;
+  /** follow-up (live PX): the displayed candidate's current monotonic chainage in metres
+   *  (its LiveProjector.chainage), null whenever `track` is null. Display-only mirror —
+   *  never feeds gate logic or timing. */
+  chainageM: number | null;
 }
 
 interface Candidate {
@@ -726,6 +736,15 @@ export class LiveEngine {
       : this.locked
         ? this.locked.events.length
         : this.cands.reduce((m, c) => Math.max(m, c.events.length), 0);
+    // virgin-cycle6 (self racing): the displayed candidate's own gate-0
+    // event, if it has fired one yet. Free mode never has `this.locked`
+    // (no lock ever settles there), so this is null there too, same as
+    // `track`.
+    let startGateT: number | null = null;
+    if (this.locked) {
+      const g0 = this.locked.events.find((e) => e.gateIndex === 0);
+      if (g0) startGateT = g0.time;
+    }
     return {
       phase: this.phase,
       track: this.locked ? this.locked.track : null,
@@ -743,6 +762,8 @@ export class LiveEngine {
       freeCrossings: [...this.freeCrossings],
       freeSectors: [...this.freeSectors],
       anyAnchored: this.cands.some((c) => c.anchored),
+      startGateT,
+      chainageM: this.locked ? this.locked.proj.chainage : null,
     };
   }
 

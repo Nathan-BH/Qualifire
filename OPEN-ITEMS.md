@@ -63,6 +63,22 @@ replaced. Vocabulary is post-WP-3: a route is the from→to path, a way is one v
    guess. This is what makes a lost/replaced phone, or handing your exact setup to a friend,
    survivable — separate from retroactive route creation, which is what lets a total stranger
    start from nothing.
+5. **virgin-cycle6 self-racing — on-device progression check (phone only).** The headless
+   suite (`tests/selfrace_suite.ts`) proves the model; only a phone proves the feel of riding
+   the incremental unlock. Checklist (verbatim from `BRIEF-live-self-racing.md` §Task 8):
+   1. Blank install (or SETTINGS → DATA → Reset to virgin). Name a sport. Ride a short loop
+      or any route; at STOP name the endpoints → way created, ride 1 = reference. **Expect:
+      no self dots at any point of ride 1.**
+   2. Ride 2 of the same way. **Expect: one purple dot** parked at the START gate until you
+      cross it, then moving; it finishes where you finished last time.
+   3. Ride 3. **Expect: two dots: one purple, one yellow or green depending on the mean;
+      a `P1`/`P2` appears under the map once you cross START.** Confirm the purple one is
+      the faster of the two (RESULTS tab ranks them).
+   4. Keep going as convenient; at ride 11 **expect nine dots, never ten**.
+   5. Toggle `selfDots` off mid-ride → dots vanish next frame; on → back within a second.
+   6. Note anything about size/colour/opacity to adjust (R5 in `BRIEF-live-self-racing.md` is
+      a starting point Nathan adjusts by eye, not a hard spec).
+   7. Two dots overlapping: the faster one on top (`circle-sort-key`), rider always on top.
 
 ## Distribution (2026-09-09 pivot — see `deployment/`)
 
@@ -131,3 +147,6 @@ Nathan answered most of `deployment/QUESTIONS-FOR-NATHAN.md` on 2026-09-09; fold
   dependence.
 - **Type a destination and race it (`IDEAS.md` §29).** Product fork, Nathan's call — would
   need a routing engine, and there is no maintained Expo binding for one.
+- **virgin-cycle6 self-racing — answered 2026-09-14, folded in by
+  `BRIEF-self-racing-followup.md`**; only the on-device look (yellow dot on the yellow line,
+  P-number placement) remains Nathan's.

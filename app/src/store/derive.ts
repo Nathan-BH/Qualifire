@@ -27,6 +27,7 @@
  */
 import {
   computeKinematics,
+  crossTime,
   projectRideOffline,
   sectorTimes,
   stoppedTimeBetween,
@@ -120,5 +121,48 @@ export function deriveRideResult(inp: DeriveInput): RideResult {
       gateSetVersion: inp.gateSetVersion,
       resultSchemaVersion: RESULT_SCHEMA_VERSION,
     },
+  };
+}
+
+/** virgin-cycle6 (self racing), Task 2: a SIBLING of deriveRideResult — same
+ * replay (toXY -> projectRideOffline -> crossTime), but reduced to just the
+ * two crossings a self track needs: gate 0 (start) and the last gate
+ * (finish), epoch SECONDS. Does not touch deriveRideResult's signature or
+ * output. `crossTime` is the exact call resultsStore.ts's corridorCoverage()
+ * already uses for the same tA/tB extraction (no new geometry code) —
+ * sectorTimes()'s fuller per-sector reduction (flags, moving time) is not
+ * needed here, only the two boundary timestamps.
+ *
+ * A null crossing (gate never reached) yields a null field — the caller
+ * (selfRaceModel.ts's loadSelfTracks) skips the self rather than inventing a
+ * time (R3/R4). An "estimated" (gap-derived) offline crossing is still a
+ * real timestamp from crossTime's own late-lock tolerance (timing.ts's
+ * doc comment) and is used as-is; offline has no separate estimated flag to
+ * carry (derive.ts's file header: 'estimated' is a LIVE-only concept). */
+export interface GateCrossings {
+  /** epoch seconds gate 0 was crossed, or null if it never was */
+  startS: number | null;
+  /** epoch seconds the last gate was crossed, or null if it never was */
+  finishS: number | null;
+  /** follow-up (live PX): chainage in metres along `ref` per input fix — projectRideOffline's
+   *  own `s`, unchanged. Same array length as `t`. */
+  chainageM: ArrayLike<number>;
+}
+
+export function deriveGateCrossings(inp: {
+  t: ArrayLike<number>;
+  lat: ArrayLike<number>;
+  lon: ArrayLike<number>;
+  ref: RefLine;
+  gates: number[];
+}): GateCrossings {
+  const { x, y } = toXY(inp.lat, inp.lon, inp.ref.lat0, inp.ref.lon0);
+  const { s } = projectRideOffline(x, y, inp.ref);
+  const g0 = inp.gates[0];
+  const gLast = inp.gates[inp.gates.length - 1];
+  return {
+    startS: crossTime(inp.t, s, g0),
+    finishS: crossTime(inp.t, s, gLast),
+    chainageM: s,
   };
 }

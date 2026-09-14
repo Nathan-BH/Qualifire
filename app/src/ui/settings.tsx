@@ -37,6 +37,10 @@ export interface Settings {
   /** WP-K: paint each sector of the route line in the tier it earned (live
    * map, ride-detail trace, RIDES row) — off keeps the line all yellow. */
   sectorColours: boolean;
+  /** virgin-cycle6 (self racing): show the way's comparison window
+   * (colourModel.ghostsFor, <= 9 rides) as moving dots on the live map,
+   * timed from the START gate. Default true. */
+  selfDots: boolean;
   /** Which clock scores a ride (STATE.md ground rule): 'raw' = wall clock,
    * every stop counts (the default — luck counts); 'moving' = raw minus
    * detected stopped time, the opt-in. Read by store/timing.ts's scoredS(). */
@@ -54,6 +58,7 @@ const DEFAULTS: Settings = {
   liveMap: true,
   earcons: true,
   sectorColours: true,
+  selfDots: true,
   timing: DEFAULT_TIMING,
   showSportPillOnRecord: true,
 };
@@ -551,6 +556,10 @@ export default function SettingsScreen() {
         <Row label="Sector colours" t={t} help={help}
           hint="Paint each stretch of the route line in the tier its sector earned — on the live map, in the ride view and on the RIDES list. Purple beats your best, green beats your recent average, yellow is an ordinary lap. Off keeps the whole line yellow.">
           <Switch on={s.sectorColours} onToggle={() => set('sectorColours', !s.sectorColours)} t={t} />
+        </Row>
+        <Row label="Race your past rides" t={t} help={help}
+          hint="Your previous rides of this route move along the map as small dots, timed from the START gate. Purple is your best of the last nine, green is faster than their average, yellow slower. The P-number under the map is your position among them right now.">
+          <Switch on={s.selfDots} onToggle={() => set('selfDots', !s.selfDots)} t={t} />
         </Row>
         <Row label="Earcons" hint="A short buzz at each gate crossing." help={help} t={t}>
           <Switch on={s.earcons} onToggle={() => set('earcons', !s.earcons)} t={t} />

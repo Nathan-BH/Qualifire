@@ -28,7 +28,17 @@ fresh install has no sports at all until you name one,
 and RECORD says so instead of recording.
 
 **Ghost.** The past version of yourself the app is comparing you against right now — your
-own recent rides on that way, not a stranger and not a made-up number.
+own recent rides on that way, not a stranger and not a made-up number. Not to be confused
+with **Self** (below) — a ghost never moves on screen; a self does.
+
+**Self.** One of your own past rides of a way, replayed as a small dot that moves along the
+live map — not a *ghost* (above), which is the still comparison a sector's colour is judged
+against. A self is positioned by its own recorded fixes, timed from the moment it crossed the
+START gate; the reference ride races no selfs, ride *k* races *k* − 1, capped at nine. Coloured
+by the app's one tier rule: the fastest is purple, any other self below the window's average is
+green, the rest are yellow; the faster of two overlapping dots stacks on top. A live `P4` under
+the map shows your position among them right now, by chainage. Toggle: SETTINGS → "Race your
+past rides" (`selfDots`, on by default). *(virgin-cycle6, follow-up.)*
 
 **Gate.** An invisible line drawn across the road at a fixed spot. The moment your GPS
 trace crosses it, that's a timed event — the start, end, or boundary of a sector.

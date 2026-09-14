@@ -2,7 +2,9 @@
  * Shared LIVE-screen pane v2 (LAYOUT §2/§2a + Nathan's 2026-08-15 rulings):
  * the big slot carries the ticking LAP CLOCK, F1-style — whole-ride elapsed,
  * m:ss.d at 0.1 s, the majority of the screen, ink — NEVER tier-coloured
- * while ticking, no target/benchmark/delta anywhere near it. At each gate the
+ * while ticking, no target/benchmark/delta anywhere near it (a live position
+ * `P4` on the context row is a fact under D-028, like the handover chip —
+ * not a benchmark; follow-up brief R10). At each gate the
  * completed sector's frozen time FLASHES over it in the earned tier colour
  * for ~2.5 s — masking, never pausing: the clock runs underneath and
  * reappears already honest. Estimated flashes grey/dashed/colourless;
@@ -104,6 +106,9 @@ export interface LiveViewModel {
   lap: LapChipModel | null;
   /** tower position at the handover ('P3'); null = render nothing (B-28) */
   posChip: string | null;
+  /** live position among the selfs on the map ('P4'); null/undefined =
+   *  render nothing (follow-up R10). A fact, never a benchmark. */
+  livePos?: string | null;
   strip: StripSlotModel[];
 }
 
@@ -152,6 +157,7 @@ export function viewModelFromEngine(
   clock: Timebase | null = null,
   posChip: string | null = null, // real callers pass getLiveTowerPosition()
   tierOf: TierSource = NEUTRAL_SOURCE,
+  livePos: string | null = null,
 ): LiveViewModel {
   const strip: StripSlotModel[] = st.sectors.map((sec, i) => {
     const label = `S${i + 1}`;
@@ -202,7 +208,7 @@ export function viewModelFromEngine(
         ? `S${st.currentSector}`
         : '';
 
-  return { clock, contextLabel, flash, flashKey: st.gateFires, lap, posChip, strip };
+  return { clock, contextLabel, flash, flashKey: st.gateFires, lap, posChip, livePos, strip };
 }
 
 /* ---------------- the clock ---------------- */
@@ -260,7 +266,14 @@ export function LiveSectorPane({ vm, showLap = true }: { vm: LiveViewModel; show
 
   return (
     <View style={paneStyles.pane}>
-      <Text style={[paneStyles.ctx, { color: t.textDim }]}>{vm.contextLabel || ' '}</Text>
+      <Text style={[paneStyles.ctx, { color: t.textDim }]}>
+        {vm.contextLabel || (vm.livePos ? '' : ' ')}
+        {vm.livePos ? (
+          <Text style={{ color: t.text }}>
+            {(vm.contextLabel ? ' · ' : '') + vm.livePos}
+          </Text>
+        ) : null}
+      </Text>
       <View style={paneStyles.bigSlot}>
         {lapTakesSlot && vm.lap ? (
           <View style={paneStyles.lapRow}>

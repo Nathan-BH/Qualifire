@@ -46,6 +46,11 @@ function stateWith(over: Partial<LiveEngineState>): LiveEngineState {
     phase: 'finished', track: 'Morning', sectors: [], currentSector: null, lastDone: 4,
     lap: { rawS: 900, stoppedS: 20, movingS: 880, estimated: false },
     gateFires: 5, fixesFed: 900, onWay: true, anyAnchored: false,
+    // virgin-cycle6: additive, rememberRide() never reads it — added so this
+    // helper's `as LiveEngineState` cast keeps describing a real, complete
+    // state rather than silently omitting a required field.
+    startGateT: null,
+    chainageM: null,
     ...over,
   } as LiveEngineState;
 }

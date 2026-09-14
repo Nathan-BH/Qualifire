@@ -1,0 +1,39 @@
+virgin-cycle6: live self-racing — past rides as dots on the live map; gates white
+
+Every ride in the way's existing comparison window (colourModel.ghostsFor,
+<= 9) is replayed from its own stored fixes as a small dot on the live map,
+timed from the START gate against the live rider's START crossing. Ride 1 of
+a way races nobody; ride k races k-1; capped at nine. New pure
+selfRaceModel.ts + loader (store/derive.ts deriveGateCrossings sibling) +
+tests/selfrace_suite.ts; additive LiveEngineState.startGateT; WayMapView
+`selfs` source mounted under the rider dot; SETTINGS selfDots toggle
+(default on). STATE/GLOSSARY/OPEN-ITEMS updated. PNG rung, DEMO tab and
+free mode untouched by design.
+
+Inspect pass (fresh-context Fable, same day) fixed before commit: neutral
+self dots use the theme's ink (t.text) not the static near-white colors.ink
+(invisible on the daylight basemap); the loader re-reads lapS on a cache hit
+so the purple self follows the active timing mode (R7) + a regression test
+that failed before the fix; RecordScreen reloads selfs when timing changes;
+the decimation test's ramp now starts/ends 5 m outside the gates instead of
+passing on a 7.5e-8 m projection-rounding margin.
+
+Follow-up (Q1-Q3, BRIEF-self-racing-followup.md): selfs coloured by the
+colour model's own rule (purple best / green under the window mean / yellow),
+stacked P1-on-top via circle-sort-key, all under the rider's opacity (0.70
+racing, 0.35 finished, CASING stroke 1.5); live position `P n` on the
+LiveSectorPane context row from the engine's new additive chainageM and
+per-fix self chainage (GateCrossings.chainageM); Q3 needs nothing — PAUSE is
+not a pause. Second Inspect pass: two test-only strengthenings in
+selfrace_suite.ts (the chainageM<->fix alignment assertion now checks each
+kept fix's sM against its own placed chainage — a reversed/off-by-one array
+passed the old presence-only check; a level self does not count as ahead
+in selfLivePosition).
+
+Also in this commit (same file, BRIEF-gates-white.md): gate ticks render
+colors.white (new theme token, structural marker, not a tier colour), opacity
+1, casing unchanged.
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_011aysFvUNuo51UHmmGeHVyK
+Claude-Session: https://claude.ai/code/session_01RWfSyp8TkmLJSVg1WUtckb

@@ -81,6 +81,16 @@ day (below).
   (`currentCatalog()`/`shippedResults()`), not import time, so a stranger's blank install
   no longer leaks Nathan's home/work/Morning-route data.
 - **Maps:** MapLibre + OpenFreeMap live on every screen including the live ride.
+- **Live self-racing is built (virgin-cycle6).** Every ride in the way's existing comparison
+  window (`colourModel.ts`'s `ghostsFor`, unchanged, ≤ 9 rides) is replayed as a small dot on
+  the live map from its own stored fixes, timed from the live rider's own START-gate crossing
+  (`live/engine.ts`'s additive `LiveEngineState.startGateT`). New pure model + loader
+  (`ui/selfRaceModel.ts`, `store/derive.ts`'s `deriveGateCrossings`), a `WayMapView` `selfs`
+  source/layer (MapLibre rung only), `RecordScreen.tsx` wiring, and a SETTINGS toggle
+  (`selfDots`, default on). Ride 1 of a way races nobody; ride k races k − 1, capped at nine.
+  Follow-up: three tiers by the colour model's own rule, P1 on top, live `P` on the context
+  row. PNG rung, DEMO tab and free mode untouched by design (R9). See
+  `cycles/virgin-cycle6/README.md`.
 - **Sector-coloured trail is built everywhere (WP-K, 2026-09-04): live map, ride-detail
   screen, gated by one settings toggle (`sectorColours`, default on).** One shared pure
   module (`sectorTrailModel.ts`) feeds all surfaces; gate ticks stay neutral markers,
@@ -195,7 +205,11 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
 - **Raw ride recordings are append-only** — never rewritten in place; a schema change gets
   a migration, not a silent mutation of history.
 - **The live ride screen shows a real map** (MapLibre + OpenFreeMap), heading-up, locked
-  zoom, no pan/zoom while moving, reference line + own position only.
+  zoom, no pan/zoom while moving, reference line + own position only. **Since virgin-cycle6,
+  plus self dots:** the way's comparison window (`ghostsFor`, ≤ 9 rides) replayed from their
+  own fixes, timed from the START gate; toggle `selfDots`. The reference ride races nobody;
+  ride k races k − 1, capped at 9. Follow-up: three tiers by the colour model's own rule,
+  P1 on top, live `P` on the context row.
 - **Gate ticks never change colour** — sectors are coloured, gate markers stay neutral
   (Nathan's rule; cycle2 WP-E retired the last tier-coloured tick).
 - **Sports are fully separate and none is pre-seeded** — the rider names them; a way, its
@@ -256,6 +270,9 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
 - `cycles/virgin-cycle5/` — 2026-09-08: this root-doc cleanup (main-branch leftover vs.
   staleness); see its `CONTEXT.md` and `BRIEF-root-docs-cleanup.md`. Later cycles: add a
   line here when the cycle closes.
+- `cycles/virgin-cycle6/README.md` — 2026-09-14: live self-racing (past rides as dots on the
+  live map, `BRIEF-live-self-racing.md`) plus a small independent gate-colour brief
+  (`BRIEF-gates-white.md`).
 
 ## Nathan's own files (unmanaged by any agent)
 
