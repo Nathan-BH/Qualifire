@@ -14,6 +14,13 @@ only for a scene nobody's touched yet. Nathan did this by hand once, for gates-s
 soundv2; every other round (including first-pass soundv1s) is Claude's job as soon as
 that round is built — no "is it good enough yet" gate.
 
+**This folder has a silent twin: `../hyperframes/all-renders/`**, which holds the
+same set of current picked renders but without audio (flat filenames, no
+`_with_sound_vN` suffix). The two track the same "what's current" state from two
+angles and both need updating together — see `../hyperframes/structure.md`'s
+all-renders section (READ THAT before any cleanup/"what's superseded" pass, it has
+the full checklist and the story of how this got missed once already).
+
 Created 2026-09-11. `all-renders/` convention added 2026-09-11 after Nathan swapped in
 `gates-saving_v4_with_sound_v2.mp4`; corrected the same day to "every round, not just
 ones worth keeping" after Nathan flagged that the "worth keeping" gate was never a rule

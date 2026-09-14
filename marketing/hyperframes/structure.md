@@ -35,6 +35,30 @@ A composition is a folder with an `index.html` (one paused GSAP timeline, 1920x1
 | `colours/` | "Why purple is rare" — 60s tier/colour explainer | yes | 5 (uses 0–55s of the render) | `colours/rounds/v1/FEEDBACK.md` |
 | `_map/` | basemap capture page for the three product scenes (not a composition) | — | — | — |
 | `teaser/` | the assembled full video | stale (see below) | — | `teaser/rounds/v2/FEEDBACK.md` |
+| `all-renders/` | current-render mirror, silent (see below) | — | — | — |
+
+## all-renders — the current-picked-render mirror (READ THIS BEFORE ANY CLEANUP PASS)
+
+`hyperframes/all-renders/` holds one file per composition — the latest `rounds/vN/`
+render, silent, flat filenames (`gates-saving_v5.mp4`, `teaser_v6.mp4`, etc., no
+`soundvN` suffix). Same idea as `audio-studio/all-renders/`, but that folder holds
+the **with-sound** version of the same renders. **The two folders are siblings that
+track the same set of "current" files from two different angles — a cleanup or
+"what's superseded" pass has to check both, or it silently misses one.** This was
+missed once already (cycle 06): only `audio-studio/all-renders/`'s superseded
+with-sound files got flagged at first, and `hyperframes/all-renders/`'s superseded
+silent ones weren't caught until Nathan asked directly. Whenever a composition gets
+a new round, both mirrors need the update:
+1. copy the new render into `hyperframes/all-renders/<comp>_vN.mp4` (replacing the
+   previous version for that composition — never leave two versions of the same
+   composition sitting in there at once);
+2. once that composition's own audio catches up, `audio-studio/all-renders/` gets
+   the with-sound version too (see `audio-studio/structure.md`'s own all-renders
+   section for that half).
+Old files in either folder are never deleted outright — move to `safe_to_delete/`
+(project rule), which needs a shell on Nathan's PC (this session usually doesn't
+have one — flag superseded files in `OPEN-ITEMS.md`'s cleanup section instead of
+trying to move them).
 
 ## teaser — the full video
 
