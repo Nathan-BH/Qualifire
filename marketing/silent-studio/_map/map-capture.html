@@ -44,11 +44,14 @@
   var GATES = [0.24, 0.63, 0.84];                                  // fractions of route length (clear of the 0.40-0.57 self-loop)
   var SECTOR_COLORS = ['#A667F0', '#F5C542', '#A667F0', '#A667F0'];  // sector k ends at gate k; sector 4 ends at the finish
   // ---------------------------------------------------------------------------------------
-  var STYLE = 'https://tiles.openfreemap.org/styles/dark';      // the app's night style; day = https://tiles.openfreemap.org/styles/positron
+  var THEME = (new URLSearchParams(location.search).get('theme') === 'day') ? 'day' : 'night';
+  var STYLE = THEME === 'day' ? 'https://tiles.openfreemap.org/styles/positron'   // the website/day look
+                              : 'https://tiles.openfreemap.org/styles/dark';       // the app's night style (default)
   var PIXEL_RATIO = 2;                                           // PNG comes out 3840x2160 for a 1920x1080 frame
 
   document.getElementById('chk-casing').setAttribute('points', ROUTE);
   document.getElementById('chk-core').setAttribute('points', ROUTE);
+  document.title = 'Qualifire — map capture (run once in Chrome, saves map.png) — ' + THEME;
 
   var status = document.getElementById('status'), btn = document.getElementById('dl');
   var map = new maplibregl.Map({
@@ -67,9 +70,9 @@
   btn.onclick = function () {
     map.getCanvas().toBlob(function (blob) {
       var a = document.createElement('a');
-      a.href = URL.createObjectURL(blob); a.download = 'map.png';
+      a.href = URL.createObjectURL(blob); a.download = THEME === 'day' ? 'map-day.png' : 'map.png';
       document.body.appendChild(a); a.click(); a.remove();
-      status.textContent = 'Saved map.png to your Downloads folder.';
+      status.textContent = 'Saved ' + a.download + ' to your Downloads folder.';
     }, 'image/png');
   };
 </script>

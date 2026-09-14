@@ -11,7 +11,9 @@ A composition is a folder with an `index.html` (one paused GSAP timeline, 1920x1
 `.\render.ps1 -Name <folder>` previews it live, `-Render` produces a timestamped MP4 in
 `<folder>/renders/`; a render Nathan is asked to review is copied into
 `<folder>/rounds/vN/<folder>_vN.mp4` next to a `FEEDBACK.md`, one round per iteration.
-`-Name` accepts a subpath (e.g. `brandmark\opening`). See `COMMANDS.md` and
+`-Name` accepts a subpath (e.g. `brandmark\opening`). `render.ps1 -Theme day` renders the
+day palette instead of night; day renders are variants of a night round and live at
+`rounds/vN/<comp>_vN_day.mp4` (see "Day/night" below). See `COMMANDS.md` and
 `STUDIO-GUIDE.md` for details.
 
 ## The one rule
@@ -22,13 +24,22 @@ A composition is a folder with an `index.html` (one paused GSAP timeline, 1920x1
   variant.
 - The playing order and in/out points live only in `teaser/README.md`.
 
+## Day/night
+
+Each composition is one `index.html` parameterised by a CSS-token palette, not a forked
+folder: night is the reference that iterates in `rounds/`, and a day render is a variant
+of an approved night round, rendered from the same file and stored inside that round
+folder as `rounds/vN/<comp>_vN_day.mp4`. `all-renders/` mirrors at most one night and one
+day file per composition, same vN. Full ruling and mechanism:
+`../cycles/08_daynight-audio-control-and-website/BRIEF-daynight-renders.md`.
+
 ## Folder map
 
 | Folder | What it is | Own index.html? | Position in teaser | Feedback goes to |
 |---|---|---|---|---|
 | `brandmark/` | base lockup (mark + wordmark) | yes | — (asset, not itself in teaser) | `brandmark/rounds/v1/FEEDBACK.md` |
-| `brandmark/opening/` | lockup variant: draw-in + tagline cross-fade | not yet — code in `teaser/index.html` 0–5s | 1 | `brandmark/opening/rounds/v1/FEEDBACK.md` |
-| `brandmark/closing/` | lockup variant: fade-in + yellow wordmark | not yet — code in `teaser/index.html` 10.5–11.2s | 6 | `brandmark/closing/rounds/v1/FEEDBACK.md` |
+| `brandmark/opening/` | lockup variant: draw-in + tagline cross-fade | yes (4,234 bytes) | 1 | `brandmark/opening/rounds/v1/FEEDBACK.md` |
+| `brandmark/closing/` | lockup variant: fade-in + yellow wordmark | yes (4,189 bytes) | 6 | `brandmark/closing/rounds/v1/FEEDBACK.md` |
 | `start-ride/` | product scene: start button, route draws | yes (v2, 2026-09-10; needs `map.png`, see `_map/`) | 2 | `start-ride/rounds/v2/FEEDBACK.md` (most recent round) |
 | `gates-saving/` | product scene: gates pop in, second ride | yes (v2, 2026-09-10; needs `map.png`, see `_map/`) | 3 | `gates-saving/rounds/v2/FEEDBACK.md` (most recent round) |
 | `ranking/` | product scene: rank fragment, timing tower | yes (v2, 2026-09-10; needs `map.png`, see `_map/`) | 4 | `ranking/rounds/v2/FEEDBACK.md` (most recent round) |
@@ -58,7 +69,8 @@ a new round, both mirrors need the update:
 Old files in either folder are never deleted outright — move to `safe_to_delete/`
 (project rule), which needs a shell on Nathan's PC (this session usually doesn't
 have one — flag superseded files in `OPEN-ITEMS.md`'s cleanup section instead of
-trying to move them).
+trying to move them). Checklist: at most one night and one day file per composition,
+same vN; a new round replaces both or moves the stale `_day` to `safe_to_delete/`.
 
 ## teaser — the full video
 

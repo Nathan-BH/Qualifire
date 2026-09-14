@@ -35,7 +35,7 @@ python -m http.server 8123
 ```
 then open http://localhost:8123/map-capture.html and continue from step 2.
 
-To switch to the day look, change `STYLE` in `map-capture.html` to the `positron` URL, re-download, re-copy.
+For the day-look capture (cycle 08) see `../../cycles/08_daynight-audio-control-and-website/COMMANDS.md`, section 1 — nothing in this file needs editing for it.
 
 ## Why map-capture.html never had the drifting-route bug (2026-09-10)
 

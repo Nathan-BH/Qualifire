@@ -15,7 +15,7 @@ powershell -ExecutionPolicy Bypass -File .\render.ps1
 (If you'd rather not type that every time: run `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`
 once, and afterwards plain `.\render.ps1` works on its own.)
 
-## Any composition — teaser, gate, purple, tour
+## Any composition
 
 `render.ps1` takes a `-Name` parameter, so every composition uses the same pattern:
 
@@ -23,14 +23,14 @@ once, and afterwards plain `.\render.ps1` works on its own.)
 cd "C:\Users\natha\Claude personal projects\Qualifire\marketing\silent-studio"
 
 # Live preview in your browser (opens automatically, reloads on every save)
-powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name gate
+powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name gates-saving
 
 # Render to MP4 (lands in <name>\renders\)
-powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name gate -Render
+powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name gates-saving -Render
 ```
 
-Same pattern for `-Name purple` and `-Name tour`. `-Name teaser`, or omitting `-Name`
-entirely (it defaults to `teaser`), still works exactly as before:
+Same pattern for `-Name colours` and `-Name brandmark\opening`. `-Name teaser`, or omitting
+`-Name` entirely (it defaults to `teaser`), still works exactly as before:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\render.ps1              # preview teaser
@@ -61,7 +61,7 @@ powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name ranking -Render
 
 If a preview shows the route on plain black, `map.png` is missing from that folder (or wasn't
 served) — `npx hyperframes check` inside the folder will name the missing media. Copy the
-finished MP4s to `<scene>\rounds\v2\<scene>_v2.mp4` for review.
+finished MP4s to `<scene>\rounds\vN\` (next free N) for review.
 
 ## Scaffolding a brand-new composition folder
 

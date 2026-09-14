@@ -1,20 +1,35 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="night">
 <head>
+<script src="theme.js"></script>
 <meta charset="UTF-8">
 <title>Qualifire — Opening (HyperFrames)</title>
 <style>
-  html, body { margin: 0; padding: 0; background: #0A0A0A; }
+  /* ---- theme tokens: night = the app's native mood (default), day = the website's light theme.
+          Selected by data-theme on <html>; render.ps1 -Theme day sets it via theme.js. ---- */
+  :root {
+    --bg: #0A0A0A; --bg-rgb: 10,10,10;
+    --ink: #F4F2EC; --ink-dim: #9a978f;
+    --card: #141414; --card-border: #232323;
+    --route-casing: #14120C; --ring-fill: #14120C; --rider-stroke: #FFFFFF;
+  }
+  :root[data-theme="day"] {
+    --bg: #FDFCF9; --bg-rgb: 253,252,249;
+    --ink: #17171b; --ink-dim: #605e56;
+    --card: #FFFFFF; --card-border: #E1DDD1;
+    --route-casing: #14120C; --ring-fill: #FDFCF9; --rider-stroke: #17171b;
+  }
+  html, body { margin: 0; padding: 0; background: var(--bg); }
   * { box-sizing: border-box; }
 
   #stage {
     position: relative;
     width: 1920px;
     height: 1080px;
-    background: #0A0A0A;
+    background: var(--bg);
     overflow: hidden;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    color: #F4F2EC;
+    color: var(--ink);
   }
 
   .clip { position: absolute; }
@@ -28,8 +43,11 @@
 
   /* wordmark + tagline, centred, same block the mark occupied */
   #wordmark { position: absolute; top: 50%; left: 0; width: 1920px; text-align: center; transform: translateY(-40px); }
-  #wordmark .word    { font-size: 96px; font-weight: 800; letter-spacing: 22px; color: #F4F2EC; margin: 0 0 22px 0; opacity: 0; }
-  #wordmark .tagline { font-size: 34px; font-weight: 500; letter-spacing: 1px;  color: #9a978f; margin: 0; opacity: 0; }
+  #wordmark .word    { font-size: 96px; font-weight: 800; letter-spacing: 22px; color: var(--ink); margin: 0 0 22px 0; opacity: 0; }
+  #wordmark .tagline { font-size: 34px; font-weight: 500; letter-spacing: 1px;  color: var(--ink-dim); margin: 0; opacity: 0; }
+
+  /* ---- SVG colour tokens (presentation attribute removed from #ring below) ---- */
+  #ring { stroke: var(--ink); }
 </style>
 </head>
 <body>
@@ -46,7 +64,7 @@
     <div class="inner">
       <div id="mark">
         <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-          <circle id="ring" cx="256" cy="218" r="118" fill="none" stroke="#F4F2EC" stroke-width="30" stroke-linecap="round" transform="rotate(-90 256 218)" />
+          <circle id="ring" cx="256" cy="218" r="118" fill="none" stroke-width="30" stroke-linecap="round" transform="rotate(-90 256 218)" />
           <line id="slash" x1="291.355" y1="253.355" x2="387.5206" y2="349.5206" fill="none" stroke="#F5C542" stroke-width="30" stroke-linecap="round" />
         </svg>
       </div>

@@ -3,7 +3,18 @@
 **For:** Sonnet executor. Self-contained; read nothing outside this brief except the
 files it names. Stop-on-ambiguity: any anchor below that does not match the file as it
 is on disk → stop and report the mismatch verbatim; do not improvise.
-**Status:** briefed, not executed.
+**Status:** §3 and §4 executed 2026-09-14 — all seven compositions (`gates-saving`,
+`brandmark/opening`, `start-ride`, `ranking`, `colours`, `brandmark` root,
+`brandmark/closing`) are tokenised and committed. §3c–§3e (`render.ps1 -Theme day`,
+`_map/map-capture.html` day-mode support, `_map/README.md`/`COMMANDS.md`/
+`VIDEO-EDITING-GUIDE.md` doc edits) and §5 (`structure.md` additions) are also executed.
+Still outstanding: §3f, Nathan's PC steps (map-day.png capture, the night PSNR
+regression check, and the actual day renders) — the executor cannot render or reach a
+browser. **Doc relocation, later on 2026-09-14:** per Nathan, the §3e(ii) day-render section and
+§3e(iii) cross-pointer in `COMMANDS.md`, the day-capture block in `_map/README.md`, and
+the pointer line in `VIDEO-EDITING-GUIDE.md` were removed again and now live in
+`COMMANDS.md` in this folder (§3e(i)'s staleness fixes stayed). Read §3e, §3f and §6 with
+that in mind; the commands Nathan types are in that file.
 **Owner of the ruling:** Fable (Plan tier), cycle 08.
 
 ## 0. Nathan's question and the ruling
@@ -28,7 +39,10 @@ is on disk → stop and report the mismatch verbatim; do not improvise.
   `rounds-day/`, no separate feedback ladder.
 - **Day renders are on request**, not automatic. Nathan asks for a day version of a
   composition once he is happy with its night round; the executor/coordinator renders
-  it. Two pilots first (§3), then rollout (§4).
+  it. **All seven compositions are tokenised in one execution pass** (Nathan,
+  questionsfornathan.md Q1, 2026-09-14: "everything at once"). §3 is the fully
+  line-anchored recipe for `gates-saving` and `brandmark/opening`; §4 applies the same
+  recipe to the other five in the same pass.
 - **Rounds rule with day present:** any change to `index.html` is a new round vN+1
   (existing convention), and if that composition has a day variant, **both themes are
   re-rendered for vN+1**. Renders take seconds; the simplicity is worth more than the
@@ -73,8 +87,9 @@ Three parts, all small:
    canonical `index.html` is never touched by the tooling and a crashed render cannot
    leave a composition stuck in day.
 3. **Day basemap for the three map scenes**: `map-capture.html?theme=day` captures the
-   `positron` style (already named in its line-47 comment) and downloads `map-day.png`;
-   the scene's JS swaps `#basemap` to `map-day.png` when `data-theme` is `day`.
+   `positron` style (already named in its line-47 comment) and downloads `map-day.png`
+   (copied into all three map-scene folders); the scene's JS swaps `#basemap` to
+   `map-day.png` when `data-theme` is `day`.
 
 Renders land as `renders/<comp>_<timestamp>_day.mp4` (render.ps1 renames the file
 HyperFrames just produced) so a day dump is never mistaken for a night one.
@@ -99,7 +114,18 @@ scrim/shadow values.
 `--bg-rgb` exists because CSS cannot put alpha on a hex token; `rgba(var(--bg-rgb), 0.92)`
 is the standard way.
 
-## 3. Phase 1 — pilots: `gates-saving` and `brandmark/opening`
+**Checked against the app (Nathan's Q3 answer).** `app/src/ui/theme.ts` (daylight race
+surface: bg `#FFFFFF`, card `#F5F1E6`, border `#E4DECB`; text `#201F24`, textDim
+`#8A8577`) and `app/src/ui/wayMapView.tsx` line 178 (day map = the same `positron` URL).
+Difference from the website values above is small — near-white vs white page, white vs
+cream card, a lighter dim ink; map identical — so the **website light-race values stand**
+(Nathan's stated default). To switch to the app's values later, change only the
+`:root[data-theme="day"]` block in each composition to: `--bg: #FFFFFF; --bg-rgb:
+255,255,255; --ink: #201F24; --ink-dim: #8A8577; --card: #F5F1E6; --card-border:
+#E4DECB; --route-casing: #14120C; --ring-fill: #FFFFFF; --rider-stroke: #201F24;`.
+Nothing else moves.
+
+## 3. Fully-anchored recipe: `gates-saving` and `brandmark/opening` (do these two first in the pass)
 
 ### 3a. `silent-studio/gates-saving/index.html` — anchors as of mtime 2026-09-14 (file is 268 lines)
 
@@ -238,7 +264,7 @@ attribute + `<script src="theme.js">` as in 3a. No basemap block.
   `document.getElementById(...)` after THEME is known, or simply set `document.title`.
   Cosmetic; either is fine.
 
-### 3e. Docs touched in Phase 1
+### 3e. Docs touched
 
 - `_map/README.md`: line 38 ("To switch to the day look, change `STYLE`…") → replace with
   the `?theme=day` instruction, the `map-day.png` filename, and a second copy loop
@@ -252,31 +278,51 @@ attribute + `<script src="theme.js">` as in 3a. No basemap block.
   the one-time `map-capture.html?theme=day` step, then
   `powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name gates-saving -Theme day -Render`,
   where the file lands (`renders\gates-saving_<ts>_day.mp4`), and that day renders are
-  copied to `rounds\vN\gates-saving_vN_day.mp4` next to the night file of the same N.
+  copied to `rounds\vN\<comp>_vN_day.mp4` next to the night file of the same N; `-Theme day`
+  works for every composition that has a `theme.js` (all seven after this cycle).
+  (iii) cross-pointer (ruled in BRIEF-guide-staleness-verdict.md): insert after line 4 the
+  line "For the *why* and the tool choices (Resolve, CapCut, how we split footage work), see
+  `../guides/VIDEO-EDITING-GUIDE.md`; this file is only the commands."
+- `guides/VIDEO-EDITING-GUIDE.md`: one line in the line-5 area (after the self-date line):
+  "For the current copy-paste render commands see `../silent-studio/COMMANDS.md`." No other
+  change to this file.
 - `structure.md`: see §5.
 
-### 3f. Nathan's PC steps for Phase 1 (go into cycle-08 `OPEN-ITEMS.md` at execution time)
+### 3f. Nathan's PC steps (go into cycle-08 `OPEN-ITEMS.md` at execution time)
 
 1. `_map\map-capture.html?theme=day` in Chrome → `map-day.png` → copy into
-   `gates-saving\` (and, ahead of Phase 2, `start-ride\`, `ranking\`).
-2. Night regression render: `render.ps1 -Name gates-saving -Render` (no `-Theme`).
-   Compare against the current round file:
+   `gates-saving\`, `start-ride\`, `ranking\`.
+2. Night regression render for **each of the seven** compositions:
+   `render.ps1 -Name <comp> -Render` (no `-Theme`). Compare against that composition's
+   current round file (`rounds\vN\<comp>_vN.mp4`, latest N per `structure.md` folder
+   map; the executor lists the seven exact paths in its report):
    ```powershell
-   ffmpeg -i .\gates-saving\rounds\v5\gates-saving_v5.mp4 -i .\gates-saving\renders\<new>.mp4 -lavfi psnr -f null - 2>&1 | Select-String "average"
+   ffmpeg -i .\<comp>\rounds\vN\<comp>_vN.mp4 -i .\<comp>\renders\<new>.mp4 -lavfi psnr -f null - 2>&1 | Select-String "average"
    ```
    Expect `psnr_avg` ≥ 40 dB (encoder noise only). Anything lower = the tokenisation
-   changed the night output → stop, report which frames (`-lavfi "psnr=stats_file=psnr.log"`).
-3. Day render: `render.ps1 -Name gates-saving -Theme day -Render`; copy to
-   `gates-saving\rounds\v5\gates-saving_v5_day.mp4`; also `all-renders\gates-saving_v5_day.mp4`.
-4. Same for `brandmark\opening` (rounds/v3).
-5. Nathan reviews both day files; feedback under a `## Day variant` heading in the
+   changed the night output → stop, report which composition and which frames
+   (`-lavfi "psnr=stats_file=psnr.log"`). Do not proceed to step 3 for a composition
+   that fails.
+3. Day render for each: `render.ps1 -Name <comp> -Theme day -Render`; copy to
+   `<comp>\rounds\vN\<comp>_vN_day.mp4` (same N as the night file) and to
+   `all-renders\<comp>_vN_day.mp4`.
+4. Nathan reviews the day files; feedback under a `## Day variant` heading in the
    respective `rounds/vN/FEEDBACK.md`.
 
-## 4. Phase 2 — rollout (after Nathan has seen the pilots)
+## 4. The other five compositions (same pass)
 
-Same recipe for `start-ride/`, `ranking/` (map scenes — include the basemap block),
-`colours/`, `brandmark/index.html` (root lockup), `brandmark/closing/`. Colour census
-per file (from the 2026-09-14 grep; re-grep before editing):
+Same recipe as §3a/§3b, in the same execution pass, for `start-ride/`, `ranking/` (map
+scenes — include the basemap block), `colours/`, `brandmark/index.html` (root lockup),
+`brandmark/closing/`. Every folder gets the `data-theme="night"` attribute, the
+`<script src="theme.js">` line, the two token blocks verbatim from §3a, and a
+byte-identical `theme.js`. Replace literals by the §2 mapping, matching on content.
+**Stop rules for these five:** (a) a night-vs-day colour literal that is not in the §2
+table (anything other than `#0A0A0A`, `rgba(10,10,10,…)`, `#F4F2EC`, `#9a978f`,
+`#141414`, `#232323`, `#14120C`, `#FFFFFF`-as-rider-stroke) → stop and report the file
+and line; (b) an SVG element whose colour is written by GSAP (`attr: { stroke|fill …}`
+or a `stroke`/`fill` tween target) other than the `.gk` pattern handled in §3a → stop
+and report; (c) a tween whose *target* is a night-only literal (the §3b case) → stop
+and report. Colour census per file (from the 2026-09-14 grep; re-grep before editing):
 
 | File | Night-vs-day literals to tokenise | GSAP colour writes to check |
 |---|---|---|
@@ -291,7 +337,7 @@ The assembled teaser is an ffmpeg concat of ingredient renders; a day teaser is 
 `concat.txt` with `_day` filenames, only once every ingredient has a day render at the
 current round. Not in this brief's scope; note only.
 
-## 5. `structure.md` additions (Phase 1)
+## 5. `structure.md` additions
 
 - In "How a composition is made" (lines 8–15): one sentence — `render.ps1 -Theme day`
   renders the day palette; day renders are variants of a night round and live at
@@ -306,14 +352,17 @@ current round. Not in this brief's scope; note only.
 
 ## 6. Verification (executor, before reporting done)
 
-- `git diff --stat` shows only the files named in §3.
-- In each tokenised `index.html`: zero remaining occurrences of `#0A0A0A`, `#F4F2EC`,
+- `git diff --stat` shows only the files named in §3 and §4 (seven `index.html`, seven
+  `theme.js`, `render.ps1`, `_map/map-capture.html`, `_map/README.md`, `COMMANDS.md`,
+  `structure.md`, `guides/VIDEO-EDITING-GUIDE.md`).
+- In each of the seven tokenised `index.html`: zero remaining occurrences of `#0A0A0A`, `#F4F2EC`,
   `#9a978f`, `#141414`, `#232323`, `rgba(10,10,10` outside the `:root` token blocks
   (grep). Brand/tier literals still present.
-- `theme.js` present and byte-exact in each tokenised folder.
+- `theme.js` present and byte-exact in all seven composition folders.
 - `render.ps1` parses: `powershell -NoProfile -Command "[scriptblock]::Create((Get-Content -Raw .\render.ps1)) | Out-Null"` (or `Set-StrictMode` dry parse).
 - The night PSNR check (§3f step 2) is Nathan's to run; the executor cannot render.
-  Say so in the report rather than claiming night is unchanged.
+  Say so in the report rather than claiming night is unchanged. The report must list the
+  seven `rounds\vN\<comp>_vN.mp4` reference paths for §3f step 2.
 
 ## 7. Audio-studio day renders — deferred, recorded for later
 

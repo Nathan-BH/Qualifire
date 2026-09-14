@@ -54,6 +54,8 @@ A scene folder is:
                          a scene nested one level deeper, like brandmark/opening/)
   README.md             sonic direction + status table (mirrors hyperframes' per-scene
                          README)
+  AUDIO-BRIEF.md         beat sheet + direction, Nathan's input before a round is
+                         composed; canonical, edited in place (not per round)
   soundvN/
     <scene>_..._vN.mp4  the picked render with that round's soundtrack muxed on
     soundtrack_vN.wav   the soundtrack alone, for judging the audio without
@@ -69,6 +71,20 @@ One `soundvN` folder per iteration — same idea as hyperframes' `rounds/vN`, na
 place, regenerates, and adds the next `soundvN`. No README.md inside a `soundvN` folder
 — everything needed to give feedback lives in that round's `FEEDBACK.md`, so review
 never means switching files.
+
+**`AUDIO-BRIEF.md` (added 2026-09-14):** Nathan's input before a round is composed, not
+after — a table of the scene's visual beats with exact timestamps plus a "what I want
+here" column. The trigger for creating or refreshing it is a visual round being
+approved (dropped into `../all-renders/`, per the convention below): Claude pre-fills
+the first three columns (time, what happens on screen, what the current soundtrack
+plays) from the composition's GSAP timeline and from `soundtrack.py`; Nathan directs by
+filling the last column and the whole-scene lines and setting Status; then Claude edits
+`soundtrack.py` to match. Two templates live at the audio-studio root, next to
+`synth.py`: `AUDIO-BRIEF.template.md` (the per-scene brief itself) and
+`FEEDBACK.template.md` (the structured feedback prompt for a `soundvN/FEEDBACK.md`'s
+"Nathan's feedback" section, referencing `AUDIO-BRIEF.md`'s row numbers). See
+`APPROACH.md`'s "Nathan's input before a round" section for the full reasoning and the
+alternatives considered.
 
 **Finishing any round:** also copy that round's muxed mp4 into `../all-renders/`,
 replacing whatever's there for that scene (silent original or an older sound version)
@@ -99,3 +115,5 @@ inside those two reaches the shared `synth.py`, one level further up than usual.
 Same as hyperframes: feedback for a scene goes in that scene's most recent round's
 `FEEDBACK.md`, not in this file. This file and `APPROACH.md` are the only docs meant
 to stay high-level and current across the whole project.
+
+Direction changes go in `AUDIO-BRIEF.md`, round verdicts in `soundvN/FEEDBACK.md`.

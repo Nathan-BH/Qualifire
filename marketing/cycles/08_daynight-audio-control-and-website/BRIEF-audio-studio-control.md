@@ -2,7 +2,12 @@
 
 **For:** Sonnet executor. Markdown-only work under `marketing/audio-studio/` plus one
 template; no Python edits, no renders. Stop-on-ambiguity applies to every anchor below.
-**Status:** briefed, not executed.
+**Status:** executed 2026-09-14 — `AUDIO-BRIEF.md` files (per-scene beat sheets) and the
+template landed, plus the `structure.md`/`APPROACH.md` edits this brief calls for.
+Alternative C (local regeneration) was spun out into its own brief,
+`BRIEF-audio-regen-local.md`, rather than executed here. Git commit for this work is
+still pending — `device_bash` (needed for `git add`/`git commit` on this mount) was down
+during this execution pass.
 
 ## 0. Nathan's question and the ruling
 
@@ -72,9 +77,14 @@ Why this over the alternatives:
   beat sheet has been used for a scene or two.
 - **C. Local regeneration script on Nathan's PC** (`audio-studio/regen.ps1 -Scene x`
   runs `soundtrack.py` + the ffmpeg mux) so he could nudge a number and hear it in
-  seconds. Needs Python + numpy + scipy on his PC — unknown; see
-  `questionsfornathan.md` Q2. If yes, this is cheap and is the real "control" unlock;
-  it composes with A's `KNOBS`.
+  seconds. Nathan (questionsfornathan.md Q2, 2026-09-14): yes, worth trying, and he
+  wants a file that walks him through the setup. Whether Python/numpy/scipy are
+  already on his PC is still unknown, so that walkthrough must begin with the check
+  (`python --version`, `pip show numpy scipy`) and include the install path.
+  **Follow-up brief: `BRIEF-audio-regen-local.md` in this cycle folder**
+  (`audio-studio/regen.ps1` + a setup/usage walkthrough); to be written by a separate
+  Digest → Plan pass, not yet written, and not part of this brief's execution — this
+  brief stays markdown-only. It composes with A's `KNOBS`.
 
 ## 1. The `AUDIO-BRIEF.md` template
 
@@ -145,7 +155,7 @@ from the template with columns 1–4 filled and column 5 empty:
 - **Visual source / duration**: the file `all-renders/` currently holds for that scene
   (as of 2026-09-14: `opening_v3`, `closing_v3`, `colours_v2`, `gates-saving_v5`,
   `ranking_v5`, `start-ride_v4`, `teaser_v6`).
-- `teaser`: rows are the six sections of the v6 cut sheet (`silent-studio/teaser/README.md`
+- `teaser`: rows are the five sections of the v6 cut sheet (`silent-studio/teaser/README.md`
   + `rounds/v6/concat.txt`), one row per section with its in/out time, since the teaser
   audio is its own composition echoing each scene's motif (`structure.md` folder map).
 - Status: `draft`. Current soundtrack round: the latest `soundvN` for that scene

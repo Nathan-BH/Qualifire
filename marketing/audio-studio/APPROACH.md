@@ -104,6 +104,38 @@ for that specific arc, rather than reusing gates-saving's chords wholesale.
   scene-timing breakdown and one notable finding (the `colours` scene doesn't
   actually appear in this cut).
 
+## Nathan's input before a round (2026-09)
+
+Nathan asked for more input/control over the audio side once he's approved a scene's
+visual render. Ruling: a per-scene `AUDIO-BRIEF.md` beat sheet (canonical, like
+`soundtrack.py`) — Claude pre-fills the visual beats with exact timestamps and what the
+current soundtrack plays, Nathan fills in a "what I want here" column plus five
+whole-scene direction lines, and only then does Claude write or rewrite
+`soundtrack.py`. This puts Nathan's input at the moment he actually has it (right after
+watching the approved visual), speaks the language his feedback already uses
+(event-level, reference-based), and doesn't touch the `soundtrack.py`-is-canonical
+convention — the brief is input, the script is still the source of truth,
+`soundvN/FEEDBACK.md` is still where a round is judged. See `structure.md`'s "How a
+scene's sound is made" for the mechanics and the two templates
+(`AUDIO-BRIEF.template.md`, `FEEDBACK.template.md`) at this folder's root.
+
+Alternatives considered/deferred:
+- **A. Config/knobs layer** — rejected as the primary move (each scene's script is
+  bespoke composition code, not a parameter sweep, and Nathan can't run the scripts
+  himself anyway). A lighter cousin — a `KNOBS` dict at the top of `soundtrack.py`
+  (tempo, layer amplitudes, reverb wet, silence windows) so Nathan can read and name
+  the levers in feedback — is worth doing next time a script is touched, but is
+  optional and per-script, not part of this move.
+- **B. Stems per round** (`bed_vN.wav`, `melody_vN.wav`, `events_vN.wav` alongside the
+  mix) — genuinely useful, feasible via `build()`'s existing `mix_into` layering, but
+  needs a small refactor across all seven scripts; flagged as the natural Phase 2 once
+  the beat sheet has been used for a scene or two.
+- **C. Local regeneration script on Nathan's PC** (`audio-studio/regen.ps1 -Scene x` +
+  a setup walkthrough, so he can nudge a number and hear it in seconds) — Nathan said
+  yes, worth trying (2026-09-14). Separate follow-up brief
+  (`cycles/08_daynight-audio-control-and-website/BRIEF-audio-regen-local.md`), not yet
+  written, not part of this move. Composes with A's `KNOBS`.
+
 ## Open questions
 
 - Soundfont/fluidsynth route — retry once sandbox package installs work again.

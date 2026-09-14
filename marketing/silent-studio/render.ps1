@@ -14,25 +14,33 @@
 
 .PARAMETER Name
     Which composition folder under marketing\silent-studio\ to preview or
-    render (e.g. teaser, gate, purple, tour). Defaults to 'teaser' for
-    backward compatibility.
+    render (e.g. gates-saving, colours, brandmark\opening). Defaults to
+    'teaser' for backward compatibility.
 
 .PARAMETER Render
     Render the composition to MP4 instead of opening the live preview.
 
+.PARAMETER Theme
+    'night' (default) or 'day'. Sets data-theme via the composition's
+    theme.js before previewing/rendering and restores 'night' afterward, so
+    the canonical index.html is never touched. Requires the composition to
+    have a theme.js (all seven tokenised compositions do as of cycle 08).
+
 .EXAMPLE
     .\render.ps1
     .\render.ps1 -Render
-    .\render.ps1 -Name gate
-    .\render.ps1 -Name gate -Render
-    .\render.ps1 -Name purple -Render
-    .\render.ps1 -Name tour -Render
+    .\render.ps1 -Name gates-saving
+    .\render.ps1 -Name gates-saving -Render
+    .\render.ps1 -Name colours -Render
+    .\render.ps1 -Name brandmark\opening -Render
+    .\render.ps1 -Name gates-saving -Theme day -Render
 #>
 
 [CmdletBinding()]
 param(
     [string]$Name = 'teaser',
-    [switch]$Render
+    [switch]$Render,
+    [ValidateSet('night', 'day')][string]$Theme = 'night'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -81,8 +89,22 @@ if (-not (Test-Path -Path $targetDir)) {
     exit 1
 }
 
+$themeJsPath = Join-Path -Path $targetDir -ChildPath 'theme.js'
+$themeEnabled = Test-Path -Path $themeJsPath
+
+if ($Theme -eq 'day' -and -not $themeEnabled) {
+    Write-Error "'$Name' is not theme-enabled yet (no theme.js). See marketing/cycles/08_*/BRIEF-daynight-renders.md."
+    exit 1
+}
+
+if ($themeEnabled) {
+    "document.documentElement.setAttribute('data-theme','$Theme');" | Set-Content -Path $themeJsPath -NoNewline -Encoding ASCII
+}
+
 Push-Location -Path $targetDir
 try {
+    $renderStart = Get-Date
+
     if ($Render) {
         Write-Host "Rendering $Name to MP4 (npx hyperframes render)..." -ForegroundColor Cyan
         npx --yes hyperframes render
@@ -96,7 +118,25 @@ try {
         Write-Error "hyperframes exited with code $LASTEXITCODE."
         exit $LASTEXITCODE
     }
+
+    if ($Render -and $Theme -eq 'day') {
+        $rendersDir = Join-Path -Path $targetDir -ChildPath 'renders'
+        $newMp4s = Get-ChildItem -Path $rendersDir -Filter '*.mp4' -ErrorAction SilentlyContinue |
+            Where-Object { $_.LastWriteTime -gt $renderStart }
+        if ($newMp4s.Count -eq 1) {
+            $dayName = [System.IO.Path]::GetFileNameWithoutExtension($newMp4s[0].Name) + '_day.mp4'
+            Rename-Item -Path $newMp4s[0].FullName -NewName $dayName
+            Write-Host "  Renamed $($newMp4s[0].Name) -> $dayName" -ForegroundColor Green
+        }
+        else {
+            $found = if ($newMp4s.Count -eq 0) { '(none)' } else { ($newMp4s | ForEach-Object { $_.Name }) -join ', ' }
+            Write-Warning "Expected exactly one new render in '$rendersDir' with LastWriteTime after $renderStart, found $($newMp4s.Count): $found. Leaving files as they are -- rename manually."
+        }
+    }
 }
 finally {
+    if ($themeEnabled) {
+        "document.documentElement.setAttribute('data-theme','night');" | Set-Content -Path $themeJsPath -NoNewline -Encoding ASCII
+    }
     Pop-Location
 }
