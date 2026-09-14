@@ -193,12 +193,15 @@ try {
 
     $st = Invoke-Git @('status', '--porcelain')
     if ($st.Output.Count -gt 0) {
-        Write-Warning "Working tree is not clean ($($st.Output.Count) entries). The rename commit is cleaner if you commit or stash first."
+        Write-Warning "Working tree is not clean ($($st.Output.Count) entries). Proceeding anyway (git mv doesn't care about unrelated pending changes) - review git status yourself if you want a cleaner rename commit."
         $st.Output | ForEach-Object { Write-Host "   $_" }
-        if (-not $DryRun) {
-            $answer = Read-Host 'Continue anyway? (y/N)'
-            if ($answer -notmatch '^[yY]') { Write-Host 'Stopped. Nothing changed.'; return }
-        }
+        # FIXED (2026-09-14, after a real run confirmed the failure mode): this used to be an
+        # interactive `Read-Host 'Continue anyway? (y/N)'` gate. OPEN-ITEMS.md tells you to run this
+        # script as part of a pasted multi-command block, and a Read-Host in that context reads the
+        # NEXT PASTED LINE as its answer - which is never "y", so it silently printed "Stopped.
+        # Nothing changed." and returned before doing anything, with no error to notice. A dirty tree
+        # (e.g. this cycle's own new files being untracked) is not a real hazard for `git mv`, so this
+        # now just warns and continues rather than blocking on input that a pasted script can't supply.
     }
     else { Write-Host 'git status : clean' }
 

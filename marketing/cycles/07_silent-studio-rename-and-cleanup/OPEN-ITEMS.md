@@ -1,5 +1,28 @@
 # Cycle 07 — open items
 
+## 0. Update (2026-09-14, after Nathan's first run): cleanup succeeded, rename did not — fixed
+
+Nathan ran the steps and committed. Checking the actual files on disk afterward:
+
+- **`move-superseded-renders.ps1` worked correctly** — `safe_to_delete\MOVE-LOG.md` shows all 11 files moved (the 10 group-A dated dumps including `colours`, plus the group-B `opening_v3_with_sound_v1.mp4`), and the source folders (`gates-saving\renders\`, `audio-studio\all-renders\`, etc.) confirm they're gone from their old locations.
+- **`rename-to-silent-studio.ps1` did not rename the folder** — `marketing\hyperframes\` still exists, no `marketing\silent-studio\` anywhere. The move-log itself proves the timing: at the moment the cleanup script ran, it resolved the studio folder to `marketing\hyperframes` (its fallback), which only happens if `silent-studio` didn't exist at that point.
+
+**Root cause, found and fixed:** the rename script had an interactive `Read-Host 'Continue anyway? (y/N)'` prompt that fired whenever the working tree wasn't clean — which it wasn't, since this cycle's own new files were untracked. Section 2's instructions tell you to run the scripts as a pasted multi-line block. When a `Read-Host` prompt appears mid-script during a multi-line paste, it reads the *next pasted line* (e.g. the following command) as its answer, which never matches `y`, so the script printed `Stopped. Nothing changed.` and returned — silently, with no error, easy to miss scrolling by in the console output. **Fixed:** the prompt is removed; a dirty tree now just prints a warning and the script proceeds (a `git mv` doesn't care about unrelated pending changes, so blocking on it was never actually necessary).
+
+**What to do now:** just re-run the rename script — the cleanup script doesn't need to be re-run (it already succeeded and is idempotent/no-op if you do anyway):
+
+```powershell
+cd "C:\Users\natha\Claude personal projects\Qualifire\marketing\cycles\07_silent-studio-rename-and-cleanup"
+powershell -ExecutionPolicy Bypass -File .\rename-to-silent-studio.ps1 -DryRun
+powershell -ExecutionPolicy Bypass -File .\rename-to-silent-studio.ps1
+cd "C:\Users\natha\Claude personal projects\Qualifire"
+git add -A
+git status
+git commit -m "marketing: rename hyperframes -> silent-studio (cycle 07, retry after interactive-prompt fix)"
+```
+
+This time nothing should stop early — read the live run's output for the verification report (step 3/3b) and the REVIEW-tagged lines described in §2a below.
+
 ## 1. Blocker
 
 `device_bash` was unreachable for the whole session. Tool error, verbatim: *"sandbox-helper: no Plan9 drive shares mounted... A Windows update released September 8 prevents Claude's workspace from reaching your files."* Same outage as cycles 01, 02 and 06. The fallback tools (`device_list_dir` / `device_stage_files` / `device_commit_files`) can read and write **new** files but cannot run PowerShell, git or ffmpeg, and cannot move, rename or delete anything already on disk.
