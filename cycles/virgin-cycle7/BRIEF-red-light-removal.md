@@ -1,10 +1,7 @@
 # BRIEF — Remove the "Red lights" setting and the RED LIGHT – HOLD CLOCK button
 
-**STATUS: NOT AUTHORIZED — do not execute until Nathan explicitly confirms he wants this
-removed.** Nathan asked for an opinion (2026-09-14), not a removal. The opinion is in this
-folder's `README.md` §D and the go/no-go is `QUESTIONS.md` Q1. This brief exists so a "yes"
-is a ten-minute execution instead of another Plan pass. Do not dispatch it on the strength of
-the README, the digest, or the coordinator's chat.
+**STATUS: AUTHORIZED 2026-09-15 — Nathan, `QUESTIONS.md` Q1: "agree to delete it. It costs
+nothing since it was not a real actionnable toggle."** Ready for the Execute tier.
 
 **Written 2026-09-15 UTC (Plan tier, fable).** Anchors were read from the live working tree
 on Nathan's PC on 2026-09-15 (cycle 6 committed as `92bd6ea`, marketing cycle 09 as `003d4df`). Executor: Sonnet,
@@ -120,7 +117,13 @@ the commit. Any change to stop detection thresholds. Any change to PAUSE/RESUME.
    *before* into the report. 2. R1. 3. R2. 4. R3. 5. R4. 6. Verify. 7. Commit.
 
 ## Acceptance criteria
-- `grep -rn "redLight\|RedLight\|redFlag\|HOLD CLOCK" app/src` → **no output**.
+- `grep -rn "redLight\|RedLight\|redFlag\|HOLD CLOCK" app/src` → **exactly one hit: the R2
+  scrub line** (`settings.tsx`, `delete (saved as Record<string, unknown>).redLight; // …`).
+  It has to name the retired JSON key to delete it from old `settings.json` files; it is the
+  tombstone, not a live reference. Any *other* hit is a failure. *(Amended 2026-09-15 by the
+  Inspect pass — the original wording said "no output", which R2's own snippet makes impossible;
+  see `EXECUTION-ESCALATIONS.md`. If the scrub line is ever retired itself, this reverts to
+  "no output".)*
 - `cd app && ./node_modules/.bin/tsc --noEmit` — clean, exit 0 (not bare `npx tsc`).
 - `cd app && node --experimental-strip-types tests/run.ts` — **zero FAIL**; counts unchanged
   from the pre-change run (no test references the setting — grep, 2026-09-15).
