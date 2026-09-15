@@ -3,20 +3,11 @@
  * synthetic MapLibre style and checks both jobs: label visibility toggling
  * and the D-030 palette firewall.
  *
- * DEVIATION from the executor brief's example swatch: the brief's synthetic
- * "green, S>25% -> must be desaturated" example used '#88cc88'. That hex's
- * true hue is 120 (a canonical CSS green), which sits OUTSIDE the design
- * contract's own firewall band [130,165] — so under a correct implementation
- * of the contract it would NOT be touched, contradicting the brief's own
- * "must be desaturated" assertion for that swatch. The band [130,165] itself
- * is not arbitrary: it brackets colors.green (#3ED598, hue ~156) from
- * theme.ts with margin either side, same as [260,290] brackets colors.purple
- * (#A667F0, hue ~268) — i.e. the firewall protects QUALIFIRE's actual tier
- * colours, not "green" in general. This suite therefore uses '#40bf6a'
- * (hue ~140, S ~50%) for the in-band swatch instead, so the assertion the
- * brief wants ("green paint that reads as a tier colour gets desaturated")
- * is actually exercised. Flagged in the executor report for Nathan/Fable to
- * confirm the band boundaries are the intended ones.
+ * NOTE on the swatches (virgin-cycle7, 2026-09): the firewall bands are ±20°
+ * around QUALIFIRE's actual tier hues — colors.green #00D000 (hue 120) →
+ * [100,140], colors.purple #9000C8 (hue ~283) → [263,303] — i.e. the firewall
+ * protects the app's own tier colours, not "green"/"purple" in general. The
+ * in-band green swatch below is '#44CC44' (hue 120, S ~57%) for that reason.
  */
 import { assert, test } from './lib.ts';
 import { patchMapStyle } from '../src/ui/wayMapStyle.ts';
@@ -29,7 +20,7 @@ function buildStyle() {
       {
         id: 'background',
         type: 'background',
-        paint: { 'background-color': '#40bf6a' }, // in-band green (hue ~140), S ~50% -> must desaturate
+        paint: { 'background-color': '#44CC44' }, // in-band green (hue 120), S ~57% -> must desaturate
       },
       {
         id: 'park',
@@ -85,7 +76,7 @@ test('routemapstyle: palette firewall desaturates an in-band green background', 
   const m = /^hsl\(([\d.]+), ([\d.]+)%, ([\d.]+)%\)$/.exec(bg as string);
   assert(m !== null, `background-color did not match hsl() shape: ${bg}`);
   const [, h, s] = m!;
-  assert(Math.abs(parseFloat(h) - 140) < 1, `hue drifted: expected ~140, got ${h}`);
+  assert(Math.abs(parseFloat(h) - 120) < 1, `hue drifted: expected ~120, got ${h}`);
   assert(Math.abs(parseFloat(s) - 20) < 0.01, `saturation not flattened to 20%, got ${s}%`);
 });
 

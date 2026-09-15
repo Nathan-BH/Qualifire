@@ -13,9 +13,9 @@ export const colors = {
   ink: '#F4F2EC', // --ink
   inkDim: '#9a978f', // --ink-dim
   grey: '#6f6e6a', // --grey — NO-DATA only
-  purple: '#A667F0', // filled tier — fastest of the ranking pool (colourModel.ts)
-  purpleDeep: '#7b3fd1',
-  green: '#3ED598', // outlined tier — above the pool's recent average
+  purple: '#9000C8', // filled tier — fastest of the ranking pool (colourModel.ts)
+  purpleDeep: '#65008C', // darker purple (channels x0.7 of `purple`) — unreferenced today; keep in step with `purple`
+  green: '#00D000', // outlined tier — above the pool's recent average
   neutral: '#F5C542', // flat tier / accent — warm, never grey
   white: '#FFFFFF', // structural markers (gates) — not a tier colour
   amber: '#E8A33D', // warnings (D-013: this, not red)

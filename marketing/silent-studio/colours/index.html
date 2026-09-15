@@ -107,14 +107,14 @@
 
   <div id="cap4" class="clip full" data-start="9" data-duration="5" data-track-index="2">
     <div class="inner">
-      <p class="caption tier" style="color:#3ED598;">Green.</p>
+      <p class="caption tier" style="color:#00D000;">Green.</p>
       <p class="caption second">Faster than your average.</p>
     </div>
   </div>
 
   <div id="cap5" class="clip full" data-start="14" data-duration="5" data-track-index="2">
     <div class="inner">
-      <p class="caption tier" style="color:#A667F0;">Purple.</p>
+      <p class="caption tier" style="color:#9000C8;">Purple.</p>
       <p class="caption second">Faster than every one of your last ten.</p>
     </div>
   </div>
@@ -155,13 +155,13 @@
     tl.set('#nb-y', { opacity: 0 }, 9.0);
 
     // ---------- Beat 3 (9-14): green, faster than average (avg blinks as the line crosses it, as in v1). ----------
-    tierBeat(9.0, '#nb-g', 440, '#3ED598', '#cap4', 0.7);
+    tierBeat(9.0, '#nb-g', 440, '#00D000', '#cap4', 0.7);
     tl.to('#avg', { opacity: 0.35, duration: 0.15, yoyo: true, repeat: 1 }, 9.7);
     tl.to('#nb-g', { opacity: 0, duration: 0.4 }, 13.6);
     tl.set('#nb-g', { opacity: 0 }, 14.0);
 
     // ---------- Beat 4 (14-19): purple, faster than all ten. Stays on the chart. ----------
-    tierBeat(14.0, '#nb-p', 250, '#A667F0', '#cap5', 0.9);
+    tierBeat(14.0, '#nb-p', 250, '#9000C8', '#cap5', 0.9);
 
     // ---------- End (18.6-19.0): fade to black. The rolling-window beat is a separate composition now. ----------
     tl.to('#chart .inner', { opacity: 0, duration: 0.4 }, 18.6);

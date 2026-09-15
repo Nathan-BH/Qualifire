@@ -107,7 +107,7 @@ border; desaturates to `t.textDim` grey off-route (D-025 honesty, unchanged).
 bottom-left, translucent card chip. Same component, now sitting on real tiles instead of a painted PNG.
 
 **Palette firewall.** Carried from B-32/Art Director's spec: nothing in the basemap style (streets or
-satellite, excluding scored gate fills) may sit in HSL hue 130–165 or 260–290 at S>25% — green/purple stay
+satellite, excluding scored gate fills) may sit in HSL hue 100–140 or 263–303 at S>25% — green/purple stay
 score-only. **New finding, flagged not fixed here:** the current on-route dot and fallback line both render in
 `colors.neutral` (#F5C542) — this is the **yellow scored-tier** colour (`chips.tsx` `YELLOW_TIER = colors.neutral`),
 not the neutral (no-verdict) tier; the `'neutral'` UiTier itself (no verdict) renders `t.accentText`, a different

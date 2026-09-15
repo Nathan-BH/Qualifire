@@ -83,7 +83,7 @@ Known trap (confirmed by MAPLIBRE-SPIKE.md §3, consistent with the brief): MapL
 |---|---|---|---|
 | `landuse_residential` | `fill-color` | `#EDEAE0` | desaturated beige residential ground |
 | `landcover_wood` | `fill-color` | `#D8D8CE` | (previously modelled as `wood`) |
-| `park` | `fill-color` | `#DCDCD2` | grey, NOT hue 130-165 (D-030) |
+| `park` | `fill-color` | `#DCDCD2` | grey, NOT hue 100-140 (D-030) |
 | `water` | `fill-color` | `#B9C4CC` | muted blue, low sat |
 | `highway_major_inner` | `line-color` | `#C9C6BC` | neutral, not yellow/purple (previously `road_major`) |
 | `highway_minor` | `line-color` | `#D6D3C9` | (previously `road_minor`) |

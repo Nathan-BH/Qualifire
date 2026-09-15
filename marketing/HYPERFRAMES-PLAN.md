@@ -290,7 +290,7 @@ Starting point, ready to copy into any Qualifire video project:
 - Chrome: **paddock charcoal `#17171b`**, **ink `#F4F2EC`**, **signature
   yellow `#F5C542`** (ink-on-yellow `#17171b` for text ON a yellow surface)
   — nothing else.
-- Earned only: **earned green `#3ED598`**, **earned purple `#A667F0`** —
+- Earned only: **earned green `#00D000`**, **earned purple `#9000C8`** —
   exclusively on sector/tier/timing elements standing in for a real result.
   Never chrome, never decorative.
 - **No red.** Not for errors, not for emphasis, not anywhere — BRAND.md
