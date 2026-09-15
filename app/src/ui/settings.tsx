@@ -49,6 +49,10 @@ export interface Settings {
    * when 2+ sports exist. Off = switch sports only in SETTINGS → SPORTS.
    * Meaningless (and not rendered) below 2 sports. Default true. */
   showSportPillOnRecord: boolean;
+  /** virgin-cycle7: master switch for the "?" help buttons on this screen.
+   * Off hides every row's "?" (and collapses any open hint); on is the
+   * pre-cycle-7 behaviour. Persisted like every other field. Default true. */
+  showHelp: boolean;
 }
 
 const DEFAULTS: Settings = {
@@ -61,6 +65,7 @@ const DEFAULTS: Settings = {
   selfDots: true,
   timing: DEFAULT_TIMING,
   showSportPillOnRecord: true,
+  showHelp: true,
 };
 
 interface Ctx { s: Settings; set: <K extends keyof Settings>(k: K, v: Settings[K]) => void }
@@ -151,8 +156,10 @@ function Switch({ on, onToggle, t }: { on: boolean; onToggle: () => void; t: Pad
   );
 }
 
-/** WP-L: which row's help is showing (keyed by label); one at a time. */
-interface Help { open: string | null; toggle: (key: string) => void }
+/** WP-L: which row's help is showing (keyed by label); one at a time.
+ * virgin-cycle7: `show` is the master switch — false hides every "?" and
+ * every hint, whatever `open` says. */
+interface Help { show: boolean; open: string | null; toggle: (key: string) => void }
 
 function Row(props: {
   label: string; hint?: string; help: Help; t: PaddockTheme; children: React.ReactNode;
@@ -162,7 +169,7 @@ function Row(props: {
   sep?: boolean;
 }) {
   const { t } = props;
-  const hasHelp = props.hint !== undefined && props.hint !== '';
+  const hasHelp = props.help.show && props.hint !== undefined && props.hint !== '';
   const open = hasHelp && props.help.open === props.label;
   return (
     <View style={[
@@ -528,6 +535,7 @@ export default function SettingsScreen() {
   const { s, set } = useSettings();
   const [helpOpen, setHelpOpen] = useState<string | null>(null);
   const help: Help = {
+    show: s.showHelp,
     open: helpOpen,
     toggle: (k) => setHelpOpen((cur) => (cur === k ? null : k)),
   };
@@ -539,6 +547,10 @@ export default function SettingsScreen() {
           <Seg t={t} value={mode === 'daylight' ? 'day' : 'night'}
             options={[['night', 'night'], ['day', 'day']]}
             onPick={(v) => { if ((v === 'day') !== (mode === 'daylight')) toggleMode(); }} />
+        </Row>
+        <Row label="Help icons" t={t} help={help}>
+          <Switch on={s.showHelp}
+            onToggle={() => { set('showHelp', !s.showHelp); setHelpOpen(null); }} t={t} />
         </Row>
       </View>
 
