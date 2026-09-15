@@ -188,9 +188,11 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   for the full record and `deployment/DEPLOYMENT-OPTIONS.md` §0 for what's left to actually do.
 - **"No accounts, no social" still stands** — the pivot and the above are about distribution
   reach, not the in-app model; that's a separate call Nathan hasn't made.
-- **Scoring:** three colour tiers (purple/green/yellow) — `#6D4E9C`/`#8BCD39`/`#FFDE6D` as of
-  cycle8 (2026-09-15, Nathan's own phone-matched picks; superseded cycle7's F1-broadcast hex).
-  No noise floor below
+- **Scoring:** three colour tiers (purple/green/yellow). Currently shipping cycle8's
+  (2026-09-15) `#6D4E9C`/`#8BCD39`/`#FFDE6D`, but Nathan rejected these on phone testing the
+  same day ("too faint... I would just keep the current colours we have") and wants cycle7's
+  F1-broadcast hex back (`#9000C8`/`#00D000`/`#F5C542`, `purpleDeep` `#65008C`) — revert not
+  yet executed, see `OPEN-ITEMS.md`. No noise floor below
   a single ride (D-045 ruling 1, built as NW-1, 2026-09-08): a way's reference ride (ride 1)
   gets no colour verdict on the day it's ridden — it earns a rank once stored, but nothing to
   compare against yet — one prior ride compares purple/yellow only; two or more run the full

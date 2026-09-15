@@ -125,3 +125,22 @@ Full detail: `cycles/virgin-cycle8/README.md`, `BRIEF-colours-round2.md`,
 `DIGEST-colours-round2.md`.
 
 **Closed** — nothing further open on the colour question itself.
+
+## Round 5 — verdict: rejected on phone (2026-09-15)
+
+Nathan tested `6da58a2` (cycle8's round-2 picks) live on his phone via `scripts/dev-phone.ps1`.
+Verdict, quoted: "although they are closer to the pc colours, on the phone they are too
+faint. So i would just keep the current colours we have." — i.e. he wants cycle7's
+F1-broadcast hex back (`#9000C8` purple / `#00D000` green / `#F5C542` yellow, `purpleDeep`
+`#65008C`), not cycle8's phone-matched picks.
+
+He explicitly asked to only **log** this for now, not revert the code: "no change needed
+for now, just log for now that i dont like the new colours and that i want to keep the
+current ones." So the app still ships cycle8's hex as of this writing — the revert is an
+open item (`OPEN-ITEMS.md`), not yet executed.
+
+He also floated, unprompted, that there may be "a better way to use the colours" —
+no specification given yet; not actioned, just noted for whenever he wants to pick it up.
+
+**Status: colour question is now open again** (cycle8's picks rejected; revert to cycle7
+pending; "better way to use colours" idea parked, unspecified).

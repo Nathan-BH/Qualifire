@@ -150,3 +150,9 @@ Nathan answered most of `deployment/QUESTIONS-FOR-NATHAN.md` on 2026-09-09; fold
 - **virgin-cycle6 self-racing — answered 2026-09-14, folded in by
   `BRIEF-self-racing-followup.md`**; only the on-device look (yellow dot on the yellow line,
   P-number placement) remains Nathan's.
+- **Revert tier colours to cycle7's hex.** Nathan rejected cycle8's round-2 picks
+  (`#6D4E9C`/`#8BCD39`/`#FFDE6D`) after testing on his phone (2026-09-15): "too faint... I
+  would just keep the current colours we have." Wants cycle7's F1-broadcast hex back
+  (`#9000C8`/`#00D000`/`#F5C542`, `purpleDeep` `#65008C`) — same file set as `6da58a2`, run in
+  reverse. Not executed yet (he asked only to log the verdict for now). Also floated, unspecified: "I think we can use the colours in a better way" —
+  needs Nathan to say more before it's actionable. Full log: `marketing/hex-colours/SUMMARY.md`.

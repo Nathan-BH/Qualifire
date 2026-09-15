@@ -1,7 +1,14 @@
 # virgin-cycle8 — colour round 2 (Nathan's own picks) + phone dev-loop script
 
-**Status (2026-09-15): executed and inspected (PASS WITH NOTES), not yet committed by
-Nathan/coordinator confirmation at write time.** One brief, landed in one pass.
+**Status (2026-09-15): executed, inspected (PASS WITH NOTES), committed (`6da58a2`) —
+then REJECTED by Nathan on phone testing.** "although they are closer to the pc colours, on
+the phone they are too faint. So i would just keep the current colours we have." He asked
+only to log the verdict, not to revert the code yet ("no change needed for now"). So as of
+this writing **the app still ships cycle8's round-2 hex** (`#6D4E9C`/`#8BCD39`/`#FFDE6D`) even
+though Nathan wants cycle7's F1-broadcast hex (`#9000C8`/`#00D000`/`#F5C542`,
+`purpleDeep` `#65008C`) back — the revert is logged as open (`OPEN-ITEMS.md`), not executed.
+Nathan also floated a follow-up: "I think we can use the colours in a better way" — no spec
+yet, not actioned.
 
 ## What this cycle is for
 
