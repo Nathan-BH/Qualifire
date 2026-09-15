@@ -500,7 +500,9 @@ export function setEarconsEnabled(on: boolean): void {
 liveEngine.subscribe((st) => {
   if (st.gateFires > buzzedFires && earconsEnabled) {
     try {
-      Vibration.vibrate(70);
+      // virgin-cycle7 (Nathan, QUESTIONS.md Q3): a single 70ms tick was too
+      // short to feel on the bike -- double buzz instead (buzz/pause/buzz, ms).
+      Vibration.vibrate([0, 100, 70, 100]);
     } catch {
       /* display-only channel */
     }

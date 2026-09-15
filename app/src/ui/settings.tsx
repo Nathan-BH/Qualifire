@@ -585,11 +585,14 @@ export default function SettingsScreen() {
         {/* Cycle 024 (WP-A3): renamed from "Timing tower" — the tower left the
             Result tab with the RIDES/RESULT redesign; this switch now gates
             the ranking table inside Result's Personal Bests accordion. Still
-            a real switch, never decorative (file doctrine, unchanged). */}
-        <Row label="Timing" t={t} help={help}
-          hint="wall clock is the lap as the road gave it — every stop counts, a red light is your luck; moving drops the time you stood still">
+            a real switch, never decorative (file doctrine, unchanged).
+            virgin-cycle7 (Nathan, QUESTIONS.md Q2): row relabelled "Luck factor" —
+            underlying key/type stay `timing`/`TimingMode`/`raw`|`moving` (store/timing.ts,
+            settings.json) unchanged, this is a display-only rename. */}
+        <Row label="Luck factor" t={t} help={help}
+          hint="luck (default): a stop is your luck, same as a real race — the wall clock keeps running. off: stopped time is dropped from your score, as if you'd been paused automatically">
           <Seg t={t} value={s.timing}
-            options={[['raw', 'wall clock'], ['moving', 'moving']]}
+            options={[['raw', 'luck'], ['moving', 'off']]}
             onPick={(v) => set('timing', v)} />
         </Row>
         <Row label="Rankings" hint="Show where each ride placed against your others on that way — in the ride detail and on RESULTS." help={help} t={t}>

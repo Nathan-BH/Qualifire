@@ -81,7 +81,8 @@ const SLOT_TIER: Record<SlotKey, Tier> = { N: 'neutral', NI: 'neutral', G: 'gree
 const SLOT_GLYPH: Record<SlotKey, string> = { N: '', NI: ' ‖', G: '', E: ' ~', P: ' ●', '': '' };
 
 function buzz(): void {
-  Vibration.vibrate(70);
+  // virgin-cycle7 (Nathan, QUESTIONS.md Q3): same double-buzz as the real tracker.
+  Vibration.vibrate([0, 100, 70, 100]);
 }
 
 /* ==================================================================== */

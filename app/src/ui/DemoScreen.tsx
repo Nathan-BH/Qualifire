@@ -82,7 +82,8 @@ export default function DemoScreen() {
   useEffect(() => {
     if (gatesDone !== prevGates.current) {
       if (mode === 'second' && running && settings.earcons && gatesDone > prevGates.current) {
-        Vibration.vibrate(60);
+        // virgin-cycle7 (Nathan, QUESTIONS.md Q3): same double-buzz as the real tracker.
+        Vibration.vibrate([0, 100, 70, 100]);
       }
       prevGates.current = gatesDone;
     }
