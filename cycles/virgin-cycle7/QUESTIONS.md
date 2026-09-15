@@ -13,7 +13,7 @@ deletes no behaviour and one false promise; the wall-clock default plus automati
 
 Brief's default: **not executed** until you say so.
 
-Answer (Nathan): 
+Answer (Nathan):  agree to delete it. It costs nothing since it was not a real actionnable toggle.
 
 ## Q2 — Does SETTINGS → Timing → *moving* survive the same rule?
 
@@ -27,7 +27,7 @@ the opt-in it is, and say so in STATE.md, unless you'd rather the app have exact
 
 Brief's default: **untouched**.
 
-Answer (Nathan): 
+Answer (Nathan): I guess this one we could keep. But rename this setting as a luck factor, instead of "Timing". And you can either activate luck (default) or remove it if you want to be paused automatically
 
 ## Q3 — Did the phone buzz in hand on DEMO? (earcons)
 
@@ -38,7 +38,7 @@ fire). Please try DEMO in hand past a gate with SETTINGS → Earcons ON.
   and `PreviewScreen.tsx:84`. Five lines; a chore, not a brief, once you say the length.
 - Does not buzz in hand → phone model + Android version, and it becomes a bug brief.
 
-Answer (Nathan): 
+Answer (Nathan): I tried it and it does buzz, but it is so short you barely feel it ? maybe it can be a bit longer or like a double buzz ?
 
 ## Q4 — Is F1 purple `#9000C8` legible as *text* on the night race surface?
 
@@ -49,4 +49,4 @@ the phone in night mode after it lands. If it reads dim, the fix is a separate l
 
 Brief's default: **1:1 swap, judged by eye afterwards**.
 
-Answer (Nathan): 
+Answer (Nathan): purple reads fine in dark mode as well.

@@ -1,10 +1,13 @@
 # virgin-cycle7 — F1 tier colours, one help-icon switch, and two answers (earcons, red lights)
 
-**Status (2026-09-15, Plan tier only): briefs written, nothing executed, nothing committed.**
-Two briefs are ready for a Sonnet executor. One brief is drafted but **NOT AUTHORIZED** —
-it removes a feature Nathan only asked an opinion on. Two of his four notes turned out to be
-questions, not builds; they are answered below. `QUESTIONS.md` in this folder holds the calls
-that are genuinely his.
+**Status (2026-09-15): all three briefs landed.** Colours (`c9db5d5`), the help-icon toggle
+(`ea191a7`) and the red-light removal (`64d34bb`, authorized same day) are committed and
+Inspect-clean. Two of Nathan's four notes turned out to be questions, not builds; both are
+answered in `QUESTIONS.md` (Q3 earcon length has a follow-up chore, Q2 asks for a rename —
+see STATE.md for current status of both). Renders and `website/assets/map.png` are the one
+remaining Nathan-PC item. Note: the red-light commit was a race between two Cowork sessions
+open on the same PC folder at once (see the Status table below) — same result, flagged for
+awareness, not a defect.
 
 ## Three briefs in this folder
 
@@ -162,7 +165,7 @@ says so — this project doesn't build on spec, and he asked for an opinion, not
 |---|---|
 | `BRIEF-colours-update.md` | **Executed & inspected — committed `c9db5d5`.** Tests 583 pass / 0 fail / 3 skip, tsc clean. Fresh Inspect pass found zero blocking defects (re-derived the hue math, probed the firewall behaviourally). Renders (`all-renders/*.mp4`, `website/assets/map.png`) still owed on Nathan's PC — old colours until re-rendered. |
 | `BRIEF-settings-help-toggle.md` | **Executed & inspected — committed `ea191a7`.** Same test/tsc result. Inspect confirmed the gate is total (one call site) and no dangling open-help state. On-device manual check (fresh install / toggle / relaunch persistence) still pending Nathan. |
-| `BRIEF-red-light-removal.md` | **Executed — committed `64d34bb`** (Nathan authorized 2026-09-15, `QUESTIONS.md` Q1). Diff matched the brief as drafted; not run through a separate fresh-Fable Inspect pass — verified via `publish-preview.ps1 -DryRun`'s preflight (tsc clean, 583/0/3 tests) with the diff applied, then committed. |
+| `BRIEF-red-light-removal.md` | **Executed & inspected — committed `64d34bb`** (Nathan authorized 2026-09-15, `QUESTIONS.md` Q1). A concurrent Cowork session on this same PC folder (`session_01HZAA8VvYSUNT6x5dePYFpD`) committed the diff a few seconds ahead of this session's own commit attempt — same file contents in both cases, no divergence. This session's fresh-Fable Inspect pass (started before the other session's commit landed) DID run against that diff: zero blocking defects, plus a ruling on one real self-contradiction in the brief's own acceptance criteria (R2's scrub line necessarily contains the literal string `redLight`, so the brief's `grep … → no output` bar as literally written could never fully pass; ruled: the code is correct, the acceptance wording was imprecise). Full report: `EXECUTION-ESCALATIONS.md`. |
 | Earcons / vibration | Answered — no build needed; a 2-minute in-hand check for Nathan (§C) |
 | Renders (`all-renders/*.mp4`, `website/assets/map.png`) | Not an executor task — Nathan's PC, after the colour sources land |
 | `STATE.md` / `GLOSSARY.md` | `STATE.md` cycle-history updated this pass; `GLOSSARY.md` not touched (nothing in it referenced the old hex or the firewall bands) |
