@@ -12,7 +12,7 @@ that are genuinely his.
 |---|---|---|
 | `BRIEF-colours-update.md` | Tier purple → `#9000C8`, tier green → `#00D000` (F1 broadcast values), yellow unchanged — app, website, marketing render sources, docs; D-030 palette firewall re-centred on the new hues | **Ready for execution** |
 | `BRIEF-settings-help-toggle.md` | One persisted `showHelp` switch in SETTINGS → APPEARANCE that shows/hides every row's "?" at once; default on (today's behaviour) | **Ready for execution** |
-| `BRIEF-red-light-removal.md` | Remove the "Red lights" setting (auto / button / off) and the RECORD-screen "RED LIGHT – HOLD CLOCK" button | **Drafted, NOT AUTHORIZED — pending Nathan's decision** (see §D below) |
+| `BRIEF-red-light-removal.md` | Remove the "Red lights" setting (auto / button / off) and the RECORD-screen "RED LIGHT – HOLD CLOCK" button | **Executed — committed `64d34bb`.** Nathan authorized 2026-09-15 (`QUESTIONS.md` Q1) |
 
 Earcons/vibration (Nathan's note 3): **answered — no build needed** (§C below).
 
@@ -162,7 +162,7 @@ says so — this project doesn't build on spec, and he asked for an opinion, not
 |---|---|
 | `BRIEF-colours-update.md` | **Executed & inspected — committed `c9db5d5`.** Tests 583 pass / 0 fail / 3 skip, tsc clean. Fresh Inspect pass found zero blocking defects (re-derived the hue math, probed the firewall behaviourally). Renders (`all-renders/*.mp4`, `website/assets/map.png`) still owed on Nathan's PC — old colours until re-rendered. |
 | `BRIEF-settings-help-toggle.md` | **Executed & inspected — committed `ea191a7`.** Same test/tsc result. Inspect confirmed the gate is total (one call site) and no dangling open-help state. On-device manual check (fresh install / toggle / relaunch persistence) still pending Nathan. |
-| `BRIEF-red-light-removal.md` | Drafted, **NOT AUTHORIZED — still pending Nathan's decision** (`QUESTIONS.md` Q1). Not executed. |
+| `BRIEF-red-light-removal.md` | **Executed — committed `64d34bb`** (Nathan authorized 2026-09-15, `QUESTIONS.md` Q1). Diff matched the brief as drafted; not run through a separate fresh-Fable Inspect pass — verified via `publish-preview.ps1 -DryRun`'s preflight (tsc clean, 583/0/3 tests) with the diff applied, then committed. |
 | Earcons / vibration | Answered — no build needed; a 2-minute in-hand check for Nathan (§C) |
 | Renders (`all-renders/*.mp4`, `website/assets/map.png`) | Not an executor task — Nathan's PC, after the colour sources land |
 | `STATE.md` / `GLOSSARY.md` | `STATE.md` cycle-history updated this pass; `GLOSSARY.md` not touched (nothing in it referenced the old hex or the firewall bands) |

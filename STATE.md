@@ -276,10 +276,10 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
 - `cycles/virgin-cycle7/README.md` — 2026-09-15: tier purple/green swapped to F1's official
   broadcast hex (`#9000C8` / `#00D000`, yellow unchanged), D-030 palette firewall re-centred
   to match (`c9db5d5`); one persisted `showHelp` setting replaces the always-on per-row "?"
-  icons (`ea191a7`). Two of Nathan's four notes turned out to be answers, not builds: earcons/
-  vibration is already implemented and on by default (§C, no build); red-light settings removal
-  is recommended (§D) but drafted **NOT AUTHORIZED**, pending his decision
-  (`BRIEF-red-light-removal.md`, `QUESTIONS.md` Q1). Renders (`all-renders/*.mp4`,
+  icons (`ea191a7`). Red-light setting + RECORD-screen button removed (`64d34bb`),
+  Nathan authorized 2026-09-15 (`QUESTIONS.md` Q1). Earcons/vibration needed no build —
+  already implemented and on by default (§C); Nathan confirmed it buzzes but wants it
+  longer/doubled, follow-up chore not yet done. Renders (`all-renders/*.mp4`,
   `website/assets/map.png`) still show the old colours, owed on Nathan's PC.
 
 ## Nathan's own files (unmanaged by any agent)
