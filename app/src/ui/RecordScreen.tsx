@@ -190,7 +190,6 @@ export default function RecordScreen({
   const endedRef = useRef<{ rideId: string; startedAtMs: number } | null>(null);
   const [live, setLive] = useState<LiveEngineState>(liveEngine.getState());
   const [showLap, setShowLap] = useState(false);
-  const [held, setHeld] = useState(false); // manual red-light hold (§18)
   // PAUSE → RESUME | END (Cycle 020, Nathan 2026-08-19): an accidental-stop
   // guard, NOT a real pause — the recording service and lap clock keep
   // running underneath (D-042: raw time is the truth; no engine or location
@@ -1193,19 +1192,6 @@ export default function RecordScreen({
             <Text style={styles.counter}>{live.freeCrossings.length} gates crossed</Text>
           </View>
         )}
-        {settings.redLight === 'button' && (
-          <Pressable
-            style={[styles.redFlag, held && { opacity: 0.6 }]}
-            onPress={() => setHeld((h) => !h)}
-          >
-            <Text style={styles.redFlagText}>
-              {held ? 'GO - RELEASE CLOCK' : 'RED LIGHT - HOLD CLOCK'}
-            </Text>
-            <Text style={styles.stopSlimSub}>
-              self-reported stop - the measured clock keeps its own truth
-            </Text>
-          </Pressable>
-        )}
         {status.storageErrors > 0 && (
           <Text style={styles.warn}>
             {status.storageErrors} storage errors — last: {status.lastError}
@@ -1621,19 +1607,6 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
     justifyContent: 'center',
     gap: 12,
   },
-  // Amber, never red (D-013) even though it is a "red light" button.
-  redFlag: {
-    alignSelf: 'stretch',
-    marginTop: 10,
-    borderRadius: radius.btn,
-    borderWidth: 2,
-    borderColor: colors.amber,
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-    paddingVertical: 9,
-    gap: 2,
-  },
-  redFlagText: { color: colors.amber, fontSize: 15, fontWeight: '800', letterSpacing: 2 },
   // flexShrink + numberOfLines at the call sites: a stopSlim button's content
   // can now never push past its flex:1 width, whatever future copy does
   // (2026-08-25 screenshot: "ESUME back to the rid" off both screen edges).

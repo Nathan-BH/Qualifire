@@ -26,10 +26,7 @@ import { DEFAULT_TIMING, setTimingMode, type TimingMode } from '../store/timing'
 import { PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
 
-/** How a stop at a red light is handled (§18 — UNSETTLED, hence a setting). */
-export type RedLight = 'auto' | 'button' | 'off';
 export interface Settings {
-  redLight: RedLight;
   startMode: 'auto' | 'pick';
   tower: boolean;
   liveMap: boolean;
@@ -56,7 +53,6 @@ export interface Settings {
 }
 
 const DEFAULTS: Settings = {
-  redLight: 'auto',
   startMode: 'auto',
   tower: true,
   liveMap: true,
@@ -99,7 +95,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       const saved = await load();
-      if (saved) setS((prev) => ({ ...prev, ...saved }));
+      if (saved) {
+        delete (saved as Record<string, unknown>).redLight; // virgin-cycle7: setting retired; scrub old files
+        setS((prev) => ({ ...prev, ...saved }));
+      }
       loaded.current = true;
     })();
   }, []);
@@ -556,12 +555,6 @@ export default function SettingsScreen() {
 
       <Text style={[st.h2, { color: t.textDim }]}>ON THE BIKE</Text>
       <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-        <Row label="Red lights" t={t} help={help}
-          hint="auto: a stop at a light is detected and the clock pauses by itself. button: you press to pause, so stopped time is self-reported. off: the clock never pauses.">
-          <Seg t={t} value={s.redLight}
-            options={[['auto', 'auto'], ['button', 'button'], ['off', 'off']]}
-            onPick={(v) => set('redLight', v)} />
-        </Row>
         <Row label="Live map" hint="Show the moving dot on the route while riding." help={help} t={t}>
           <Switch on={s.liveMap} onToggle={() => set('liveMap', !s.liveMap)} t={t} />
         </Row>
