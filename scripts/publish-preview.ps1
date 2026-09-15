@@ -144,6 +144,31 @@ try {
         Say "no -Message given; using last commit subject: $Message"
     }
 
+    # --------------------------------------------- 4. Expo CLI + account
+    # Checked in BOTH dry run and real run: npx has to fetch eas-cli itself on
+    # its very first invocation anywhere on this machine, and that fetch asks
+    # an interactive "Ok to proceed? (y)" -- which Invoke-Native's buffered
+    # capture makes INVISIBLE, so the script looks hung for however long the
+    # download takes (Nathan, 2026-09-15: looked stuck 5+ min on a bare
+    # `npx eas-cli whoami`). -y/--yes makes npx auto-confirm so this can never
+    # silently wait on a keypress again, in either mode.
+    Step '4. Expo CLI + account'
+    $r = Invoke-Native { npx.cmd -y eas-cli whoami }
+    if ($r.Code -ne 0) {
+        if ($DryRun) {
+            Warn 'not logged in to eas-cli -- the real run will need `npx eas-cli login` (interactive, opens a browser)'
+        } else {
+            Say 'not logged in -- opening login'
+            $ErrorActionPreference = 'Continue'   # login is interactive; let it talk
+            npx.cmd -y eas-cli login
+            $code = $LASTEXITCODE
+            $ErrorActionPreference = 'Stop'
+            if ($code -ne 0) { throw 'login failed' }
+        }
+    } else {
+        Ok "logged in as $($r.Output | Select-Object -Last 1)"
+    }
+
     if ($DryRun) {
         Step 'Dry run complete.'
         Would "run: npx eas-cli update --channel preview --message ""$Message"" --environment preview"
@@ -151,26 +176,12 @@ try {
         return
     }
 
-    # --------------------------------------------- 4. account + publish
-    Step '4. Expo account'
-    $r = Invoke-Native { npx.cmd eas-cli whoami }
-    if ($r.Code -ne 0) {
-        Say 'not logged in -- opening login'
-        $ErrorActionPreference = 'Continue'   # login is interactive; let it talk
-        npx.cmd eas-cli login
-        $code = $LASTEXITCODE
-        $ErrorActionPreference = 'Stop'
-        if ($code -ne 0) { throw 'login failed' }
-    } else {
-        Ok "logged in as $($r.Output | Select-Object -Last 1)"
-    }
-
     Step '5. Publishing (channel: preview)'
     $env:APP_VARIANT = 'preview'   # must match the build profile env, or the fingerprint drifts
     $env:EXPO_PUBLIC_SEED_MODE = 'empty'   # Preview ships blank/generic now -- must match eas.json build.preview.env, see cycles/virgin-cycle4
     Say 'bundles locally (npx expo export) then uploads -- ~1-2 min, spends NO build slot.'
     $ErrorActionPreference = 'Continue'
-    npx.cmd eas-cli update --channel preview --message "$Message" --environment preview --platform android
+    npx.cmd -y eas-cli update --channel preview --message "$Message" --environment preview --platform android
     $code = $LASTEXITCODE
     $ErrorActionPreference = 'Stop'
     if ($code -ne 0) { throw 'eas update reported an error -- check the output above' }
