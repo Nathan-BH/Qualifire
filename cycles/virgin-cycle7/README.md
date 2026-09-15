@@ -1,13 +1,9 @@
 # virgin-cycle7 — F1 tier colours, one help-icon switch, and two answers (earcons, red lights)
 
-**Status (2026-09-15): all three briefs landed.** Colours (`c9db5d5`), the help-icon toggle
-(`ea191a7`) and the red-light removal (`64d34bb`, authorized same day) are committed and
-Inspect-clean. Two of Nathan's four notes turned out to be questions, not builds; both are
-answered in `QUESTIONS.md` (Q3 earcon length has a follow-up chore, Q2 asks for a rename —
-see STATE.md for current status of both). Renders and `website/assets/map.png` are the one
-remaining Nathan-PC item. Note: the red-light commit was a race between two Cowork sessions
-open on the same PC folder at once (see the Status table below) — same result, flagged for
-awareness, not a defect.
+**Status (2026-09-15): cycle closed.** All three briefs landed (`c9db5d5`, `ea191a7`,
+`64d34bb`) and both Q2/Q3 follow-up chores are done (`9900e92`: "Timing" → "Luck factor",
+double gate buzz). All five renders are re-done on Nathan's PC. Only `website/assets/map.png`
+(a Chrome capture, not a `render.ps1` composition) still shows the old colours.
 
 ## Three briefs in this folder
 
@@ -16,6 +12,7 @@ awareness, not a defect.
 | `BRIEF-colours-update.md` | Tier purple → `#9000C8`, tier green → `#00D000` (F1 broadcast values), yellow unchanged — app, website, marketing render sources, docs; D-030 palette firewall re-centred on the new hues | **Ready for execution** |
 | `BRIEF-settings-help-toggle.md` | One persisted `showHelp` switch in SETTINGS → APPEARANCE that shows/hides every row's "?" at once; default on (today's behaviour) | **Ready for execution** |
 | `BRIEF-red-light-removal.md` | Remove the "Red lights" setting (auto / button / off) and the RECORD-screen "RED LIGHT – HOLD CLOCK" button | **Executed — committed `64d34bb`.** Nathan authorized 2026-09-15 (`QUESTIONS.md` Q1) |
+| *(chore)* Rename "Timing" → "Luck factor" + double the gate buzz | Display-only settings rename (Q2) + `Vibration.vibrate([0, 100, 70, 100])` at all 3 call sites (Q3) | **Done — committed `9900e92`** |
 
 Earcons/vibration (Nathan's note 3): **answered — no build needed** (§C below).
 

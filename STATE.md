@@ -276,11 +276,14 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
 - `cycles/virgin-cycle7/README.md` — 2026-09-15: tier purple/green swapped to F1's official
   broadcast hex (`#9000C8` / `#00D000`, yellow unchanged), D-030 palette firewall re-centred
   to match (`c9db5d5`); one persisted `showHelp` setting replaces the always-on per-row "?"
-  icons (`ea191a7`). Red-light setting + RECORD-screen button removed (`64d34bb`),
-  Nathan authorized 2026-09-15 (`QUESTIONS.md` Q1). Earcons/vibration needed no build —
-  already implemented and on by default (§C); Nathan confirmed it buzzes but wants it
-  longer/doubled, follow-up chore not yet done. Renders (`all-renders/*.mp4`,
-  `website/assets/map.png`) still show the old colours, owed on Nathan's PC.
+  icons (`ea191a7`). Red-light setting + RECORD-screen button removed (`64d34bb`, Nathan
+  authorized, `QUESTIONS.md` Q1). **SETTINGS → SCORING's "Timing" row is now "Luck factor"**
+  (display-only rename — options relabelled luck/off; underlying `timing`/`TimingMode`
+  `raw`/`moving` key and `store/timing.ts` unchanged, `QUESTIONS.md` Q2, `9900e92`). Gate
+  buzz doubled (`Vibration.vibrate([0, 100, 70, 100])`, all 3 call sites) — Nathan confirmed
+  the old single 70ms tick was too faint to feel on the bike (`QUESTIONS.md` Q3, `9900e92`).
+  All five renders re-done on Nathan's PC 2026-09-15; only `website/assets/map.png` (a Chrome
+  capture, not a `render.ps1` composition) still shows the old colours.
 
 ## Nathan's own files (unmanaged by any agent)
 
