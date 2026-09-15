@@ -389,13 +389,13 @@ test('routemapgeo: sector spans — gate-indexed colour lands on the span ENDING
   for (const feat of none!.features) {
     assert(!('colour' in feat.properties), 'no sectorColours given but a span carries colour');
   }
-  const withColours = sectorSpansFeatureCollection(a, [null, '#9000C8', null, '#00D000', null]);
+  const withColours = sectorSpansFeatureCollection(a, [null, '#6D4E9C', null, '#8BCD39', null]);
   withColours!.features.forEach((feat, k) => {
     const sector = k + 1;
     if (sector === 1) {
-      assert(feat.properties.colour === '#9000C8', `sector 1 expected #9000C8, got ${feat.properties.colour}`);
+      assert(feat.properties.colour === '#6D4E9C', `sector 1 expected #6D4E9C, got ${feat.properties.colour}`);
     } else if (sector === 3) {
-      assert(feat.properties.colour === '#00D000', `sector 3 expected #00D000, got ${feat.properties.colour}`);
+      assert(feat.properties.colour === '#8BCD39', `sector 3 expected #8BCD39, got ${feat.properties.colour}`);
     } else {
       assert(!('colour' in feat.properties), `sector ${sector} should carry no colour property`);
     }

@@ -17,7 +17,7 @@ decision lands, theme.ts is the single place to change, then rerun the boards
 with the same hexes.
 
 **Status — RULED 2026-09-08 (Nathan): palette A ("signal") stays, permanently, both
-explorations closed.** `app/src/ui/theme.ts` (`#F5C542` / `#9000C8` / `#00D000`, daylight +
+explorations closed.** `app/src/ui/theme.ts` (`#FFDE6D` / `#6D4E9C` / `#8BCD39`, daylight +
 night) is the app's day and night palette, full stop — not "by default of no decision" as
 this note used to say. His reasoning: existing in every colour loses the brand's image; a
 single recognizable palette makes it stronger, not weaker. This closes BOTH open

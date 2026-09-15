@@ -188,7 +188,9 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   for the full record and `deployment/DEPLOYMENT-OPTIONS.md` §0 for what's left to actually do.
 - **"No accounts, no social" still stands** — the pivot and the above are about distribution
   reach, not the in-app model; that's a separate call Nathan hasn't made.
-- **Scoring:** three colour tiers (purple/green/yellow), F1 palette. No noise floor below
+- **Scoring:** three colour tiers (purple/green/yellow) — `#6D4E9C`/`#8BCD39`/`#FFDE6D` as of
+  cycle8 (2026-09-15, Nathan's own phone-matched picks; superseded cycle7's F1-broadcast hex).
+  No noise floor below
   a single ride (D-045 ruling 1, built as NW-1, 2026-09-08): a way's reference ride (ride 1)
   gets no colour verdict on the day it's ridden — it earns a rank once stored, but nothing to
   compare against yet — one prior ride compares purple/yellow only; two or more run the full
@@ -284,6 +286,18 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   the old single 70ms tick was too faint to feel on the bike (`QUESTIONS.md` Q3, `9900e92`).
   All five renders re-done on Nathan's PC 2026-09-15; only `website/assets/map.png` (a Chrome
   capture, not a `render.ps1` composition) still shows the old colours.
+- `cycles/virgin-cycle8/README.md` — 2026-09-15: colour round 2 — Nathan colour-wheel-matched
+  his own picks against his phone screen (`marketing/hex-colours/SUMMARY.md` has the full
+  gradient back-and-forth) and chose purple `#6D4E9C`, green `#8BCD39`, yellow `#FFDE6D`
+  (`purpleDeep` re-derived `#4C376D`), superseding cycle7's F1-broadcast hex; D-030 hue-band
+  firewall re-centred again (green 67-107°, purple 244-284° — these picks land on different
+  hues, not just different saturation/lightness); applied app-wide plus the launcher icon
+  (`app/assets/icon.png`/`adaptive-icon.png`, recoloured via new `scripts/recolour-icon.py`,
+  a 3-colour decomposition so the ring's anti-aliased edge isn't tinted — reaches the phone
+  only at the next numbered build, not over Fast Refresh). New `scripts/dev-phone.ps1`/`.cmd`
+  starts the Expo dev server for Nathan to test JS-only changes (like this colour swap) live
+  on his phone's dev-client build. Digest→Plan→Execute→Inspect all ran; Inspect verdict PASS
+  WITH NOTES (two cosmetic follow-ups, see the cycle README).
 
 ## Nathan's own files (unmanaged by any agent)
 

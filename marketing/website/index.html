@@ -22,10 +22,10 @@
     --text2: #b5b3ac;
     --grey: #6f6e6a;
     /* Signature / tiers */
-    --yellow: #F5C542;
+    --yellow: #FFDE6D;
     --yellow-ink: #17171b;
-    --green: #00D000;
-    --purple: #9000C8;
+    --green: #8BCD39;
+    --purple: #6D4E9C;
     --purple-ink: #120521;
   }
 
@@ -141,7 +141,7 @@
     position:relative;
     padding:64px 24px;
     background:
-      radial-gradient(600px 400px at 50% 0%, rgba(245,197,66,0.06), transparent 70%),
+      radial-gradient(600px 400px at 50% 0%, rgba(255,222,109,0.06), transparent 70%),
       var(--pad-bg);
     overflow:hidden;
   }
@@ -185,9 +185,9 @@
     cursor:pointer;
     text-decoration:none;
     transition: transform .15s ease, box-shadow .15s ease;
-    box-shadow: 0 0 0 0 rgba(245,197,66,0);
+    box-shadow: 0 0 0 0 rgba(255,222,109,0);
   }
-  .btn-start:hover{ transform: translateY(-2px); box-shadow: 0 10px 24px -10px rgba(245,197,66,.5); }
+  .btn-start:hover{ transform: translateY(-2px); box-shadow: 0 10px 24px -10px rgba(255,222,109,.5); }
   .btn-start:active{ transform: translateY(0); }
   .scroll-hint{
     position:absolute;
@@ -273,7 +273,7 @@
   }
   .swatch.purple .chip{ background:var(--purple); box-shadow:0 0 24px -4px rgba(166,103,240,.55); }
   .swatch.green .chip{ background:var(--green); box-shadow:0 0 24px -4px rgba(62,213,152,.5); }
-  .swatch.yellow .chip{ background:var(--yellow); box-shadow:0 0 24px -4px rgba(245,197,66,.5); }
+  .swatch.yellow .chip{ background:var(--yellow); box-shadow:0 0 24px -4px rgba(255,222,109,.5); }
   .swatch h4{ margin:0 0 8px 0; font-size:1.1rem; text-transform:uppercase; letter-spacing:.06em; }
   .swatch.purple h4{ color:var(--purple); }
   .swatch.green h4{ color:var(--green); }
@@ -334,7 +334,7 @@
     justify-self:start;
   }
   .tower-row.today{
-    background: rgba(245,197,66,.07);
+    background: rgba(255,222,109,.07);
     border-left:3px solid var(--yellow);
     padding-left:17px;
   }
@@ -416,7 +416,7 @@
   <a class="brand" href="#hero" aria-label="Qualifire, back to top">
     <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <circle cx="256" cy="218" r="118" fill="none" stroke="currentColor" stroke-width="30" stroke-linecap="round"/>
-      <line x1="291.355" y1="253.355" x2="387.5206" y2="349.5206" fill="none" stroke="#F5C542" stroke-width="30" stroke-linecap="round"/>
+      <line x1="291.355" y1="253.355" x2="387.5206" y2="349.5206" fill="none" stroke="#FFDE6D" stroke-width="30" stroke-linecap="round"/>
     </svg>
     <span>QUALIFIRE</span>
   </a>
@@ -431,7 +431,7 @@
     <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
       <g id="mark">
         <circle id="q_ring" cx="256" cy="218" r="118" fill="none" stroke="currentColor" stroke-width="30" stroke-linecap="round"/>
-        <line id="q_tail" x1="291.355" y1="253.355" x2="387.5206" y2="349.5206" fill="none" stroke="#F5C542" stroke-width="30" stroke-linecap="round"/>
+        <line id="q_tail" x1="291.355" y1="253.355" x2="387.5206" y2="349.5206" fill="none" stroke="#FFDE6D" stroke-width="30" stroke-linecap="round"/>
       </g>
     </svg>
   </div>
@@ -472,7 +472,7 @@
         <svg id="mapsvg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <path id="route-casing" fill="none" stroke="#14120C" stroke-width="10" stroke-linejoin="round" stroke-linecap="round"
             d="M577,948.7 L578.3,946.1 L587.4,940.8 L590.9,942.8 L591,947.5 L594.6,952.3 L600.9,957.1 L612,951.2 L628.8,946.5 L640.6,940.1 L647,934.5 L650.7,933.1 L680,906.9 L682.9,905.7 L684.4,908.7 L687,909.9 L718.3,885.5 L755.1,859.2 L784.7,851.6 L830.7,830.3 L836.7,833.6 L848.2,835.8 L854.2,835.6 L858.6,833.9 L935.4,752.8 L975.7,720.7 L988.2,706 L988.5,693.2 L984.8,688.8 L977.8,684.5 L958.3,677.3 L954.2,679.7 L949.1,679.2 L915.3,666.6 L914.4,663 L916.5,658.5 L922.5,650.9 L924.4,645.7 L922.9,642.6 L923.9,641.4 L926.1,640.4 L929.9,641 L936.2,645 L949.8,650 L954.6,652.8 L977.5,661 L986.2,656.2 L1046.2,607.4 L1063.2,592.6 L1088.3,539.3 L1099,520.7 L1109.9,505.7 L1124.1,488.9 L1129.9,478.9 L1149.6,455.4 L1161,436.3 L1163,435 L1192.4,430.8 L1220.7,402.9 L1243.8,377.3 L1248.4,368.1 L1250.7,359.8 L1272,333.6 L1273.6,319.2 L1279.4,318.7 L1313.6,288.5 L1319.5,286.8 L1324.1,282.9 L1342.8,293.3 L1345,293.1"/>
-          <path id="route-core" fill="none" stroke="#F5C542" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"
+          <path id="route-core" fill="none" stroke="#FFDE6D" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"
             d="M577,948.7 L578.3,946.1 L587.4,940.8 L590.9,942.8 L591,947.5 L594.6,952.3 L600.9,957.1 L612,951.2 L628.8,946.5 L640.6,940.1 L647,934.5 L650.7,933.1 L680,906.9 L682.9,905.7 L684.4,908.7 L687,909.9 L718.3,885.5 L755.1,859.2 L784.7,851.6 L830.7,830.3 L836.7,833.6 L848.2,835.8 L854.2,835.6 L858.6,833.9 L935.4,752.8 L975.7,720.7 L988.2,706 L988.5,693.2 L984.8,688.8 L977.8,684.5 L958.3,677.3 L954.2,679.7 L949.1,679.2 L915.3,666.6 L914.4,663 L916.5,658.5 L922.5,650.9 L924.4,645.7 L922.9,642.6 L923.9,641.4 L926.1,640.4 L929.9,641 L936.2,645 L949.8,650 L954.6,652.8 L977.5,661 L986.2,656.2 L1046.2,607.4 L1063.2,592.6 L1088.3,539.3 L1099,520.7 L1109.9,505.7 L1124.1,488.9 L1129.9,478.9 L1149.6,455.4 L1161,436.3 L1163,435 L1192.4,430.8 L1220.7,402.9 L1243.8,377.3 L1248.4,368.1 L1250.7,359.8 L1272,333.6 L1273.6,319.2 L1279.4,318.7 L1313.6,288.5 L1319.5,286.8 L1324.1,282.9 L1342.8,293.3 L1345,293.1"/>
           <g class="gate"><line x1="818.9" y1="811.7" x2="832.2" y2="853.6" stroke="#14120C" stroke-width="8" stroke-linecap="round"/><line x1="818.9" y1="811.7" x2="832.2" y2="853.6" stroke="#F4F2EC" stroke-width="4" stroke-linecap="round"/></g>
           <g class="gate"><line x1="1035.1" y1="587.9" x2="1063.7" y2="621.3" stroke="#14120C" stroke-width="8" stroke-linecap="round"/><line x1="1035.1" y1="587.9" x2="1063.7" y2="621.3" stroke="#F4F2EC" stroke-width="4" stroke-linecap="round"/></g>
@@ -600,7 +600,7 @@
     <div class="footer-mark">
       <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <circle cx="256" cy="218" r="118" fill="none" stroke="currentColor" stroke-width="30" stroke-linecap="round"/>
-        <line x1="291.355" y1="253.355" x2="387.5206" y2="349.5206" fill="none" stroke="#F5C542" stroke-width="30" stroke-linecap="round"/>
+        <line x1="291.355" y1="253.355" x2="387.5206" y2="349.5206" fill="none" stroke="#FFDE6D" stroke-width="30" stroke-linecap="round"/>
       </svg>
       <span>QUALIFIRE</span>
     </div>

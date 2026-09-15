@@ -7,6 +7,8 @@
 | `build5.ps1`, `build5.cmd` | Build 5 — the "Qualifire Preview" standalone-APK build (D-043). |
 | `spike-maplibre.ps1` | One-off spike script for the MapLibre integration investigation (`product/superseded/MAPLIBRE-SPIKE.md`). |
 | `gatefield-replay.ps1`, `gatefield-replay.cmd` | Runs the offline gate-field replay tool (`data/analysis/10_gatefield_replay.py`) from a double-clickable entry point. |
+| `dev-phone.ps1`, `dev-phone.cmd` | Phone dev loop: starts the Metro/Expo dev server in `app/` for the installed dev-client (Fast Refresh, no build). `shipped` / `-Shipped` switches to the Leuven seed. |
+| `recolour-icon.py` | Recolours the yellow gate-stroke of the two wired launcher PNGs (`app/assets/icon.png`, `adaptive-icon.png`) in place, three-colour barycentric decomposition so ring/ground edges stay clean. `--check` reports without writing. |
 
 Read by: whoever is doing a build or a data-analysis replay pass — these are the
 PC-side entry points the app's own `README-dev.md` and the runbooks point to.

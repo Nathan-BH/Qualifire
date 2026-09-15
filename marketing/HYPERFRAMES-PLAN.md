@@ -288,9 +288,9 @@ Starting point, ready to copy into any Qualifire video project:
 - Stage ground: **race black `#0A0A0A`** — always, even for pieces that would
   be "paddock" in the app. Video has one ground, not two.
 - Chrome: **paddock charcoal `#17171b`**, **ink `#F4F2EC`**, **signature
-  yellow `#F5C542`** (ink-on-yellow `#17171b` for text ON a yellow surface)
+  yellow `#FFDE6D`** (ink-on-yellow `#17171b` for text ON a yellow surface)
   — nothing else.
-- Earned only: **earned green `#00D000`**, **earned purple `#9000C8`** —
+- Earned only: **earned green `#8BCD39`**, **earned purple `#6D4E9C`** —
   exclusively on sector/tier/timing elements standing in for a real result.
   Never chrome, never decorative.
 - **No red.** Not for errors, not for emphasis, not anywhere — BRAND.md

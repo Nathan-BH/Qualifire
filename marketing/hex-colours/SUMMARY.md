@@ -56,3 +56,72 @@ numbered gradient instead of a single swatch:
 `app/src/ui/theme.ts`, the marketing render sources, website CSS vars, and
 `wayMapStyle.ts`'s D-030 hue-band firewall to match (same set of files `c9db5d5`
 touched), then re-render the marketing videos.
+
+## Round 2 — phone colour-wheel picks (screen-rendering mismatch)
+
+Nathan compared the same `qualifire_colour_comparison.png` on phone vs. PC and the
+colours read differently (yellow/green near-fluorescent on phone, purple/green softer
+"baby"-pastel on PC) despite identical hex — this is screen rendering, not a hex bug:
+`#9000C8`/`#00D000` are already at 100% HSL saturation, so there's no more-saturated hex
+to move to. Sent `qualifire_colour_gradient.png` (9 numbered steps per hue, pastel ->
+today's exact app hex) so he could pick a shade by eye on the phone.
+
+Instead, Nathan used a colour wheel on his phone to manually match what he sees on the
+PC screen, picking these as the "true" perceptual match:
+
+| Component | Current PC/app hex | Phone colour-wheel match |
+|---|---|---|
+| Yellow | `#F5C542` | `#FFE99C` |
+| Green | `#00D000` | `#7B9C4D` |
+| Purple | `#9000C8` | `#6D4E9C` |
+
+Notably the green/purple picks are much LESS saturated (S≈0.33 vs. 1.0) than the current
+app hex — consistent with his phone rendering fully-saturated colours more intensely
+than intended.
+
+Built `qualifire_colour_gradient_v2.png`: three rows (purple/green/yellow), each a
+9-step gradient centred on his phone pick (swatch 5, ringed = his pick exactly), fanning
+paler/more washed-out to the left and deeper/more saturated to the right, with the
+current PC/app hex shown as a reference chip alongside each row.
+
+**Open / waiting on Nathan:** confirm a swatch number (1-9) per row from
+`qualifire_colour_gradient_v2.png`, viewed on phone. Once confirmed, update
+`app/src/ui/theme.ts`, marketing render sources, website CSS vars, and
+`wayMapStyle.ts`'s D-030 hue-band firewall to the chosen hex codes, then re-render the
+marketing videos.
+
+## Round 3 — green pick revised
+
+Nathan revised the green centre pick to `#9BCF5B` (up from `#7B9C4D` — lighter, more
+saturated: L=0.584/S=0.547 vs. the round-2 pick's L=0.457/S=0.339). Rebuilt
+`qualifire_colour_gradient_v3.png` with the green row re-centred on `#9BCF5B`; purple
+(`#6D4E9C`) and yellow (`#FFE99C`) rows unchanged from round 2.
+
+**Open / waiting on Nathan:** confirm a swatch number (1-9) per row from
+`qualifire_colour_gradient_v3.png`.
+
+## Round 4 — final picks confirmed, shipped (cycle8)
+
+Nathan confirmed from `qualifire_colour_gradient_v3.png`: **yellow 7, green 6, purple 5**.
+
+| Component | Final hex |
+|---|---|
+| Purple | `#6D4E9C` |
+| Green | `#8BCD39` |
+| Yellow | `#FFDE6D` |
+| purpleDeep (derived, ×0.7 of purple) | `#4C376D` |
+
+Shipped via `cycles/virgin-cycle8/` (full Digest→Plan→Execute→Inspect pipeline, PASS WITH
+NOTES): `app/src/ui/theme.ts`, the D-030 hue-band firewall in `wayMapStyle.ts` (re-centred —
+these picks land on different hues than the previous round, not just different
+saturation/lightness), every marketing/product file the cycle7 colour commit touched, plus a
+few yellow-only spots that round didn't need (brandmark HTML, the monogram/wordmark SVG), and
+the launcher icon (`app/assets/icon.png`/`adaptive-icon.png`, recoloured via a new 3-colour
+decomposition script so the icon's ring edge isn't tinted — reaches the phone only at the next
+numbered build, not over Fast Refresh). Also added: `scripts/dev-phone.ps1`/`.cmd` to start
+the Expo dev server for testing JS-only changes live on the phone's dev-client build.
+
+Full detail: `cycles/virgin-cycle8/README.md`, `BRIEF-colours-round2.md`,
+`DIGEST-colours-round2.md`.
+
+**Closed** — nothing further open on the colour question itself.
