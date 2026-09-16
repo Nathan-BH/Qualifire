@@ -91,7 +91,7 @@ import { refFor } from '../live/refs.ts';
 import { allWayAssets, resolveWayAsset, type WayAssetDeps } from './wayAssetRuntime.ts';
 import {
   allGatesBounds, allGatesFeatureCollection, bearingBetween, cameraTargetFor,
-  gateTicksFeatureCollection, metresBetween, nearestOnPath, riderFeature, rotateEnabledFor, wayBounds,
+  gateHalfLenM, gateTicksFeatureCollection, metresBetween, nearestOnPath, riderFeature, rotateEnabledFor, wayBounds,
   wayLineFeature, sectorSpansFeatureCollection, trailBounds,
 } from './wayMapGeo.ts';
 import { trailLineFeature, type TrailPoint } from './trailModel.ts';
@@ -109,10 +109,20 @@ import type { CameraRef, CameraStop } from '@maplibre/maplibre-react-native';
  * for what we use). */
 type RegionWillChangeEvent = { nativeEvent: { userInteraction: boolean } };
 /** WP-M: `onRegionDidChange` fires once when a gesture/animation ENDS and
- * carries the full ViewState; we read only `bearing`, guarded by the same
+ * carries the full ViewState; we read `bearing`, guarded by the same
  * `userInteraction` check (our own camera pushes must not be read back as
- * rider intent). */
-type RegionDidChangeEvent = { nativeEvent: { userInteraction: boolean; bearing: number } };
+ * rider intent). `zoom` is read unconditionally (cycle virgin-cycle10):
+ * fired for BOTH gesture and programmatic camera moves (e.g. a 'fit'
+ * push), so it is the only place that observes the map's true rendered
+ * zoom — the local `camZoom` state only reflects the +/- follow-zoom
+ * control and is never updated by MapLibre's own bounds-fit zoom
+ * calculation. Field name confirmed against the installed
+ * @maplibre/maplibre-react-native (11.3.6) type
+ * `ViewStateChangeEvent = ViewState & { animated; userInteraction }`,
+ * where `ViewState = { center; zoom; bearing; pitch; bounds }` — `zoom`
+ * sits alongside the `bearing` field this handler already reads from
+ * the same event. */
+type RegionDidChangeEvent = { nativeEvent: { userInteraction: boolean; bearing: number; zoom: number } };
 /** WP-J (gate-adjust card): the shape of a GeoJSONSource press event we
  * actually read. Typed structurally (not importing MapLibre's own
  * `PressEventWithFeatures`) — under `strict: true`, `properties` must be
@@ -380,6 +390,12 @@ function MapLibreWayMap(props: WayMapProps & {
   }, [props.zoom, variant, phaseKey, props.wayId]);
 
   const [camZoom, setCamZoom] = useState(16);
+  // Cycle virgin-cycle10: the map's actual current zoom, read back from
+  // onRegionDidChange below (fires on 'fit' pushes too, unlike camZoom
+  // which only tracks the +/- follow control). null until the map has
+  // reported a region change at least once; gateHalfLenM below falls
+  // back to camZoom (the existing follow-zoom default) until then.
+  const [liveZoom, setLiveZoom] = useState<number | null>(null);
 
   // Course-up bearing: holds the last value until a new fix has moved
   // BEARING_MIN_MOVE_M from the previous one (jitter guard). Only updates
@@ -564,7 +580,17 @@ function MapLibreWayMap(props: WayMapProps & {
   const gatesFC = gatesOnly && drawable
     ? allGatesFeatureCollection(drawable, props.crossedGates, colors.neutral, props.gateWayIds)
     : null;
-  const gateTicksFC = !gatesOnly && asset ? gateTicksFeatureCollection(asset, props.gateColours) : null;
+  // Cycle virgin-cycle10: halfLenM is now zoom-aware (gateHalfLenM) instead
+  // of the function's fixed 15 m default, so a tick stays a visible line
+  // (not a collapsed dot) at whole-ride 'fit' zoom levels — see
+  // gateHalfLenM's doc comment in wayMapGeo.ts for the root cause. Not
+  // wrapped in useMemo: this line runs after the `riderOnly` early return
+  // above, so a hook here would break the Rules of Hooks; kept as the
+  // existing unmemoized-per-render pattern (cheap, one tick per gate).
+  const gateHalfLen = asset ? gateHalfLenM(asset.gates[0]?.lat ?? 0, liveZoom ?? camZoom) : 15;
+  const gateTicksFC = !gatesOnly && asset
+    ? gateTicksFeatureCollection(asset, props.gateColours, gateHalfLen)
+    : null;
   // WP-sector-coloured-trail P1: null unless the caller supplied sector
   // colours AND the asset can honestly be split (path + matching gateIdx —
   // sectorSpansFeatureCollection's own null rule); the plain base line
@@ -635,6 +661,12 @@ function MapLibreWayMap(props: WayMapProps & {
         // doc). Gated on userInteraction so our own camera pushes (course-up
         // updates, +/-, FIT) are never read back as rider intent.
         onRegionDidChange={(e: RegionDidChangeEvent) => {
+          // Cycle virgin-cycle10: zoom is captured unconditionally (not
+          // gated on rotateEnabled/userInteraction like bearing below) so
+          // a programmatic 'fit' zoom-out is seen too, not just rider
+          // gestures.
+          const z = e?.nativeEvent?.zoom;
+          if (typeof z === 'number') setLiveZoom(z);
           if (!rotateEnabled) return;
           if (!e?.nativeEvent?.userInteraction) return;
           setUserBearing(e.nativeEvent.bearing);

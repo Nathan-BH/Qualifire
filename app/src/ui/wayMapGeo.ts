@@ -330,6 +330,35 @@ export function waySplitFeatures(
  * present and `gateIdx.length` matches the gate count (the real road either
  * side of the gate); else the chord between the adjacent gates.
  */
+/**
+ * Pixel-floor for a gate tick's geographic half-length, at the CURRENT
+ * MapLibre zoom (not the PNG rung's own asset-pixel scale — see
+ * `metresPerPixel` in wayMapMath.ts, which is a different thing entirely).
+ *
+ * Bug (cycle virgin-cycle10): `gateTicksFeatureCollection` draws each gate
+ * as a fixed-length (default 30 m total) GeoJSON LineString, but the MapLibre
+ * `line-width` paint property is a constant number of SCREEN PIXELS — it
+ * does not scale with zoom. Zoomed in, 30 geographic metres is many screen
+ * pixels and the tick reads as a line; zoomed out to fit a whole ride, 30 m
+ * can be only a couple of screen pixels, and with `line-cap: 'round'` on
+ * both ends a near-zero-length line renders as a filled dot, not a line.
+ *
+ * Fix: instead of a fixed geographic half-length, pick the LARGER of a
+ * fixed geographic floor (`floorM`, still 15 m — unchanged from today at
+ * typical follow/browse zooms) and whatever geographic length currently
+ * projects to `minHalfPx` screen pixels at this zoom. `metresPerPixelAtZoom`
+ * uses the standard Web Mercator constant for 512px tiles (78271.517 =
+ * metres/pixel at zoom 0 on the equator), matching MapLibre GL's own tile
+ * math, and divides by cos(lat) to correct for the Mercator latitude
+ * stretch — this is deliberately a different formula from
+ * `wayMapMath.ts`'s `metresPerPixel()`, which scales a pre-rendered PNG
+ * asset's own fixed pixel grid and has nothing to do with live map zoom.
+ */
+export function gateHalfLenM(lat: number, zoom: number, minHalfPx = 7, floorM = 15): number {
+  const metresPerPixelAtZoom = (78271.517 * Math.cos((lat * Math.PI) / 180)) / Math.pow(2, zoom);
+  return Math.max(floorM, minHalfPx * metresPerPixelAtZoom);
+}
+
 export function gateTicksFeatureCollection(
   a: WayAsset, gateColours?: (string | null)[], halfLenM = 15,
 ): GeoFeatureCollection<LineStringGeometry, GateProperties> {

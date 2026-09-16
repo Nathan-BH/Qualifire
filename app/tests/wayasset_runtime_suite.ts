@@ -29,8 +29,8 @@ import {
   resolveWayAsset, type WayAssetDeps,
 } from '../src/ui/wayAssetRuntime.ts';
 import {
-  allGatesBounds, allGatesFeatureCollection, gateTicksFeatureCollection, wayBounds, wayLineFeature,
-  sectorSpansFeatureCollection,
+  allGatesBounds, allGatesFeatureCollection, gateHalfLenM, gateTicksFeatureCollection, wayBounds,
+  wayLineFeature, sectorSpansFeatureCollection,
 } from '../src/ui/wayMapGeo.ts';
 import { gateTickPx, type WayAsset } from '../src/ui/wayMapMath.ts';
 import { CATALOG_SCHEMA_VERSION } from '../src/store/types.ts';
@@ -144,6 +144,26 @@ test('routeAssetRuntime: the geo builders (routeLineFeature, gateTicksFeatureCol
     assert(Number.isFinite(tick.x0) && Number.isFinite(tick.y0) && Number.isFinite(tick.x1) && Number.isFinite(tick.y1),
       `gateTickPx(${i}) produced a non-finite tick`);
   }
+});
+
+// ---------------------------------------------------------- 3b. gateHalfLenM zoom floor (cycle virgin-cycle10)
+
+test('gateHalfLenM: floors at 15m at a high (follow-mode) zoom, and grows well past it at a low (whole-ride fit) zoom', () => {
+  const lat = 50.88; // Leuven-ish latitude; any mid-latitude works, cos(lat) isn't near a singularity
+  const highZoomHalfLen = gateHalfLenM(lat, 16);
+  assert(highZoomHalfLen === 15, `expected the 15m floor to win at zoom 16, got ${highZoomHalfLen}`);
+
+  const lowZoomHalfLen = gateHalfLenM(lat, 12);
+  assert(lowZoomHalfLen > 15, `expected zoom 12 to grow past the 15m floor, got ${lowZoomHalfLen}`);
+  // Order-of-magnitude sanity, not a brittle exact float: at zoom 12 with the
+  // default 7px minHalfPx, metresPerPixelAtZoom is on the order of tens of
+  // metres, so the result should land well within [15, 500] rather than
+  // blowing up or barely nudging past the floor.
+  assert(lowZoomHalfLen < 500, `expected a sane magnitude at zoom 12, got ${lowZoomHalfLen}`);
+
+  // Monotonic: zooming further out should never shrink the half-length.
+  const lowerZoomHalfLen = gateHalfLenM(lat, 10);
+  assert(lowerZoomHalfLen >= lowZoomHalfLen, 'gateHalfLenM must not shrink as zoom decreases further');
 });
 
 // ---------------------------------------------------------- 4. 2-gate + clamped-chainage edge cases
