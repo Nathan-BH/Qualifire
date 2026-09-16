@@ -74,7 +74,7 @@ scenes. v3 was built the same way as v4; its concat list was not kept (see
 
 ## What else is in this folder
 - `index.html` — stale: the old 11.2s brand teaser. It is not the source of the
-  assembled video and has not been touched since the 2026-09-10 restructure below.
+  assembled video and has not been touched since the 2026-09-10 restructure below. Its sector beat (four bordered boxes with times) predates cycle 9's thin-bar strip in the app (`app/src/ui/chips.tsx`) — do not copy it; the marketing scenes deliberately show no strip.
 - `renders/`, `rounds/v1/` — outputs and feedback of that 11.2s version (history).
 - `parts/` — legacy per-scene cuts, used by v2's concat; superseded by the top-level
   ingredient folders for v3 onward.

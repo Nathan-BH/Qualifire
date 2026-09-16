@@ -90,7 +90,7 @@
   .trow .who  { font-size: 26px; font-weight: 600; color: var(--ink); }
   .trow .time { font-size: 34px; font-weight: 800; color: var(--ink); }
   .trow.today { z-index: 2; }
-  .trow.today .who, .trow.today .time { color: #9000C8; }
+  .trow.today .who, .trow.today .time { color: #00D000; }   /* cycle 9: 17:08.9 is a P2 -> green, not purple (Nathan) */
 
   /* ---- SVG colour tokens (presentation attributes removed from the elements below) ---- */
   #route-casing { stroke: var(--route-casing); }
@@ -111,13 +111,13 @@
       <svg id="mapsvg" class="full-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
         <path id="route-casing" fill="none" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
         <path id="route-core"   fill="none" stroke="#F5C542" stroke-width="6"  stroke-linejoin="round" stroke-linecap="round" />
-        <path class="sector" id="sec1" fill="none" stroke="#00D000" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
-        <path class="sector" id="sec2" fill="none" stroke="#F5C542" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
-        <path class="sector" id="sec3" fill="none" stroke="#9000C8" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
-        <path class="sector" id="sec4" fill="none" stroke="#00D000" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
-        <g class="gate" id="gate1" opacity="0"><line class="gc" stroke-width="8" stroke-linecap="round" /><line class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
-        <g class="gate" id="gate2" opacity="0"><line class="gc" stroke-width="8" stroke-linecap="round" /><line class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
-        <g class="gate" id="gate3" opacity="0"><line class="gc" stroke-width="8" stroke-linecap="round" /><line class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
+        <path class="sector" id="sec1" fill="none" stroke="#00D000" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+        <path class="sector" id="sec2" fill="none" stroke="#F5C542" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+        <path class="sector" id="sec3" fill="none" stroke="#9000C8" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+        <path class="sector" id="sec4" fill="none" stroke="#00D000" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+        <g class="gate" id="gate1" opacity="0"><line class="gc" stroke-width="8" stroke-linecap="round" /><line class="gk" style="stroke: var(--ink)" stroke-width="4" stroke-linecap="round" opacity="1" /></g>
+        <g class="gate" id="gate2" opacity="0"><line class="gc" stroke-width="8" stroke-linecap="round" /><line class="gk" style="stroke: var(--ink)" stroke-width="4" stroke-linecap="round" opacity="1" /></g>
+        <g class="gate" id="gate3" opacity="0"><line class="gc" stroke-width="8" stroke-linecap="round" /><line class="gk" style="stroke: var(--ink)" stroke-width="4" stroke-linecap="round" opacity="1" /></g>
         <circle id="ring-start" r="13" stroke-width="4" opacity="0" />
         <circle id="ring-end"   r="13" stroke-width="4" opacity="0" />
         <circle id="rider" r="11" fill="#2F7DE1" stroke-width="3" opacity="0" />
@@ -156,7 +156,6 @@
           <div class="trow today" id="trow-today" style="top:600px"><span class="who">Today</span><span class="time num">17:08.9</span></div>
         </div>
       </div>
-      <p class="caption" id="capA">Compare directly to your previous ride</p>
       <p class="caption" id="capB">Compare against <span class="em-b">your</span><span class="em-i">selfs</span></p>
     </div>
   </div>
@@ -228,17 +227,12 @@
         prev = p;
       }
     }
-    // Static colour swap when a gate is crossed (the app has no gate pulse).
-    function scoreGate(tl, k, t) {
-      tl.set('#gate' + k + ' .gk', { attr: { stroke: SECTOR_COLORS[k - 1], 'stroke-width': 5, opacity: 1 } }, t);
-    }
 
     var tl = gsap.timeline({ paused: true });
 
-    // Frame 0: end of the second ride — everything scored, rider at the finish.
+    // Frame 0: end of the second ride — every sector painted, gate ticks white (cycle 9), rider at the finish = gates-saving's last frame.
     gsap.set('.sector', { opacity: 1 });
     gsap.set('.gate', { opacity: 1 });
-    for (var k = 1; k <= 3; k++) gsap.set('#gate' + k + ' .gk', { attr: { stroke: SECTOR_COLORS[k - 1], 'stroke-width': 5, opacity: 1 } });
     gsap.set(['#ring-start', '#ring-end'], { opacity: 1 });
     gsap.set('#rider', { opacity: 1, attr: { cx: P1.x, cy: P1.y } });
 
@@ -259,28 +253,29 @@
 
     // Beat 2 (3.0-5.4): "Today" climbs the tower. Old P10 (12 Aug / trow-10) fades out and drops
     // off the bottom first; Today emerges just below slot 10 (top:600px) and rides 540px up to
-    // slot 2 in one continuous glide (power1.inOut, 2.2 s). Each row it overtakes steps down one
-    // slot (60px, this tower's row pitch), centred on the moment Today crosses it. Step times are
-    // pre-computed from the climb's easing (quad inOut inverse) — no callbacks, frame-seek safe.
+    // slot 2 in one continuous glide (power2.out, 2.2 s -- cycle 9: fast off the line, decelerating
+    // into slot 2; was power1.inOut, which Nathan read as constant speed; total time unchanged).
+    // Each row it overtakes steps down one slot (60px, this tower's row pitch), centred on the
+    // moment Today crosses it. Step times are pre-computed from the climb's easing (power2.out
+    // inverse: u = 1 - sqrt(1 - e)) — no callbacks, frame-seek safe.
     tl.to('#trow-10', { opacity: 0, y: 60, duration: 0.35, ease: 'power2.in' }, 3.00);
     var CLIMB_T0 = 3.20, CLIMB_DUR = 2.2;
-    tl.fromTo('#trow-today', { y: 0 }, { y: -540, duration: CLIMB_DUR, ease: 'power1.inOut' }, CLIMB_T0);
-    tl.fromTo('#trow-today', { opacity: 0 }, { opacity: 1, duration: 0.4, ease: 'power1.out' }, CLIMB_T0);
+    tl.fromTo('#trow-today', { y: 0 }, { y: -540, duration: CLIMB_DUR, ease: 'power2.out' }, CLIMB_T0);
+    // Fade-in shortened 0.4 -> 0.25 with the new ease: Today now reaches row 9 at 3.39s and should be solid by then.
+    tl.fromTo('#trow-today', { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'power1.out' }, CLIMB_T0);
     // [row, start] — start = (CLIMB_T0 + u_cross * CLIMB_DUR) - 0.15, where u_cross is when Today's
-    // top is half a slot below that row's top (Today at slot 10 pitch, rows at 60*(k-1)).
-    var STEP_DOWN = [[9, 3.69], [8, 3.87], [7, 4.02], [6, 4.15], [5, 4.28], [4, 4.43], [3, 4.62], [2, 4.88]];
+    // top is half a slot below that row's top (Today at slot 10 pitch, rows at 60*(k-1)):
+    // e_cross(k) = (570 - 60*(k-1)) / 540, u_cross = 1 - sqrt(1 - e_cross).
+    var STEP_DOWN = [[9, 3.24], [8, 3.38], [7, 3.53], [6, 3.69], [5, 3.88], [4, 4.09], [3, 4.35], [2, 4.73]];
     STEP_DOWN.forEach(function (s) {
       tl.to('#trow-' + s[0], { y: 60, duration: 0.3, ease: 'power2.inOut' }, s[1]);
     });
     // hold 5.4-5.9
 
-    // Beat 3 (5.9-7.9): caption.
-    tl.fromTo('#capA', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 5.90);
-    tl.to('#capA', { opacity: 0, duration: 0.4 }, 7.50);
-    tl.set('#capA', { opacity: 0 }, 7.90);
-
-    // Beat 4 (8.2-10.8): caption, out at the 10.8 end.
-    tl.fromTo('#capB', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 8.20);
+    // Beat 3 (5.9-10.8): the one caption (cycle 9: "Compare directly to your previous ride" removed per Nathan;
+    // "Compare against yourselfs" now comes in where the first caption used to, 5.9, and holds to the same
+    // 10.4 fade / 10.8 hard kill, so the scene length and the teaser cut sheet are unchanged).
+    tl.fromTo('#capB', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 5.90);
     tl.to('#capB', { opacity: 0, duration: 0.4 }, 10.40);
     tl.set('#capB', { opacity: 0 }, 10.8);
 

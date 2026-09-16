@@ -112,10 +112,10 @@
         <svg data-hf-id="hf-clm9" id="mapsvg" class="full-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
           <path data-hf-id="hf-8arj" id="route-casing" fill="none" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
           <path data-hf-id="hf-ze3x" id="route-core" fill="none" stroke="#F5C542" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" />
-          <path data-hf-id="hf-l2w9" class="sector" id="sec1" fill="none" stroke="#00D000" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
-          <path data-hf-id="hf-si8b" class="sector" id="sec2" fill="none" stroke="#F5C542" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
-          <path data-hf-id="hf-ofvj" class="sector" id="sec3" fill="none" stroke="#9000C8" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
-          <path data-hf-id="hf-3itu" class="sector" id="sec4" fill="none" stroke="#00D000" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+          <path data-hf-id="hf-l2w9" class="sector" id="sec1" fill="none" stroke="#00D000" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+          <path data-hf-id="hf-si8b" class="sector" id="sec2" fill="none" stroke="#F5C542" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+          <path data-hf-id="hf-ofvj" class="sector" id="sec3" fill="none" stroke="#9000C8" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+          <path data-hf-id="hf-3itu" class="sector" id="sec4" fill="none" stroke="#00D000" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
           <g data-hf-id="hf-f0p9" class="gate" id="gate1" opacity="0"><line data-hf-id="hf-07c7" class="gc" stroke-width="8" stroke-linecap="round" /><line data-hf-id="hf-z04u" class="gk" style="stroke: var(--ink)" stroke-width="4" stroke-linecap="round" opacity="1" /></g>
           <g data-hf-id="hf-4pe2" class="gate" id="gate2" opacity="0"><line data-hf-id="hf-g1jb" class="gc" stroke-width="8" stroke-linecap="round" /><line data-hf-id="hf-26ia" class="gk" style="stroke: var(--ink)" stroke-width="4" stroke-linecap="round" opacity="1" /></g>
           <g data-hf-id="hf-eh3b" class="gate" id="gate3" opacity="0"><line data-hf-id="hf-fn8a" class="gc" stroke-width="8" stroke-linecap="round" /><line data-hf-id="hf-2ktb" class="gk" style="stroke: var(--ink)" stroke-width="4" stroke-linecap="round" opacity="1" /></g>
@@ -228,10 +228,6 @@
         prev = p;
       }
     }
-    // Static colour swap when a gate is crossed (the app has no gate pulse).
-    function scoreGate(tl, k, t) {
-      tl.set('#gate' + k + ' .gk', { stroke: SECTOR_COLORS[k - 1], attr: { 'stroke-width': 5, opacity: 1 } }, t);
-    }
 
     var tl = gsap.timeline({ paused: true });
 
@@ -271,13 +267,14 @@
     tl.to('#capB', { opacity: 0, duration: 0.4 }, 11.9);
     tl.set('#capB', { opacity: 0 }, 12.3);
 
-    // Beat 4 (4.8-11.7): second ride. Crossing a gate = static colour swap + the sector paints its tier.
+    // Beat 4 (4.8-11.7): second ride. Crossing a gate = that sector paints its tier colour (cycle 9: the overlay
+    // is now the core's own 6px, so the line changes colour but never width; the gate ticks stay white -- the
+    // old recolour-on-cross was never a wanted feature, per Nathan).
     var RIDE_T0 = 4.8, RIDE_DUR = 6.9;
     tl.fromTo('#rider', { opacity: 0 }, { opacity: 1, duration: 0.3, immediateRender: false }, 4.4);
     ride(tl, RIDE_T0, RIDE_DUR);
     GATES.forEach(function (f, i) {
       var t = RIDE_T0 + f * RIDE_DUR;
-      scoreGate(tl, i + 1, t);
       tl.to('#sec' + (i + 1), { opacity: 1, duration: 0.25 }, t);
     });
     tl.to('#sec4', { opacity: 1, duration: 0.25 }, RIDE_T0 + RIDE_DUR);

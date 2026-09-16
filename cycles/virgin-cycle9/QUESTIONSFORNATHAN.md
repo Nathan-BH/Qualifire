@@ -1,7 +1,10 @@
 # Questions for Nathan — cycle 9 (sector strip → thin bars)
 
-**Status: all answered 2026-09-16, folded into `BRIEF-sector-strip-bars.md` (see its
-"Revision note"). Kept here as the record of the Q&A, not as open blockers anymore.**
+**Status: all five questions answered 2026-09-16. Q1-Q4 folded into
+`BRIEF-sector-strip-bars.md` (see its "Revision note"). Q5 (added later the same day, for the
+marketing sub-task) was answered the same day and OVERRULED the brief's default — Nathan's
+answer and his four extra feedback items are folded into the revised
+`BRIEF-marketing-sector-update.md`. Kept as the record of that Q&A.**
 
 ## Ready to execute — no answer needed (unchanged from the first draft)
 
@@ -58,3 +61,40 @@
    **Answer:** No I do not want a progressive fill, just flip upon completion.
 
    → Confirmed as the end state, not a stepping stone. Not queued anywhere as a future item.
+
+## Q5, 2026-09-16 — marketing scenes (`BRIEF-marketing-sector-update.md`) — ANSWERED
+
+Was framed as non-blocking ("Execute proceeds on the default below"); Nathan answered before
+Execute ran and rejected the default (keep the painted route, no strip, only the thickening
+goes, ticks white). The brief was rewritten accordingly the same day — its old Task 1/Task 2
+no longer exist. His answer, and the four extra items he added for the same remake pass, are
+kept verbatim below.
+
+5. **Route-line colouring in the marketing scenes.** The app's new default is a plain yellow
+   line with the tiers shown only in the thin-bar strip (sector-coloured lines are now an
+   opt-in). Today `gates-saving` paints each sector of the route in its tier colour as the
+   rider crosses the gate (and, unnoticed until now, thickens the line 6→9px doing it — the
+   same effect you had removed from the app), and `ranking` opens on the fully painted route
+   under its dim. The DEMO screen in-app still shows sector colours regardless of the toggle,
+   so there's a case for treating these showcase renders the same way.
+
+   **Default the brief instructs:** follow the new default — (a) the route stays plain yellow
+   in both scenes, and gates-saving gets the app's real strip (S1-S4 label + thin bar, 2x the
+   app's values, above the caption) that flips slot by slot as the gates are crossed; ranking
+   just drops the painted backdrop. (b) The little gate ticks still recolour on crossing as
+   they do today — that's not app behaviour (real ticks stay white) but it's a 44px tick, not
+   the line, and it links the map instant to the strip flip; kept because removing it wasn't
+   asked. (c) The strip fades out with the last caption so gates-saving's final frame still
+   matches ranking's first frame (the existing match-cut) — no strip in ranking.
+
+   Alternatives if you disagree: keep the painted route in the marketing scenes as the
+   showcase moment (with or without the strip on top — with both, note that's the "too much
+   colour" you named); or drop the gate-tick recolour too so the strip is the only tier cue.
+   Which do you want — the default, or one of these?
+
+   **Answer:** for the renders I would actually keep the race line colouring when you cross it (so do not change it to yellow all along). And I would not add the strips, as for the video it would not read nice. So the only update really needed to the renders is removing the line thickening. And also remove the gates themselves being coloured, it was never a feature I wanted but I never corrected it. So I would just keep the gates white all along
+
+While you are remaking the video renders, I have other feedback you can fold in:
+- for the ranking render. 1) the ride that gets added at position2 should be coloured green not purple since it is a P2 not a P1. 2) I would make go up fast and then slow down as it gets to its correct position (I think now it is constant speed) while the total time it takes should be the same as now.
+-I would remove the "compare directly against your previous ride". And just keep the "compare against yourselfs" line
+- I would also update the current closing render. I would just use the second part of the opening render (so not the logo drawing, but only the qualifier text + the slogan beneath it)

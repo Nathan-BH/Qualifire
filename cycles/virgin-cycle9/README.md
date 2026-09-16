@@ -1,6 +1,6 @@
 # virgin-cycle9 — tier-colour revert + sector strip → thin bars (Nathan's colour-overload feedback)
 
-**Status (2026-09-16): done**, pending Nathan's own on-device look. Every code change landed
+**Status (2026-09-16): app work done**, pending Nathan's own on-device look; a second sub-task (marketing scenes) is briefed, revised after Nathan's Q5 answer, executed, and fresh-Inspect PASSed — pending Nathan's render step and commit. Every code change landed
 and passed a fresh-context Inspect. See `CONTEXT.md` for the full chat log and reasoning
 behind every decision below — including a correction: this file and `STATE.md`/
 `OPEN-ITEMS.md` briefly stated the wrong outcome on the tier-hex question earlier in this
@@ -27,8 +27,9 @@ too.
 | Sector strip: boxes → thin bars | `StripSlot` (chips.tsx): four filled/outlined boxes → label + 6dp bar per sector, grey until completed with an earned tier, no current-sector cue (Nathan: the `contextLabel` line above the clock already names it). Confined to `chips.tsx`; `liveView.tsx`/`RecordScreen.tsx`/`DemoScreen.tsx` needed no changes. | **Executed + fresh-Inspect PASS**, commits `f60b6d0`/`80b4145`/`7d097eb` |
 | Sector-spans map line-width bump removed | `wayMapView.tsx`'s `sector-spans-core` layer: width 6 → 4 (matches the base route/trail core). Was visibly thickening the line the instant a sector completed — Nathan noticed on DEMO, "not a feature I asked for." | **Executed**, commit `eb8ad99` |
 | Tier colours reverted to cycle7's F1-broadcast hex | `theme.ts`, `wayMapStyle.ts`'s D-030 hue-band firewall + its 2 test suites, the launcher icon PNGs, and every marketing/product file cycle8's colour swap touched — all restored byte-for-byte from before that commit (sha256-verified). Cycle8's own docs/scripts kept. | **Executed**, commit `950a72e` |
+| Marketing scenes: render-remake pass | `BRIEF-marketing-sector-update.md` (revised after Nathan's Q5 answer, which overruled the first draft's plain-yellow-route + strip plan) — `gates-saving/index.html` + `ranking/index.html`: painted route kept, its 9px overlays → the core's 6px (colour flips, no thickening), gate ticks white throughout, no strip; `ranking` also: Today row green (P2), climb `power2.out` at the same 2.2s with recomputed row step-downs, one caption instead of two; `brandmark/closing/index.html`: rebuilt as opening's wordmark + tagline beat (no mark), still 4.0s. `start-ride`, `colours`, `opening`, `teaser/index.html` out of scope. Renders are Nathan's step (three compositions); rounds/all-renders/teaser v7/audio are a follow-up. | **Executed, fresh-Inspect PASS — pending Nathan's own render step (see PowerShell below), not yet committed** |
 
-Open taste-call questions (all answered, none blocking): `QUESTIONSFORNATHAN.md`.
+Taste-call questions: `QUESTIONSFORNATHAN.md` — Q1-Q5 all answered (Q5's answer overruled the marketing brief's default; brief revised).
 
 ## Digest → Plan → Execute → Inspect readout (sector-strip redesign)
 
@@ -54,4 +55,7 @@ threshold and because no design decision was actually open in any of the three.
   and the reasoning behind each
 - `BRIEF-sector-strip-bars.md` — the strip redesign's implementation brief (as executed —
   revised twice: once for Nathan's Q&A, once for the doc-comment ambiguity)
-- `QUESTIONSFORNATHAN.md` — taste-call questions, all answered
+- `BRIEF-marketing-sector-update.md` — sub-task 2: the marketing render-remake pass
+  (briefed 2026-09-16, revised the same day on Nathan's Q5 answer + four extra feedback
+  items; executed + Inspect PASS; renders are Nathan's step)
+- `QUESTIONSFORNATHAN.md` — taste-call questions; Q1-Q5 all answered

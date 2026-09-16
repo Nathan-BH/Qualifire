@@ -39,7 +39,7 @@ day file per composition, same vN. Full ruling and mechanism:
 |---|---|---|---|---|
 | `brandmark/` | base lockup (mark + wordmark) | yes | — (asset, not itself in teaser) | `brandmark/rounds/v1/FEEDBACK.md` |
 | `brandmark/opening/` | lockup variant: draw-in + tagline cross-fade | yes (4,234 bytes) | 1 | `brandmark/opening/rounds/v1/FEEDBACK.md` |
-| `brandmark/closing/` | lockup variant: fade-in + yellow wordmark | yes (4,189 bytes) | 6 | `brandmark/closing/rounds/v1/FEEDBACK.md` |
+| `brandmark/closing/` | lockup variant: wordmark + tagline only (opening's second part) | yes (4,189 bytes) | 6 | `brandmark/closing/rounds/v1/FEEDBACK.md` |
 | `start-ride/` | product scene: start button, route draws | yes (v2, 2026-09-10; needs `map.png`, see `_map/`) | 2 | `start-ride/rounds/v2/FEEDBACK.md` (most recent round) |
 | `gates-saving/` | product scene: gates pop in, second ride | yes (v2, 2026-09-10; needs `map.png`, see `_map/`) | 3 | `gates-saving/rounds/v2/FEEDBACK.md` (most recent round) |
 | `ranking/` | product scene: rank fragment, timing tower | yes (v2, 2026-09-10; needs `map.png`, see `_map/`) | 4 | `ranking/rounds/v2/FEEDBACK.md` (most recent round) |

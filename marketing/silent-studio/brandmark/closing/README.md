@@ -1,11 +1,11 @@
-# brandmark/closing — lockup variant: mark fade-in, then yellow wordmark
+# brandmark/closing — lockup variant: wordmark + tagline (opening's second part)
 
 One of the brandmark lockup variants (see ../README.md for the family and the
 survey of variants). This is the teaser's closing (position 6 of ../../teaser/).
 
-Behaviour: as of round v2 this is now a standalone HyperFrames composition
-(`index.html`, timeline id `closing`, 4.0s) — mark fades in, QUALIFIRE
-wordmark fades in, tagline fades in beneath it, holds, fades to black.
+Behaviour: as of round v4 this is opening's second part re-used as the outro — no
+mark; off-white QUALIFIRE wordmark fades in, tagline fades in beneath it, holds,
+fades to black (v2-v3 showed the finished mark + a yellow wordmark).
 Render with `.\render.ps1 -Name brandmark\closing -Render` from
 marketing/silent-studio/.
 
@@ -23,3 +23,4 @@ Duration: 4.0s.
 |---|---|---|---|
 | [v1](rounds/v1/FEEDBACK.md) | closing_v1.mp4 | 2026-09-10 | Awaiting feedback |
 | [v2](rounds/v2/FEEDBACK.md) | closing_v2.mp4 | 2026-09-10 | Not rendered yet |
+| [v4](rounds/v4/FEEDBACK.md) | closing_v4.mp4 | 2026-09-16 | Built, awaiting Nathan's render — cycle 9: opening's second part re-used, no mark |

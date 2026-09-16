@@ -235,3 +235,82 @@ against the parent commit's blob before committing. `theme.ts` confirmed:
 purple `#9000C8`, green `#00D000`, yellow `#F5C542`, `purpleDeep` `#65008C`. Tests 583/583,
 tsc clean. Committed `950a72e`. `STATE.md`, `OPEN-ITEMS.md` and this file's "Decision 1"
 corrected in the same pass.
+
+## Sub-task 2, 2026-09-16 — apply the sector update to the marketing scenes (briefed, not executed)
+
+Nathan, after the app work above had landed: *"can you also apply the new UI sector update
+to the marketing files. Make new versions of each render with the new update, then update
+the all-renders folder for both the silent/audio-studio renders."* — then, mid-turn:
+*"make a new brief for it in cycles/virgin-cycle9 so it is part of the same cycle."*
+
+Ran Digest (Haiku) over every `marketing/silent-studio/*/index.html`, then a Fable Plan pass
+that re-read every composition in full (repo mounted this time) — and found the digest had
+missed something: the digest called the product scenes' stroke widths "constant", but
+`gates-saving` and `ranking` paint each scored sector as a **9px overlay over the 6px core**,
+i.e. the line thickens on completion — the exact effect removed from the app in `eb8ad99`.
+Per-scene outcome: only `gates-saving` (live ride: painted route → plain yellow + the app's
+real thin-bar strip added, flipping at the gate instants) and `ranking` (one line: its painted
+backdrop → plain yellow) need edits; `start-ride` already draws a plain yellow line (its
+sector paths exist but are never revealed), `colours` is a chart with no phone UI, and
+`teaser/index.html` is stale by record (the real teaser is an ffmpeg concat) — all three
+explicitly out of scope, not silently skipped. The one genuine taste call — plain line + strip
+(the default the brief instructs) vs keeping the painted route as a showcase like DEMO — is
+logged as Q5 in `QUESTIONSFORNATHAN.md`, non-blocking.
+
+Hard constraint written into the brief: this session can edit the `index.html` sources but
+cannot render (HyperFrames needs npm/Chrome/ffmpeg in Nathan's own PowerShell —
+`qualifire-cloud-sandbox-no-npm`). So Execute is scoped to source edits + the two rounds'
+`FEEDBACK.md`; Nathan then runs `render.ps1 -Name gates-saving -Render` and
+`-Name ranking -Render`; picking the renders into `rounds/v6`, both `all-renders/` mirrors,
+the teaser v7 concat and the audio-studio remuxes (soundv4 / soundv3 / soundv3) are a
+separate follow-up once the mp4s exist — none of that is claimed by the brief's Execute task.
+
+Brief: `BRIEF-marketing-sector-update.md`. Status: briefed, not yet executed.
+
+## Sub-task 2 revised, 2026-09-16 (later the same day) — Nathan answered Q5 and overruled the default
+
+Nathan answered `QUESTIONSFORNATHAN.md` Q5 in the file (verbatim):
+
+> *"for the renders I would actually keep the race line colouring when you cross it (so do not
+> change it to yellow all along). And I would not add the strips, as for the video it would
+> not read nice. So the only update really needed to the renders is removing the line
+> thickening. And also remove the gates themselves being coloured, it was never a feature I
+> wanted but I never corrected it. So I would just keep the gates white all along"*
+
+And added four more items for the same render-remake pass (verbatim):
+
+> *"While you are remaking the video renders, I have other feedback you can fold in:*
+> *- for the ranking render. 1) the ride that gets added at position2 should be coloured green
+> not purple since it is a P2 not a P1. 2) I would make go up fast and then slow down as it
+> gets to its correct position (I think now it is constant speed) while the total time it
+> takes should be the same as now.*
+> *-I would remove the "compare directly against your previous ride". And just keep the
+> "compare against yourselfs" line*
+> *- I would also update the current closing render. I would just use the second part of the
+> opening render (so not the logo drawing, but only the qualifier text + the slogan beneath
+> it)"*
+
+So the first brief's Task 1 (flatten gates-saving's route to yellow + add the app's S1-S4
+strip) and Task 2 (ranking opens on a plain-yellow backdrop) were wrong and were replaced, not
+kept as "superseded" clutter. A fresh Fable Plan pass re-read `gates-saving`, `ranking`,
+`brandmark/opening` and `brandmark/closing` in full and rewrote
+`BRIEF-marketing-sector-update.md` in place. What it now instructs (nine numbered tasks, of
+which Task 3 is a deliberate "no strip — nothing to do" placeholder): the `sec1..4` overlays go
+from 9px to the core's 6px in both product scenes (colour still flips on crossing, width never
+changes); gate ticks white throughout in both (`scoreGate` deleted, ranking's tick base
+attributes matched to gates-saving's so the match-cut still holds); ranking's Today row green
+(`#00D000`) instead of purple; the climb's ease `power1.inOut` → `power2.out` at the same 2.2s
+with the eight row step-down instants recomputed for the new ease (the method was verified by
+reproducing the file's current values from the old ease first) and Today's fade-in shortened
+0.4 → 0.25s so it's solid when it meets the first row; capA removed and capB moved to start at
+5.9s (holding to its existing 10.4/10.8 exit, scene stays 10.8s); and closing rebuilt as a
+verbatim copy of opening's post-mark beat (off-white wordmark + tagline, opening's own tweens
+shifted by −2.80s, opening's 0.8s fade), kept at 4.0s with a longer hold since it's the outro.
+Plan's least-certain call, flagged in the brief and its FEEDBACK template: the closing wordmark
+is opening's off-white rather than closing's previous yellow — a literal reading of "use the
+second part of the opening render"; it's a one-token switch if Nathan wants the yellow back.
+Nathan now renders three compositions (`gates-saving`, `ranking`, `brandmark\closing`); the
+follow-up (rounds v6/v6/v4, both all-renders mirrors, teaser v7, audio rounds) now also
+notes that ranking's and closing's soundtracks need small re-compositions, not plain remuxes
+(purple chime / two-caption pads / mark hit no longer match the picture). Status: brief
+revised, ready for Execute, not yet executed.

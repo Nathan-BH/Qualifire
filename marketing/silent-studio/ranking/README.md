@@ -16,3 +16,4 @@ Duration: 10.0s.
 | [v1](rounds/v1/FEEDBACK.md) | ranking_v1.mp4 | 2026-09-10 | Awaiting feedback |
 | [v2](rounds/v2/FEEDBACK.md) | ranking_v2.mp4 | 2026-09-10 | Built, awaiting Nathan's render |
 | [v3](rounds/v3/FEEDBACK.md) | ranking_v3.mp4 | 2026-09-10 | Awaiting render/feedback |
+| [v6](rounds/v6/FEEDBACK.md) | ranking_v6.mp4 | 2026-09-16 | Built, awaiting Nathan's render — cycle 9 render-remake (no line thickening, white ticks, ranking: green P2, fast-settle climb, one caption) |
