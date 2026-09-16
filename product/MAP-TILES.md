@@ -83,7 +83,7 @@ Known trap (confirmed by MAPLIBRE-SPIKE.md §3, consistent with the brief): MapL
 |---|---|---|---|
 | `landuse_residential` | `fill-color` | `#EDEAE0` | desaturated beige residential ground |
 | `landcover_wood` | `fill-color` | `#D8D8CE` | (previously modelled as `wood`) |
-| `park` | `fill-color` | `#DCDCD2` | grey, NOT hue 67-107 (D-030) |
+| `park` | `fill-color` | `#DCDCD2` | grey, NOT hue 100-140 (D-030) |
 | `water` | `fill-color` | `#B9C4CC` | muted blue, low sat |
 | `highway_major_inner` | `line-color` | `#C9C6BC` | neutral, not yellow/purple (previously `road_major`) |
 | `highway_minor` | `line-color` | `#D6D3C9` | (previously `road_minor`) |
@@ -94,14 +94,14 @@ Hide while moving: layers matching `highway-name-*` and `label_*` via `layout.vi
 ```jsx
 <GeoJSONSource id="route" shape={routeGeoJSON}>
   <Layer id="route-casing" type="line" paint={{ 'line-color': '#14120C', 'line-width': 7 }} />
-  <Layer id="route-line" type="line" paint={{ 'line-color': '#FFDE6D', 'line-width': 4 }} />
+  <Layer id="route-line" type="line" paint={{ 'line-color': '#F5C542', 'line-width': 4 }} />
 </GeoJSONSource>
 <GeoJSONSource id="gates" shape={gatesGeoJSON}>
   <Layer id="gate-circles" type="circle" paint={{ 'circle-radius': 8, 'circle-color': '#E8E4DA', 'circle-stroke-color': '#14120C', 'circle-stroke-width': 2 }} />
 </GeoJSONSource>
 ```
 `GeoJSONSource`/`Layer` component names [UNVERIFIED — check v11 export names before use].
-CASING `#14120C` (RGB 20,18,12) and route yellow `#FFDE6D` (RGB 255,222,109) are the current app/render values (cycle8, 2026-09-15); `08_build_route_assets.py` (retired, `safe_to_delete/virgin-branch-cut-20260831/data/analysis/`) still has the pre-cycle8 `#F5C542` and is not live source, so no longer worth comparing against.
+Both match `08_build_route_assets.py`'s constants exactly: CASING `#14120C` (RGB 20,18,12), route yellow `#F5C542` (RGB 245,197,66).
 
 ## 6. Attribution — exact strings, placement
 

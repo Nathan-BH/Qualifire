@@ -13,10 +13,10 @@ export const colors = {
   ink: '#F4F2EC', // --ink
   inkDim: '#9a978f', // --ink-dim
   grey: '#6f6e6a', // --grey — NO-DATA only
-  purple: '#6D4E9C', // filled tier — fastest of the ranking pool (colourModel.ts)
-  purpleDeep: '#4C376D', // darker purple (channels x0.7 of `purple`) — unreferenced today; keep in step with `purple`
-  green: '#8BCD39', // outlined tier — above the pool's recent average
-  neutral: '#FFDE6D', // flat tier / accent — warm, never grey
+  purple: '#9000C8', // filled tier — fastest of the ranking pool (colourModel.ts)
+  purpleDeep: '#65008C', // darker purple (channels x0.7 of `purple`) — unreferenced today; keep in step with `purple`
+  green: '#00D000', // outlined tier — above the pool's recent average
+  neutral: '#F5C542', // flat tier / accent — warm, never grey
   white: '#FFFFFF', // structural markers (gates) — not a tier colour
   amber: '#E8A33D', // warnings (D-013: this, not red)
   riderBlue: '#2F7DE1', // rider dot — the universal "you are here" hue; never a tier colour (D-030), never red (D-013)
@@ -42,7 +42,7 @@ export const colors = {
  *
  * `accentText` exists because the structural yellow fails contrast as TEXT
  * on a light ground — daylight uses a darker gold for yellow *text* while
- * yellow *surfaces* (START, Export) stay #FFDE6D everywhere.
+ * yellow *surfaces* (START, Export) stay #F5C542 everywhere.
  */
 export interface PaddockTheme {
   bg: string;

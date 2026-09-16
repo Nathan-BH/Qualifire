@@ -3,11 +3,11 @@
  * synthetic MapLibre style and checks both jobs: label visibility toggling
  * and the D-030 palette firewall.
  *
- * NOTE on the swatches (virgin-cycle8, 2026-09): the firewall bands are ±20°
- * around QUALIFIRE's actual tier hues — colors.green #8BCD39 (hue ~87) →
- * [67,107], colors.purple #6D4E9C (hue ~264) → [244,284] — i.e. the firewall
+ * NOTE on the swatches (virgin-cycle7, 2026-09): the firewall bands are ±20°
+ * around QUALIFIRE's actual tier hues — colors.green #00D000 (hue 120) →
+ * [100,140], colors.purple #9000C8 (hue ~283) → [263,303] — i.e. the firewall
  * protects the app's own tier colours, not "green"/"purple" in general. The
- * in-band green swatch below is '#88CC44' (hue 90, S ~57%) for that reason.
+ * in-band green swatch below is '#44CC44' (hue 120, S ~57%) for that reason.
  */
 import { assert, test } from './lib.ts';
 import { patchMapStyle } from '../src/ui/wayMapStyle.ts';
@@ -20,7 +20,7 @@ function buildStyle() {
       {
         id: 'background',
         type: 'background',
-        paint: { 'background-color': '#88CC44' }, // in-band green (hue 90), S ~57% -> must desaturate
+        paint: { 'background-color': '#44CC44' }, // in-band green (hue 120), S ~57% -> must desaturate
       },
       {
         id: 'park',
@@ -76,7 +76,7 @@ test('routemapstyle: palette firewall desaturates an in-band green background', 
   const m = /^hsl\(([\d.]+), ([\d.]+)%, ([\d.]+)%\)$/.exec(bg as string);
   assert(m !== null, `background-color did not match hsl() shape: ${bg}`);
   const [, h, s] = m!;
-  assert(Math.abs(parseFloat(h) - 90) < 1, `hue drifted: expected ~90, got ${h}`);
+  assert(Math.abs(parseFloat(h) - 120) < 1, `hue drifted: expected ~120, got ${h}`);
   assert(Math.abs(parseFloat(s) - 20) < 0.01, `saturation not flattened to 20%, got ${s}%`);
 });
 

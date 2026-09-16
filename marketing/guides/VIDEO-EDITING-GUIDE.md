@@ -38,9 +38,9 @@ marketing/silent-studio/teaser/index.html
 
 Open it in any text editor. It has three kinds of things you can change:
 
-- **Colours** — hex codes in the `<style>` block (ink `#F4F2EC`, yellow `#FFDE6D`,
+- **Colours** — hex codes in the `<style>` block (ink `#F4F2EC`, yellow `#F5C542`,
   background `#0A0A0A`) and the tier array in the script:
-  `var SECTOR_COLORS = ['#FFDE6D', '#8BCD39', '#FFDE6D', '#6D4E9C'];`
+  `var SECTOR_COLORS = ['#F5C542', '#00D000', '#F5C542', '#9000C8'];`
 - **Text** — literally the words in the HTML: `Same road. New meaning.`, `P2`,
   `of your last 10 rides`, the sector times `38.2`, `1:02.9`, …
 - **Timing** — each `tl.fromTo(...)` / `tl.to(...)` line ends with the start time in

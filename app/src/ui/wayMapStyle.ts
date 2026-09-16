@@ -10,8 +10,8 @@
  *     control-free (D-006); a road name on it is a distraction the rider
  *     cannot safely read.
  *  2. Palette firewall (D-030, ALWAYS applied, independent of hideLabels):
- *     colors.green (#8BCD39, hue ~87) and colors.purple (#6D4E9C, hue
- *     ~264) in theme.ts are score-only colours — the basemap may never wear
+ *     colors.green (#00D000, hue 120) and colors.purple (#9000C8, hue
+ *     ~283) in theme.ts are score-only colours — the basemap may never wear
  *     a colour close enough to read as a tier verdict. Any '*-color' paint
  *     value landing within ±20° of either hue, with enough saturation to
  *     actually read as a colour rather than a near-grey, gets its
@@ -22,10 +22,10 @@ export interface PatchStyleOptions {
   hideLabels: boolean;
 }
 
-const GREEN_HUE_MIN = 67;
-const GREEN_HUE_MAX = 107;
-const PURPLE_HUE_MIN = 244;
-const PURPLE_HUE_MAX = 284;
+const GREEN_HUE_MIN = 100;
+const GREEN_HUE_MAX = 140;
+const PURPLE_HUE_MIN = 263;
+const PURPLE_HUE_MAX = 303;
 const SAT_THRESHOLD = 25; // percent — above this a colour reads as a colour, not a near-grey
 const FLATTENED_SAT = 20; // percent — the value the firewall clamps down to
 

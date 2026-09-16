@@ -96,7 +96,7 @@ a slim ribbon directly **beneath** the sector-block row, same full width, capped
 | Stopped-at-light | identical to moving | identical | identical | identical | a light is not a finish; loosening only to snap back at green would be a distraction exactly when traffic needs attention. Dims to ~40% opacity in step with the counter's own stationary dim (LAYOUT §2 rule 3), for one visual language |
 | Finished | held at last heading (no spin) | releases, may grow | return | pan/zoom/layer-switch unlocked | ribbon may expand toward a browsable panel (B-57's view-trace precedent) |
 
-**Route/gates/dot on real tiles.** Route line: 4 pt core (#FFDE6D, unchanged) + 2 pt near-black casing
+**Route/gates/dot on real tiles.** Route line: 4 pt core (#F5C542, unchanged) + 2 pt near-black casing
 (#14120C) on streets; satellite gets the §7 sandwich instead. Gates: perpendicular **ring**, never a dot
 (extending B-31's own rule — "a dot hides a line clipping a parallel road" — from the eyeball tool to the live
 map); 12 px, unscored = casing-outline only (no fill — visible structure, silent), scored = filled in the
@@ -107,12 +107,12 @@ border; desaturates to `t.textDim` grey off-route (D-025 honesty, unchanged).
 bottom-left, translucent card chip. Same component, now sitting on real tiles instead of a painted PNG.
 
 **Palette firewall.** Carried from B-32/Art Director's spec: nothing in the basemap style (streets or
-satellite, excluding scored gate fills) may sit in HSL hue 67–107 or 244–284 at S>25% — green/purple stay
+satellite, excluding scored gate fills) may sit in HSL hue 100–140 or 263–303 at S>25% — green/purple stay
 score-only. **New finding, flagged not fixed here:** the current on-route dot and fallback line both render in
-`colors.neutral` (#FFDE6D) — this is the **yellow scored-tier** colour (`chips.tsx` `YELLOW_TIER = colors.neutral`),
+`colors.neutral` (#F5C542) — this is the **yellow scored-tier** colour (`chips.tsx` `YELLOW_TIER = colors.neutral`),
 not the neutral (no-verdict) tier; the `'neutral'` UiTier itself (no verdict) renders `t.accentText`, a different
 colour entirely. `theme.ts` already precedents dual
-use ("yellow *surfaces*… stay #FFDE6D everywhere" — START/Export use it as brand accent, not score); not
+use ("yellow *surfaces*… stay #F5C542 everywhere" — START/Export use it as brand accent, not score); not
 reopening that here. On satellite specifically, that gold/amber sits close in hue to sunlit tan/brick/dry-grass
 pixels — a legibility problem before it's a trust problem (§7's fix should resolve it; if it doesn't, the honest
 move is a satellite-only route colour, not a redesign of the neutral tier).
@@ -140,7 +140,7 @@ switches.
 Satellite imagery has no guaranteed-contrast flat ground, unlike a designed vector style — sunlit concrete, dry
 grass and rooftops drift into the same warm gold/tan band the route colour already lives in (§5 firewall
 finding). **Rule, satellite layer only:** the route line renders as a three-layer sandwich, outer→inner — 1 pt
-near-white halo (~70% opacity) → 3 pt near-black casing (up from 2 pt) → 4 pt route-colour core (#FFDE6D,
+near-white halo (~70% opacity) → 3 pt near-black casing (up from 2 pt) → 4 pt route-colour core (#F5C542,
 unchanged). The halo guarantees a light-value ring for dark pixels (shadow, asphalt); the widened casing
 guarantees a dark-value ring for light pixels (concrete, sun-bleached grass). The streets layer keeps its plain
 2 pt single casing — a flat vector ground doesn't need the sandwich. Same rule applies to gate-ring casing when
