@@ -6,7 +6,7 @@ ingredient compositions listed below, in this order. Order and in/out points are
 a property of this file, not of the ingredient folders — each ingredient is a
 standalone composition with its own README, render and feedback rounds.
 
-## Cut sheet (v7 — rounds/v7/teaser_v7.mp4, 47.6s) — current
+## Cut sheet (v7 — rounds/v7/teaser_v7.mp4, 47.6s) — superseded by v8
 
 **Built and confirmed** (2026-09-16): `rounds/v7/teaser_v7.mp4` exists; ffprobe reads
 47.600000s, matching the five-part sum exactly (stream-copy concat, all parts
@@ -26,8 +26,8 @@ fixes to gates-saving/ranking (no line-thickening, white gates, P2 green not pur
 one caption) and closing (reuses opening's wordmark+tagline beat) over v6's ingredients
 (v6 itself was never assembled as a teaser render — this jumps straight from v6's
 picked ingredients to v7 as the first actual full-video assembly since then).
-**Known gap:** ranking still needs one more visual change (climbing row white until
-it lands, not green throughout) — expect a v8 once that's rendered.
+This gap is now closed by v8 below (ranking's climbing row is white until it lands,
+green only on arrival).
 
 ## Cut sheet (v5 — rounds/v5/teaser_v5.mp4, 46.9s planned) — superseded by v7
 **Not yet assembled**: none of the five ingredient renders exist yet this session
@@ -157,4 +157,5 @@ it should eventually move to `archive/`.
 | [v4](rounds/v4/FEEDBACK.md) | teaser_v4.mp4 | 2026-09-10 | Built, 64.8s confirmed — colours-section feedback received — superseded by v5 |
 | [v5](rounds/v5/FEEDBACK.md) | teaser_v5.mp4 | 2026-09-10 | Not yet assembled (5 ingredient renders pending) — colours dropped per Nathan's v4 feedback |
 | [v6](rounds/v6/FEEDBACK.md) | teaser_v6.mp4 | 2026-09-13 | Built (46.9s per ingredient sum at the time) — superseded by v7 |
-| [v7](rounds/v7/FEEDBACK.md) | teaser_v7.mp4 | 2026-09-16 | Built, 47.6s confirmed — virgin-cycle9's gates-saving/ranking/closing fixes — current; ranking's white-then-green change still pending |
+| [v7](rounds/v7/FEEDBACK.md) | teaser_v7.mp4 | 2026-09-16 | Built, 47.6s confirmed — virgin-cycle9's gates-saving/ranking/closing fixes — superseded by v8 |
+| [v8](rounds/v8/FEEDBACK.md) | teaser_v8.mp4 | 2026-09-16 | Built, 47.6s confirmed — ranking swapped to v7 (white-then-green colour flip) — current |

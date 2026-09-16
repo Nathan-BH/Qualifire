@@ -374,3 +374,41 @@ verified on an actual render** — that needs Nathan's PC. Documented as `rounds
 **Still outstanding:** Nathan needs to render ranking again
 (`render.ps1 -Name ranking -Render`); once that lands, the audio pairing (soundv3, no
 retiming expected) and teaser (v8) need to be redone with the new ranking video.
+
+## Third follow-up, 2026-09-16 — ranking v7 rendered, teaser v8 assembled, cycle closed out
+
+Nathan ran the ranking re-render (`render.ps1 -Name ranking -Render`, landing as
+`ranking_2026-09-16_19-15-00.mp4`) and said the render should have landed, asking for
+the v8 teaser.
+
+Verified visually before picking it up: extracted stills at 4.0s (mid-climb), 5.2s
+(just landed, before the flip instant), and 5.6s (after). Confirmed Today's row is
+plain white at 4.0s and 5.2s, and fully green by 5.6s — the flip lands cleanly on the
+5.4s instant with no premature colouring and no flicker, matching the design intent
+exactly.
+
+Picked into `ranking/rounds/v7/ranking_v7.mp4` and `all-renders/ranking_v7.mp4`
+(old v6 mirror moved to `safe_to_delete/`); duration unchanged at 10.8s. Remuxed the
+already-built `audio-studio/ranking/soundv3/soundtrack_v3.wav` (GREEN_CHIME fix, no
+retiming needed since the flip still lands at 5.4s) onto the new video — confirmed via
+ffprobe (10.8s) and volumedetect (-23.5dB mean / -0.9dB max, consistent with v6's
+healthy levels). Updated `ranking/rounds/v7/FEEDBACK.md` from "not yet rendered" to a
+confirmed checklist, and `ranking/README.md`'s v7 row to current.
+
+Built `teaser/rounds/v8/teaser_v8.mp4` — same ffmpeg stream-copy concat as v7, only
+swapping `ranking_v6.mp4` → `ranking_v7.mp4` (opening v3, start-ride v4, gates-saving
+v6, closing v4 unchanged). Confirmed 47.6s via ffprobe, unchanged from v7 since
+ranking's total duration didn't move. Delivered `teaser_v8.mp4` and
+`ranking_v7_with_sound_v3.mp4` to Nathan. Picked into `all-renders/` and documented in
+`teaser/rounds/v8/FEEDBACK.md` and `teaser/README.md`.
+
+**Still outstanding, not yet requested again by Nathan:** `brandmark/closing`'s
+audio-studio pairing needs a real re-composition (its visual content changed
+completely from mark-draw to wordmark+tagline reuse, so the existing closing audio no
+longer matches); no combined with-sound teaser exists yet (only per-scene with-sound
+files) — both flagged as follow-ups if/when Nathan wants them, not started.
+
+This closes out the marketing sub-task's current ask list — all nine brief tasks plus
+all four of Nathan's follow-up feedback items (green not purple, fast-then-slow climb,
+one caption, closing reuse) plus the white-then-green refinement are now rendered,
+verified, and picked into `all-renders/`.
