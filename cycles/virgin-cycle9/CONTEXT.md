@@ -348,3 +348,29 @@ caption pads were never keyed to specific caption text.
 **Still outstanding (needs Nathan's PC):** `brandmark\closing`'s render, the teaser v7
 concat (needs all three new ingredients, so blocked on closing), and closing's own
 audio-studio pairing.
+
+## Second follow-up, 2026-09-16 — closing landed, teaser assembled, one more ranking fix
+
+Nathan ran the closing render too. Picked into `rounds/v4/` + `all-renders/`, verified
+(4.0s, off-white wordmark + tagline, matches opening's reused beat). Assembled
+`teaser_v7.mp4` (47.6s, plain ffmpeg stream-copy concat of all five current
+ingredients) and sent it to Nathan to preview — picked into `rounds/v7/` + `all-renders/`.
+
+Nathan then asked for one more ranking change, verbatim: "Instead of having it come up
+the ranking already green. Lets have it come up white, and become green only when it
+slots in the P2 position." Implemented directly (small, fully-specified, single-file
+change — no Plan/Execute round trip needed): removed the static
+`.trow.today .who, .trow.today .time { color: #00D000; }` CSS rule (which coloured the
+row green from frame 0, including the whole climb) so Today inherits the same white
+every other row uses while climbing, and added
+`tl.set('#trow-today .who, #trow-today .time', {color:'#00D000'}, CLIMB_T0+CLIMB_DUR)` —
+an instant flip timed to the exact landing instant (5.4s), matching the app's own
+"flip on completion, never progressive" rule and lining up exactly with the audio's
+existing green settle chime (no audio retiming needed). Verified via `node --check` on
+the extracted timeline script and a full re-read of the diff; **not yet visually
+verified on an actual render** — that needs Nathan's PC. Documented as `rounds/v7/`
+(pre-render) in `ranking/README.md` and `ranking/rounds/v7/FEEDBACK.md`.
+
+**Still outstanding:** Nathan needs to render ranking again
+(`render.ps1 -Name ranking -Render`); once that lands, the audio pairing (soundv3, no
+retiming expected) and teaser (v8) need to be redone with the new ranking video.
