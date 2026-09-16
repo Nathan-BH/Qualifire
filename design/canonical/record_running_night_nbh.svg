@@ -1,0 +1,394 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 390 844"
+   width="390"
+   height="844"
+   version="1.1"
+   id="svg1"
+   sodipodi:docname="record_running_night_nbh.svg"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <sodipodi:namedview
+     id="namedview1"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:zoom="1.2315722"
+     inkscape:cx="81.197024"
+     inkscape:cy="460.79311"
+     inkscape:window-width="1920"
+     inkscape:window-height="974"
+     inkscape:window-x="-11"
+     inkscape:window-y="-11"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="content" />
+  <g
+     id="bg"
+     inkscape:label="bg"
+     inkscape:groupmode="layer">
+    <rect
+       id="bg_ground"
+       inkscape:label="bg_ground"
+       x="0"
+       y="-16.239405"
+       width="390"
+       height="844"
+       fill="#0a0a0a" />
+  </g>
+  <g
+     id="content"
+     inkscape:label="content"
+     inkscape:groupmode="layer">
+    <g
+       id="content_map"
+       inkscape:label="content_map"
+       transform="matrix(1.000204,0,0,0.85606482,-0.03978209,1.1141475)">
+      <rect
+         id="content_map_ground"
+         inkscape:label="content_map_ground"
+         x="12"
+         y="8"
+         width="366"
+         height="534"
+         fill="#141414"
+         stroke="#232323"
+         stroke-width="1"
+         rx="16" />
+      <line
+         id="content_map_street_1"
+         inkscape:label="content_map_street_1"
+         x1="77.879997"
+         y1="14"
+         x2="114.48"
+         y2="536"
+         stroke="#232323"
+         stroke-width="2"
+         stroke-linecap="round" />
+      <line
+         id="content_map_street_2"
+         inkscape:label="content_map_street_2"
+         x1="195"
+         y1="14"
+         x2="231.60001"
+         y2="536"
+         stroke="#232323"
+         stroke-width="2"
+         stroke-linecap="round" />
+      <line
+         id="content_map_street_3"
+         inkscape:label="content_map_street_3"
+         x1="312.12"
+         y1="14"
+         x2="348.72"
+         y2="536"
+         stroke="#232323"
+         stroke-width="2"
+         stroke-linecap="round" />
+      <path
+         id="content_map_route_line_casing"
+         inkscape:label="content_map_route_line_casing"
+         d="m 22,424.72 1.26,-0.11 0.91,0.89 2.52,1.22 3.58,1.77 1.96,-0.55 2.73,-1.11 2.74,-2 2.59,-2.44 2.66,-2.33 2.66,-2.44 2.74,-2.34 2.66,-2.44 2.87,-0.55 0.49,-2.33 0.35,-3.22 0.63,-1.56 1.89,-2.44 2.32,-2.77 2.1,-2.55 2.24,-2.78 1.33,-3 1.12,-3.21 1.83,-3.11 2.59,-2.78 2.38,-2.55 2.31,-2.77 2.38,-2.56 2.53,-2.55 2.52,-2.44 2.52,-2.66 2.52,-2.67 2.53,-2.55 3.36,-0.78 3.64,-0.22 3.65,-0.66 3.64,-0.45 1.96,-2.88 1.83,-3.33 2.1,-3 2.31,-2.89 2.31,-2.77 2.45,-2.89 2.32,-2.88 1.75,-3.22 2.31,-2.89 2.52,-2.88 2.32,-2.89 2.17,-2.88 2.17,-3.11 1.96,-3.22 1.89,-3.11 1.82,-3.22 1.34,-3.44 1.75,-3.33 1.47,-3.21 1.54,-3.44 1.61,-3.33 1.61,-3.44 1.48,-3.11 2.24,-2.78 2.94,-2.11 2.94,-2.33 2.95,-2.33 2.87,-2.33 2.87,-2.44 2.94,-2.44 2.95,-2.44 2.94,-2.44 2.87,-2.45 2.88,-2.44 2.94,-2.33 2.87,-2.33 3.58,-0.55 3.36,1.66 3.36,1.44 3.65,1.45 3.36,1.33 3.36,1.33 3.44,1.33 3.08,-0.11 1.19,-2.77 0.42,-1.67 1.82,-5.99 -3.15,-1.44 -3.36,-1.45 -3.44,-1.22 -3.29,-1.44 -3.36,-0.89 -2.88,0.89 -2.38,-0.67 -3.15,-1.33 -3.16,-0.89 -2.8,-1.66 -2.59,-2.44 -0.21,-3.55 0.84,-3.56 2.45,-2.77 2.73,-2.55 2.53,-2.33 3.29,-2.67 2.94,-2.22 2.95,-2.33 3.15,-2.44 2.94,-2.55 2.59,-2.22 2.39,-2.55 2.52,-2.78 2.59,-2.66 2.45,-2.67 2.53,-2.77 2.52,-2.66 2.38,-2.67 2.52,-2.66 2.39,-2.44 2.52,-2.78 2.31,-2.44 2.52,-2.66 2.18,-2.22 3.43,-1.89 3.78,0.22 3.93,0.45 2.87,1.55 3.22,-1.33 3.44,-1.67 3.5,-1.55 3.43,-1.55 3.58,-1.67 3.57,-1.55 3.78,-1.11 3.72,-0.78 3.78,-0.78 3.36,-1.44 2.95,-2.11 3.01,-2.22 2.87,-2.22 3.02,-2.22 2.87,-2.22 2.94,-2.1 3.02,-2.22 2.87,-2.22 3.01,-2.11 2.8,-2.11 1.26,-0.67 1.2,1.33 0.77,0.12 1.68,-1.23 2.59,-2.22 2.8,-2.55 2.74,-2.33 2.8,-2.55 2.94,-2.44 2.87,-1.89 3.02,-1.66 3.36,-1.78 3.5,-1.11 2.88,-0.89 2.52,-0.77 2.73,-1.89 2.88,1.44 1.89,2.66 1.05,2.89 1.75,-0.22"
+         fill="none"
+         stroke="#14120c"
+         stroke-width="6"
+         stroke-linecap="round"
+         stroke-linejoin="round" />
+      <path
+         id="content_map_route_line"
+         inkscape:label="content_map_route_line"
+         d="m 22,424.72 1.26,-0.11 0.91,0.89 2.52,1.22 3.58,1.77 1.96,-0.55 2.73,-1.11 2.74,-2 2.59,-2.44 2.66,-2.33 2.66,-2.44 2.74,-2.34 2.66,-2.44 2.87,-0.55 0.49,-2.33 0.35,-3.22 0.63,-1.56 1.89,-2.44 2.32,-2.77 2.1,-2.55 2.24,-2.78 1.33,-3 1.12,-3.21 1.83,-3.11 2.59,-2.78 2.38,-2.55 2.31,-2.77 2.38,-2.56 2.53,-2.55 2.52,-2.44 2.52,-2.66 2.52,-2.67 2.53,-2.55 3.36,-0.78 3.64,-0.22 3.65,-0.66 3.64,-0.45 1.96,-2.88 1.83,-3.33 2.1,-3 2.31,-2.89 2.31,-2.77 2.45,-2.89 2.32,-2.88 1.75,-3.22 2.31,-2.89 2.52,-2.88 2.32,-2.89 2.17,-2.88 2.17,-3.11 1.96,-3.22 1.89,-3.11 1.82,-3.22 1.34,-3.44 1.75,-3.33 1.47,-3.21 1.54,-3.44 1.61,-3.33 1.61,-3.44 1.48,-3.11 2.24,-2.78 2.94,-2.11 2.94,-2.33 2.95,-2.33 2.87,-2.33 2.87,-2.44 2.94,-2.44 2.95,-2.44 2.94,-2.44 2.87,-2.45 2.88,-2.44 2.94,-2.33 2.87,-2.33 3.58,-0.55 3.36,1.66 3.36,1.44 3.65,1.45 3.36,1.33 3.36,1.33 3.44,1.33 3.08,-0.11 1.19,-2.77 0.42,-1.67 1.82,-5.99 -3.15,-1.44 -3.36,-1.45 -3.44,-1.22 -3.29,-1.44 -3.36,-0.89 -2.88,0.89 -2.38,-0.67 -3.15,-1.33 -3.16,-0.89 -2.8,-1.66 -2.59,-2.44 -0.21,-3.55 0.84,-3.56 2.45,-2.77 2.73,-2.55 2.53,-2.33 3.29,-2.67 2.94,-2.22 2.95,-2.33 3.15,-2.44 2.94,-2.55 2.59,-2.22 2.39,-2.55 2.52,-2.78 2.59,-2.66 2.45,-2.67 2.53,-2.77 2.52,-2.66 2.38,-2.67 2.52,-2.66 2.39,-2.44 2.52,-2.78 2.31,-2.44 2.52,-2.66 2.18,-2.22 3.43,-1.89 3.78,0.22 3.93,0.45 2.87,1.55 3.22,-1.33 3.44,-1.67 3.5,-1.55 3.43,-1.55 3.58,-1.67 3.57,-1.55 3.78,-1.11 3.72,-0.78 3.78,-0.78 3.36,-1.44 2.95,-2.11 3.01,-2.22 2.87,-2.22 3.02,-2.22 2.87,-2.22 2.94,-2.1 3.02,-2.22 2.87,-2.22 3.01,-2.11 2.8,-2.11 1.26,-0.67 1.2,1.33 0.77,0.12 1.68,-1.23 2.59,-2.22 2.8,-2.55 2.74,-2.33 2.8,-2.55 2.94,-2.44 2.87,-1.89 3.02,-1.66 3.36,-1.78 3.5,-1.11 2.88,-0.89 2.52,-0.77 2.73,-1.89 2.88,1.44 1.89,2.66 1.05,2.89 1.75,-0.22"
+         fill="none"
+         stroke="#f5c542"
+         stroke-width="4"
+         stroke-linecap="round"
+         stroke-linejoin="round" />
+      <path
+         id="content_map_sector_span_1"
+         inkscape:label="content_map_sector_span_1"
+         d="m 22,424.72 1.26,-0.11 0.91,0.89 2.52,1.22 3.58,1.77 1.96,-0.55 2.73,-1.11 2.74,-2"
+         fill="none"
+         stroke="#a667f0"
+         stroke-width="5"
+         stroke-linecap="round"
+         stroke-linejoin="round" />
+      <line
+         id="content_map_gate_tick_1_casing"
+         inkscape:label="content_map_gate_tick_1_casing"
+         x1="24.190001"
+         y1="418.60001"
+         x2="19.809999"
+         y2="430.84"
+         stroke="#14120c"
+         stroke-width="5"
+         stroke-linecap="round" />
+      <line
+         id="content_map_gate_tick_1"
+         inkscape:label="content_map_gate_tick_1"
+         x1="24.190001"
+         y1="418.60001"
+         x2="19.809999"
+         y2="430.84"
+         stroke="#f5c542"
+         stroke-width="2"
+         stroke-linecap="round"
+         opacity="0.6" />
+      <line
+         id="content_map_gate_tick_2_casing"
+         inkscape:label="content_map_gate_tick_2_casing"
+         x1="33.849998"
+         y1="419.59"
+         x2="41.549999"
+         y2="430.07001"
+         stroke="#14120c"
+         stroke-width="5"
+         stroke-linecap="round" />
+      <line
+         id="content_map_gate_tick_2"
+         inkscape:label="content_map_gate_tick_2"
+         x1="33.849998"
+         y1="419.59"
+         x2="41.549999"
+         y2="430.07001"
+         stroke="#f5c542"
+         stroke-width="2"
+         stroke-linecap="round"
+         opacity="0.6" />
+      <line
+         id="content_map_gate_tick_3_casing"
+         inkscape:label="content_map_gate_tick_3_casing"
+         x1="107.86"
+         y1="343.54001"
+         x2="118.04"
+         y2="351.63"
+         stroke="#14120c"
+         stroke-width="5"
+         stroke-linecap="round" />
+      <line
+         id="content_map_gate_tick_3"
+         inkscape:label="content_map_gate_tick_3"
+         x1="107.86"
+         y1="343.54001"
+         x2="118.04"
+         y2="351.63"
+         stroke="#f5c542"
+         stroke-width="2"
+         stroke-linecap="round"
+         opacity="0.6" />
+      <line
+         id="content_map_gate_tick_4_casing"
+         inkscape:label="content_map_gate_tick_4_casing"
+         x1="203.32001"
+         y1="255.10001"
+         x2="198.45"
+         y2="267.14999"
+         stroke="#14120c"
+         stroke-width="5"
+         stroke-linecap="round" />
+      <line
+         id="content_map_gate_tick_4"
+         inkscape:label="content_map_gate_tick_4"
+         x1="203.32001"
+         y1="255.10001"
+         x2="198.45"
+         y2="267.14999"
+         stroke="#f5c542"
+         stroke-width="2"
+         stroke-linecap="round"
+         opacity="0.6" />
+      <line
+         id="content_map_gate_tick_5_casing"
+         inkscape:label="content_map_gate_tick_5_casing"
+         x1="249.39"
+         y1="170.72"
+         x2="249.08"
+         y2="183.72"
+         stroke="#14120c"
+         stroke-width="5"
+         stroke-linecap="round" />
+      <line
+         id="content_map_gate_tick_5"
+         inkscape:label="content_map_gate_tick_5"
+         x1="249.39"
+         y1="170.72"
+         x2="249.08"
+         y2="183.72"
+         stroke="#f5c542"
+         stroke-width="2"
+         stroke-linecap="round"
+         opacity="0.6" />
+      <circle
+         id="content_map_rider_dot"
+         inkscape:label="content_map_rider_dot"
+         cx="124.09"
+         cy="332.92999"
+         r="5.5"
+         fill="#2f7de1"
+         stroke="#141414"
+         stroke-width="2" />
+      <rect
+         id="content_map_placeholder_note"
+         inkscape:label="content_map_placeholder_note"
+         x="12"
+         y="8"
+         width="4"
+         height="4"
+         fill="none" />
+    </g>
+    <text
+       id="content_pane_context"
+       inkscape:label="content_pane_context"
+       x="195"
+       y="534.08527"
+       font-family="Inter, 'Segoe UI', system-ui, sans-serif"
+       font-size="13px"
+       font-weight="700"
+       fill="#9a978f"
+       text-anchor="middle"
+       letter-spacing="2">S4</text>
+    <text
+       id="content_pane_clock"
+       inkscape:label="content_pane_clock"
+       x="195"
+       y="599.08527"
+       font-family="Inter, 'Segoe UI', system-ui, sans-serif"
+       font-size="76px"
+       font-weight="800"
+       fill="#f4f2ec"
+       text-anchor="middle"
+       style="font-variant-numeric:tabular-nums">4:15.7</text>
+    <g
+       id="content_pane_strip"
+       inkscape:label="content_pane_strip"
+       transform="translate(0,-52)">
+      <text
+         id="content_pane_strip_slot_1_label"
+         inkscape:label="content_pane_strip_slot_1_label"
+         x="69"
+         y="739.76978"
+         font-family="Inter, 'Segoe UI', system-ui, sans-serif"
+         font-size="13px"
+         font-weight="700"
+         fill="#120521"
+         text-anchor="middle"
+         style="fill:#a667f0;fill-opacity:1">S1</text>
+      <text
+         id="content_pane_strip_slot_2_label"
+         inkscape:label="content_pane_strip_slot_2_label"
+         x="153"
+         y="738.62146"
+         font-family="Inter, 'Segoe UI', system-ui, sans-serif"
+         font-size="13px"
+         font-weight="700"
+         fill="#9a978f"
+         text-anchor="middle"
+         style="fill:#3ed598;fill-opacity:1">S2</text>
+      <text
+         id="content_pane_strip_slot_3_label"
+         inkscape:label="content_pane_strip_slot_3_label"
+         x="237"
+         y="736.89905"
+         font-family="Inter, 'Segoe UI', system-ui, sans-serif"
+         font-size="13px"
+         font-weight="700"
+         fill="#9a978f"
+         text-anchor="middle"
+         style="fill:#f5c542;fill-opacity:1">S3</text>
+      <text
+         id="content_pane_strip_slot_4_label"
+         inkscape:label="content_pane_strip_slot_4_label"
+         x="321"
+         y="739.48273"
+         font-family="Inter, 'Segoe UI', system-ui, sans-serif"
+         font-size="13px"
+         font-weight="700"
+         fill="#9a978f"
+         text-anchor="middle">S4</text>
+    </g>
+    <text
+       id="content_status_line"
+       inkscape:label="content_status_line"
+       x="195"
+       y="752"
+       font-family="Inter, 'Segoe UI', system-ui, sans-serif"
+       font-size="12"
+       font-weight="600"
+       fill="#9a978f"
+       text-anchor="middle"
+       letter-spacing="1.5"
+       style="text-transform:uppercase">HOME WORK DRY · ROUTE LOCKED</text>
+    <g
+       id="content_pause_bar"
+       inkscape:label="content_pause_bar">
+      <rect
+         id="content_pause_bar_bg"
+         inkscape:label="content_pause_bar_bg"
+         x="12"
+         y="776"
+         width="366"
+         height="56"
+         fill="#141414"
+         stroke="#E8A33D"
+         stroke-width="2"
+         rx="10" />
+      <text
+         id="content_pause_bar_label"
+         inkscape:label="content_pause_bar_label"
+         x="195"
+         y="800"
+         font-family="Inter, 'Segoe UI', system-ui, sans-serif"
+         font-size="17"
+         font-weight="800"
+         fill="#E8A33D"
+         text-anchor="middle"
+         letter-spacing="3">PAUSE</text>
+      <text
+         id="content_pause_bar_sub"
+         inkscape:label="content_pause_bar_sub"
+         x="195"
+         y="818"
+         font-family="Inter, 'Segoe UI', system-ui, sans-serif"
+         font-size="10.5"
+         font-weight="400"
+         fill="#9a978f"
+         text-anchor="middle"
+         letter-spacing="1">recording continues · resume or end</text>
+    </g>
+    <rect
+       style="fill:#a667f0;stroke:#a667f0;fill-opacity:1;stroke-opacity:1"
+       id="rect1"
+       width="80.791039"
+       height="4.0598512"
+       x="35.726692"
+       y="693.82855" />
+    <rect
+       style="fill:#3ed598;fill-opacity:1;stroke:#3ed598;stroke-opacity:1"
+       id="rect2"
+       width="80.791039"
+       height="4.0598512"
+       x="116.72072"
+       y="693.82855" />
+    <rect
+       style="fill:#f5c542;fill-opacity:1;stroke:#f5c542;stroke-opacity:1"
+       id="rect3"
+       width="80.791039"
+       height="4.0598512"
+       x="198.52672"
+       y="693.82855" />
+    <rect
+       style="fill:#232323;fill-opacity:1;stroke:#232323;stroke-opacity:1"
+       id="rect4"
+       width="80.791039"
+       height="4.0598512"
+       x="280.12973"
+       y="693.82855" />
+  </g>
+</svg>
