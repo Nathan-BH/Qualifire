@@ -23,6 +23,11 @@ replaced. Vocabulary is post-WP-3: a route is the from→to path, a way is one v
 - virgin-cycle4 (2026-09-06/08): build7 — Preview rebuilt in place as a permanently
   blank-seed install, OTA fingerprint re-anchored; dry run clean, real EAS build run by Nathan
   and completed; seed default flipped to 'empty' (`09a0aa0`) — `cycles/virgin-cycle4/README.md`.
+- virgin-cycle9 (2026-09-16, in progress): `settings.sectorColours` defaulted off
+  (live-map/ride-detail/RIDES sector colouring, one-line chore, `54aae2d`) after Nathan's
+  "too much colour" feedback; sector-strip redesign (four boxes -> thin F1-style bars,
+  Nathan's own mockup) fully briefed, ready to execute —
+  `cycles/virgin-cycle9/README.md`, `BRIEF-sector-strip-bars.md`, `QUESTIONSFORNATHAN.md`.
 
 ## The virgin-prototype path, in order
 
@@ -150,9 +155,9 @@ Nathan answered most of `deployment/QUESTIONS-FOR-NATHAN.md` on 2026-09-09; fold
 - **virgin-cycle6 self-racing — answered 2026-09-14, folded in by
   `BRIEF-self-racing-followup.md`**; only the on-device look (yellow dot on the yellow line,
   P-number placement) remains Nathan's.
-- **Revert tier colours to cycle7's hex.** Nathan rejected cycle8's round-2 picks
-  (`#6D4E9C`/`#8BCD39`/`#FFDE6D`) after testing on his phone (2026-09-15): "too faint... I
-  would just keep the current colours we have." Wants cycle7's F1-broadcast hex back
-  (`#9000C8`/`#00D000`/`#F5C542`, `purpleDeep` `#65008C`) — same file set as `6da58a2`, run in
-  reverse. Not executed yet (he asked only to log the verdict for now). Also floated, unspecified: "I think we can use the colours in a better way" —
-  needs Nathan to say more before it's actionable. Full log: `marketing/hex-colours/SUMMARY.md`.
+- ~~**Revert tier colours to cycle7's hex.**~~ **RESOLVED 2026-09-16.** Nathan decided to
+  keep cycle8's hex (`#6D4E9C`/`#8BCD39`/`#FFDE6D`) permanently — no revert. His earlier,
+  unspecified "I think we can use the colours in a better way" became concrete: less colour
+  on the live map/ride-detail/RIDES row (`sectorColours` defaulted off, `54aae2d`) and a
+  thin-bar sector-strip redesign in progress — see `cycles/virgin-cycle9/`. Full log:
+  `marketing/hex-colours/SUMMARY.md`.

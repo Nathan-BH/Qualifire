@@ -92,9 +92,12 @@ day (below).
   row. PNG rung, DEMO tab and free mode untouched by design (R9). See
   `cycles/virgin-cycle6/README.md`.
 - **Sector-coloured trail is built everywhere (WP-K, 2026-09-04): live map, ride-detail
-  screen, gated by one settings toggle (`sectorColours`, default on).** One shared pure
-  module (`sectorTrailModel.ts`) feeds all surfaces; gate ticks stay neutral markers,
-  untouched by this feature per Nathan's own rule.
+  screen, gated by one settings toggle (`sectorColours`, default OFF since virgin-cycle9,
+  2026-09-16 — opt-in; default on through cycle8).** Nathan found the default-on colouring
+  "too much colour" on the live map; the same toggle also covers the ride-detail trace and
+  the RIDES row, so the whole default flipped, not just the live map (`cycles/virgin-cycle9/`).
+  One shared pure module (`sectorTrailModel.ts`) feeds all surfaces; gate ticks stay neutral
+  markers, untouched by this feature per Nathan's own rule.
 - **Retroactive route creation + ride-1-as-reference is built.** Record a ride whose start/end
   don't match any known landmark, and a naming card offers to name them at STOP; on save it
   creates the landmark(s) (reusing/shrinking around existing ones, handling loops), a `Route`,
@@ -188,11 +191,12 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   for the full record and `deployment/DEPLOYMENT-OPTIONS.md` §0 for what's left to actually do.
 - **"No accounts, no social" still stands** — the pivot and the above are about distribution
   reach, not the in-app model; that's a separate call Nathan hasn't made.
-- **Scoring:** three colour tiers (purple/green/yellow). Currently shipping cycle8's
-  (2026-09-15) `#6D4E9C`/`#8BCD39`/`#FFDE6D`, but Nathan rejected these on phone testing the
-  same day ("too faint... I would just keep the current colours we have") and wants cycle7's
-  F1-broadcast hex back (`#9000C8`/`#00D000`/`#F5C542`, `purpleDeep` `#65008C`) — revert not
-  yet executed, see `OPEN-ITEMS.md`. No noise floor below
+- **Scoring:** three colour tiers (purple/green/yellow), shipping cycle8's (2026-09-15)
+  `#6D4E9C`/`#8BCD39`/`#FFDE6D` — **Nathan confirmed 2026-09-16 he's keeping these
+  permanently** (`marketing/hex-colours/SUMMARY.md`), closing the reconsider-cycle7's-hex
+  question. What changed instead is how much colour the tiers get to use on screen, not the
+  hex values — see the sector-coloured-trail default flip above and `cycles/virgin-cycle9/`
+  for the sector-strip redesign in progress. No noise floor below
   a single ride (D-045 ruling 1, built as NW-1, 2026-09-08): a way's reference ride (ride 1)
   gets no colour verdict on the day it's ridden — it earns a rank once stored, but nothing to
   compare against yet — one prior ride compares purple/yellow only; two or more run the full
@@ -300,6 +304,11 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   starts the Expo dev server for Nathan to test JS-only changes (like this colour swap) live
   on his phone's dev-client build. Digest→Plan→Execute→Inspect all ran; Inspect verdict PASS
   WITH NOTES (two cosmetic follow-ups, see the cycle README).
+- `cycles/virgin-cycle9/README.md` — 2026-09-16: live-map/ride-detail/RIDES sector
+  colouring defaulted OFF (one-line chore, `54aae2d`) after Nathan's "too much colour"
+  feedback; sector-strip redesign (four boxes -> thin F1-style bars under the lap clock,
+  from Nathan's own mockup) fully briefed and ready to execute, not yet run. Also the
+  point where Nathan confirmed keeping cycle8's tier hex permanently (see Scoring above).
 
 ## Nathan's own files (unmanaged by any agent)
 
