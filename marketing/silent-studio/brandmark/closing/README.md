@@ -23,4 +23,5 @@ Duration: 4.0s.
 |---|---|---|---|
 | [v1](rounds/v1/FEEDBACK.md) | closing_v1.mp4 | 2026-09-10 | Awaiting feedback |
 | [v2](rounds/v2/FEEDBACK.md) | closing_v2.mp4 | 2026-09-10 | Not rendered yet |
-| [v4](rounds/v4/FEEDBACK.md) | closing_v4.mp4 | 2026-09-16 | Built, awaiting Nathan's render — cycle 9: opening's second part re-used, no mark |
+| [v3](rounds/v3/FEEDBACK.md) | closing_v3.mp4 | 2026-09-13 | Superseded by v4 |
+| [v4](rounds/v4/FEEDBACK.md) | closing_v4.mp4 | 2026-09-16 | Built and rendered — cycle 9: opening's second part re-used, no mark; current pick |

@@ -1,42 +1,28 @@
-# 06 — Closing — Round v4
+# brandmark/closing — round v4
 
-**Render file:** closing_v4.mp4 (not rendered yet).
-**Duration:** 4.000s (120 frames at 30fps, 1920x1080, no audio — unchanged from v3).
-**Source:** ../../index.html.
+**Render:** `closing_v4.mp4` (4.0s, 1920x1080) — built and confirmed 2026-09-16 on
+Nathan's PC (`render.ps1 -Name brandmark\closing -Render`).
 
 ## What changed since v3
-- The mark is gone; the scene is now opening's second part — off-white QUALIFIRE wordmark
-  fades in with a small rise at 0.15s, the tagline at 0.55s (opening's exact tweens), hold,
-  0.8s fade to black from 3.2s.
 
-## What you'll see, in order
-1. 0.00-0.15 — Black.
-2. 0.15-0.95 — Wordmark in.
-3. 0.55-1.25 — Tagline in.
-4. 1.25-3.20 — Hold.
-5. 3.20-4.00 — Fade to black.
-6. Ends 4.0s.
+Per Nathan's request ("use the second part of the opening render — not the logo
+drawing, but only the qualifire text + the slogan beneath it"): closing no longer
+draws its own logo mark + fades to a yellow wordmark. It now reuses opening's
+post-logo wordmark + tagline beat verbatim (same CSS, same two `fromTo` tweens,
+shifted -2.80s), so the wordmark is opening's off-white (`var(--ink)`), not the
+old yellow. Still a 4.0s clip; timeline id still `closing`.
 
-## Things to check in the render
-- The wordmark is opening's off-white, not v3's yellow — Plan read "use the second part of
-  the opening render" literally; if you want the closing's yellow back it's the one token
-  `color: var(--ink)` → `#F5C542` on `#wordmark .word`.
-- Whether 0.15s of black before the wordmark is the right breath after the cut from ranking,
-  or should be 0.
-- Whether the 1.95s hold + 0.8s fade is the right ending weight, or the fade should start
-  later (shortening the hold).
-- The vertical placement (`translateY(-40px)`, copied from opening, which had the mark's
-  400px box to sit inside — here there is nothing else on screen, so "slightly above centre"
-  is now a free choice).
+## Verified
 
-## Render on the PC (PowerShell, from marketing\silent-studio\)
-```
-powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name brandmark\closing -Render
-```
-then copy the newest `brandmark\closing\renders\*.mp4` to `brandmark\closing\rounds\v4\closing_v4.mp4` and confirm 4.0s:
-```
-ffprobe -v error -show_entries format=duration -of csv=p=0 brandmark\closing\rounds\v4\closing_v4.mp4
-```
+- Duration: `ffprobe` confirms exactly 4.000000s.
+- Visual: extracted a still at 2.0s — shows "QUALIFIRE" in off-white plus the
+  tagline "Same road. New meaning." underneath, matching opening's beat exactly
+  (just retimed). No leftover mark/ring/yellow wordmark visible.
 
-## Nathan's feedback
-<!-- write your notes below, overall or beat-by-beat -->
+## Open item
+
+The wordmark colour is off-white (opening's), not the previous yellow. This was
+flagged as the one judgment call in the Execute pass — Nathan has not said either
+way since seeing the render land. If he wants the closing wordmark back to yellow
+specifically (even though it's now otherwise identical to opening), that's a
+one-token change (`color: var(--ink)` → `#F5C542` on `#wordmark .word`).
