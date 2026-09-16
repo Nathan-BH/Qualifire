@@ -32,7 +32,10 @@ export interface Settings {
   liveMap: boolean;
   earcons: boolean;
   /** WP-K: paint each sector of the route line in the tier it earned (live
-   * map, ride-detail trace, RIDES row) — off keeps the line all yellow. */
+   * map, ride-detail trace, RIDES row) — off keeps the line all yellow.
+   * Default false since virgin-cycle9 (2026-09-16, Nathan: too much colour
+   * on the live map) — opt-in via this row, was default true through
+   * cycle8. */
   sectorColours: boolean;
   /** virgin-cycle6 (self racing): show the way's comparison window
    * (colourModel.ghostsFor, <= 9 rides) as moving dots on the live map,
@@ -57,7 +60,7 @@ const DEFAULTS: Settings = {
   tower: true,
   liveMap: true,
   earcons: true,
-  sectorColours: true,
+  sectorColours: false,
   selfDots: true,
   timing: DEFAULT_TIMING,
   showSportPillOnRecord: true,
