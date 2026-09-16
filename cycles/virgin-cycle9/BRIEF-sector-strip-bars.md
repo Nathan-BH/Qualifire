@@ -21,13 +21,28 @@ Out of scope, do not touch: map/route-line colouring (already handled by the
 `settings.sectorColours` default flip in `54aae2d`), `chipColors()` itself (shared with other
 chips), tier hex values in `theme.ts`, anything engine-side, any test file.
 
+**Revision note (2026-09-16):** Nathan answered every question in `QUESTIONSFORNATHAN.md`
+before this was executed. Three of his answers change what was originally planned — see the
+updated design-decisions table below, which supersedes the first draft: (1) there is now NO
+current-sector cue of any kind in the strip (he doesn't want it — the existing
+`contextLabel` line above the clock, e.g. 'S3', already names the current sector and needs
+no change); (2) the bar should ship a bit thicker than the mockup's literal 4px on the first
+try, and the strip's overall width/proportions relative to the rest of the screen deserve a
+sanity check, not a literal copy of hand-drawn mockup pixels; (3) completed-sector time
+staying off the strip is confirmed — the existing gate-flash over the clock
+(`liveView.tsx`'s `BigChipModel`/flash, unchanged by this brief) already shows each
+completed sector's time for ~2.5s, which is enough for him; (4) discrete colour-flip on
+completion is confirmed as the end state, not a stepping stone — no progressive-fill
+follow-up wanted.
+
 ## Design decisions (settled, do not re-open at Execute time)
 
 | Question | Decision | Why |
 |---|---|---|
-| Current sector cue | Label rendered in `t.text` (normal ink) instead of `t.textDim`; bar stays neutral grey. No accent colour anywhere in the strip. | Accent and the yellow tier are the same hex; with no time text left in the slot, an accent bar would be unreadable from a completed yellow-tier bar. The context line above the clock already names the current sector. |
-| Completed time text | Not rendered in the strip. `time` prop stays in the props type and in `StripSlotModel`, is simply ignored by `StripSlot`. | Matches Nathan's mockup; re-adding it reinstates the visual mass being removed. Data model untouched so liveView needs no edit. |
-| Bar thickness | 4 (dp), as a named constant `STRIP_BAR_HEIGHT` in chips.tsx | Matches the mockup; one-line to tune on device. |
+| Current sector cue | **NONE.** The current sector renders IDENTICALLY to a not-yet-reached sector: dim label (`t.textDim`), grey bar (`t.race.border`). The `current` prop is still accepted by `StripSlot` (for signature compatibility with `StripSlotModel.current`) but no longer changes styling at all. | Nathan (QUESTIONSFORNATHAN.md Q3): explicitly does not want a cue here, even the brightened-label default originally proposed — the `contextLabel` line above the clock (`LiveViewModel.contextLabel`, e.g. 'S3') already names the current sector and is unchanged by this brief; a second cue in the strip is unwanted distraction. |
+| Completed time text | Not rendered in the strip. `time` prop stays in the props type and in `StripSlotModel`, is simply ignored by `StripSlot`. | Matches Nathan's mockup, confirmed (Q2): the existing gate-flash over the clock already shows each completed sector's time for ~2.5s — that's enough, no new display needed. Data model untouched so liveView needs no edit. |
+| Bar thickness | `STRIP_BAR_HEIGHT = 6` (dp) — bumped up from the mockup's literal 4px — as a named constant in chips.tsx, easy to retune. | Nathan (Q1): "if you already think 4px is too small, ship it a bit bigger on the first try" — he drew the mockup freehand with no proportion consideration, so treat its raw pixel values as illustrative, not a spec. |
+| Overall strip width/proportions | Slots stay `flex: 1` inside whatever container `paneStyles.strip` already uses — i.e. inherit the same horizontal inset the rest of the live pane uses, not a new hardcoded margin. Execute should eyeball the rendered result against the rest of the screen (map card edges, pause bar) and flag in its report if it looks off, rather than guess a fix. | Nathan (Q1): "think about how wide each bar should be and what the total strip width is in relation to the other UI elements" — a real rendered check, not something Plan can verify without the device. |
 | Neutral grey | Bar: `t.race.border` (today's "not yet reached" outline colour). Label: `t.textDim` (today's empty-slot label colour). | Reuse the existing tokens; no new grey. |
 | Tier colour source | `chipColors(tier, t).border` for BOTH bar fill and label colour when tier is purple/green/yellow. | `.border` is the tier hue itself for all three tiers; `.text` for purple is `PURPLE_INK` (dark, for on-fill contrast) and would be invisible on the dark background. |
 | `'est'` tier (estimated, no verdict) | Treated as neutral: grey bar, dim label. The "~" suffix already in the label carries the meaning. | An estimate has no earned tier, so it earns no colour. |
@@ -43,8 +58,9 @@ Anchor: the `StripSlot` component, digest lines ~116–136 (the component that r
 `styles.slot` with `borderColor: current ? t.accent : empty ? t.race.border : c.border` and
 `backgroundColor: c.bg`).
 
-1. Add a module-level constant near the top of the file: `const STRIP_BAR_HEIGHT = 4;` with a
-   one-line comment `// F1-style sector bar thickness; tune on device.`
+1. Add a module-level constant near the top of the file: `const STRIP_BAR_HEIGHT = 6;` with a
+   one-line comment `// F1-style sector bar thickness (Nathan: a bit bigger than the first
+   // sketch's 4px) -- tune further on device if it still reads thin.`
 2. Inside `StripSlot`, derive one colour per role:
    - `const coloured = !empty && tier !== 'est' && tier !== 'none';` (i.e. exactly purple /
      green / yellow). If the existing `empty` flag is defined as something other than
@@ -53,7 +69,10 @@ Anchor: the `StripSlot` component, digest lines ~116–136 (the component that r
    - `const tierColour = c.border;` (from the existing `chipColors(tier, t)` call — keep
      that call, do not modify `chipColors`).
    - `const barColour = coloured ? tierColour : t.race.border;`
-   - `const labelColour = coloured ? tierColour : current ? t.text : t.textDim;`
+   - `const labelColour = coloured ? tierColour : t.textDim;`
+   - **`current` is NOT used in either colour derivation** (revised per Nathan, Q3 — see
+     the design-decisions table). The `current` prop stays in `StripSlot`'s signature
+     (still passed in from `liveView.tsx` unchanged) but has zero effect on rendering.
 3. Replace the rendered tree with: outer `View style={styles.slot}` → `Text
    style={[styles.slotText, { color: labelColour }]}` (label unchanged) → `View
    style={[styles.slotBar, { backgroundColor: barColour }]}`.
@@ -75,16 +94,18 @@ Anchor: the `StripSlot` component, digest lines ~116–136 (the component that r
 
 Acceptance:
 - `StripSlot` renders no border, no background box, no time text, regardless of props.
-- Rendered colour matrix, by `tier` / `current`:
-  - `'none'`, not current → label `t.textDim`, bar `t.race.border`
-  - `'none'`, current → label `t.text`, bar `t.race.border`
+- Rendered colour matrix, by `tier` (the `current` prop has NO visible effect, whatever its
+  value):
+  - `'none'` → label `t.textDim`, bar `t.race.border` (whether or not `current` is true)
   - `'est'` → label `t.textDim`, bar `t.race.border`
   - `'purple'` / `'green'` / `'yellow'` → label AND bar = `chipColors(tier, t).border`
-- No accent token (`t.accent`) is referenced anywhere in `StripSlot`.
+- No accent token (`t.accent`) or `t.text` (the "brightened" ink) is referenced anywhere in
+  `StripSlot` for the current-sector case — confirm the current sector is visually
+  indistinguishable from a not-yet-reached sector.
 - `chipColors()`, `Chip`, and every other export of chips.tsx are byte-for-byte unchanged.
 - `cd app && ./node_modules/.bin/tsc --noEmit` exits 0.
 
-### Task 2 — `app/src/ui/liveView.tsx`: verify strip container layout (read-only unless the one named condition holds)
+### Task 2 — `app/src/ui/liveView.tsx` / rendered result: verify strip container layout and overall proportions (read-only unless the one named condition holds)
 
 Anchor: `paneStyles.strip`, the style applied to the `<View style={paneStyles.strip}>` that
 maps `vm.strip` to `<StripSlot …/>` (digest ~lines 302–304), and the `StripSlotModel`
@@ -101,9 +122,19 @@ interface (~lines 89–95) plus its construction in `viewModelFromEngine()` (~li
    report it verbatim and STOP; do not change it. (Expected: no fixed height, the pane
    reflows. Confirm.)
 
+4. Separately (Nathan, Q1): once rendered (a screenshot on a simulator/device is fine, no
+   need for a real ride), sanity-check the strip's left/right edges against the rest of the
+   live screen — does it line up with the map card's inset, the pause bar's inset, etc., the
+   same way the OLD box strip did? This is an observation, not a mandate to redesign the
+   pane: if it already lines up (most likely, since the container/padding isn't part of this
+   brief's changes), say so in the report. If it visibly doesn't, report exactly what you see
+   and STOP rather than guess a new margin — that's a real layout call, not a mechanical one.
+
 Acceptance:
 - Four equal-width bars with visible gaps between them fill the strip's width at phone width.
 - `liveView.tsx` diff is either empty or exactly the `gap` line.
+- The Execute report states explicitly whether the strip's horizontal inset visually matches
+  the rest of the screen's content (map card / pause bar), per step 4.
 
 ### Task 3 — Verification
 
@@ -119,8 +150,10 @@ Acceptance:
    exit code, and the `slotTime` grep result from Task 1 step 5.
 
 Not in scope, do not do: `accessibilityLabel` on the slot (candidate for a follow-up), any
-animation on colour change, progressive in-sector fill (needs engine data that does not
-exist), changes to `DemoScreen.tsx` / `RecordScreen.tsx`, changes to `theme.ts`.
+animation on colour change, progressive in-sector fill (Nathan confirmed, Q4: discrete
+flip-on-completion is the intended END STATE, not a stepping stone — do not build toward
+progressive fill), any current-sector visual cue of any kind (Q3 — confirmed none wanted),
+changes to `DemoScreen.tsx` / `RecordScreen.tsx`, changes to `theme.ts`.
 
 **If any ambiguity or surprise arises — an anchor that doesn't match the digest, an `empty`
 flag computed differently than described, a `paneStyles.strip` shape not covered by Task 2,

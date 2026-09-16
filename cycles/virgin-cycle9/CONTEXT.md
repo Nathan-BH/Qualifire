@@ -111,3 +111,23 @@ written into the brief's closing clause.
 Execute (Sonnet subagent) can be dispatched on `BRIEF-sector-strip-bars.md` whenever — it's
 not blocked on Nathan's answers. A fresh-context Fable Inspect pass follows before anything's
 called done, per the standing pipeline rule. `STATE.md`/`OPEN-ITEMS.md` updated to point here.
+
+## Q&A round, 2026-09-16 — all questions answered
+
+Nathan answered `QUESTIONSFORNATHAN.md` directly in the file. Net effect on the brief:
+
+- **No current-sector cue at all**, not even the brightened-label default originally
+  proposed — he pointed out `content_pane_context` (the small "S3" line above the clock)
+  already names the current sector today, so the strip doesn't need to do it too. Simpler
+  than the first draft.
+- **Bar thickness bumped to 6** (from the mockup's literal 4px) as a starting point, with an
+  explicit note that the mockup's proportions weren't considered carefully and Execute
+  should sanity-check the strip's width/inset against the rest of the screen rather than
+  copy pixel values.
+- **Sector times confirmed staying off the strip** — the existing gate-flash over the clock
+  already covers that, untouched by this brief.
+- **Discrete-only confirmed as the end state** — no progressive-fill follow-up wanted.
+
+`BRIEF-sector-strip-bars.md` updated in place (revision note added) rather than re-briefed
+from scratch — these were direct answers to already-identified taste calls, not new design
+work, so no fresh Plan/Fable dispatch was needed for the edit itself. Proceeding to Execute.
