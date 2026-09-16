@@ -115,20 +115,26 @@ export function LiveLapChip(props: { tier: Tier; time: string; delta: string }) 
 
 /** One sector of the live row (LAYOUT §2 rule 4): sector label above a thin
  * bar (STRIP_BAR_HEIGHT). Both are dim grey until the sector earns a real tier
- * (purple/green/yellow), then both take the tier colour; `'est'` stays neutral.
- * No time text — the decimal lives in the override and on the board. The
- * current sector gets no cue at all (identical to an unreached one): the
- * context line above the clock already names it, so `current` is accepted
- * for the caller's sake but does not affect styling. */
+ * (purple/green/yellow, via tierLineColour -- never chipColors().border,
+ * which is 'transparent' for yellow); `'est'` and `'neutral'` (no verdict
+ * yet) both stay grey too. No time text — the decimal lives in the override
+ * and on the board. The current sector gets no cue at all (identical to an
+ * unreached one): the context line above the clock already names it, so
+ * `current` is accepted for the caller's sake but does not affect styling. */
 export function StripSlot(props: { tier: Tier; label: string; time?: string; current?: boolean }) {
   const { t } = useTheme();
   const s = useMemo(() => makeChipStyles(t), [t]);
-  const c = chipColors(props.tier, t);
-  const empty = props.tier === 'none';
-  const coloured = !empty && props.tier !== 'est' && props.tier !== 'none';
-  const tierColour = c.border;
-  const barColour = coloured ? tierColour : t.race.border;
-  const labelColour = coloured ? tierColour : t.textDim;
+  // tierLineColour (not chipColors().border): yellow's .border is
+  // 'transparent' (LAYOUT §6 filled > outlined > FLAT) -- .border only
+  // carries the hue for purple/green. tierLineColour returns null for
+  // 'none' / 'neutral' / 'est' (no earned verdict -> no colour), which
+  // covers all six Tier values correctly, unlike a chipColors()-derived
+  // check (2026-09-16 Inspect finding, cycle9: yellow/neutral rendered
+  // fully transparent and vanished from the strip under the first version
+  // of this logic).
+  const line = tierLineColour(props.tier);
+  const barColour = line ?? t.race.border;
+  const labelColour = line ?? t.textDim;
   return (
     <View style={s.slot}>
       <Text style={[s.slotText, { color: labelColour }]}>{props.label}</Text>
