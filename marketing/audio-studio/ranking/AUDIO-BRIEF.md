@@ -1,8 +1,8 @@
 # ranking — audio brief
 
-**Visual source:** `../../silent-studio/ranking/rounds/v5/ranking_v5.mp4` (10.8 s)
+**Visual source:** `../../silent-studio/ranking/rounds/v6/ranking_v6.mp4` (10.8 s)
 **Filled in by Nathan on:** *(not yet filled in)*   **Status:** draft
-**Current soundtrack round:** soundv2 (`soundv2/FEEDBACK.md`)
+**Current soundtrack round:** soundv3 (`soundv3/FEEDBACK.md`)
 
 Claude fills the first three columns from the composition's timeline and from what
 `soundtrack.py` currently plays. Nathan writes in the last column — plain words, references
@@ -17,9 +17,8 @@ mean "your call". Write `silence` to mean exactly that.
 | 1 | 0.8–2.5 | Ten rows (Mon...12 Aug) fill in top-down | Cmaj9 pad continues, calm/at rest | |
 | 2 | 3.0–3.35 | Old #10 (12 Aug) fades out and drops off the bottom | Pad still holding; droplet run about to start | |
 | 3 | 3.2–5.4 | "Today" rises from below and climbs the whole tower in one continuous glide, overtaking each row on the way, settling into slot 2 | Droplet-run crescendo — a run of short rising plucks, low and slow at first, climbing higher and speeding up, timed exactly to the climb | |
-| 4 | 5.4 | "Today" settles into slot 2 — the payoff | Purple "personal best" chime + a brief pad swell | |
-| 5 | 5.9–7.9 | Caption "Compare directly to your previous ride" | Calm Cmaj9 pad continues, understated — the payoff already happened | |
-| 6 | 8.2–10.8 | Caption "Compare against yourselfs" | Settles into the Cmaj resolve chord as the second caption holds | |
+| 4 | 5.4 | "Today" settles into slot 2 — the payoff (P2 finish, not a personal best as of virgin-cycle9) | Green chime (soundv3; was purple through soundv2) + a brief pad swell | |
+| 5 | 5.9–10.8 | One caption, "Compare against yourselfs" (the earlier "Compare directly to your previous ride" caption was removed, virgin-cycle9) | Calm Cmaj9 pad (5.9–8.1s) settling into the Cmaj resolve chord (8.2–10.8s) — unchanged from before the caption was dropped, since neither pad was ever keyed to a specific caption's text | |
 
 ## Whole-scene direction (Nathan)
 

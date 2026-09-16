@@ -102,11 +102,11 @@ inside those two reaches the shared `synth.py`, one level further up than usual.
 
 | Folder | Status | Feedback goes to |
 |---|---|---|
-| `gates-saving/` | in progress — soundv1 (pulse + single chord), soundv2 (chord progression + plucked arpeggio + reverb), soundv3 (whoosh on zoom-out, start-ride's C-G-Am-F loop boosted to 165-210bpm, migrated onto shared `synth.py`) — muxed onto `gates-saving_v5.mp4` | `gates-saving/soundv3/FEEDBACK.md` |
+| `gates-saving/` | in progress — soundv1 (pulse + single chord), soundv2 (chord progression + plucked arpeggio + reverb), soundv3 (whoosh on zoom-out, start-ride's C-G-Am-F loop boosted to 165-210bpm, migrated onto shared `synth.py`) — muxed onto `gates-saving_v5.mp4`, and again onto `gates-saving_v6.mp4` unchanged (virgin-cycle9's visual fix touched no gate-crossing timings) | `gates-saving/soundv3/FEEDBACK.md` |
 | `brandmark/opening/` | in progress — soundv1, soundv2 (ring-draw pitch sweep, swoosh, new two-beat BRAND_STINGER replacing the old chime pair) — muxed onto the existing `opening_v3.mp4` | `brandmark/opening/soundv2/FEEDBACK.md` |
 | `brandmark/closing/` | in progress — soundv1, soundv2 (full two-beat BRAND_STINGER reusing opening's soundv2 motif, retimed to the new v3 visual) — muxed onto `closing_v3.mp4` | `brandmark/closing/soundv2/FEEDBACK.md` |
 | `colours/` | in progress — soundv1 | `colours/soundv1/FEEDBACK.md` |
-| `ranking/` | in progress — soundv1, soundv2 (new `droplet_run()` rising/accelerating crescendo synced to the new v5 climb) — muxed onto `ranking_v5.mp4` | `ranking/soundv2/FEEDBACK.md` |
+| `ranking/` | in progress — soundv1, soundv2 (new `droplet_run()` rising/accelerating crescendo synced to the new v5 climb), soundv3 (settle chime GREEN_CHIME not PURPLE_CHIME — Today is a P2 finish, not a personal best, virgin-cycle9) — muxed onto `ranking_v6.mp4` | `ranking/soundv3/FEEDBACK.md` |
 | `start-ride/` | in progress — soundv1, soundv2 (true silence before the button click, click on press, driving C-G-Am-F loop at 155bpm) — muxed onto the existing `start-ride_v4.mp4` | `start-ride/soundv2/FEEDBACK.md` |
 | `teaser/` | in progress — soundv1 (independent composition, not a concat — see `APPROACH.md`), soundv2 (rebuilt for the 47.6s teaser_v6 cut, each section now echoes its scene's current motif at the exact right instant) | `teaser/soundv2/FEEDBACK.md` |
 

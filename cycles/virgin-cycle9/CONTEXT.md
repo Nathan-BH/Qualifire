@@ -314,3 +314,37 @@ follow-up (rounds v6/v6/v4, both all-renders mirrors, teaser v7, audio rounds) n
 notes that ranking's and closing's soundtracks need small re-compositions, not plain remuxes
 (purple chime / two-caption pads / mark hit no longer match the picture). Status: brief
 revised, ready for Execute, not yet executed.
+
+## Follow-up round, 2026-09-16 — Nathan's renders landed, audio + all-renders picked up
+
+Nathan ran `render.ps1 -Name gates-saving -Render` and `render.ps1 -Name ranking -Render`
+on his PC and pasted the console output back (visible in the chat log — mostly
+pre-existing, unrelated lint noise: an `svg_measure_before_path_d` false-positive on
+`#route-core` present since before this cycle, and `overlapping_gsap_tweens`/
+`gsap_repeated_fromto_without_baseline` warnings traced to code this cycle did not
+touch or, for `#trow-today`'s two pre-existing fromTo calls, only retimed rather than
+restructured — none are regressions from this cycle's edits). He has NOT yet run
+`render.ps1 -Name brandmark\closing -Render`.
+
+Verified the two new renders visually (extracted stills via ffmpeg at the gate-crossing
+and settle instants, read them as images): gates-saving shows white gate ticks with
+colour-only sector reveal and no thickening; ranking shows the climbing row in green
+settling into slot 2, with only "Compare against yourselfs" as the caption. Matches
+the brief.
+
+Picked into `rounds/v6/` and `silent-studio/all-renders/` (old `v5` mirrors moved to
+`safe_to_delete/`, never deleted outright).
+
+Audio: gates-saving needed no soundtrack change (no gate-crossing timings moved) — its
+existing soundv3 wav was remuxed onto the new `v6` video (`gates-saving_v6_with_sound_v3.mp4`,
+`audio-studio/gates-saving/soundv3/` and `all-renders/`). Ranking's soundtrack DID have a
+real bug this pass caught: the "Today settles into slot 2" chime was still `PURPLE_CHIME`
+("personal best") even though this cycle recoloured that row green (a P2 finish, not a
+P1) — fixed to `GREEN_CHIME`, new round `ranking/soundv3/`, muxed onto the new `v6` video
+and pushed to `all-renders/`. Climb-crescendo and caption-pad timings needed no retiming:
+the climb's start/settle instants (3.2s/5.4s) are unchanged by the new ease curve, and the
+caption pads were never keyed to specific caption text.
+
+**Still outstanding (needs Nathan's PC):** `brandmark\closing`'s render, the teaser v7
+concat (needs all three new ingredients, so blocked on closing), and closing's own
+audio-studio pairing.
