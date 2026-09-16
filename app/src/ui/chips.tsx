@@ -10,6 +10,10 @@ import { PaddockTheme, colors, radius } from './theme';
 import { useTheme } from './themeContext';
 import { YELLOW_TIER, tierLineColour } from './tierColour';
 
+// F1-style sector bar thickness (Nathan: a bit bigger than the first
+// sketch's 4px) -- tune further on device if it still reads thin.
+const STRIP_BAR_HEIGHT = 6;
+
 export type Tier = 'none' | 'neutral' | 'yellow' | 'green' | 'purple' | 'est';
 
 /** YELLOW_TIER / tierLineColour: moved to tierColour.ts (a pure `.ts` module
@@ -109,28 +113,26 @@ export function LiveLapChip(props: { tier: Tier; time: string; delta: string }) 
   );
 }
 
-/** One sector block of the live row (LAYOUT §2 rule 4): completed blocks in
- * tier style with their frozen final time (m:ss — the decimal lives in the
- * override and on the board); current = accent border only, no numbers;
- * untraversed = empty grey. `current` is the only permitted position cue. */
+/** One sector of the live row (LAYOUT §2 rule 4): sector label above a thin
+ * bar (STRIP_BAR_HEIGHT). Both are dim grey until the sector earns a real tier
+ * (purple/green/yellow), then both take the tier colour; `'est'` stays neutral.
+ * No time text — the decimal lives in the override and on the board. The
+ * current sector gets no cue at all (identical to an unreached one): the
+ * context line above the clock already names it, so `current` is accepted
+ * for the caller's sake but does not affect styling. */
 export function StripSlot(props: { tier: Tier; label: string; time?: string; current?: boolean }) {
   const { t } = useTheme();
   const s = useMemo(() => makeChipStyles(t), [t]);
   const c = chipColors(props.tier, t);
   const empty = props.tier === 'none';
+  const coloured = !empty && props.tier !== 'est' && props.tier !== 'none';
+  const tierColour = c.border;
+  const barColour = coloured ? tierColour : t.race.border;
+  const labelColour = coloured ? tierColour : t.textDim;
   return (
-    <View
-      style={[
-        s.slot,
-        {
-          backgroundColor: c.bg,
-          borderColor: props.current ? t.accent : empty ? t.race.border : c.border,
-          borderStyle: c.dashed ? 'dashed' : 'solid',
-        },
-      ]}
-    >
-      <Text style={[s.slotText, { color: empty ? t.textDim : c.text }]}>{props.label}</Text>
-      {props.time ? <Text style={[s.slotTime, { color: c.text }]}>{props.time}</Text> : null}
+    <View style={s.slot}>
+      <Text style={[s.slotText, { color: labelColour }]}>{props.label}</Text>
+      <View style={[s.slotBar, { backgroundColor: barColour }]} />
     </View>
   );
 }
@@ -184,17 +186,9 @@ const makeChipStyles = (t: PaddockTheme) =>
     llbl: { fontSize: 26, fontWeight: '800', letterSpacing: 2 },
     lt: { fontSize: 42, fontWeight: '800', fontVariant: ['tabular-nums'] },
     ld: { fontSize: 26, fontWeight: '700', fontVariant: ['tabular-nums'] },
-    slot: {
-      width: 68,
-      height: 56,
-      borderRadius: radius.btn,
-      borderWidth: 2,
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 1,
-    },
+    slot: { flex: 1, alignItems: 'center', gap: 4 },
+    slotBar: { alignSelf: 'stretch', height: STRIP_BAR_HEIGHT, borderRadius: STRIP_BAR_HEIGHT / 2 },
     slotText: { fontSize: 14, fontWeight: '700' },
-    slotTime: { fontSize: 15, fontWeight: '700', fontVariant: ['tabular-nums'] },
     posChip: {
       borderWidth: 2,
       borderRadius: radius.btn,
