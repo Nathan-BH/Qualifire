@@ -144,3 +144,25 @@ no specification given yet; not actioned, just noted for whenever he wants to pi
 
 **Status: colour question is now open again** (cycle8's picks rejected; revert to cycle7
 pending; "better way to use colours" idea parked, unspecified).
+
+## Round 6 — reverted to cycle7's F1-broadcast hex (executed, 2026-09-16)
+
+Nathan confirmed directly: he wants cycle7's F1-broadcast hex
+(`#9000C8`/`#00D000`/`#F5C542`, `purpleDeep` `#65008C`) — the colours he'd already rejected
+cycle8's phone-matched picks in favour of back on 2026-09-15 (Round 5, above), but which had
+only been logged as an open item, never executed.
+
+Executed this time (`cycles/virgin-cycle9/`, commit `950a72e`): every file cycle8's colour
+swap (`6da58a2`) touched — `app/src/ui/theme.ts`, `wayMapStyle.ts`'s D-030 hue-band firewall
+and its two test suites, the launcher icon PNGs, and every marketing/product file with the
+hex baked in — restored byte-for-byte to its pre-cycle8 content (sha256-verified against the
+commit's parent, not hand-reconstructed). Cycle8's own documentation and the scripts it added
+(`dev-phone.ps1`/`.cmd`, `recolour-icon.py`) were deliberately kept — still useful regardless
+of which hex ships.
+
+**Status: closed.** The app ships cycle7's F1-broadcast hex again. Nathan's earlier,
+unspecified "I think we can use the colours in a better way" also became concrete this same
+cycle, independent of the hex question: the live map/ride-detail/RIDES row no longer colour
+by sector by default (opt-in toggle), the live sector-strip UI is now thin bars instead of
+boxes, and a map layer that used to visibly thicken a completed sector's line no longer does.
+See `cycles/virgin-cycle9/README.md` for the full record.

@@ -191,12 +191,16 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   for the full record and `deployment/DEPLOYMENT-OPTIONS.md` §0 for what's left to actually do.
 - **"No accounts, no social" still stands** — the pivot and the above are about distribution
   reach, not the in-app model; that's a separate call Nathan hasn't made.
-- **Scoring:** three colour tiers (purple/green/yellow), shipping cycle8's (2026-09-15)
-  `#6D4E9C`/`#8BCD39`/`#FFDE6D` — **Nathan confirmed 2026-09-16 he's keeping these
-  permanently** (`marketing/hex-colours/SUMMARY.md`), closing the reconsider-cycle7's-hex
-  question. What changed instead is how much colour the tiers get to use on screen, not the
-  hex values — see the sector-coloured-trail default flip above and `cycles/virgin-cycle9/`
-  for the sector-strip redesign in progress. No noise floor below
+- **Scoring:** three colour tiers (purple/green/yellow). **Reverted 2026-09-16
+  (`cycles/virgin-cycle9/`) to cycle7's F1-broadcast hex** — `#9000C8`/`#00D000`/`#F5C542`,
+  `purpleDeep` `#65008C` — undoing cycle8's phone-matched picks
+  (`#6D4E9C`/`#8BCD39`/`#FFDE6D`), which Nathan had already rejected on phone testing
+  2026-09-15 ("too faint... I would just keep the current colours we have",
+  `marketing/hex-colours/SUMMARY.md`). Every file cycle8's colour-swap commit (`6da58a2`)
+  touched was restored byte-for-byte from its parent commit — theme.ts, the D-030 hue-band
+  firewall + its tests, the launcher icon, and the marketing/product colour references —
+  except cycle8's own documentation and the scripts it added (`dev-phone.ps1`,
+  `recolour-icon.py`), which stay regardless of which hex ships. No noise floor below
   a single ride (D-045 ruling 1, built as NW-1, 2026-09-08): a way's reference ride (ride 1)
   gets no colour verdict on the day it's ridden — it earns a rank once stored, but nothing to
   compare against yet — one prior ride compares purple/yellow only; two or more run the full
@@ -305,10 +309,14 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   on his phone's dev-client build. Digest→Plan→Execute→Inspect all ran; Inspect verdict PASS
   WITH NOTES (two cosmetic follow-ups, see the cycle README).
 - `cycles/virgin-cycle9/README.md` — 2026-09-16: live-map/ride-detail/RIDES sector
-  colouring defaulted OFF (one-line chore, `54aae2d`) after Nathan's "too much colour"
-  feedback; sector-strip redesign (four boxes -> thin F1-style bars under the lap clock,
-  from Nathan's own mockup) fully briefed and ready to execute, not yet run. Also the
-  point where Nathan confirmed keeping cycle8's tier hex permanently (see Scoring above).
+  colouring defaulted OFF (one-line chore, `54aae2d`); sector-strip redesign (four boxes ->
+  thin F1-style bars under the lap clock, from Nathan's own mockup) briefed, executed,
+  fresh-Inspect PASSed (`f60b6d0`/`80b4145`/`7d097eb` — the last a real bug Inspect caught
+  and a follow-up Fable ruled on, yellow/neutral sectors were rendering invisible); the
+  sector-spans map layer's line-width bump removed too (`eb8ad99`, was visibly thickening on
+  completion). Also the cycle that reverted tier colours to cycle7's hex (see Scoring above)
+  — correcting this coordinator's own earlier misreading of Nathan's "keep the current
+  colours" as endorsing cycle8 rather than cycle7.
 
 ## Nathan's own files (unmanaged by any agent)
 

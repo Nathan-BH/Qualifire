@@ -35,15 +35,26 @@ Mid-conversation follow-up, once told the live-map colouring was already a setti
 > default for now, and let people to have the option to activate the sector colouring
 > (this is the most minimal change)
 
-## Decision 1 — tier colours: keep permanently (closes an old open item)
+## Decision 1 — tier colours: revert to cycle7's F1-broadcast hex (correction logged below)
 
-Nathan's opening line ("in the SUMMARY.md file i decided to keep the current colours")
-closes the open item that had been sitting since cycle8 (`OPEN-ITEMS.md`: "Revert tier
-colours to cycle7's hex"). He is **not** reverting to cycle7's F1-broadcast hex
-(`#9000C8`/`#00D000`/`#F5C542`) — cycle8's phone-matched picks
-(`#6D4E9C`/`#8BCD39`/`#FFDE6D`) ship permanently. What he wants changed instead is *how much*
-colour those tiers get to use on screen, not the hex values themselves. `STATE.md` and
-`OPEN-ITEMS.md` updated to reflect this (this cycle).
+**This section originally got this backwards — corrected 2026-09-16, same session, once
+Nathan caught it.** The first draft of this file read Nathan's opening line ("in the
+SUMMARY.md file i decided to keep the current colours") as endorsing cycle8's phone-matched
+picks (`#6D4E9C`/`#8BCD39`/`#FFDE6D`) permanently, and updated `STATE.md`/`OPEN-ITEMS.md`
+that way. That was wrong. Cycle8's own README already recorded that Nathan REJECTED those
+picks on phone testing 2026-09-15 ("although they are closer to the pc colours, on the
+phone they are too faint. So i would just keep the current colours we have") — so "the
+current colours" he meant were cycle7's F1-broadcast hex (`#9000C8`/`#00D000`/`#F5C542`,
+`purpleDeep` `#65008C`), the ones he actually wants, not what happened to still be shipping
+in code (the revert had been logged as an open item but never executed, per
+`marketing/hex-colours/SUMMARY.md` Round 5).
+
+Fixed by actually executing the revert (`950a72e`) — see "Colour revert, 2026-09-16" below
+for how — and correcting `STATE.md`/`OPEN-ITEMS.md` and this file to match. Lesson: "keep the
+current colours" is ambiguous between "keep what's live in the app right now" and "keep what
+I've decided is right" without cross-checking what was actually shipping — should have read
+`marketing/hex-colours/SUMMARY.md` in full (not just taken the pointer at face value) before
+logging this as settled.
 
 ## Decision 2 — live-map sector colouring: default off, not removed
 
@@ -131,3 +142,96 @@ Nathan answered `QUESTIONSFORNATHAN.md` directly in the file. Net effect on the 
 `BRIEF-sector-strip-bars.md` updated in place (revision note added) rather than re-briefed
 from scratch — these were direct answers to already-identified taste calls, not new design
 work, so no fresh Plan/Fable dispatch was needed for the edit itself. Proceeding to Execute.
+
+## Execute + Inspect round, 2026-09-16
+
+Dispatched Execute (Sonnet subagent) on the finalized brief. It implemented Tasks 1-3
+correctly and, per the pipeline's stop-on-ambiguity rule, refused to guess on one leftover:
+the brief's own Task 1 step 6 still said the doc comment should describe "current sector =
+bright label", directly contradicting the brief's own settled decision table (no current-sector
+cue at all) — a draft-stage instruction the revision missed. Forwarded to a fresh Fable to
+rule on the correct doc-comment wording (not resolved by this Sonnet chat, per the pipeline's
+own rule); applied directly as a mechanical text edit, tests+tsc rerun clean, committed
+`f60b6d0` then `80b4145`.
+
+Dispatched Inspect (fresh-context Fable) to adversarially verify before calling it done —
+**verdict: FAIL.** It found a real bug: the colour derivation used
+`chipColors(tier, t).border` as "the tier's hue", but `chipColors()`'s `'yellow'` case
+returns `border: 'transparent'` (yellow is the LAYOUT §6 "flat" tier — only `.text` carries
+its hue). Every completed sector that scored yellow (the statistically common case) or
+`'neutral'` (too little history, e.g. any new route) rendered fully transparent — invisible,
+no label, no bar. The brief's own "Tier colour source" design decision was wrong on this
+point (Plan worked from a Haiku digest without live repo access and missed that `chipColors`
+was already sitting 90 lines above the code it specified). DEMO would have shown this
+immediately since it colours by default.
+
+Fix applied directly (mechanical, Inspect fully specified the correct approach — not a new
+design call): derive from `tierLineColour(tier)` instead, this file's own established
+tier→line-colour source of truth (already used everywhere else for exactly this reason).
+Tests+tsc rerun clean, committed `7d097eb`.
+
+Re-dispatched a fresh Inspect (new context, does not trust the prior report) —
+**verdict: PASS.** All six `Tier` values traced correctly against the live code; `chipColors`
+confirmed removed from `StripSlot` with the rest of the file untouched; `current`/time/border
+behaviour confirmed still correct; tests 583/583, tsc clean; no other place in the codebase
+makes the same `.border`-as-hue mistake.
+
+## Extra task, mid-cycle: sector-spans line-width bump removed
+
+Nathan, while the Inspect round above was in flight: "In the demo ride, upon sector
+completion, the sector line itself thickens somehow. I dont think this is a feature i asked
+for. So first check where this behavior is encoded, and remove it."
+
+Found: `app/src/ui/wayMapView.tsx`'s `sector-spans-core` map layer painted a scored sector's
+stretch of the route line at `line-width: 6`, versus the base route/trail core's `4` —
+deliberately bolder since an older ruling (D-013/D-030): an earned-yellow sector's colour
+(`colors.neutral`) is the exact same hex as the base yellow route line, so without the extra
+width a yellow verdict could be pixel-identical to an unscored stretch. Since only *coloured*
+(completed) spans are visible at all, the effect reads exactly as "the line thickens the
+instant a sector completes" — confirmed this is what Nathan saw on DEMO (which always shows
+sector colours regardless of the `sectorColours` settings toggle).
+
+Applied directly (mechanical one-line + doc-comment update, no pipeline needed): width
+changed from 6 to 4, matching the base core. Flagged, not silently absorbed: this reopens the
+yellow-tier-vs-unscored ambiguity the width bump used to prevent — purple/green sectors stay
+visually distinct (different hue from the base line) regardless of width, so only yellow is
+affected. Consistent with this whole cycle's direction (less colour emphasis), not treated as
+a blocker. Tests 583/583, tsc clean, no test referenced the old value. Committed `eb8ad99`.
+
+## Status: cycle done, pending Nathan's on-device look
+
+Every code change for this cycle has landed and passed a fresh-context Inspect. Nothing left
+briefed-but-unexecuted. What's left is Nathan's own on-device confirmation — bar thickness,
+overall strip proportions, and the removed line-width bump are all things only a real screen
+can really judge.
+
+## Colour revert, 2026-09-16 — actually executed
+
+Once corrected (see Decision 1 above), reverted every file cycle8's colour-swap commit
+(`6da58a2`) changed back to its exact pre-cycle8 content: `app/src/ui/theme.ts` (tier hex),
+`app/src/ui/wayMapStyle.ts` (D-030 hue-band firewall) + its two test suites
+(`waymapgeo_suite.ts`, `waymapstyle_suite.ts`), the launcher icon PNGs
+(`app/assets/icon.png`, `adaptive-icon.png`), and every marketing/product file with the hex
+baked in (silent-studio renders, website CSS, brandmark, monogram/wordmark SVG,
+`product/MAP-CONTRACT.md`/`MAP-TILES.md`/`brand/README.md`).
+
+First tried `git revert --no-commit 6da58a2` directly (it's a single, self-contained commit,
+so this looked like the safest, most mechanical approach — no hand-reconstructing values).
+Two problems: (1) the mount hit its known git-lock flakiness hard on `revert`'s heavier
+internal locking (repeated `Unable to create index.lock: File exists` even after moving the
+stale lock aside several times — `revert` seems to need more of the index-locking machinery
+than a plain `commit`, which this mount tolerates better); (2) more importantly, `6da58a2`
+bundled the colour swap together with things that should NOT be undone — cycle8's own
+documentation (`cycles/virgin-cycle8/*`), `marketing/hex-colours/SUMMARY.md`'s investigation
+log, and two scripts (`scripts/dev-phone.ps1`/`.cmd`, `scripts/recolour-icon.py`) that are
+still useful infrastructure regardless of which hex ships. A wholesale revert would have
+deleted `dev-phone.ps1` along with the colours.
+
+Fixed both problems at once: extracted the exact pre-cycle8 content of just the 26
+colour-value files (`git show 6da58a2^:<path>`, confirmed no later commit had touched any of
+them first) and wrote each one back directly — no `git revert`, no index-lock-heavy
+machinery, just read-and-overwrite. Verified every restored file byte-for-byte via sha256
+against the parent commit's blob before committing. `theme.ts` confirmed:
+purple `#9000C8`, green `#00D000`, yellow `#F5C542`, `purpleDeep` `#65008C`. Tests 583/583,
+tsc clean. Committed `950a72e`. `STATE.md`, `OPEN-ITEMS.md` and this file's "Decision 1"
+corrected in the same pass.

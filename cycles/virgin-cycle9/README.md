@@ -1,48 +1,57 @@
-# virgin-cycle9 — sector strip → thin bars + live-map colour default (Nathan's colour-overload feedback)
+# virgin-cycle9 — tier-colour revert + sector strip → thin bars (Nathan's colour-overload feedback)
 
-**Status (2026-09-16): partially landed.** The live-map colour default flip is executed and
-committed (`54aae2d`). The sector-strip redesign is fully briefed, ready for an Execute
-dispatch, not yet run. See `CONTEXT.md` for the full chat log and reasoning behind every
-decision below; this file is the index.
+**Status (2026-09-16): done**, pending Nathan's own on-device look. Every code change landed
+and passed a fresh-context Inspect. See `CONTEXT.md` for the full chat log and reasoning
+behind every decision below — including a correction: this file and `STATE.md`/
+`OPEN-ITEMS.md` briefly stated the wrong outcome on the tier-hex question earlier in this
+cycle (fixed the same session, see CONTEXT.md's "Decision 1").
 
 ## What this cycle is for
 
-Nathan decided (`marketing/hex-colours/SUMMARY.md`) to keep cycle8's tier hex
-(`#6D4E9C`/`#8BCD39`/`#FFDE6D`) permanently, closing the open reconsider-cycle7's-hex
-question — but found the colours are used too aggressively on screen. Two independent asks
+Nathan wants cycle7's F1-broadcast tier hex back (`#9000C8`/`#00D000`/`#F5C542`,
+`purpleDeep` `#65008C`) — he'd already rejected cycle8's phone-matched picks
+(`#6D4E9C`/`#8BCD39`/`#FFDE6D`) on phone testing 2026-09-15, and this cycle is where that
+revert actually got executed (it had only been logged before). Separately, and regardless of
+which hex ships, he found the colours used too aggressively on screen. Two more asks
 followed: (1) stop colouring the live map's route line by sector, and (2) replace the
 four-box "sector strip" under the lap clock with a thinner, F1-style bar-per-sector, drawn
-from his own mockup (`design/canonical/record_running_night_nbh.svg`).
+from his own mockup (`design/canonical/record_running_night_nbh.svg`). A mid-cycle extra:
+the sector-spans map layer's line-width bump (thickening a completed sector's line) removed
+too.
 
 ## Landed this cycle
 
 | Change | What | Status |
 |---|---|---|
-| `settings.sectorColours` default → `false` | One-line chore (+ doc comment) in `app/src/ui/settings.tsx`; the toggle stays available as an opt-in. Reverts the live map, ride-detail trace and RIDES row to a plain yellow line by default. | **Executed**, tests 583/583 pass (3 skip), tsc clean, commit `54aae2d` |
+| `settings.sectorColours` default → `false` | One-line chore (+ doc comment) in `app/src/ui/settings.tsx`; the toggle stays available as an opt-in. Reverts the live map, ride-detail trace and RIDES row to a plain yellow line by default. | **Executed**, commit `54aae2d` |
+| Sector strip: boxes → thin bars | `StripSlot` (chips.tsx): four filled/outlined boxes → label + 6dp bar per sector, grey until completed with an earned tier, no current-sector cue (Nathan: the `contextLabel` line above the clock already names it). Confined to `chips.tsx`; `liveView.tsx`/`RecordScreen.tsx`/`DemoScreen.tsx` needed no changes. | **Executed + fresh-Inspect PASS**, commits `f60b6d0`/`80b4145`/`7d097eb` |
+| Sector-spans map line-width bump removed | `wayMapView.tsx`'s `sector-spans-core` layer: width 6 → 4 (matches the base route/trail core). Was visibly thickening the line the instant a sector completed — Nathan noticed on DEMO, "not a feature I asked for." | **Executed**, commit `eb8ad99` |
+| Tier colours reverted to cycle7's F1-broadcast hex | `theme.ts`, `wayMapStyle.ts`'s D-030 hue-band firewall + its 2 test suites, the launcher icon PNGs, and every marketing/product file cycle8's colour swap touched — all restored byte-for-byte from before that commit (sha256-verified). Cycle8's own docs/scripts kept. | **Executed**, commit `950a72e` |
 
-## Briefed, not yet executed
+Open taste-call questions (all answered, none blocking): `QUESTIONSFORNATHAN.md`.
 
-| Brief | What | Status |
-|---|---|---|
-| `BRIEF-sector-strip-bars.md` | `StripSlot` (chips.tsx): four filled/outlined boxes → label + 4px bar per sector, grey until completed with an earned tier, current sector cued by a brightened label only. Confined to `chips.tsx` (+ at most one `liveView.tsx` line). No screen changes needed (`RecordScreen.tsx`/`DemoScreen.tsx` consume the shared component as-is). | **Ready to execute** — not blocked on `QUESTIONSFORNATHAN.md` |
-
-Open taste-call questions (none blocking): `QUESTIONSFORNATHAN.md`.
-
-## Digest → Plan readout (Execute / Inspect not run yet)
+## Digest → Plan → Execute → Inspect readout (sector-strip redesign)
 
 | Tier | Model | Tokens | Outcome |
 |---|---|---|---|
-| Digest | Haiku | 77,045 | Line-anchored digest of `chips.tsx`, `liveView.tsx`, `RecordScreen.tsx`, `settings.tsx`, `wayMapView.tsx`, `wayMapStyle.ts`, `theme.ts`, `demoModel.ts`/`DemoScreen.tsx`, `RideDetailScreen.tsx`/`rideDetailModel.ts`, `selfRaceModel.ts`, and 4 test files — confirmed the single shared `sectorColours` toggle and the `StripSlot`/`liveView.tsx` component boundary |
-| Plan | Fable | 64,412 | Assessment of Nathan's idea (relayed in chat), `BRIEF-sector-strip-bars.md`, `QUESTIONSFORNATHAN.md`, this README's summary — no code touched, per the pipeline's rules. Noted its container didn't have the repo mounted, so brief anchors are the digest's, not independently re-verified — Execute must confirm them |
-| Execute | — | — | Not dispatched yet |
-| Inspect | — | — | Not dispatched yet |
+| Digest | Haiku | 77,045 | Line-anchored digest of `chips.tsx`, `liveView.tsx`, `RecordScreen.tsx`, `settings.tsx`, `wayMapView.tsx`, `wayMapStyle.ts`, `theme.ts`, `demoModel.ts`/`DemoScreen.tsx`, `RideDetailScreen.tsx`/`rideDetailModel.ts`, `selfRaceModel.ts`, and 4 test files |
+| Plan | Fable | 64,412 | Assessment of Nathan's idea, `BRIEF-sector-strip-bars.md`, `QUESTIONSFORNATHAN.md`. Its container had no repo mount, so its "tier colour source" design decision (`chipColors().border`) turned out wrong — see Inspect below |
+| (Q&A fold-in) | direct | — | Nathan's `QUESTIONSFORNATHAN.md` answers folded into the brief directly (no current-sector cue, bar thickness bumped, discrete-only confirmed) — applying answered questions, not new design |
+| Execute | Sonnet | 102,965 | Implemented the brief; correctly stopped on one stale, self-contradicting brief instruction (a doc-comment note) rather than guessing |
+| (ambiguity ruling) | Fable | 49,713 | Ruled on the correct `StripSlot` doc-comment wording; applied directly (mechanical) |
+| Inspect #1 | Fable (fresh) | 90,763 | **FAIL** — found `chipColors(tier,t).border` is `'transparent'` for yellow, so yellow/neutral sectors rendered fully invisible |
+| (bugfix) | direct | — | Switched to `tierLineColour(tier)`, this file's own established source of truth for a tier's colour — mechanical, Inspect fully specified the fix |
+| Inspect #2 | Fable (fresh) | 71,271 | **PASS** — all six `Tier` values traced correctly, nothing else regressed, tests 583/583, tsc clean |
 
-The `settings.sectorColours` default flip above was a mechanical one-line chore and
-deliberately skipped the pipeline (`process/CONVENTIONS.md`'s size threshold), done directly
-by the coordinator.
+The `settings.sectorColours` default flip, the line-width removal, and the tier-colour revert
+were all mechanical fixes with a fully-known target state and were done directly by the
+coordinator rather than through Digest/Plan/Execute, per `process/CONVENTIONS.md`'s size
+threshold and because no design decision was actually open in any of the three.
 
 ## Files in this folder
 
-- `CONTEXT.md` — full chat log, the three decisions made, and the reasoning behind each
-- `BRIEF-sector-strip-bars.md` — self-contained implementation brief for the strip redesign
-- `QUESTIONSFORNATHAN.md` — taste-call questions, none blocking execution
+- `CONTEXT.md` — full chat log, every decision made (including the tier-colour correction),
+  and the reasoning behind each
+- `BRIEF-sector-strip-bars.md` — the strip redesign's implementation brief (as executed —
+  revised twice: once for Nathan's Q&A, once for the doc-comment ambiguity)
+- `QUESTIONSFORNATHAN.md` — taste-call questions, all answered

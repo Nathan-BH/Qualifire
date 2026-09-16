@@ -155,9 +155,14 @@ Nathan answered most of `deployment/QUESTIONS-FOR-NATHAN.md` on 2026-09-09; fold
 - **virgin-cycle6 self-racing — answered 2026-09-14, folded in by
   `BRIEF-self-racing-followup.md`**; only the on-device look (yellow dot on the yellow line,
   P-number placement) remains Nathan's.
-- ~~**Revert tier colours to cycle7's hex.**~~ **RESOLVED 2026-09-16.** Nathan decided to
-  keep cycle8's hex (`#6D4E9C`/`#8BCD39`/`#FFDE6D`) permanently — no revert. His earlier,
-  unspecified "I think we can use the colours in a better way" became concrete: less colour
-  on the live map/ride-detail/RIDES row (`sectorColours` defaulted off, `54aae2d`) and a
-  thin-bar sector-strip redesign in progress — see `cycles/virgin-cycle9/`. Full log:
+- ~~**Revert tier colours to cycle7's hex.**~~ **RESOLVED 2026-09-16 — actually
+  executed** (`950a72e`, `cycles/virgin-cycle9/`). Reverted to cycle7's F1-broadcast hex
+  (`#9000C8`/`#00D000`/`#F5C542`, `purpleDeep` `#65008C`), undoing cycle8's phone-matched
+  picks — Nathan had already rejected those on phone testing 2026-09-15. (This coordinator
+  first misread Nathan's "keep the current colours" as endorsing cycle8 and logged it that
+  way; corrected the same session once he caught it.) His earlier, unspecified "I think we
+  can use the colours in a better way" became concrete too: less colour on the live
+  map/ride-detail/RIDES row (`sectorColours` defaulted off, `54aae2d`), a thin-bar
+  sector-strip redesign (`f60b6d0`), and the sector-spans map layer's completion-triggered
+  line-width bump removed (`eb8ad99`) — see `cycles/virgin-cycle9/`. Full log:
   `marketing/hex-colours/SUMMARY.md`.
