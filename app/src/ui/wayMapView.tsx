@@ -698,10 +698,21 @@ function MapLibreWayMap(props: WayMapProps & {
             sectorColours (sectorTrailModel's ALL_YELLOW when the setting is off)
             from their first render, never a toggled undefined.
             Each sector's stretch of the line painted in the colour that sector
-            earned, drawn OVER the base core — width 6 inside the width-7 casing,
-            deliberately bolder than the width-4 core for the same reason WP-E's
-            earned ticks are bolder: an earned-yellow sector (colors.neutral) must
-            never be pixel-identical to an unscored stretch (D-013/D-030).
+            earned, drawn OVER the base core at the SAME width-4 as the core
+            (cycle9, 2026-09-16 -- Nathan: noticed the line visibly thickening
+            on sector completion on the DEMO tab, "not a feature I asked for",
+            asked for it removed). Through cycle8 this layer was deliberately
+            bolder (width 6 inside the width-7 casing) than the width-4 core,
+            for the same reason WP-E's earned ticks were bolder: an
+            earned-yellow sector (colors.neutral) is the exact same hex as the
+            base yellow core, so at equal width a yellow-tier verdict could be
+            pixel-identical to an unscored stretch (D-013/D-030). That
+            corner case is REOPENED by this change and not otherwise
+            mitigated here -- purple/green sectors stay clearly visible
+            (different hue from the base line), only a yellow-tier sector is
+            now visually silent against an unscored one. Flagged, not fixed;
+            Nathan's call given the whole cycle's direction is less colour
+            emphasis, not more.
             Unearned sectors paint transparent, so the base yellow core shows
             through. Solid lines + the same data-driven ['has','colour']
             expression family as the gate-ticks layer below — NO line-dasharray
@@ -715,7 +726,7 @@ function MapLibreWayMap(props: WayMapProps & {
             <M.Layer id="sector-spans-core" type="line"
               paint={{
                 'line-color': ['case', ['has', 'colour'], ['get', 'colour'], 'rgba(0,0,0,0)'],
-                'line-width': 6,
+                'line-width': 4,
               }}
               layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
           </M.GeoJSONSource>
