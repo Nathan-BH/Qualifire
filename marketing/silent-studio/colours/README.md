@@ -5,6 +5,9 @@
 **v2 (2026-09-10):** gate intro, rolling window and endcard removed — rolling window
 to become its own composition.
 
+**v3 (2026-09-16):** rank tower (from ranking v7) replaces bar chart; single ride
+climbs P7->P3->P1.
+
 19-second explainer of the tier logic — no product shot, no footage,
 invented visuals only. 1920x1080, id `purple`, one paused GSAP timeline
 (`window.__timelines.purple`); only external asset is the GSAP CDN script.
@@ -40,3 +43,5 @@ give feedback in this folder's `rounds/vN/FEEDBACK.md`.
 |---|---|---|---|
 | [v1](rounds/v1/FEEDBACK.md) | colours_v1.mp4 | 2026-09-09 | Feedback received, see v2 |
 | [v2](rounds/v2/FEEDBACK.md) | colours_v2.mp4 | 2026-09-10 | Not rendered yet |
+| [v3](rounds/v3/FEEDBACK.md) | colours_v3.mp4 | 2026-09-16 | Rendered, 19.0s confirmed, awaiting Nathan's feedback |
+| [v4](rounds/v4/FEEDBACK.md) | colours_v4.mp4 | 2026-09-16 | Rendered, 19.0s confirmed, awaiting Nathan's feedback |
