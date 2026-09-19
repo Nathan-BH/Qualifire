@@ -68,8 +68,11 @@ function doneSector(movingS: number) {
   return { kind: 'done' as const, rawS: movingS, stoppedS: 0, movingS, interrupted: false, estimated: false };
 }
 
-const T0 = 1785486893000; // arbitrary but fixed; exact value irrelevant
+const T0 = 1785486893000; // arbitrary but fixed; fine for tests where recency doesn't matter
 const DAY = 86_400_000;
+// Newer than every seed ride on every fixture way used below — required (not just
+// convenient) for the R5 self-exclusion test, which must prove exclusion by identity,
+// not have age alone drop "today" from the window before exclusion ever runs.
 const TODAY_MS = T0 + 20 * DAY;
 
 // ---------------------------------------------------------- R4: no reveal
@@ -167,14 +170,19 @@ test("rankingReveal: the board is buildTowerModel's own output, not hand-built",
   const todayRows = rev.model.rows.filter((r) => r.today);
   assert(todayRows.length === 1, `exactly one row must be today's, got ${todayRows.length}`);
   assert(todayRows[0].pos === rev.pos, `the today row's own pos (${todayRows[0].pos}) must equal reveal.pos (${rev.pos})`);
+  const parseTimeS = (t: string): number => {
+    const [m, sec] = t.split(':').map(Number);
+    return m * 60 + sec;
+  };
   for (let i = 1; i < rev.model.rows.length; i++) {
     const a = rev.model.rows[i - 1].time;
     const b = rev.model.rows[i].time;
-    // times are formatted strings; compare the underlying pos instead, which
-    // buildTowerModel guarantees is 1-based ascending by scored time.
+    // The real invariant: strictly ascending SCORED TIME, not just an ascending
+    // `pos` field (buildTowerModel assigns pos from array index, so comparing
+    // pos alone would be true by construction and prove nothing).
     assert(
-      (rev.model.rows[i - 1].pos ?? 0) < (rev.model.rows[i].pos ?? Infinity),
-      `rows must be strictly ascending by rank: row ${i - 1} pos ${rev.model.rows[i - 1].pos}, row ${i} pos ${rev.model.rows[i].pos} (times ${a}/${b})`,
+      parseTimeS(a) < parseTimeS(b),
+      `rows must be strictly ascending by time: row ${i - 1} time ${a} (${parseTimeS(a)}s), row ${i} time ${b} (${parseTimeS(b)}s)`,
     );
   }
 });
@@ -217,7 +225,7 @@ test('rankingReveal: self-exclusion after rememberRide — today must not be its
   assert(before === 9, `expected a window of 9 before today (WINDOW_PREV), got ${before}`);
 
   const mine = 601; // fmt -> '10:01' — distinct from every EveningA seed lap (fastest 810.0s)
-  const startedAtMs = T0;
+  const startedAtMs = TODAY_MS; // must be newer than every seed ride — see the TODAY_MS comment above
   const rideId = 'test:reveal-today';
   rememberRide(
     stateWith({
