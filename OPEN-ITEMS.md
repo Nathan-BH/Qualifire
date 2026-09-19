@@ -121,6 +121,9 @@ replaced. Vocabulary is post-WP-3: a route is the from→to path, a way is one v
    a starting point); the real-ride check in item 5 still stands. **Open (Nathan, item 9):**
    the demo redraws nine dots at ~30 fps where the real screen ticks at 4 Hz — if this
    stutters on the phone, say so; quantising to 250 ms is one line in `DemoScreen.tsx`.
+   **Open (Nathan, item 13):** FIRST RIDE's naming card only ever shows the both-endpoints-unknown
+   variant — say if you also want the start-known / end-known / loop variants reachable from
+   the demo, and which script would drive each one.
 
 ## Distribution (2026-09-09 pivot — see `deployment/`)
 

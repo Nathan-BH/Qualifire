@@ -33,7 +33,7 @@ const { TOWER_MAX_VISIBLE, towerDate } = await import('../src/ui/towerModel.ts')
 const {
   buildDemoScript, demoTier, demoSectorColours, DEMO_HISTORY, DEMO_SECS,
   demoRunEndS, DEMO_ROLL_OUT_S, demoStopOutcome, demoLiveViewModel, demoSavedLine, demoFmtMS,
-  DEMO_PRIOR_LAPS, DEMO_PRIOR_DAYS_AGO, DEMO_TODAY_RIDE_ID, DEMO_ROUTE_LABEL,
+  DEMO_PRIOR_LAPS, DEMO_PRIOR_DAYS_AGO, DEMO_ROUTE_LABEL,
   demoHistoryFor, demoPriorLapSeconds, demoPriorResults, buildDemoReveal, demoAddedWayLine,
   demoChainage, demoSelfTracks, DEMO_SELF_FIX_STEP_S,
   demoRefFixes, demoGateAdjustDraft,
