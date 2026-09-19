@@ -123,6 +123,11 @@ starts the app again empty. Refused while a ride is recording; two-step confirm.
 over WiFi — most changes show up in a second or two, no reinstall. A "build" is a real new
 install (APK) — only needed when something native changes, like the map.
 
+**DEMO tab.** A scripted ride replayed at 25× so you can see, from the couch, what a ride
+looks like on the RECORD screen and what happens after STOP. Nothing it shows is recorded.
+Two modes: FIRST RIDE (a stranger's first ride and the naming card) and SECOND RIDE (a known
+route, the sector strip).
+
 **Preview (the blank-seed build).** "Qualifire Preview" is the standalone APK that runs
 without the PC. Since build 7 it is permanently blank on first launch — no sports, no
 places, no routes, nobody's data — which makes it the install you hand to someone else.

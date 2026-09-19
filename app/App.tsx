@@ -70,6 +70,9 @@ function Shell() {
   // hidden (armed/running/ending, or an in-flight launch mark) — Shell owns
   // the bar, RecordScreen owns whether it should be visible right now.
   const [recFullscreen, setRecFullscreen] = useState(false);
+  // virgin-cycle11 (DEMO overhaul, brief A): DemoScreen reports the same way while a
+  // scripted ride runs or ends — sixth instance of "screen owns intent, Shell owns chrome".
+  const [demoFullscreen, setDemoFullscreen] = useState(false);
   // WP-H: the full-screen ride detail, mount-swapped in place of the active
   // tab's screen while non-null. Second instance of WP-A2's "screen owns
   // intent, Shell owns chrome" split (recFullscreen above).
@@ -168,8 +171,9 @@ function Shell() {
   // no tab browsing." The bar is hidden ENTIRELY (not just dimmed) while on
   // the record tab and RecordScreen reports itself fullscreen. WP-H: the
   // ride detail hides the bar the same way, from any tab. WP-K (cycle 2): so
-  // does the catalog detail.
-  const tabBarHidden = (tab === 'record' && recFullscreen)
+  // does the catalog detail. virgin-cycle11 (DEMO overhaul, brief A): so does
+  // the demo tab while its scripted ride runs or ends.
+  const tabBarHidden = (tab === 'record' && recFullscreen) || (tab === 'demo' && demoFullscreen)
     || rideDetail !== null || gateAdjust !== null || catalogDetail !== null || resultsDetail !== null;
   // WP-A2 hides the tab bar entirely while fullscreen, which also removes
   // the only thing padding the screen for the device's bottom gesture-nav
@@ -210,7 +214,7 @@ function Shell() {
             : tab === 'routes' ? <RoutesScreen />
             : tab === 'results' ? <ResultsScreen />
             : tab === 'settings' ? <SettingsScreen />
-            : <DemoScreen />}
+            : <DemoScreen onFullscreenChange={setDemoFullscreen} />}
         </View>
         {/* Six tabs (WP-2 re-added RESULTS, in RESULT's old slot) still
             scroll sideways rather than shrinking — Nathan, 2026-08-16, on

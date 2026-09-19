@@ -30,6 +30,7 @@ registerHooks({
 const { MIN_HISTORY } = await import('../src/ui/colourModel.ts');
 const {
   buildDemoScript, demoTier, demoSectorColours, DEMO_HISTORY, DEMO_SECS,
+  demoRunEndS, DEMO_ROLL_OUT_S, demoStopOutcome, demoLiveViewModel, demoSavedLine, demoFmtMS,
 } = await import('../src/ui/demoModel.ts');
 
 test('demoModel: buildDemoScript() with default secs computes gateAt/lap', () => {
@@ -91,4 +92,84 @@ test('demoModel: demoSectorColours at gatesDone=4 paints indices 1-4, index 0 st
   for (let i = 1; i <= 4; i++) {
     assert(out[i] !== null, `index ${i} should be painted at gatesDone=4, got null`);
   }
+});
+
+// virgin-cycle11 (DEMO overhaul, brief A) below.
+
+test('demoModel: the run rolls out past the lap, then ends', () => {
+  const script = buildDemoScript();
+  assert(demoRunEndS(script) === 836 + DEMO_ROLL_OUT_S, `expected ${836 + DEMO_ROLL_OUT_S}, got ${demoRunEndS(script)}`);
+  assert(DEMO_ROLL_OUT_S >= 30, `DEMO_ROLL_OUT_S must be >= 30 (brief C's slowest self), got ${DEMO_ROLL_OUT_S}`);
+});
+
+test('demoModel: STOP skips before the line, ends after it', () => {
+  for (let g = 0; g <= 3; g++) {
+    assert(demoStopOutcome(g) === 'skip', `demoStopOutcome(${g}) expected 'skip', got ${demoStopOutcome(g)}`);
+  }
+  assert(demoStopOutcome(4) === 'ending', `demoStopOutcome(4) expected 'ending', got ${demoStopOutcome(4)}`);
+});
+
+test('demoModel: the lap chip is neutral at the line (R5)', () => {
+  const script = buildDemoScript();
+  const T = 5000;
+  const before = demoLiveViewModel(script, 835, T);
+  assert(before.lap === null, `at 835 (before the line) expected lap === null, got ${JSON.stringify(before.lap)}`);
+
+  const atLine = demoLiveViewModel(script, 836, T);
+  assert(atLine.lap !== null, 'at 836 (the line) expected a lap chip');
+  assert(atLine.lap!.tier === 'neutral', `expected tier 'neutral', got ${atLine.lap!.tier}`);
+  assert(atLine.lap!.time === '13:56', `expected time '13:56', got ${atLine.lap!.time}`);
+  assert(atLine.posChip === null, `expected posChip null, got ${atLine.posChip}`);
+  assert(atLine.livePos === null, `expected livePos null, got ${atLine.livePos}`);
+
+  const rollOut = demoLiveViewModel(script, 900, T);
+  assert(rollOut.lap !== null && rollOut.lap.tier === 'neutral', 'roll-out (900) should keep the neutral lap chip');
+});
+
+test('demoModel: the strip is the pinned fixture', () => {
+  const script = buildDemoScript();
+  const atLine = demoLiveViewModel(script, 836, 0);
+  const tiers = atLine.strip.map((s) => s.tier);
+  const times = atLine.strip.map((s) => s.time);
+  assert(
+    tiers.join(',') === 'purple,green,yellow,green',
+    `expected purple,green,yellow,green, got ${tiers.join(',')}`,
+  );
+  assert(
+    times.join(',') === '3:05,3:27,3:57,3:27',
+    `expected 3:05,3:27,3:57,3:27, got ${times.join(',')}`,
+  );
+
+  const mid = demoLiveViewModel(script, 400, 0);
+  assert(mid.strip[0].tier !== 'none' && mid.strip[0].time !== undefined, 'slot 1 should have a tier/time at clockS=400');
+  assert(mid.strip[1].tier !== 'none' && mid.strip[1].time !== undefined, 'slot 2 should have a tier/time at clockS=400');
+  assert(mid.strip[2].tier === 'none' && mid.strip[2].time === undefined, 'slot 3 should be none/undefined at clockS=400');
+  assert(mid.strip[2].current === true, 'slot 3 should be current at clockS=400');
+  assert(mid.strip[3].tier === 'none' && mid.strip[3].time === undefined, 'slot 4 should be none/undefined at clockS=400');
+});
+
+test('demoModel: timebase anchor is the demo clock', () => {
+  const script = buildDemoScript();
+  const vm = demoLiveViewModel(script, 100, 5000);
+  assert(
+    vm.clock !== null
+      && vm.clock.anchorRealMs === 5000
+      && vm.clock.anchorClockMs === 100000
+      && vm.clock.rate === 1
+      && vm.clock.running === false,
+    `unexpected clock: ${JSON.stringify(vm.clock)}`,
+  );
+});
+
+test('demoModel: the fake-save line', () => {
+  const line = demoSavedLine({ start: ' Home ', end: 'Work' });
+  assert(
+    line === 'Home → Work created · demo only, nothing saved',
+    `unexpected line: ${line}`,
+  );
+});
+
+test('demoModel: demoFmtMS matches the old DemoScreen fmtMS format', () => {
+  assert(demoFmtMS(836) === '13:56', `expected '13:56', got ${demoFmtMS(836)}`);
+  assert(demoFmtMS(65) === '1:05', `expected '1:05', got ${demoFmtMS(65)}`);
 });

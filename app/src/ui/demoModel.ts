@@ -16,8 +16,18 @@
  * forever.
  */
 import { tierFor, type UiTier } from './colourModel.ts';
+import type { LiveViewModel } from './liveView.tsx';   // type-only, house precedent towerModel.ts:22-23
+import type { Tier } from './chips.tsx';
+import type { RouteNames } from '../store/routeCreation.ts';  // type-only
+// Re-exported so DemoScreen.tsx never has to import from '../store/**' at all
+// (Rules: DemoScreen must not import anything from app/src/store/**).
+export type { RouteNames };
 
 export type DemoMode = 'first' | 'second';
+
+/** Where the DEMO tab is: the chooser, the full-screen scripted ride, or the post-STOP
+ *  screen. State within the DEMO tab — never a RecordPhase. */
+export type DemoPhase = 'idle' | 'running' | 'ending';
 
 /** The demo's own "previous laps" — six per sector. MIN_HISTORY (1, since
  * D-045 ruling 1 / NW-1) needs only one to clear the floor; six is chosen
@@ -70,4 +80,62 @@ export function demoSectorColours(
       return i <= gatesDone ? paint(demoTier(i, v)) : null;
     }),
   ];
+}
+
+/** R3: simulated seconds the clock keeps running past the lap before the run auto-STOPs
+ *  (~2.4 real s at RATE 25). Long enough to read the neutral lap chip; brief C also needs
+ *  every slower self to reach its finish inside it. */
+export const DEMO_ROLL_OUT_S = 60;
+/** sim second at which the run auto-STOPs (R3). */
+export function demoRunEndS(script: DemoScript): number { return script.lap + DEMO_ROLL_OUT_S; }
+
+/** R4: what the STOP button (and hardware back) does. */
+export type DemoStopOutcome = 'skip' | 'ending';
+export function demoStopOutcome(gatesDone: number, sectorCount: number = DEMO_SECS.length): DemoStopOutcome {
+  return gatesDone >= sectorCount ? 'ending' : 'skip';
+}
+
+/** R7: theatre timings for the fake save. */
+export const DEMO_FAKE_SAVE_MS = 600;
+export const DEMO_SAVED_HOLD_MS = 1800;
+export function demoSavedLine(names: RouteNames): string {
+  return `${names.start.trim()} → ${names.end.trim()} created · demo only, nothing saved`;
+}
+
+/** m:ss — lifted verbatim from DemoScreen.tsx's local fmtMS (Task 3 deletes that copy). */
+export function demoFmtMS(s: number): string {
+  const m = Math.floor(s / 60);
+  const r = Math.round(s - m * 60);
+  return `${m}:${r < 10 ? '0' : ''}${r}`;
+}
+
+/**
+ * The hand-built LiveViewModel the demo feeds to LiveSectorPane — the same pane the Record
+ * screen draws, so what the demo shows IS what the rider sees. R5: the lap chip is
+ * 'neutral' once the lap lands (cycle11 R1 — the tier is the rank in disguise and is
+ * revealed after STOP by the tower, brief B); sectors keep their tiers; posChip null.
+ * `nowMs` anchors the frozen timebase (Date.now() on the screen; fixed in tests).
+ * `livePos` is brief C's; default null renders nothing.
+ */
+export function demoLiveViewModel(
+  script: DemoScript, clockS: number, nowMs: number, livePos: string | null = null,
+): LiveViewModel {
+  const gatesDone = script.gateAt.filter((g, i) => i > 0 && clockS >= g).length;
+  return {
+    clock: { anchorRealMs: nowMs, anchorClockMs: clockS * 1000, rate: 1, running: false },
+    contextLabel: gatesDone < 4 ? `S${gatesDone + 1}` : '',
+    flash: null,
+    flashKey: 0,
+    lap: gatesDone >= 4
+      ? { tier: 'neutral' as Tier, time: demoFmtMS(script.lap), delta: '' }
+      : null,
+    posChip: null,
+    livePos,
+    strip: script.secs.map((v, i) => ({
+      tier: i < gatesDone ? (demoTier(i + 1, v) as Tier) : ('none' as Tier),
+      label: `S${i + 1}`,
+      time: i < gatesDone ? demoFmtMS(v) : undefined,
+      current: i === gatesDone,
+    })),
+  };
 }

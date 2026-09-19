@@ -91,7 +91,15 @@ replaced. Vocabulary is post-WP-3: a route is the from→to path, a way is one v
    card beneath (Skip → reverse mark → ride detail). Ride 1 of a new way: no tower. Tune:
    `REVEAL_START_DELAY_MS`, `REVEAL_HOLD_MS`, `CLIMB_*` (`ui/rankingRevealModel.ts`),
    `STEP_W` (`ui/tower.tsx`), past rows coloured vs all-white (R3), lap-chip tier before
-   STOP (R1).
+   STOP (R1). The DEMO tab (SECOND / TENTH RIDE, brief B) now previews the same reveal
+   without riding — a preview of the animation, not a substitute for the real-ride check.
+7. **virgin-cycle11 DEMO overhaul — on-device look (phone only).** DEMO tab → FIRST RIDE →
+   RUN: expect the tab bar to vanish, the map filling the top half course-up, the yellow
+   trail, the status line, STOP; ~34 s later the roll-out and the 'Ride saved — m:ss.' screen
+   with the naming card; type two names → SAVE dims the button ~0.6 s → one confirmation
+   line → the reverse mark → back to the chooser with the tab bar. STOP before the line →
+   straight back. SECOND RIDE → the sector strip and neutral lap chip at the line; ending per
+   brief B. Hardware back behaves like STOP.
 
 ## Distribution (2026-09-09 pivot — see `deployment/`)
 

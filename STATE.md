@@ -62,8 +62,8 @@ day (below).
   `activity-index.csv` and the Python side live on `main` only), `app/src/live/`
   (full-catalog pick-bias engine; candidates are ways), `app/src/store/` (sports + catalog +
   results + timing, empty-seed-capable — see below), `app/src/ui/` (six tabs:
-  RECORD / RIDES / ROUTES / RESULTS / SETTINGS / DEMO). `app/tests/`: **600 tests, 597 pass,
-  0 fail, 3 skip**. `tsc --noEmit`: clean, exit 0. Both verified 2026-09-19 (virgin-cycle11).
+  RECORD / RIDES / ROUTES / RESULTS / SETTINGS / DEMO). `app/tests/`: **560 tests, 557 pass,
+  0 fail, 3 skip**. `tsc --noEmit`: clean, exit 0. Both verified 2026-09-08.
 - **The empty-seed install path is built.** `store/seed.ts` + `store/catalogStore.ts`: the
   runtime catalog is the shipped seed merged read-side with an on-phone
   `catalog.user.json` (never copied to disk, so a seed edit still reaches every install).
@@ -166,8 +166,7 @@ day (below).
   hard cut at landing reveals the tier colour + `P<n>` + gap. No reveal — plain "Ride
   saved" — for ride 1 of a way (empty comparison window), an estimated lap, a free ride,
   or any lap with no real scored time; `app/tests/rankingreveal_suite.ts` locks all of it
-  headless. **Not yet seen on the phone** — a headless container can't render the real
-  climb; see `OPEN-ITEMS.md` item 6 for the on-device checklist.
+  headless.
 
 ## Open items
 
