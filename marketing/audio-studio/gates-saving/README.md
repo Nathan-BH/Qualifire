@@ -60,3 +60,17 @@ voice_a + E5 gate-chimes, same ride-only window (4.4-11.7s) as soundv5. See
 production. Same mix as soundv6 (bass + voice_a + E5 gate-chimes, same 4.4-11.7s
 window), rendered with real piano samples instead of pluck()/pad(). **Current.** See
 `soundv7/FEEDBACK.md`.
+
+**Update:** soundv8 (2026-09-20) -- direction change, not a bugfix. The soundv7
+near-collision (gate-chime + voice_a's own A4 landing 80ms apart around 6s) turned out
+to be real, not broken -- but Nathan's call was to remove the synthesized chime
+entirely rather than avoid the collision: "the audio should be the real reference,
+there should be no extra sound for the gates crossing." Audio is now just bass + the
+untouched melody. The video's RIDE now varies speed instead (see
+`../../silent-studio/gates-saving/index.html`'s `RIDE_WARP`) so the gates land on the
+melody's own beats. Rendered and muxed 2026-09-20 --
+`soundv8/gates-saving_v7_with_sound_v8.mp4` is **current**. Gate-crossing timing
+verified two ways: frame extraction (rider dot sits exactly on each gate tick at
+5.32/7.18/9.05s) and an onset scan of the audio (attacks land within ~20ms of target).
+See `soundv8/FEEDBACK.md` for the full before/after table and the one open item (first
+ride leg's ~3x speed-up hasn't been watched at full speed yet).

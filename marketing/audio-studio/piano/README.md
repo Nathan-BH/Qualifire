@@ -67,6 +67,21 @@ all tabs, and switching browsers — under investigation, see
 artifact has *not* been republished from this version yet, so on top of the rule above
 it is now two upgrades behind the local file (still FluidSynth, not Salamander).
 
+**Update (2026-09-20, later the same day):** the "still hears the old sound" issue above
+was closed — the file on disk was confirmed to be what the browser loads, so the remaining
+complaint ("sounds very off, worse than the FluidSynth version") was a real playback bug,
+not caching. Three code fixes, applied identically to `named-keys.html` and
+`named-keys-salamander.html`: (1) samples now decode at page load instead of on the Play
+click, so a fresh playthrough no longer opens on the oscillator fallback while 5.4 MB of
+mp3 decodes; (2) `playSample` no longer fades every note to silence over its whole
+length on top of the recording's own decay — it holds at full gain for the note's duration
+and releases over ~0.6 s like a damper; (3) notes now go through a master bus with a
+limiter (`DynamicsCompressorNode`, −6 dB threshold, 20:1) at lower per-note gain, because
+chords of the hot Salamander samples were hard-clipping at the destination (the quieter
+FluidSynth render never did). Verified only structurally (`node --check`, grep, file
+parity) — nothing on this side can hear audio; whether it now sounds right is Nathan's
+call. The published "Named Keys" artifact is still *not* republished from this version.
+
 ### Shortcuts
 
 Also listed at the foot of the page itself, so there is nothing to memorise.

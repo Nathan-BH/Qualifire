@@ -439,9 +439,10 @@ function drawKeys(top,C){
 }
 
 // ---------- audio ----------
-// Real piano samples (real Salamander Grand Piano recordings, swapped in 2026-09-20 --
-// see APPROACH.md / interstellar/NOTES.md for the FluidSynth-rendered predecessor and
-// piano/README.md for the swap history. PIANO_SAMPLES (loaded above) covers 29 notes, minor-third
+// Real piano samples (FluidSynth-rendered, 2026-09-19 -- see
+// ../APPROACH.md / interstellar/NOTES.md for why: a from-scratch oscillator ping
+// sounds nothing like a piano, and midiviewer.io/Klang.io's own previews both play
+// real recorded piano). PIANO_SAMPLES (loaded above) covers 30 notes, minor-third
 // spaced A0-C8, matching how sample players usually cover 88 keys without shipping
 // one file per key. Any note we don't have gets the nearest sample pitch-shifted by
 // playbackRate -- never more than ~1.5 semitones off, inaudible on a piano tone.

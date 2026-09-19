@@ -439,16 +439,25 @@ function drawKeys(top,C){
 }
 
 // ---------- audio ----------
-// Real piano samples (FluidSynth-rendered, 2026-09-19 -- see
-// ../APPROACH.md / interstellar/NOTES.md for why: a from-scratch oscillator ping
-// sounds nothing like a piano, and midiviewer.io/Klang.io's own previews both play
-// real recorded piano). PIANO_SAMPLES (loaded above) covers 30 notes, minor-third
+// Real piano samples (real Salamander Grand Piano recordings, swapped in 2026-09-20 --
+// see APPROACH.md / interstellar/NOTES.md for the FluidSynth-rendered predecessor and
+// piano/README.md for the swap history. PIANO_SAMPLES (loaded above) covers 29 notes, minor-third
 // spaced A0-C8, matching how sample players usually cover 88 keys without shipping
 // one file per key. Any note we don't have gets the nearest sample pitch-shifted by
 // playbackRate -- never more than ~1.5 semitones off, inaudible on a piano tone.
-let ac=null;
+let ac=null,master=null;
 const SAMPLE_MIDIS=Object.keys(PIANO_SAMPLES).map(Number).sort((a,b)=>a-b);
 const sampleBufCache={},samplePending=new Set();
+// One AudioContext plus a master bus: gain headroom into a limiter-configured
+// compressor so chords of hot real-piano samples no longer hard-clip at the destination.
+function ensureAc(){
+  if(ac)return;
+  ac=new (window.AudioContext||window.webkitAudioContext)();
+  master=ac.createGain();master.gain.value=0.8;
+  const lim=ac.createDynamicsCompressor();
+  lim.threshold.value=-6;lim.knee.value=0;lim.ratio.value=20;lim.attack.value=0.001;lim.release.value=0.1;
+  master.connect(lim);lim.connect(ac.destination);
+}
 function nearestSample(m){
   let best=SAMPLE_MIDIS[0],bd=Infinity;
   for(const s of SAMPLE_MIDIS){const d=Math.abs(m-s);if(d<bd){bd=d;best=s}}
@@ -465,7 +474,7 @@ function decodeSample(m){
 }
 function pingOsc(m,d,vel){
   const f=440*Math.pow(2,(m-69)/12),t0=ac.currentTime,len=Math.min(Math.max(d,0.25),3.2);
-  const g=ac.createGain();g.connect(ac.destination);
+  const g=ac.createGain();g.connect(master);
   g.gain.setValueAtTime(0,t0);
   g.gain.linearRampToValueAtTime(0.16*vel,t0+0.008);
   g.gain.exponentialRampToValueAtTime(0.0001,t0+len);
@@ -476,17 +485,23 @@ function pingOsc(m,d,vel){
   });
 }
 function playSample(buf,m,nearest,d,vel){
-  const t0=ac.currentTime,len=Math.min(Math.max(d,0.25),3.2);
+  // Real recorded sample: hold at full gain for the note's duration (the recording
+  // already carries the piano's natural decay), then a short damper-style release.
+  // The old whole-note exponential fade stacked on top of the natural decay made
+  // every note sound over-damped and thin.
+  const t0=ac.currentTime,hold=Math.max(d,0.1),rel=0.6;
   const src=ac.createBufferSource();src.buffer=buf;
   src.playbackRate.value=Math.pow(2,(m-nearest)/12);
-  const g=ac.createGain();g.connect(ac.destination);
-  g.gain.setValueAtTime(0.85*Math.max(0.15,vel),t0);
-  g.gain.exponentialRampToValueAtTime(0.0008,t0+len);
-  src.connect(g);src.start(t0);src.stop(t0+len+0.05);
+  const g=ac.createGain();g.connect(master);
+  const g0=0.6*Math.max(0.15,vel);
+  g.gain.setValueAtTime(g0,t0);
+  g.gain.setValueAtTime(g0,t0+hold);
+  g.gain.setTargetAtTime(0,t0+hold,0.09);
+  src.connect(g);src.start(t0);src.stop(t0+hold+rel);
 }
 function ping(m,d,vel){
   try{
-    if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();
+    ensureAc();
     if(ac.state==="suspended")ac.resume();
     const nearest=nearestSample(m),buf=sampleBufCache[nearest];
     if(buf){playSample(buf,m,nearest,d,vel)}
@@ -496,9 +511,12 @@ function ping(m,d,vel){
 // warm the cache as soon as audio can start, so most of a playthrough uses real
 // samples rather than the oscillator fallback
 function warmSamples(){
-  if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();
+  ensureAc();
   SAMPLE_MIDIS.forEach(decodeSample);
 }
+// Decode on page load (the context sits suspended until the first click; decodeAudioData
+// works regardless) so all 29 samples are ready long before Play is pressed.
+setTimeout(()=>{try{warmSamples()}catch(e){}},0);
 
 // ---------- transport ----------
 let time=0,playing=false,last=0,rate=1,fired=new Set();
@@ -523,7 +541,7 @@ function loop(ts){
 }
 function toggle(){
   playing=!playing;document.getElementById("play").textContent=playing?"Pause":"Play";
-  if(playing){warmSamples();if(time>dur+1)seek(0);last=performance.now();requestAnimationFrame(loop)}
+  if(playing){warmSamples();if(ac.state==="suspended")ac.resume();if(time>dur+1)seek(0);last=performance.now();requestAnimationFrame(loop)}
 }
 
 // ---------- wiring ----------

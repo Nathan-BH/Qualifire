@@ -216,16 +216,50 @@
     gsap.set('#cam', { x: 0, y: 0, scale: 1, transformOrigin: '50% 50%' });
     gsap.set('#cam', { x: camStart.x, y: camStart.y, scale: CAM_S });
 
-    // Rider along the route at constant speed: 240 short linear tweens (no callbacks, no plugins,
-    // so a frame-seeking renderer always lands on the right point).
+    // Melody-aligned pacing (2026-09-20, Nathan's idea): the old build synthesized an E5
+    // chime whenever the (constant-speed) rider crossed a gate. Nathan: audio should be
+    // the real reference, no extra sound for the gate crossing -- instead adapt the RIDE
+    // so the gates land on beats that are already in the real melody. GATES (route
+    // fractions) stay fixed -- they're real gate geography -- but the rider's speed along
+    // the route now varies so gate1/2/3 land exactly on three of the Interstellar
+    // soundtrack's own E5 pulses instead of being evenly spaced in time. See
+    // audio-studio/piano/projects/interstellar/NOTES.md and
+    // audio-studio/gates-saving/soundv8/FEEDBACK.md for where these numbers come from and
+    // the audio side of this change (no separate gate-chime layer any more).
+    //
+    // RIDE_WARP: [routeFraction, rideRelativeSeconds] anchors, piecewise-linear between
+    // them -- speed is constant within a leg, and changes (not smoothly) at each anchor.
+    // The first leg is the fast one: about 3x the old constant speed, to reach the
+    // melody's first beat only 0.52s after the ride starts. Flagged in soundv8's
+    // FEEDBACK.md as the thing most likely to need a second look.
+    var RIDE_WARP = [
+      [0, 0],
+      [0.24, 0.52],   // gate1 -> melody E5 at content t=0.92s (bass_only/voice_a/melody share this clock)
+      [0.63, 2.38],   // gate2 -> melody E5 at content t=2.78s
+      [0.84, 4.25],   // gate3 -> melody E5 at content t=4.65s
+      [1, 6.9],        // ride end, unchanged (== RIDE_DUR)
+    ];
+    function warpTime(f) {
+      for (var i = 1; i < RIDE_WARP.length; i++) {
+        var a = RIDE_WARP[i - 1], b = RIDE_WARP[i];
+        if (f <= b[0]) { var t = (f - a[0]) / (b[0] - a[0]); return a[1] + t * (b[1] - a[1]); }
+      }
+      return RIDE_WARP[RIDE_WARP.length - 1][1];
+    }
+
+    // Rider along the route, paced by RIDE_WARP instead of constant speed: still 240 short
+    // linear tweens (no callbacks, no plugins, so a frame-seeking renderer always lands on
+    // the right point) -- each step's position comes from arc length as before, but its
+    // duration now comes from the warp curve instead of being evenly spaced.
     function ride(tl, start, dur) {
-      var N = 240, prev = at(0);
+      var N = 240, prev = at(0), prevT = 0;
       for (var i = 1; i <= N; i++) {
-        var p = at(i / N * L);
+        var f = i / N, p = at(f * L), t = warpTime(f);
+        var stepDur = Math.max(0.0001, t - prevT);
         tl.fromTo('#rider', { attr: { cx: prev.x, cy: prev.y } },
-          { attr: { cx: p.x, cy: p.y }, duration: dur / N, ease: 'none', immediateRender: false, lazy: false },
-          start + (i - 1) * dur / N);
-        prev = p;
+          { attr: { cx: p.x, cy: p.y }, duration: stepDur, ease: 'none', immediateRender: false, lazy: false },
+          start + prevT);
+        prev = p; prevT = t;
       }
     }
 
@@ -273,8 +307,11 @@
     var RIDE_T0 = 4.8, RIDE_DUR = 6.9;
     tl.fromTo('#rider', { opacity: 0 }, { opacity: 1, duration: 0.3, immediateRender: false }, 4.4);
     ride(tl, RIDE_T0, RIDE_DUR);
+    // Sector recolouring must fire when the WARPED rider actually reaches each gate, not
+    // at the old uniform-speed time -- otherwise a sector repaints before/after the dot
+    // visually gets there. warpTime(f) is the same curve ride() uses to place the rider.
     GATES.forEach(function (f, i) {
-      var t = RIDE_T0 + f * RIDE_DUR;
+      var t = RIDE_T0 + warpTime(f);
       tl.to('#sec' + (i + 1), { opacity: 1, duration: 0.25 }, t);
     });
     tl.to('#sec4', { opacity: 1, duration: 0.25 }, RIDE_T0 + RIDE_DUR);

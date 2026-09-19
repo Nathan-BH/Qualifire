@@ -17,3 +17,4 @@ Duration: 14.8s.
 | [v2](rounds/v2/FEEDBACK.md) | gates-saving_v2.mp4 | 2026-09-10 | Built, awaiting Nathan's render |
 | [v3](rounds/v3/FEEDBACK.md) | gates-saving_v3.mp4 | 2026-09-10 | Built, awaiting Nathan's render |
 | [v6](rounds/v6/FEEDBACK.md) | gates-saving_v6.mp4 | 2026-09-16 | Built, awaiting Nathan's render — cycle 9 render-remake (no line thickening, white ticks) |
+| [v7](rounds/v7/FEEDBACK.md) | gates-saving_v7.mp4 | 2026-09-20 | Rendered + muxed, verified — melody-synced ride pacing (RIDE_WARP), gate-chime retired from audio. Current. |

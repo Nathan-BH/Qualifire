@@ -223,3 +223,67 @@ so i would roll with it"). Adopted as production:
   from) as a path to the real Salamander Grand Piano quality later, if wanted.
 
 Full writeup: `../../audio-studio/piano/projects/interstellar/NOTES.md`.
+
+
+## Round 7, gate-chime retired -- the ride adapts to the melody instead (2026-09-20)
+
+Investigated Nathan's "extra note around 6 seconds" report on soundv7 thoroughly: onset
+analysis (every attack in the file cross-checked against the exact expected schedule,
+both gates-saving and start-ride) found nothing wrong with the render -- the E5
+gate-chime (at the real gate-crossing time, 6.46s) lands 80ms from voice_a's own next
+note (A4 at 6.54s), a coincidence that existed in soundv6 too but wasn't audible with
+the old Karplus-Strong pluck's soft attack. FluidSynth's real piano attack makes both
+land distinctly, reading as two notes.
+
+Nathan's call: not a mix problem to patch, a direction to drop. Audio should be the
+real melody with nothing added; instead adapt the VIDEO. Edited
+`silent-studio/gates-saving/index.html`: the ride's rider now moves at a
+piecewise-linear varying speed (`RIDE_WARP`) instead of constant speed, so the 3 gates
+(fixed route positions, real geography) are crossed exactly when the melody's own E5
+pulses land, instead of evenly spaced in time. Also fixed a knock-on bug this exposed --
+the sector recolour-on-crossing was still keyed to the old uniform-speed formula and
+would have desynced from where the warped rider actually is.
+
+Cannot render the result here (`npx hyperframes render` needs npm; same network wall
+as the Salamander samples). `gates-saving/soundv8/` has the finished audio
+(bass + untouched melody, no chime) and a "to finish this round" handoff for Nathan to
+render and send back.
+
+
+### Round 7 complete (2026-09-20) — rendered, muxed, verified
+
+Nathan ran `render.ps1 -Name gates-saving -Render` himself and the silent video landed
+in `silent-studio/gates-saving/renders/`. Finished from there:
+
+- Copied the render into that composition's round history as
+  `silent-studio/gates-saving/rounds/v7/gates-saving_v7.mp4` (12.3s, unchanged
+  duration from v6 — the warp only redistributes speed within the existing ride
+  window, nothing else on the timeline moved).
+- Muxed it with `soundtrack_v8.wav` (bass + the real, untouched melody — no
+  gate-chime layer) → `audio-studio/gates-saving/soundv8/gates-saving_v7_with_sound_v8.mp4`.
+  **This is the current pick for the scene.**
+- Verified the retiming actually landed, two independent ways rather than trusting the
+  math alone: extracted video frames at the three target gate-crossing times
+  (5.32s / 7.18s / 9.05s) and confirmed the rider dot sits exactly on each gate tick in
+  all three; separately ran the same onset-detection scan used for the soundv7
+  investigation on `soundtrack_v8.wav` and got attacks at 5.30 / 7.18 / 9.03s — video
+  and audio agree, both matching the melody's own beat within detector resolution.
+- Result: the gate crossings that used to land at 6.46 / 9.15 / 10.60s (evenly spaced,
+  arbitrary relative to the music) now land on three of the melody's own E5 pulses.
+  Total ride duration, gate route-positions, and everything else on the timeline are
+  unchanged.
+
+Full before/after numbers and round docs:
+`silent-studio/gates-saving/rounds/v7/FEEDBACK.md` (video side),
+`audio-studio/gates-saving/soundv8/FEEDBACK.md` (audio side, update at the bottom).
+
+**One open item, not yet resolved:** the first ride leg (start → gate 1) now covers
+24% of the route in 0.52s — about 3x the old pace — before slowing down for the rest.
+Confirmed by frame-check that this is working exactly as designed (the dot is on the
+gate), but nobody has watched it at real playback speed yet to judge whether the
+sudden speed-up reads as exciting or jarring. If it's the latter, the fix is a real
+easing curve instead of the current hard per-gate speed breaks in `RIDE_WARP`.
+
+This closes out the "extra note at 6s" investigation from earlier in this round: it
+was correctly diagnosed as a real (if coincidental) collision, and Nathan's chosen fix
+(retime the video, not the audio) is now built, rendered, and verified end to end.
