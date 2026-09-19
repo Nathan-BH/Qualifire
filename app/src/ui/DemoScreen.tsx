@@ -126,6 +126,15 @@ export default function DemoScreen({ onFullscreenChange }: {
   const [clockS, setClockS] = useState(0);
   const [trail, setTrail] = useState<readonly TrailPoint[]>([]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Nathan (2026-09-19): after a full run -> ending -> reverse-launch -> idle -> re-run
+  // cycle, the map sometimes came back with no route line/gate ticks (route asset drawn
+  // fine on a fresh mount, so this is a native map-view lifecycle issue across a mount
+  // that survived a much longer unmount than STOP-before-the-line's immediate one, not a
+  // data bug — the underlying pure builders were re-checked head-to-head across two
+  // consecutive "runs" and produce identical output both times). `runSeq` forces a truly
+  // fresh WayMapView (and its native view/GL layers) on every RUN DEMO RIDE press, so no
+  // stale layer state can survive from the previous mount into this one.
+  const runSeq = useRef(0);
   // virgin-cycle11 (brief A): which screen of the DEMO tab is showing.
   const [phase, setPhase] = useState<DemoPhase>('idle');
   const [showAnim, setShowAnim] = useState<'rev' | null>(null);
@@ -241,6 +250,7 @@ export default function DemoScreen({ onFullscreenChange }: {
   }, [gatesDone, enterEnding, exitToIdle]);
 
   const start = () => {
+    runSeq.current += 1;
     clearTimer();
     prevGates.current = 0;
     setClockS(0);
@@ -369,10 +379,10 @@ export default function DemoScreen({ onFullscreenChange }: {
         {settings.liveMap ? (
           <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch' }}>
             {mode === 'first' ? (
-              <WayMapView wayId={DEMO_FIRST_RIDE_ID} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
+              <WayMapView key={`first-${runSeq.current}`} wayId={DEMO_FIRST_RIDE_ID} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
                 zoom={4} trail={trail} variant="live" liveState={running ? 'moving' : 'finished'} fill />
             ) : (
-              <WayMapView wayId={DEMO_WAY_ID} asset={DEMO_WAY_ASSET} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
+              <WayMapView key={`${mode}-${runSeq.current}`} wayId={DEMO_WAY_ID} asset={DEMO_WAY_ASSET} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
                 zoom={4} sectorColours={sectorColours} leadColour={colors.grey}
                 selfs={showSelfs ? selfDots : undefined}
                 variant="live" liveState={running ? 'moving' : 'finished'} fill />
