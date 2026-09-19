@@ -1,0 +1,17 @@
+{
+  "file": { "name": "RatPac_Entertainment.wav", "format": "wav", "sizeBytes": 3013812, "approxBitrateKbps": 1536 },
+  "audio": { "durationSeconds": 15.7, "sampleRateHz": 48000, "channels": 2 },
+  "tempo": { "bpm": 128 },
+  "key": { "root": "A#", "scale": "minor", "camelot": "3A", "confidence": 0.65 },
+  "loudness": { "integratedLUFS": -18.6, "peakDbFS": -4.7 },
+  "structure": {
+    "segmentSeconds": 0.98,
+    "energyTimeline": [
+      {"t":0,"db":-25.5},{"t":1,"db":-21.4},{"t":2,"db":-30},{"t":2.9,"db":-35.2},
+      {"t":3.9,"db":-20.3},{"t":4.9,"db":-26.3},{"t":5.9,"db":-31.8},{"t":6.9,"db":-19.8},
+      {"t":7.8,"db":-22.6},{"t":8.8,"db":-20.4},{"t":9.8,"db":-22.9},{"t":10.8,"db":-20.9},
+      {"t":11.8,"db":-20.1},{"t":12.8,"db":-26.5},{"t":13.7,"db":-43.7},{"t":14.7,"db":-65.3}
+    ]
+  },
+  "analysis": { "tool": "SnipSound Audio-to-JSON", "url": "https://snipsound.com/tools/audio-to-json/" }
+}

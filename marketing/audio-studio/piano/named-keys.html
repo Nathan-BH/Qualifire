@@ -1,0 +1,507 @@
+<title>Named Keys</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#EDEEF1; --surface:#FFFFFF; --surface-2:#F5F6F8;
+  --ink:#141A1F; --muted:#5C6772; --faint:#8B95A0;
+  --line:#D4DAE0; --line-soft:#E4E8EC;
+  --accent:#9A6410; --accent-bright:#C4831C; --accent-soft:#F3E3C4; --on-accent:#FFFFFF;
+  --roll:#E2E6EA; --rollline:#D6DCE2;
+  --danger:#9B3243; --danger-soft:#F6DFE3;
+  --keyw:#FFFFFF; --keyb:#232A31; --keyedge:#C2CAD2;
+  --fd:'Archivo',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+  --fm:'IBM Plex Mono',ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --bg:#0E1216; --surface:#161D23; --surface-2:#1B232A;
+  --ink:#E9EEF3; --muted:#8E9BA7; --faint:#6A7682;
+  --line:#28323B; --line-soft:#1F272E;
+  --accent:#E8A33D; --accent-bright:#F5BC63; --accent-soft:#3D2E12; --on-accent:#1A1206;
+  --roll:#131A20; --rollline:#1E262E;
+  --danger:#E5788A; --danger-soft:#3A1C22;
+  --keyw:#DDE3E9; --keyb:#0B0F13; --keyedge:#39434D;
+}}
+:root[data-theme="dark"]{
+  --bg:#0E1216; --surface:#161D23; --surface-2:#1B232A;
+  --ink:#E9EEF3; --muted:#8E9BA7; --faint:#6A7682;
+  --line:#28323B; --line-soft:#1F272E;
+  --accent:#E8A33D; --accent-bright:#F5BC63; --accent-soft:#3D2E12; --on-accent:#1A1206;
+  --roll:#131A20; --rollline:#1E262E;
+  --danger:#E5788A; --danger-soft:#3A1C22;
+  --keyw:#DDE3E9; --keyb:#0B0F13; --keyedge:#39434D;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--fd);margin:0}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:16px;padding-block:22px 56px;display:flex;flex-direction:column;gap:18px}
+
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px 20px;border-bottom:1px solid var(--line);padding-bottom:16px}
+h1{font-size:26px;font-weight:700;letter-spacing:-.02em;margin:0;line-height:1}
+.sub{color:var(--muted);font-size:13.5px;margin:6px 0 0;max-width:56ch;line-height:1.5}
+.load{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+button,select{font-family:var(--fd);font-size:13px;color:var(--ink);background:var(--surface);
+  border:1px solid var(--line);border-radius:7px;padding:7px 12px;cursor:pointer;line-height:1.3}
+button:hover,select:hover{border-color:var(--faint)}
+button:focus-visible,select:focus-visible,input:focus-visible,li:focus-visible{outline:2px solid var(--accent-bright);outline-offset:2px}
+button.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent);font-weight:600}
+button.primary:hover{background:var(--accent-bright);border-color:var(--accent-bright)}
+button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;padding:11px 14px;border-bottom:1px solid var(--line-soft);background:var(--surface-2)}
+.ctl{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}
+.ctl label{white-space:nowrap}
+input[type=range]{accent-color:var(--accent-bright);width:104px}
+.clock{font-family:var(--fm);font-size:13px;font-variant-numeric:tabular-nums;color:var(--ink);min-width:88px}
+
+canvas{display:block;width:100%;height:auto;background:var(--roll)}
+
+.flag{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 14px;font-size:12.5px;
+  background:var(--danger-soft);color:var(--danger);border-top:1px solid var(--line-soft)}
+.flag strong{font-weight:600}
+
+section.steps h2{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--muted);
+  font-weight:600;margin:0}
+.steps-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;border-bottom:1px solid var(--line-soft);background:var(--surface-2)}
+.steps-head .spacer{margin-left:auto}
+ol.list{list-style:none;margin:0;padding:0;max-height:480px;overflow-y:auto}
+ol.list li{display:grid;grid-template-columns:38px 62px 1fr auto;gap:10px;align-items:center;
+  padding:8px 14px;border-bottom:1px solid var(--line-soft);cursor:pointer}
+ol.list li:last-child{border-bottom:0}
+ol.list li:hover{background:var(--surface-2)}
+ol.list li[data-on="1"]{background:var(--accent-soft)}
+.n{font-family:var(--fm);font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+.t{font-family:var(--fm);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{font-family:var(--fm);font-size:14px;font-weight:600;letter-spacing:.01em;
+  border:1px solid var(--line);border-radius:6px;padding:3px 8px;background:var(--surface-2);white-space:nowrap}
+.chip.black{background:var(--keyb);color:#F2F5F8;border-color:var(--keyb)}
+.chip.oor{border-color:var(--danger);color:var(--danger);background:transparent}
+.hold{font-family:var(--fm);font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums;white-space:nowrap}
+.legend{font-size:12px;color:var(--muted);line-height:1.6}
+.legend code{font-family:var(--fm);font-size:11.5px;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:4px;padding:1px 5px}
+footer{color:var(--faint);font-size:11.5px;line-height:1.6}
+@media (max-width:560px){
+  .load{margin-left:0;width:100%}
+  ol.list li{grid-template-columns:30px 54px 1fr;row-gap:4px}
+  .hold{grid-column:3;justify-self:start}
+  h1{font-size:22px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Named Keys</h1>
+      <p class="sub">Every note in a MIDI file, written out as the letter-and-number you press. Built for a labelled phone keyboard, not for someone who reads music.</p>
+    </div>
+    <div class="load">
+      <button class="primary" id="pick">Open a .mid file</button>
+      <input type="file" id="file" accept=".mid,.midi,audio/midi" hidden>
+      <button id="theme" title="Switch theme">Theme</button>
+    </div>
+  </header>
+
+  <div class="panel">
+    <div class="bar">
+      <button class="primary" id="play">Play</button>
+      <button id="stop">Restart</button>
+      <span class="clock" id="clock">0:00.0 / 0:00.0</span>
+      <div class="ctl"><label for="speed">Speed</label><input type="range" id="speed" min="25" max="150" step="5" value="100"><span class="t" id="speedv">100%</span></div>
+      <div class="ctl"><label for="range">Keyboard</label>
+        <select id="range">
+          <option value="21:77" selected>A0 – F5 (phone, 57 keys)</option>
+          <option value="21:108">A0 – C8 (full 88)</option>
+          <option value="36:84">C2 – C6 (49 keys)</option>
+          <option value="fit">Fit this file</option>
+        </select>
+      </div>
+      <div class="ctl"><label for="src">Transcription</label>
+        <select id="src">
+          <option value="ky" selected>Kyutai Muscriptor — 51 notes</option>
+          <option value="bp">Basic Pitch — 116 notes</option>
+        </select>
+      </div>
+      <div class="ctl"><button id="merge" aria-pressed="false" title="Basic Pitch cuts held notes in two; this rejoins same-pitch notes less than a quarter second apart. Kyutai does not need it \u2014 its zero-gap repeats are real chord entries.">Rejoin split notes</button></div>
+      <div class="ctl"><button id="faint" aria-pressed="false" title="Hides reverb tails heard as new notes: anything under 0.25 s and quieter than velocity 55, plus any note under 0.05 s.">Hide faint notes</button></div>
+      <div class="ctl"><label for="oct">Middle C is</label>
+        <select id="oct">
+          <option value="0" selected>C4 (standard)</option>
+          <option value="-1">C3 (Yamaha style)</option>
+          <option value="1">C5</option>
+        </select>
+      </div>
+    </div>
+    <canvas id="cv" width="1040" height="520" aria-label="Falling note roll above a labelled piano keyboard"></canvas>
+    <div class="flag" id="flag" hidden>
+      <span id="flagtext"></span>
+      <button id="fold" aria-pressed="false">Fold them into range</button>
+    </div>
+  </div>
+
+  <section class="panel steps">
+    <div class="steps-head">
+      <h2>Press by press</h2>
+      <span class="t" id="count"></span>
+      <span class="spacer"></span>
+      <button id="copy">Copy as text</button>
+    </div>
+    <ol class="list" id="list"></ol>
+  </section>
+
+  <p class="legend">Notes stacked in one row are pressed together. <code>C4</code> is a white key, <code>C#4</code> a black one — the dark chips are the black keys. Tap any row to hear it and jump there. If your app labels middle C as <code>C3</code> instead of <code>C4</code>, switch <strong>Middle C is</strong> and every label shifts to match. <strong>Rejoin split notes</strong> repairs Basic Pitch's habit of breaking one held note into two consecutive ones. Kyutai does not do that, so it is off for this transcription — its zero-gap repeats are real.</p>
+
+  <footer id="srcline"></footer>
+</div>
+
+<script>
+(function(){
+"use strict";
+const NAMES=["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+const WHITE=[0,2,4,5,7,9,11];
+const isW=m=>WHITE.indexOf(m%12)>=0;
+let octOff=0;
+const nm=m=>NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1+octOff);
+const fmt=s=>{s=Math.max(0,s);const m=Math.floor(s/60);return m+":"+String(Math.floor(s%60)).padStart(2,"0")+"."+Math.floor((s*10)%10);};
+
+// ---- the transcription this page opens with ----
+const SEED_BP=[[0.44,64,1.06,77],[1.1,69,0.56,104],[1.65,67,1.01,80],[1.66,69,1.15,71],[2.2,62,0.52,95],[2.72,60,2.29,77],[2.72,72,0.36,48],[2.97,69,0.3,46],[4.37,64,1.66,79],[5.04,69,0.95,78],[5.15,60,0.36,53],[5.58,67,0.87,64],[5.7,60,0.17,46],[6.07,62,1.75,80],[6.07,74,1.86,53],[6.62,60,3.97,79],[6.63,72,0.34,47],[7.49,72,0.64,42],[7.63,64,0.44,38],[8.2,62,0.49,52],[8.2,64,1.65,54],[8.2,69,0.14,43],[8.2,72,1.38,56],[8.2,74,0.37,46],[8.24,41,0.15,45],[8.88,48,0.16,43],[8.99,69,0.18,42],[9.46,69,0.2,43],[10.7,64,1.03,91],[10.7,76,0.99,72],[11.74,69,0.44,68],[11.74,72,0.47,94],[12.21,74,1.08,87],[12.23,67,1.0,61],[12.38,72,0.27,46],[12.74,62,0.49,68],[13.28,72,0.35,45],[13.29,60,2.73,85],[13.29,74,1.42,64],[14.16,72,0.59,45],[16.04,76,0.73,57],[16.05,64,1.33,95],[17.41,67,0.47,82],[17.41,74,2.28,61],[17.86,76,1.38,67],[17.87,69,0.64,83],[18.05,64,0.3,46],[18.51,69,2.35,63],[18.51,81,0.5,82],[18.99,64,0.43,39],[19.69,64,0.78,50],[19.69,74,0.92,60],[20.61,74,0.24,87],[20.85,72,0.48,79],[20.92,60,1.05,72],[21.04,69,1.92,58],[21.18,64,1.78,53],[21.23,74,0.85,52],[21.33,72,1.64,56],[21.63,76,0.3,40],[22.26,60,0.83,64],[23.26,64,1.92,78],[24.02,69,1.6,66],[24.63,67,0.85,70],[25.23,62,0.7,88],[25.92,48,3.74,95],[25.92,60,0.16,59],[29.18,36,0.17,44],[29.6,64,0.87,77],[29.61,52,0.87,96],[29.66,48,0.83,83],[29.67,60,0.21,58],[29.69,57,0.73,66],[30.52,69,1.48,81],[30.61,52,0.34,49],[31.04,67,0.51,84],[31.17,52,0.2,41],[31.18,48,0.27,59],[31.55,62,2.33,71],[31.55,67,0.42,49],[31.55,74,1.03,54],[32.06,60,2.62,81],[32.37,48,2.23,59],[32.81,52,1.73,57],[32.81,74,0.89,55],[32.87,72,0.91,59],[32.92,79,0.16,46],[32.98,69,1.45,53],[33.95,72,0.49,61],[34.69,53,0.79,72],[34.69,64,0.82,83],[34.72,57,0.71,67],[34.75,50,0.73,61],[34.91,60,0.44,47],[35.56,69,3.86,69],[36.05,67,0.96,64],[36.55,62,1.8,78],[36.55,74,0.99,53],[36.76,50,0.23,45],[37.09,60,0.83,54],[37.5,50,0.22,38],[37.73,41,0.22,52],[37.73,50,0.51,59],[37.73,74,0.59,45],[37.99,53,0.22,47],[38.08,72,0.14,50],[38.29,50,0.35,46],[38.29,55,1.27,83],[38.33,60,1.27,64],[38.45,36,0.15,43],[38.79,50,0.57,52],[39.43,48,0.16,52],[39.6,48,3.61,95],[39.6,60,0.59,49],[39.94,69,1.72,45],[41.8,69,0.15,38]];
+
+const SEED_KY=[[0.42,64,0.61],[1.06,69,0.54],[1.63,67,0.52],[2.18,62,0.5],[2.71,60,1.54],[4.33,64,6.22],[5.01,69,0.51],[5.55,67,0.47],[6.05,62,0.53],[6.61,60,5.96],[10.67,64,1.93],[10.67,76,0.98],[11.7,69,0.46],[11.7,72,0.46],[12.19,67,3.71],[12.19,74,3.71],[12.72,62,0.5],[13.25,60,2.65],[16.03,64,1.34],[16.03,76,1.34],[17.37,67,0.45],[17.37,74,0.45],[17.82,69,0.65],[17.82,76,0.65],[18.47,81,2.14],[20.61,74,0.24],[20.85,60,2.4],[20.85,72,2.4],[23.25,64,0.77],[24.02,69,0.62],[24.64,67,0.56],[25.2,62,0.7],[25.9,48,3.67],[29.57,48,5.09],[29.57,52,5.09],[29.57,57,5.09],[29.57,64,0.92],[30.49,69,0.55],[31.04,67,0.48],[31.52,62,0.54],[32.06,60,2.6],[34.66,50,3.62],[34.66,53,3.62],[34.66,57,3.62],[34.66,64,0.86],[35.52,69,0.53],[36.05,67,0.49],[36.54,62,0.55],[37.09,60,1.19],[38.28,55,1.3],[39.58,48,0.01]];
+const SOURCES={
+  ky:{title:"Kyutai Muscriptor (muscriptor.kyutai.org)",
+      notes:SEED_KY.map(a=>({t:a[0],m:a[1],d:a[2],v:100})), merge:false},
+  bp:{title:"Basic Pitch (basicpitch.spotify.com)",
+      notes:SEED_BP.map(a=>({t:a[0],m:a[1],d:a[2],v:a[3]})), merge:true}
+};
+let raw=SOURCES.ky.notes.map(n=>({...n}));
+let notes=[];
+let title=SOURCES.ky.title;
+let lo=21,hi=77,fold=false,steps=[],dur=0;
+let merge=false,faint=false,nMerged=0,nDropped=0;
+const MERGE_GAP=0.25;
+
+// ---------- MIDI parsing ----------
+function parseMidi(buf){
+  const d=new DataView(buf),u=new Uint8Array(buf);
+  const str=(p,n)=>String.fromCharCode.apply(null,u.subarray(p,p+n));
+  if(str(0,4)!=="MThd") throw new Error("Not a MIDI file");
+  const ntrk=d.getUint16(10),div=d.getUint16(12);
+  if(div&0x8000) throw new Error("SMPTE timing is not supported");
+  let p=14;const tempos=[],ev=[];
+  for(let t=0;t<ntrk;t++){
+    if(str(p,4)!=="MTrk"){break}
+    const len=d.getUint32(p+4);let end=p+8+len;p+=8;
+    let tick=0,st=0;
+    while(p<end){
+      let v=0,b;do{b=u[p++];v=(v<<7)|(b&0x7f)}while(b&0x80);tick+=v;
+      if(u[p]&0x80){st=u[p];p++}
+      const s=st,h=s&0xf0;
+      if(s===0xff){const mt=u[p++];let l=0;do{b=u[p++];l=(l<<7)|(b&0x7f)}while(b&0x80);
+        if(mt===0x51)tempos.push([tick,(u[p]<<16)|(u[p+1]<<8)|u[p+2]]);p+=l;}
+      else if(s===0xf0||s===0xf7){let l=0;do{b=u[p++];l=(l<<7)|(b&0x7f)}while(b&0x80);p+=l;}
+      else if(h===0xc0||h===0xd0){p++}
+      else{const n=u[p],vel=u[p+1];p+=2;
+        if(h===0x90&&vel>0)ev.push([tick,1,n,vel]); else if(h===0x80||h===0x90)ev.push([tick,0,n,0]);}
+    }
+    p=end;
+  }
+  if(!tempos.length)tempos.push([0,500000]);
+  tempos.sort((a,b)=>a[0]-b[0]);
+  const secs=tk=>{let s=0,last=0,cur=tempos[0][1];
+    for(let i=0;i<tempos.length;i++){if(tempos[i][0]>=tk)break;s+=(tempos[i][0]-last)*cur/div/1e6;last=tempos[i][0];cur=tempos[i][1];}
+    return s+(tk-last)*cur/div/1e6;};
+  ev.sort((a,b)=>a[0]-b[0]);
+  const open={},out=[];
+  for(const [tk,on,n,vel] of ev){
+    if(on){(open[n]=open[n]||[]).push([tk,vel])}
+    else if(open[n]&&open[n].length){const [st,v0]=open[n].shift();
+      out.push({t:+secs(st).toFixed(3),m:n,d:+(secs(tk)-secs(st)).toFixed(3),v:v0});}
+  }
+  out.sort((a,b)=>a.t-b.t||a.m-b.m);
+  if(!out.length)throw new Error("No notes found in that file");
+  return out;
+}
+
+// ---------- derived state ----------
+function derive(){
+  let src=raw.map(n=>({t:n.t,m:n.m,d:n.d,v:n.v==null?80:n.v}));
+  const n0=src.length;
+  if(faint)src=src.filter(n=>!((n.d<0.25&&n.v<55)||n.d<0.05));
+  nDropped=n0-src.length;
+  nMerged=0;
+  if(merge){
+    const byp={};for(const n of src)(byp[n.m]=byp[n.m]||[]).push(n);
+    const out=[];
+    for(const k in byp){
+      const v=byp[k].sort((a,b)=>a.t-b.t);let cur=null;
+      for(const n of v){
+        if(cur&&n.t-(cur.t+cur.d)<MERGE_GAP){cur.d=+(n.t+n.d-cur.t).toFixed(3);cur.v=Math.max(cur.v,n.v);nMerged++}
+        else{cur={t:n.t,m:n.m,d:n.d,v:n.v};out.push(cur)}
+      }
+    }
+    src=out;
+  }
+  for(const n of src)n.src=n.m;
+  src.sort((a,b)=>a.t-b.t||a.m-b.m);
+  notes=src;
+}
+function applyFold(){
+  for(const n of notes){let m=n.src;
+    if(fold){while(m>hi)m-=12;while(m<lo)m+=12;}
+    n.m=m;}
+}
+function build(){
+  derive();
+  applyFold();
+  dur=notes.reduce((a,n)=>Math.max(a,n.t+n.d),0);
+  steps=[];
+  for(const n of notes){
+    const last=steps[steps.length-1];
+    if(last&&n.t-last.t<0.13){last.notes.push(n);last.hold=Math.max(last.hold,n.d)}
+    else steps.push({t:n.t,notes:[n],hold:n.d});
+  }
+  for(const s of steps)s.notes.sort((a,b)=>a.m-b.m);
+  const oor=notes.filter(n=>n.m<lo||n.m>hi);
+  const fl=document.getElementById("flag");
+  if(oor.length){
+    const names=[...new Set(oor.map(n=>nm(n.m)))].join(", ");
+    const many=oor.length>1;
+    document.getElementById("flagtext").innerHTML=
+      "<strong>"+oor.length+" note"+(many?"s":"")+"</strong> "+(many?"fall":"falls")+" outside "+nm(lo)+"–"+nm(hi)+" — "+names+". Your keyboard can't reach "+(many?"them":"it")+".";
+    if(!fold)document.getElementById("fold").textContent="Fold "+(many?"them":"it")+" into range";
+    fl.hidden=false;
+  } else if(fold){
+    document.getElementById("flagtext").innerHTML="<strong>Folded.</strong> Notes past the ends of the keyboard were moved by whole octaves so every one is playable.";
+    fl.hidden=false;
+  } else fl.hidden=true;
+  let extra="";
+  if(nMerged)extra+=" · "+nMerged+" split note"+(nMerged>1?"s":"")+" rejoined";
+  if(nDropped)extra+=" · "+nDropped+" faint dropped";
+  document.getElementById("count").textContent=steps.length+" presses · "+notes.length+" notes · "+fmt(dur)+extra;
+  document.getElementById("srcline").textContent="Source: "+title;
+  renderList();
+  fired.clear();for(const n of notes)if(n.t<time)fired.add(n);
+}
+function renderList(){
+  const ol=document.getElementById("list");ol.innerHTML="";
+  steps.forEach((s,i)=>{
+    const li=document.createElement("li");li.tabIndex=0;li.dataset.i=i;
+    const chips=s.notes.map(n=>{
+      const cls="chip"+(isW(n.m)?"":" black")+((n.m<lo||n.m>hi)?" oor":"");
+      return '<span class="'+cls+'">'+nm(n.m)+'</span>';}).join("");
+    li.innerHTML='<span class="n">'+(i+1)+'</span><span class="t">'+fmt(s.t)+'</span>'+
+      '<span class="chips">'+chips+'</span><span class="hold">'+s.hold.toFixed(1)+'s</span>';
+    li.addEventListener("click",()=>{seek(s.t);s.notes.forEach(n=>ping(n.m,Math.min(n.d,2),0.7))});
+    li.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();li.click()}});
+    ol.appendChild(li);
+  });
+}
+
+// ---------- keyboard geometry ----------
+let geom=null;
+function layout(W){
+  const whites=[];for(let m=lo;m<=hi;m++)if(isW(m))whites.push(m);
+  const ww=W/whites.length,bw=Math.max(6,ww*0.62),map={};
+  whites.forEach((m,i)=>{map[m]={x:i*ww,w:ww,white:true}});
+  for(let m=lo;m<=hi;m++)if(!isW(m)){
+    let b=m-1;while(b>=lo&&!isW(b))b--;
+    map[m]=b<lo?{x:-bw/2,w:bw,white:false}:{x:map[b].x+ww-bw/2,w:bw,white:false};
+  }
+  return {whites,ww,bw,map};
+}
+
+// ---------- drawing ----------
+const cv=document.getElementById("cv"),ctx=cv.getContext("2d");
+const KEYH=112,WINDOW=6;
+let cssW=1040,cssH=520;
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+function resize(){
+  const r=cv.getBoundingClientRect();if(!r.width)return;
+  cssW=r.width;cssH=Math.max(340,Math.min(560,r.width*0.5));
+  const dpr=Math.min(2,window.devicePixelRatio||1);
+  cv.width=Math.round(cssW*dpr);cv.height=Math.round(cssH*dpr);
+  cv.style.height=cssH+"px";
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  geom=layout(cssW);draw();
+}
+function draw(){
+  if(!geom)geom=layout(cssW);
+  const rollH=cssH-KEYH,pps=rollH/WINDOW;
+  const C={roll:css("--roll"),line:css("--rollline"),acc:css("--accent-bright"),
+    accs:css("--accent-soft"),ink:css("--ink"),muted:css("--muted"),
+    ln:css("--line"),onacc:css("--on-accent"),kw:css("--keyw"),kb:css("--keyb"),ke:css("--keyedge"),dang:css("--danger"),surf:css("--surface")};
+  ctx.clearRect(0,0,cssW,cssH);
+  ctx.fillStyle=C.roll;ctx.fillRect(0,0,cssW,rollH);
+  // octave guide lines at every C
+  ctx.strokeStyle=C.line;ctx.lineWidth=1;
+  for(let m=lo;m<=hi;m++){if(m%12===0&&geom.map[m]){const x=Math.round(geom.map[m].x)+0.5;
+    ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,rollH);ctx.stroke();}}
+  // falling notes
+  ctx.textAlign="center";ctx.textBaseline="middle";
+  for(const n of notes){
+    const rel=n.t-time;
+    if(rel>WINDOW||rel+n.d<-0.35)continue;
+    const g=geom.map[n.m];if(!g)continue;
+    const y2=rollH-rel*pps, y1=y2-Math.max(n.d,0.06)*pps;
+    const oor=n.m<lo||n.m>hi;
+    const live=time>=n.t&&time<n.t+n.d;
+    const x=Math.max(0,g.x)+1.5,w=Math.max(4,Math.min(g.w,cssW-x)-3);
+    ctx.fillStyle=oor?C.dang:(live?C.acc:(isW(n.m)?C.muted:C.ink));
+    ctx.globalAlpha=live?1:(isW(n.m)?0.55:0.7);
+    const h=Math.max(6,y2-y1);
+    r(x,y1,w,h,Math.min(4,w/2));ctx.fill();
+    ctx.globalAlpha=1;
+    // name chip on every falling note, at the edge that reaches the keyboard first
+    const lab=nm(n.m);
+    ctx.font="600 11px 'IBM Plex Mono',monospace";
+    const cw=ctx.measureText(lab).width+10, chh=16;
+    const cx=Math.min(Math.max(x+w/2,cw/2+2),cssW-cw/2-2);
+    let cy=(h>=chh+8)?y2-chh/2-4:y1-chh/2-3;
+    cy=Math.min(Math.max(cy,chh/2+2),rollH-chh/2-2);
+    ctx.fillStyle=live?C.acc:(oor?C.dang:C.surf);
+    r(cx-cw/2,cy-chh/2,cw,chh,4);ctx.fill();
+    ctx.strokeStyle=live?C.acc:(oor?C.dang:(isW(n.m)?C.ln:C.ink));
+    ctx.lineWidth=1;ctx.stroke();
+    ctx.fillStyle=live?C.onacc:(oor?C.surf:C.ink);
+    ctx.fillText(lab,cx,cy+0.5);
+  }
+  drawKeys(rollH,C);
+}
+function r(x,y,w,h,rad){ctx.beginPath();
+  ctx.moveTo(x+rad,y);ctx.lineTo(x+w-rad,y);ctx.quadraticCurveTo(x+w,y,x+w,y+rad);
+  ctx.lineTo(x+w,y+h-rad);ctx.quadraticCurveTo(x+w,y+h,x+w-rad,y+h);
+  ctx.lineTo(x+rad,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-rad);
+  ctx.lineTo(x,y+rad);ctx.quadraticCurveTo(x,y,x+rad,y);ctx.closePath();}
+function isOn(m){for(const n of notes){if(n.m===m&&time>=n.t&&time<n.t+n.d)return true}return false}
+function drawKeys(top,C){
+  const {whites,ww,bw,map}=geom, wh=KEYH, bh=KEYH*0.62;
+  ctx.textAlign="center";ctx.textBaseline="alphabetic";
+  for(const m of whites){
+    const g=map[m],on=isOn(m);
+    ctx.fillStyle=on?C.acc:C.kw;ctx.fillRect(g.x,top,g.w-1,wh);
+    ctx.strokeStyle=C.ke;ctx.lineWidth=1;ctx.strokeRect(g.x+0.5,top+0.5,g.w-2,wh-1);
+    if(ww>=13){
+      const isC=m%12===0;
+      ctx.fillStyle=on?"#1A1206":(isC?css("--accent"):"#4A555F");
+      ctx.font=(isC?"700 ":"500 ")+Math.min(11,Math.max(7.5,ww*0.42)).toFixed(1)+"px 'IBM Plex Mono',monospace";
+      ctx.fillText(nm(m),g.x+g.w/2,top+wh-9);
+    }
+  }
+  for(let m=lo;m<=hi;m++){
+    if(isW(m))continue;const g=map[m];if(!g)continue;const on=isOn(m);
+    ctx.fillStyle=on?C.acc:C.kb;
+    r(g.x,top,bw,bh,2);ctx.fill();
+    if(bw>=11){
+      ctx.save();ctx.translate(g.x+bw/2,top+bh-8);ctx.rotate(-Math.PI/2);
+      ctx.fillStyle=on?"#1A1206":"#C9D2DA";
+      ctx.font="500 "+Math.min(10,Math.max(7,bw*0.55)).toFixed(1)+"px 'IBM Plex Mono',monospace";
+      ctx.textAlign="left";ctx.fillText(nm(m),0,3);ctx.restore();ctx.textAlign="center";
+    }
+  }
+  ctx.fillStyle=C.ink;ctx.globalAlpha=0.12;ctx.fillRect(0,top,cssW,2);ctx.globalAlpha=1;
+}
+
+// ---------- audio ----------
+let ac=null;
+function ping(m,d,vel){
+  try{
+    if(!ac)ac=new (window.AudioContext||window.webkitAudioContext)();
+    if(ac.state==="suspended")ac.resume();
+    const f=440*Math.pow(2,(m-69)/12),t0=ac.currentTime,len=Math.min(Math.max(d,0.25),3.2);
+    const g=ac.createGain();g.connect(ac.destination);
+    g.gain.setValueAtTime(0,t0);
+    g.gain.linearRampToValueAtTime(0.16*vel,t0+0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001,t0+len);
+    [[1,1],[2,0.32],[3,0.12],[4.01,0.05]].forEach(([mul,amp])=>{
+      const o=ac.createOscillator(),og=ac.createGain();
+      o.type=mul===1?"triangle":"sine";o.frequency.value=f*mul;
+      og.gain.value=amp;o.connect(og);og.connect(g);o.start(t0);o.stop(t0+len+0.05);
+    });
+  }catch(e){}
+}
+
+// ---------- transport ----------
+let time=0,playing=false,last=0,rate=1,fired=new Set();
+function seek(t){time=t;fired.clear();for(const n of notes)if(n.t<t)fired.add(n);sync();draw()}
+function sync(){
+  document.getElementById("clock").textContent=fmt(time)+" / "+fmt(dur);
+  let cur=-1;for(let i=0;i<steps.length;i++){if(steps[i].t<=time+0.02)cur=i;else break}
+  const ol=document.getElementById("list");
+  [...ol.children].forEach((li,i)=>{li.dataset.on=(i===cur)?"1":"0"});
+  if(playing&&cur>=0&&ol.children[cur]){
+    const li=ol.children[cur],r=li.offsetTop-ol.scrollTop;
+    if(r<40||r>ol.clientHeight-70)ol.scrollTop=li.offsetTop-ol.clientHeight/2;
+  }
+}
+function loop(ts){
+  if(!playing)return;
+  const dt=Math.min(0.05,(ts-last)/1000);last=ts;time+=dt*rate;
+  for(const n of notes){if(!fired.has(n)&&n.t<=time&&n.t>time-0.3){fired.add(n);ping(n.m,n.d,0.55+(isW(n.m)?0:0.05))}}
+  if(time>dur+1.2){playing=false;document.getElementById("play").textContent="Play";time=dur+1.2}
+  draw();sync();
+  if(playing)requestAnimationFrame(loop);
+}
+function toggle(){
+  playing=!playing;document.getElementById("play").textContent=playing?"Pause":"Play";
+  if(playing){if(time>dur+1)seek(0);last=performance.now();requestAnimationFrame(loop)}
+}
+
+// ---------- wiring ----------
+document.getElementById("play").addEventListener("click",toggle);
+document.getElementById("stop").addEventListener("click",()=>{seek(0)});
+document.getElementById("speed").addEventListener("input",e=>{
+  rate=e.target.value/100;document.getElementById("speedv").textContent=e.target.value+"%"});
+document.getElementById("range").addEventListener("change",e=>{
+  if(e.target.value==="fit"){
+    let a=Math.min(...notes.map(n=>n.src)),b=Math.max(...notes.map(n=>n.src));
+    while(!isW(a))a--;while(!isW(b))b++;lo=Math.max(0,a-2);hi=Math.min(127,b+2);
+  } else {const p=e.target.value.split(":");lo=+p[0];hi=+p[1]}
+  build();resize();});
+document.getElementById("src").addEventListener("change",e=>{
+  const S=SOURCES[e.target.value];
+  raw=S.notes.map(n=>({...n})); title=S.title;
+  merge=S.merge; document.getElementById("merge").setAttribute("aria-pressed",String(merge));
+  fold=false; document.getElementById("fold").setAttribute("aria-pressed","false");
+  document.getElementById("fold").textContent="Fold them into range";
+  seek(0); build(); resize();});
+document.getElementById("merge").addEventListener("click",e=>{
+  merge=!merge;e.target.setAttribute("aria-pressed",String(merge));build();draw();});
+document.getElementById("faint").addEventListener("click",e=>{
+  faint=!faint;e.target.setAttribute("aria-pressed",String(faint));build();draw();});
+document.getElementById("oct").addEventListener("change",e=>{octOff=+e.target.value;build();draw()});
+document.getElementById("fold").addEventListener("click",e=>{
+  fold=!fold;e.target.setAttribute("aria-pressed",String(fold));
+  e.target.textContent=fold?"Undo the fold":"Fold into range";build();draw();});
+document.getElementById("pick").addEventListener("click",()=>document.getElementById("file").click());
+document.getElementById("file").addEventListener("change",e=>{
+  const f=e.target.files&&e.target.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{try{
+      raw=parseMidi(rd.result);title=f.name;fold=false;
+      document.getElementById("fold").setAttribute("aria-pressed","false");
+      document.getElementById("fold").textContent="Fold them into range";
+      seek(0);build();resize();
+    }catch(err){alert("Couldn't read that file: "+err.message)}};
+  rd.readAsArrayBuffer(f);});
+document.getElementById("copy").addEventListener("click",e=>{
+  const txt=steps.map((s,i)=>(i+1)+"\t"+fmt(s.t)+"\t"+s.notes.map(n=>nm(n.m)).join(" ")+"\t"+s.hold.toFixed(1)+"s").join("\n");
+  navigator.clipboard.writeText("Named Keys \u2014 "+title+"\n\n#\ttime\tkeys\thold\n"+txt)
+    .then(()=>{e.target.textContent="Copied";setTimeout(()=>{e.target.textContent="Copy as text"},1400)})
+    .catch(()=>{e.target.textContent="Copy blocked";setTimeout(()=>{e.target.textContent="Copy as text"},1400)});});
+document.getElementById("theme").addEventListener("click",()=>{
+  const cur=document.documentElement.getAttribute("data-theme");
+  const dark=cur?cur==="dark":matchMedia("(prefers-color-scheme:dark)").matches;
+  document.documentElement.setAttribute("data-theme",dark?"light":"dark");draw();});
+window.addEventListener("keydown",e=>{
+  if(e.target.tagName==="INPUT"||e.target.tagName==="SELECT")return;
+  if(e.code==="Space"){e.preventDefault();toggle()}});
+window.addEventListener("resize",resize);
+matchMedia("(prefers-color-scheme:dark)").addEventListener("change",draw);
+
+build();resize();sync();
+})();
+</script>
