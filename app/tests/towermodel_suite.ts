@@ -24,7 +24,8 @@ registerHooks({
     return nextLoad(url, context);
   },
 });
-const { buildTowerModel, towerDate } = await import('../src/ui/towerModel.ts');
+const { buildTowerModel, towerDate, TOWER_MAX_VISIBLE } = await import('../src/ui/towerModel.ts');
+const { WINDOW_N } = await import('../src/ui/colourModel.ts');
 
 /** Minimal synthetic RideResult — shape copied from results.seed.json. */
 function ride(movingS: number, startedAtMs: number, source: 'app' | 'archive' = 'archive'): RideResult {
@@ -147,4 +148,9 @@ test('towerModel: dates hand-format as "Tue 05 Aug"', () => {
   // and the rows carry it
   const m = buildTowerModel([ride(850, ms)], 900, false, TODAY_MS, null);
   assert(m.rows[0].date === expected, `row date "${m.rows[0].date}" != "${expected}"`);
+});
+
+test('towerModel: TOWER_MAX_VISIBLE is the whole ranking pool (virgin-cycle11 brief B)', () => {
+  assert(TOWER_MAX_VISIBLE === WINDOW_N, `TOWER_MAX_VISIBLE (${TOWER_MAX_VISIBLE}) must equal WINDOW_N (${WINDOW_N})`);
+  assert(TOWER_MAX_VISIBLE >= 10, `TOWER_MAX_VISIBLE (${TOWER_MAX_VISIBLE}) must be >= 10`);
 });

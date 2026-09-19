@@ -62,8 +62,9 @@ day (below).
   `activity-index.csv` and the Python side live on `main` only), `app/src/live/`
   (full-catalog pick-bias engine; candidates are ways), `app/src/store/` (sports + catalog +
   results + timing, empty-seed-capable — see below), `app/src/ui/` (six tabs:
-  RECORD / RIDES / ROUTES / RESULTS / SETTINGS / DEMO). `app/tests/`: **560 tests, 557 pass,
-  0 fail, 3 skip**. `tsc --noEmit`: clean, exit 0. Both verified 2026-09-08.
+  RECORD / RIDES / ROUTES / RESULTS / SETTINGS / DEMO). `app/tests/`: **620 tests, 617 pass,
+  0 fail, 3 skip**. `tsc --noEmit`: clean, exit 0. Both verified 2026-09-19 (virgin-cycle11,
+  DEMO tab overhaul briefs A + B).
 - **The empty-seed install path is built.** `store/seed.ts` + `store/catalogStore.ts`: the
   runtime catalog is the shipped seed merged read-side with an on-phone
   `catalog.user.json` (never copied to disk, so a seed edit still reaches every install).
@@ -166,7 +167,12 @@ day (below).
   hard cut at landing reveals the tier colour + `P<n>` + gap. No reveal — plain "Ride
   saved" — for ride 1 of a way (empty comparison window), an estimated lap, a free ride,
   or any lap with no real scored time; `app/tests/rankingreveal_suite.ts` locks all of it
-  headless.
+  headless. **Not yet seen on the phone** — a headless container can't render the real
+  climb; see `OPEN-ITEMS.md` item 6 for the on-device checklist. Since brief B the DEMO tab
+  (SECOND / TENTH RIDE) plays the same reveal over a synthetic board, so the animation can be
+  eyeballed without riding — the real-ride check still stands. **The tower shows the whole
+  pool** (`TOWER_MAX_VISIBLE = WINDOW_N`, `towerModel.ts`; Nathan 2026-09-19) — a real board
+  is never clipped.
 
 ## Open items
 
@@ -272,7 +278,19 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
 - DEMO replays its own frozen fixture (`src/ui/demoRouteFixture.ts` — the geometry of
   Nathan's "Morning" commute baked in as a fixture, not seed data; no manifest import) via
   `RouteMapView`'s `asset` prop — the same on every build, blank-seed Preview included
-  (cycle1 WP-E, Nathan's Q6 ruling).
+  (cycle1 WP-E, Nathan's Q6 ruling). **Since virgin-cycle11 (brief A) RUN DEMO RIDE goes
+  full-screen** — the DEMO tab's idle screen is a chooser; the run mirrors the real running
+  column (map / pane / status / STOP, `variant="live"`, same `liveMap` / `sectorColours`
+  toggles) and ends on a 'Ride saved' screen: FIRST RIDE shows the real `RouteNamingCard`
+  whose SAVE is theatre (`demoSavedLine`, nothing written); SECOND RIDE's ending is brief B's.
+  Lap chip neutral before STOP, as the real screen since cycle11 (R5). `App.tsx`'s
+  `demoFullscreen` is the sixth 'screen owns intent, Shell owns chrome' bit. **Brief B:** a
+  third mode, TENTH RIDE (default), nine pinned prior laps; SECOND RIDE is an honest ride 2
+  (one prior lap, purple/yellow only). After the demo's STOP, SECOND/TENTH mount the real
+  `TimingTower` with a board built by the real `buildRankingReveal` over synthetic
+  `RideResult`s (`buildDemoReveal`) — same window rule, constants and hold as the real
+  'ending' — then the real `RouteNamingCard` in its WP-G 'new way on this route' variant,
+  whose ADD WAY is theatre too. Today lands P1 of 2 (purple) / P3 of 10 (green).
 - **`CatalogDetailScreen.tsx`'s `placeDetailFor` reads the unscoped catalog**, so a place's
   detail can list another sport's routes/ways (cycle3 WP-1 Inspect, non-blocking, confirmed
   real). Needs a product decision — split "list" scoping from "deletable" scoping — not a
@@ -336,7 +354,8 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   colours" as endorsing cycle8 rather than cycle7.
 - `cycles/virgin-cycle11/README.md` — 2026-09-19: ranking reveal — the timing tower climbs
   after STOP instead of the rank being announced at the final gate
-  (`BRIEF-ranking-reveal.md`).
+  (`BRIEF-ranking-reveal.md`); DEMO tab overhaul — brief A (`BRIEF-demo-fullscreen-run.md`),
+  brief B (`BRIEF-demo-tenth-ride-reveal.md`).
 
 ## Nathan's own files (unmanaged by any agent)
 

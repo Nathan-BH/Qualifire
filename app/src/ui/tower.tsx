@@ -29,11 +29,16 @@
  * (`marketing/silent-studio/ranking/rounds/v7`). Default `reveal = false`
  * preserves every pixel of the original slot-in for the Preview screen, its
  * only other consumer.
+ *
+ * virgin-cycle11 brief B: the visible cap is `TOWER_MAX_VISIBLE` (= `WINDOW_N`,
+ * towerModel.ts) — a real board is never clipped; the clip lines remain for
+ * oversize scripted models.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import type { Tier } from './chips';
 import { PURPLE_INK, YELLOW_TIER } from './chips';
+import { TOWER_MAX_VISIBLE } from './towerModel.ts';
 import { PaddockTheme, colors, radius } from './theme';
 import { useTheme } from './themeContext';
 
@@ -62,7 +67,7 @@ export interface TowerModel {
   todaySub?: string;
 }
 
-const MAX_VISIBLE = 8; // rows without scroll [ASSUMPTION §3b — PO's window call]
+const MAX_VISIBLE = TOWER_MAX_VISIBLE; // the whole ranking pool — Nathan 2026-09-19, see towerModel.ts
 const PAST_H = 38;
 const TODAY_ROW_H = 56; // ~1.5× — today's row doubles as the board headline
 const SUB_H = 18;

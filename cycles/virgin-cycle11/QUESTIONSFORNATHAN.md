@@ -1,11 +1,13 @@
 # Questions for Nathan — cycle 11 (DEMO tab overhaul)
 
-**Status: open, written 2026-09-19 by the Plan tier (fable) while briefing
-`BRIEF-demo-fullscreen-run.md` (A), `BRIEF-demo-tenth-ride-reveal.md` (B) and
-`BRIEF-demo-self-dots.md` (C).** Nothing here blocks the build — every item below was ruled
-on with a stated default in the briefs, and all three are being implemented as ruled. These
-are the feel/taste calls only you can make once you have seen the result on the phone.
-Answer in a line each; a later Fable folds the answers into a follow-up.
+**Status: answered by Nathan 2026-09-19 (inline, under each item); folded in the same day by
+the Plan tier (fable).** Brief A had already landed (`8df1119`) — items 2, 3, 5, 6 confirm it as
+built (item 6: the FIRST RIDE inputs are blank and the line echoes what you type; nothing was
+pre-written). Items 1, 4, 8 changed `BRIEF-demo-tenth-ride-reveal.md` (B, revised in place);
+item 4 and 9 changed `BRIEF-demo-self-dots.md` (C, revised in place); item 7 became a new
+brief, `BRIEF-demo-gate-adjust.md` (D). Build order A → B → C → D (D may go before C). One
+finding on the way: A's commit regressed `STATE.md` (test line, a deleted sentence) — B
+repairs it. The original open questions below are kept as written, with your answers.
 
 ## Ruled and built — answer only if you disagree with the default
 
@@ -76,3 +78,31 @@ Answer in a line each; a later Fable folds the answers into a follow-up.
    — quantising them to 250 ms is a one-line change.
 
    **Answer:** I will have to check on phone first, lets keep this as an open item
+
+## Ruled while folding in — say only if you disagree
+
+10. **Item 4, how it was read.** "Keep the colours just in the strips. remove it from the map;
+    but have the demo switch together with the real app settings" — read as: the *default*
+    (toggle OFF → strip coloured, map plain) is right, and the demo must follow the SETTINGS
+    toggle, live. So the demo map colours its spans **only when you switch sector colours ON
+    in SETTINGS**, exactly like the real screen, and reads the toggle on every render (B R7,
+    C R4). If you meant "never colour the demo map, whatever the toggle", it is one line
+    (`ALL_YELLOW` unconditionally in `DemoScreen.tsx`).
+
+11. **Item 8, which card.** A real second/tenth ride that follows the known way exactly gets
+    **no card** after the reveal (the reverse mark plays straight after the hold). The card
+    you said yes to is WP-G's "New way on Home → Work" — what the real screen shows when the
+    ride *scored* against the way but did not follow any of its known ways. That is the one
+    with something to fill in, so the demo shows it after every SECOND / TENTH reveal. The
+    route name on it ("Home → Work") is fixed text because the route exists — not the
+    pre-fill you objected to in item 6 (FIRST RIDE's inputs stay blank). If you would rather
+    see the common no-card path, it is one flag.
+
+12. **Item 1's real-screen consequence.** You chose "show all 10 rows"; that is now the real
+    app's board too (`TOWER_MAX_VISIBLE = WINDOW_N`), not a demo-only cap — a demo board with
+    ten rows over a real board with eight would have been the dishonesty we refused for map
+    colours. On a very short screen the ending column scrolls (it already did).
+
+13. **Item 7's second question** ("do you want the other card variants reachable in the demo
+    — start known / end known / loop?") went unanswered. Not built; FIRST RIDE stays the
+    both-endpoints-unknown case. Say if you want them.

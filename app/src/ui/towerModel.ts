@@ -21,11 +21,19 @@
 import type { RideResult } from '../store/types.ts';
 import type { Tier } from './chips.tsx';
 import type { TowerModel, TowerRowModel } from './tower.tsx';
-import { fmt, tierFor, type UiTier } from './colourModel.ts';
+import { WINDOW_N, fmt, tierFor, type UiTier } from './colourModel.ts';
 import { scoredS } from '../store/timing.ts';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Rows the timing tower shows without clipping. Equals WINDOW_N because the ranking pool
+ *  is at most WINDOW_N rides (colourModel.ts, D-045) and Nathan ruled (2026-09-19,
+ *  cycles/virgin-cycle11/QUESTIONSFORNATHAN.md item 1) that the board shows the whole pool —
+ *  no ranked ride is ever cut off. tower.tsx's pre-scroll/clip logic stays as a guard for a
+ *  model larger than the pool (the Preview screen's scripted 19-row scenario). Replaces
+ *  tower.tsx's `MAX_VISIBLE = 8 [ASSUMPTION §3b — PO's window call]`; the PO has called it. */
+export const TOWER_MAX_VISIBLE = WINDOW_N;
 
 /** 'Tue 05 Aug' — hand-formatted, local time (it is the rider's own day). */
 export function towerDate(ms: number): string {

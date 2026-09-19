@@ -1,22 +1,36 @@
 # BRIEF C — DEMO tab: the self dots race alongside in SECOND RIDE and TENTH RIDE
 
-**Written 2026-09-19 UTC (Plan tier, fable). Brief 3 of 3 for the DEMO tab overhaul —
-build order A → B → C.** Depends on `BRIEF-demo-fullscreen-run.md` (A) and
-`BRIEF-demo-tenth-ride-reveal.md` (B) both being committed: this brief reuses B's
-nine-column `DEMO_HISTORY`, `DEMO_PRIOR_LAPS`, `demoPriorResults` ids and the `'tenth'` mode,
-and A's full-screen run render. Do not start until B's commit hash is in hand.
+**Revised 2026-09-19 after Nathan's `QUESTIONSFORNATHAN.md` answers — see items 4 and 9.**
+Nothing of the original had been executed. What changed: item 4's "the settings toggle
+changes should be reflected in the demo" is now an explicit requirement with its own task
+and check (R4 + Task 2 step 6); item 9 (30 fps vs 250 ms quantisation) is left open by
+Nathan — the escape hatch stays documented, unbuilt (R3, R8); anchors are updated to brief
+B's revised shapes (`savedLine`, the card after the hold, `DEMO_PRIOR_LAPS.tenth ===
+WINDOW_PREV`). The dots' design itself is unchanged.
+
+**Written 2026-09-19 UTC (Plan tier, fable). Brief 3 of 4 for the DEMO tab overhaul — build
+order A → B → C → D (D may run before C; C never before B).** Depends on
+`BRIEF-demo-fullscreen-run.md` (A, landed as `8df1119`) and `BRIEF-demo-tenth-ride-reveal.md`
+(B, revised) both being committed: this brief reuses B's nine-column `DEMO_HISTORY`,
+`DEMO_PRIOR_LAPS`, `demoPriorResults` ids and the `'tenth'` mode, and A's full-screen run
+render. Do not start until B's commit hash is in hand. If brief D
+(`BRIEF-demo-gate-adjust.md`) has landed before this one, its changes are confined to FIRST
+RIDE's ending and `demoModel.ts` additions — nothing here collides with it; anchor against the
+committed files, not the numbers below.
 
 Nathan's ask (item 4, unedited): *"i also think for the SECOND RIDE/ TENTH RIDE demos i want
 to see the self dots racing alongside so i can see how that works visually as well."*
 
-Anchors were read from the live `virgin` tree at HEAD `411aba9` (pre-A) on 2026-09-19:
+Anchors were read from the live `virgin` tree on 2026-09-19 — the files below are untouched
+by A (`8df1119`) and by B/D as briefed; `DemoScreen.tsx` / `demoModel.ts` anchors are B's:
 `ui/selfRaceModel.ts` (`SelfTrack` `:80–92`, `selfPositionAt` `:148`, `selfDotsAt` `:185`,
 `selfLivePosition` `:355–360`, `DECIMATE_MIN_GAP_MS = 2000` `:236`), `ui/wayMapView.tsx`
 (`selfs?: readonly SelfDot[]` `:276`, `selfsFeatureCollection(props.selfs ?? [])` `:532`),
 `ui/wayMapMath.ts` (`positionAtTime`, pure, no imports), `ui/demoWayFixture.ts`
 (`DEMO_WAY_ASSET`, `gateIdx` of length 5), `ui/RecordScreen.tsx` (`livePos` memo `:952–956`,
-the `selfs=` prop `:1224`), `ui/liveView.tsx` (`livePos?` `:111`), `STATE.md` (the cycle6
-bullet with "DEMO tab … untouched by design (R9)"). After A and B, `demoModel.ts` /
+the `selfs=` prop `:1223`), `ui/liveView.tsx` (`livePos?` `:111`), `ui/settings.tsx` (`SettingsProvider` `:88–123`,
+`useSettings` `:125` — a context; the provider re-memoises `value` on every change),
+`STATE.md` (the cycle6 bullet with "DEMO tab … untouched by design (R9)"). After A and B, `demoModel.ts` /
 `DemoScreen.tsx` numbers are theirs — anchor against the committed files. Executor: Sonnet,
 stop-on-ambiguity — any mismatch, any open call: STOP, report file/line/what is there. Never
 guess; it goes to a fresh Fable.
@@ -72,6 +86,10 @@ already re-renders the screen at that rate). The real screen ticks the dots at 2
 (cycle6 Task 5 step 3) because its rider only moves per GPS fix; the demo rider moves every
 tick, and nine dots stuttering at 4 Hz next to a smooth rider would misrepresent the feature.
 If the phone stutters, quantising `elapsedMs` to 250 ms is one line (named in the report).
+**Nathan, item 9 (2026-09-19): *"I will have to check on phone first, lets keep this as an
+open item."*** So: built at the demo's own tick, the quantisation stays a documented,
+unbuilt escape hatch (R8), and `OPEN-ITEMS.md` item 7 names it as the thing to judge on the
+phone (Task 4).
 
 ### R4 — Colours, size, layering: whatever the real screen does, via the real prop
 
@@ -80,9 +98,23 @@ typed `readonly SelfDot[]`, additive, "undefined/[] = the source still mounts, e
 Confirmed by reading: **no change to `WayMapView` is needed** — `selfDotsAt` already
 assigns `tier` / `rank` / `best`, the layer already paints purple / green / yellow by tier,
 sorts P1 on top by `sortKey`, and dims finished dots. The demo obeys the same
-`settings.selfDots` toggle as the real screen (`RecordScreen.tsx:1224`), so Nathan can flip
-it in SETTINGS and watch the dots vanish in the demo too. FIRST RIDE never gets dots (0
-priors — ride 1 races nobody, cycle6 R2).
+`settings.selfDots` toggle as the real screen (`RecordScreen.tsx:1223`). FIRST RIDE never gets
+dots (0 priors — ride 1 races nobody, cycle6 R2).
+
+**Live, not cached (Nathan, item 4: *"same for the 'selfs' racing, the settings toggle
+changes should be reflected in the demo so I can test it works properly fast"*).** Ruling,
+and a requirement Task 2 step 6 checks: `settings.selfDots` is read **at render level**
+(`showSelfs` below) and nowhere else — never captured in `start()`'s interval closure, never
+a dependency-less `useCallback`, never inside the `selfTracks` memo (which depends on `mode`
+and the epoch only — the tracks exist whether or not they are drawn; the toggle decides
+drawing, per render). `useSettings()` is a context whose provider re-memoises its value on
+every change (`settings.tsx:119–122`), so a consumer that reads in render is live by
+construction. What that gives Nathan: flip SELF DOTS in SETTINGS, come back to DEMO, RUN —
+dots present or absent accordingly, with no restart. Mid-run flipping is not reachable by
+UI (the tab bar is hidden while the demo runs — brief A R1), and switching to SETTINGS
+unmounts `DemoScreen` (`App.tsx:217` renders one screen per tab), so a fresh mount always
+reads the current value; the render-level read is what makes it right even if a future
+change kept the screen mounted. Same rule brief B R7 states for `sectorColours`/`liveMap`.
 
 ### R5 — The live `P` on the context row comes along, by a demo chainage in sector units
 
@@ -115,7 +147,8 @@ test line, cycle pointer), `GLOSSARY.md` (**Self** entry, one clause), `OPEN-ITE
 Any change to `selfRaceModel.ts`, `wayMapView.tsx`, `RecordScreen.tsx`, `liveView.tsx`;
 a metres-based chainage or a `RefLine` for the demo; dots in FIRST RIDE; a legend or labels
 on dots; a demo-only dot style; the PNG rung; free mode; the 250 ms quantisation (R3 names
-it, does not build it).
+it, does not build it — Nathan's item 9 is explicitly open); a settings toggle of the demo's
+own; the gate-adjust card (brief D).
 
 ---
 
@@ -130,8 +163,10 @@ it, does not build it).
   `app/tests/run.ts`, `app/tests/selfrace_suite.ts`. If a task seems to need one → STOP.
 - Never delete. `mv` to `safe_to_delete/`. `git add <path>` by name. `GIT_OPTIONAL_LOCKS=0`
   on every git command; a stray `.git/*.lock` gets `mv`'d aside.
-- HEAD at start must be B's commit (subject "DEMO tab — TENTH RIDE and the ranking reveal
-  …"); `git status --short` clean apart from the untracked cycle11 files. Otherwise STOP.
+- HEAD at start must be B's commit (subject "DEMO tab — TENTH RIDE, the whole-board reveal,
+  the card beneath it (brief B)") or D's on top of it (subject "… gate-adjust card … (brief
+  D)"); quote it. `git status --short` clean apart from this cycle folder (uncommitted briefs are
+  expected there; any modification under `app/` or the three root docs → STOP).
 - `demoModel.ts` stays pure. It may `import type { SelfTrack } from './selfRaceModel.ts'`
   (type-only — the value module pulls in the store graph, which the pure model must not
   load), `positionAtTime` + `type WayAsset` from `./wayMapMath.ts` (pure), `DEMO_WAY_ASSET`
@@ -156,12 +191,17 @@ Confirm before Task 1 and quote:
    gate. (Read the function; do not trust this summary.)
 4. `app/src/ui/demoWayFixture.ts`: `DEMO_WAY_ASSET.gateIdx` has 5 entries and `path` ≥ 2
    points.
-5. B's committed `demoModel.ts` exports `DEMO_PRIOR_LAPS`, `DEMO_PRIOR_DAYS_AGO`,
-   `demoHistoryFor`, `demoPriorLapSeconds`, `demoPriorResults(priorLaps, nowMs)` with ids
-   `demo:prior-<k>` and `startedAtMs = nowMs - DEMO_PRIOR_DAYS_AGO[k-1] * 86_400_000`, and
-   `demoLiveViewModel(script, clockS, nowMs, livePos = null, priorLaps = …)`.
-6. A's committed `DemoScreen.tsx` running-phase render passes `sectorColours={…}` and
-   `leadColour={colors.grey}` on the SECOND/TENTH map and has no `selfs=` prop yet.
+5. B's committed `demoModel.ts` exports `DEMO_PRIOR_LAPS` (with `tenth: WINDOW_PREV`, i.e.
+   9), `DEMO_PRIOR_DAYS_AGO`, `demoHistoryFor`, `demoPriorLapSeconds`,
+   `demoPriorResults(priorLaps, nowMs)` with ids `demo:prior-<k>` and `startedAtMs = nowMs -
+   DEMO_PRIOR_DAYS_AGO[k-1] * 86_400_000`, and `demoLiveViewModel(script, clockS, nowMs,
+   livePos = null, priorLaps = …)`.
+6. B's committed `DemoScreen.tsx` running-phase render passes `sectorColours={…}` and
+   `leadColour={colors.grey}` on the SECOND/TENTH map (the one with `asset={DEMO_WAY_ASSET}`)
+   and has no `selfs=` prop yet; `settings.sectorColours` and `settings.liveMap` are read at
+   render level (B's R7 grep) — the pattern this brief's `settings.selfDots` must follow.
+7. `app/src/ui/settings.tsx:125–127` is `export function useSettings(): Ctx { return
+   useContext(SettingsCtx); }` and `:119–122` memoises the provider `value` on `[s]`.
 
 Any mismatch → STOP.
 
@@ -229,13 +269,19 @@ Check: `tsc` clean; `grep -nE "from 'react|expo" app/src/ui/demoModel.ts` prints
    (A/B already call `demoLiveViewModel` — this only fills the `livePos` argument.)
 4. **Map.** On the SECOND/TENTH `WayMapView` in the running render add
    `selfs={showSelfs ? selfDots : undefined}` — undefined, not `[]`, when off, matching
-   `RecordScreen.tsx:1224`. Nothing on the FIRST RIDE map.
+   `RecordScreen.tsx:1223`. Nothing on the FIRST RIDE map.
 5. `exitToIdle` needs no new work: `clockS` resets to 0 so `elapsedMs` goes null and every
    dot parks on START for the next run.
+6. **Live-toggle check (R4, Nathan item 4).** After the edits, `grep -n "settings\." app/src/ui/DemoScreen.tsx`:
+   `settings.selfDots` must appear exactly once, in the `showSelfs` line at render level.
+   It must NOT appear inside `start()`, inside any `setInterval` callback, inside a
+   `useCallback`/`useMemo` whose dependency array omits it, or inside `demoSelfTracks`'s
+   memo. If `showSelfs` is folded into a memo, `settings.selfDots` is in its deps. Quote the
+   grep in the report. (`elapsedMs`/`selfDots` may be memoised — they do not read settings.)
 
 Checks: `tsc` clean. Read the running render once more: the `selfs` prop sits on the map
 that has `asset={DEMO_WAY_ASSET}`, never on `DEMO_FIRST_RIDE_ID`'s. Confirm `livePos` is
-`null` at `clockS === 0` and once `gatesDone === 4` by reading the expression.
+`null` at `clockS === 0` and once `gatesDone === 4` by reading the expression. Step 6's grep.
 
 ## 4. Task 3 — Tests: extend `app/tests/demo_suite.ts`
 
@@ -302,9 +348,12 @@ Zero FAIL on the whole suite.
   237), you pull away again in S4 and finish 6 s ahead. TENTH RIDE: nine dots; you lead the
   whole field through S1 and S2 (`P1`), then the 830 s and 835 s selves come past in S3
   (they cross G3 at 625 s / 629 s to your 629 s) — the context row drops to `P3` and stays
-  there to the line; the other seven fall away behind; finished dots dim and park at FINISH;
-  SETTINGS → self dots OFF removes them from the demo too. Judge size / opacity / stacking
-  here first (cycle6 R5 is a starting point); the real-ride check in item 5 still stands."
+  there to the line; the other seven fall away behind; finished dots dim and park at FINISH.
+  SETTINGS → SELF DOTS off, back to DEMO, RUN → no dots, `P` gone from the context row; on
+  again → back (no restart needed). Judge size / opacity / stacking here first (cycle6 R5 is
+  a starting point); the real-ride check in item 5 still stands. **Open (Nathan, item 9):**
+  the demo redraws nine dots at ~30 fps where the real screen ticks at 4 Hz — if this
+  stutters on the phone, say so; quantising to 250 ms is one line in `DemoScreen.tsx`."
 
 ---
 
@@ -327,7 +376,8 @@ fixes every 2 sim-s along the demo path at that lap's own gate times, so the
 dots' relative pace matches their rank in the tower and the strip — the 830 s
 self is the purple one ahead at the line, today lands P3 behind it and the
 835. Rendered through WayMapView's existing `selfs` prop under the same
-selfDots toggle; timed from the demo clock (START is t = 0); slower selfs
+selfDots toggle, read live at render (Nathan: "the settings toggle changes
+should be reflected in the demo"); timed from the demo clock (START is t = 0); slower selfs
 finish inside the 60 s roll-out. Live `P` on the context row via a
 sector-unit demo chainage through the real selfLivePosition. FIRST RIDE
 races nobody. Tests pin identities, fixes, states, tiers and the P.
@@ -344,14 +394,15 @@ Push is expected to fail from this device (403, cycle precedent) — say so, one
 
 ## 7. Report back
 
-1. HEAD at start (B's commit — quote its subject), `git status --short`, commit hash at end.
-2. The six §1 anchor confirmations, quoted.
+1. HEAD at start (B's commit, or D's — quote its subject), `git status --short`, commit hash at end.
+2. The seven §1 anchor confirmations, quoted.
 3. Task 1: `demoChainage` and the fix-sampling loop as committed; the fix count per track.
-4. Task 2: the `elapsedMs` / `selfDots` / `livePos` block and the `selfs=` prop as committed.
+4. Task 2: the `elapsedMs` / `selfDots` / `livePos` block and the `selfs=` prop as committed;
+   the step-6 `settings.` grep output.
 5. Test totals before/after; `tsc`.
 6. **Plain-language walk-through for Nathan** of what the dots do in SECOND and TENTH RIDE
    (who leads where, when today passes whom, what the context row reads and when it
    disappears, what finished dots look like), so he can react before opening the app.
 7. Tokens (this tier); the tier | model | tokens | outcome row.
 8. Every STOP you hit and did not resolve; the R3 quantisation note if the executor saw any
-   reason to expect stutter.
+   reason to expect stutter (Nathan's item 9 stays open either way).

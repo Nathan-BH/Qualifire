@@ -27,11 +27,16 @@ registerHooks({
     return nextLoad(url, context);
   },
 });
-const { MIN_HISTORY } = await import('../src/ui/colourModel.ts');
+const { MIN_HISTORY, WINDOW_N, WINDOW_PREV } = await import('../src/ui/colourModel.ts');
+const { CLIMB_MAX_MS, climbMsFor } = await import('../src/ui/rankingRevealModel.ts');
+const { TOWER_MAX_VISIBLE, towerDate } = await import('../src/ui/towerModel.ts');
 const {
   buildDemoScript, demoTier, demoSectorColours, DEMO_HISTORY, DEMO_SECS,
   demoRunEndS, DEMO_ROLL_OUT_S, demoStopOutcome, demoLiveViewModel, demoSavedLine, demoFmtMS,
+  DEMO_PRIOR_LAPS, DEMO_PRIOR_DAYS_AGO, DEMO_TODAY_RIDE_ID, DEMO_ROUTE_LABEL,
+  demoHistoryFor, demoPriorLapSeconds, demoPriorResults, buildDemoReveal, demoAddedWayLine,
 } = await import('../src/ui/demoModel.ts');
+const { DEMO_WAY_ID } = await import('../src/ui/demoWayFixture.ts');
 
 test('demoModel: buildDemoScript() with default secs computes gateAt/lap', () => {
   const s = buildDemoScript();
@@ -172,4 +177,174 @@ test('demoModel: the fake-save line', () => {
 test('demoModel: demoFmtMS matches the old DemoScreen fmtMS format', () => {
   assert(demoFmtMS(836) === '13:56', `expected '13:56', got ${demoFmtMS(836)}`);
   assert(demoFmtMS(65) === '1:05', `expected '1:05', got ${demoFmtMS(65)}`);
+});
+
+// virgin-cycle11 (DEMO overhaul, brief B) below.
+
+test('demoModel: nine pinned laps per sector, four sectors, nine dates', () => {
+  assert(DEMO_HISTORY.length === 4, `expected 4 sectors, got ${DEMO_HISTORY.length}`);
+  for (let i = 0; i < DEMO_HISTORY.length; i++) {
+    assert(DEMO_HISTORY[i].length === 9, `DEMO_HISTORY[${i}] has ${DEMO_HISTORY[i].length} laps, want 9`);
+  }
+  assert(
+    DEMO_PRIOR_LAPS.tenth === WINDOW_PREV && DEMO_PRIOR_LAPS.tenth === DEMO_HISTORY[0].length,
+    `DEMO_PRIOR_LAPS.tenth (${DEMO_PRIOR_LAPS.tenth}) must equal WINDOW_PREV (${WINDOW_PREV}) and DEMO_HISTORY[0].length (${DEMO_HISTORY[0].length})`,
+  );
+  assert(DEMO_PRIOR_DAYS_AGO.length === 9, `DEMO_PRIOR_DAYS_AGO has ${DEMO_PRIOR_DAYS_AGO.length} entries, want 9`);
+  for (let i = 1; i < DEMO_PRIOR_DAYS_AGO.length; i++) {
+    assert(
+      DEMO_PRIOR_DAYS_AGO[i] < DEMO_PRIOR_DAYS_AGO[i - 1],
+      `DEMO_PRIOR_DAYS_AGO must be strictly decreasing, broke at index ${i}: [${DEMO_PRIOR_DAYS_AGO}]`,
+    );
+  }
+});
+
+test('demoModel: lap seconds are the column sums', () => {
+  const nine = demoPriorLapSeconds(9);
+  assert(
+    JSON.stringify(nine) === JSON.stringify([840, 830, 853, 844, 848, 835, 845, 865, 842]),
+    `demoPriorLapSeconds(9) = [${nine}], want [840,830,853,844,848,835,845,865,842]`,
+  );
+  const one = demoPriorLapSeconds(1);
+  assert(JSON.stringify(one) === JSON.stringify([842]), `demoPriorLapSeconds(1) = [${one}], want [842]`);
+  const hist1 = demoHistoryFor(1);
+  assert(
+    JSON.stringify(hist1) === JSON.stringify([[191], [209], [233], [209]]),
+    `demoHistoryFor(1) = ${JSON.stringify(hist1)}, want [[191],[209],[233],[209]]`,
+  );
+  const hist0 = demoHistoryFor(0);
+  assert(
+    hist0.length === 4 && hist0.every((row) => row.length === 0),
+    `demoHistoryFor(0) should be four empty rows, got ${JSON.stringify(hist0)}`,
+  );
+});
+
+test('demoModel: TENTH RIDE keeps the three-colour pin', () => {
+  const secTiers = [1, 2, 3, 4].map((i) => demoTier(i, DEMO_SECS[i - 1], 9));
+  assert(
+    secTiers.join(',') === 'purple,green,yellow,green',
+    `TENTH RIDE sector tiers = ${secTiers.join(',')}, want purple,green,yellow,green`,
+  );
+  assert(demoTier(0, 836, 9) === 'green', `TENTH RIDE lap tier = ${demoTier(0, 836, 9)}, want green`);
+});
+
+test('demoModel: SECOND RIDE is purple/yellow only', () => {
+  const secTiers = [1, 2, 3, 4].map((i) => demoTier(i, DEMO_SECS[i - 1], 1));
+  assert(
+    secTiers.join(',') === 'purple,purple,yellow,purple',
+    `SECOND RIDE sector tiers = ${secTiers.join(',')}, want purple,purple,yellow,purple`,
+  );
+  assert(demoTier(0, 836, 1) === 'purple', `SECOND RIDE lap tier = ${demoTier(0, 836, 1)}, want purple`);
+  assert(!secTiers.includes('green'), `no sector should be green at depth 1, got ${secTiers.join(',')}`);
+});
+
+test('demoModel: FIRST RIDE is neutral everywhere', () => {
+  for (let i = 1; i <= 4; i++) {
+    assert(
+      demoTier(i, DEMO_SECS[i - 1], 0) === 'neutral',
+      `FIRST RIDE sector ${i} tier = ${demoTier(i, DEMO_SECS[i - 1], 0)}, want neutral`,
+    );
+  }
+  assert(demoTier(0, 836, 0) === 'neutral', `FIRST RIDE lap tier = ${demoTier(0, 836, 0)}, want neutral`);
+});
+
+test('demoModel: synthetic results have the store\'s shape', () => {
+  const T = 2_000_000_000_000;
+  const nine = demoPriorResults(9, T);
+  assert(nine.length === 9, `demoPriorResults(9, T) length = ${nine.length}, want 9`);
+  assert(
+    nine.every((r, i) => r.rideId === `demo:prior-${i + 1}`),
+    `ids must be demo:prior-1..9, got ${nine.map((r) => r.rideId).join(',')}`,
+  );
+  assert(nine.every((r) => r.source === 'app'), 'every synthetic result must have source "app"');
+  assert(nine.every((r) => r.wayId === DEMO_WAY_ID), 'every synthetic result must carry the demo way id');
+  assert(nine.every((r) => r.lap.rawS === r.lap.movingS), 'rawS must equal movingS on every synthetic result');
+  for (let i = 1; i < nine.length; i++) {
+    assert(nine[i].startedAtMs > nine[i - 1].startedAtMs, `startedAtMs must be strictly increasing at index ${i}`);
+  }
+  nine.forEach((r, k) => {
+    const want = T - DEMO_PRIOR_DAYS_AGO[k] * 86_400_000;
+    assert(r.startedAtMs === want, `nine[${k}].startedAtMs = ${r.startedAtMs}, want ${want}`);
+  });
+  const one = demoPriorResults(1, T);
+  assert(one.length === 1, `demoPriorResults(1, T) length = ${one.length}, want 1`);
+  assert(
+    JSON.stringify(one[0]) === JSON.stringify(nine[8]),
+    `demoPriorResults(1, T) must be exactly the last of demoPriorResults(9, T)`,
+  );
+});
+
+test('demoModel: no reveal on ride 1', () => {
+  const T = 2_000_000_000_000;
+  assert(buildDemoReveal('first', T) === null, 'buildDemoReveal("first", T) must be null');
+});
+
+test('demoModel: SECOND RIDE — P1 of 2, purple, one row climbed, today is the PB', () => {
+  const T = 2_000_000_000_000;
+  const r = buildDemoReveal('second', T);
+  assert(r !== null, 'buildDemoReveal("second", T) must not be null');
+  assert(r!.pos === 1 && r!.of === 2, `pos/of = ${r!.pos}/${r!.of}, want 1/2`);
+  assert(r!.tier === 'purple', `tier = ${r!.tier}, want purple`);
+  assert(r!.rowsPassed === 1, `rowsPassed = ${r!.rowsPassed}, want 1`);
+  assert(r!.climbMs === 800, `climbMs = ${r!.climbMs}, want 800`);
+  const today = r!.model.rows.find((row) => row.today)!;
+  assert(today.pb === true, 'today must carry the PB');
+  assert(today.time === '13:56', `today.time = ${today.time}, want 13:56`);
+  assert(today.gap === '—', `today.gap = ${today.gap}, want —`);
+  const other = r!.model.rows.find((row) => !row.today)!;
+  assert(other.time === '14:02', `other.time = ${other.time}, want 14:02`);
+  assert(other.gap === '+6s', `other.gap = ${other.gap}, want +6s`);
+});
+
+test('demoModel: TENTH RIDE — P3 of 10, green, seven rows climbed, P1 is the PB', () => {
+  const T = 2_000_000_000_000;
+  const r = buildDemoReveal('tenth', T);
+  assert(r !== null, 'buildDemoReveal("tenth", T) must not be null');
+  assert(r!.pos === 3, `pos = ${r!.pos}, want 3`);
+  assert(r!.tier === 'green', `tier = ${r!.tier}, want green`);
+  assert(r!.rowsPassed === 7, `rowsPassed = ${r!.rowsPassed}, want 7`);
+  assert(r!.climbMs === climbMsFor(7) && r!.climbMs === 2000, `climbMs = ${r!.climbMs}, want ${climbMsFor(7)} (2000)`);
+  assert(r!.climbMs < CLIMB_MAX_MS, `climbMs (${r!.climbMs}) must be < CLIMB_MAX_MS (${CLIMB_MAX_MS})`);
+  for (let i = 1; i < r!.model.rows.length; i++) {
+    const a = r!.model.rows[i - 1].time.split(':').reduce((acc, v) => acc * 60 + Number(v), 0);
+    const b = r!.model.rows[i].time.split(':').reduce((acc, v) => acc * 60 + Number(v), 0);
+    assert(a <= b, `rows must ascend by parsed time, broke at index ${i}: ${r!.model.rows.map((x) => x.time)}`);
+  }
+  assert(r!.model.rows.filter((row) => row.today).length === 1, 'exactly one row must be today');
+  assert(r!.model.rows[0].time === '13:50' && r!.model.rows[0].pb === true, `rows[0] = ${JSON.stringify(r!.model.rows[0])}`);
+  const today = r!.model.rows.find((row) => row.today)!;
+  assert(today.gap === '+6s' && today.pb === false, `today = ${JSON.stringify(today)}`);
+});
+
+test('demoModel: TENTH RIDE\'s board is the whole pool, and the tower shows all of it (R2/R5)', () => {
+  const T = 2_000_000_000_000;
+  const r = buildDemoReveal('tenth', T)!;
+  assert(r.of === WINDOW_N, `r.of = ${r.of}, want WINDOW_N (${WINDOW_N})`);
+  assert(r.model.rows.length === WINDOW_N, `r.model.rows.length = ${r.model.rows.length}, want WINDOW_N (${WINDOW_N})`);
+  assert(
+    r.model.rows.length <= TOWER_MAX_VISIBLE,
+    `r.model.rows.length (${r.model.rows.length}) must be <= TOWER_MAX_VISIBLE (${TOWER_MAX_VISIBLE})`,
+  );
+  assert(r.model.rows[9].time === '14:25', `rows[9].time = ${r.model.rows[9].time}, want 14:25`);
+});
+
+test('demoModel: dates are the priors\' dates', () => {
+  const T = 2_000_000_000_000;
+  const r = buildDemoReveal('tenth', T)!;
+  const row = r.model.rows.find((x) => x.time === '13:50')!;
+  const want = towerDate(T - 14 * 86_400_000);
+  assert(row.date === want, `row.date = ${row.date}, want ${want}`);
+});
+
+test('demoModel: the ADD WAY line', () => {
+  const withSpecs = demoAddedWayLine(DEMO_ROUTE_LABEL, ['Dry', ' Left ']);
+  assert(
+    withSpecs === 'Home → Work · Dry · Left added as a new way · demo only, nothing saved',
+    `unexpected line: ${withSpecs}`,
+  );
+  const noSpecs = demoAddedWayLine(DEMO_ROUTE_LABEL, []);
+  assert(
+    noSpecs === 'Home → Work added as a new way · demo only, nothing saved',
+    `unexpected line: ${noSpecs}`,
+  );
 });

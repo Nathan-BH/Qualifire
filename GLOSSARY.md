@@ -125,8 +125,9 @@ install (APK) — only needed when something native changes, like the map.
 
 **DEMO tab.** A scripted ride replayed at 25× so you can see, from the couch, what a ride
 looks like on the RECORD screen and what happens after STOP. Nothing it shows is recorded.
-Two modes: FIRST RIDE (a stranger's first ride and the naming card) and SECOND RIDE (a known
-route, the sector strip).
+Three modes: FIRST RIDE (a stranger's first ride and the naming card), SECOND RIDE (one
+prior ride — a two-row tower) and TENTH RIDE (nine prior rides — the full ten-row tower
+climb). After the climb, the card a real ride would get.
 
 **Preview (the blank-seed build).** "Qualifire Preview" is the standalone APK that runs
 without the PC. Since build 7 it is permanently blank on first launch — no sports, no

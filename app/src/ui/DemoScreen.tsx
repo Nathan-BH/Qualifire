@@ -37,16 +37,26 @@
  * uses) and mirrors RecordScreen's real running column: live-variant map on
  * top, the shared LiveSectorPane, a status line, STOP. The scripted clock
  * rolls past the lap by `DEMO_ROLL_OUT_S` sim-seconds and then auto-STOPs
- * into an 'ending' screen — FIRST RIDE mounts the real `RouteNamingCard`
- * (SAVE is theatre: nothing is written); SECOND RIDE gets a placeholder DONE
- * bar (brief B mounts the ranking-reveal tower there instead). Lap chip is
- * neutral before STOP, exactly as the real screen since the ranking reveal.
+ * into an 'ending' screen. Lap chip is neutral before STOP, exactly as the
+ * real screen since the ranking reveal.
+ *
+ * virgin-cycle11 brief B: a third mode, TENTH RIDE (now the default) —
+ * SECOND RIDE is an honest ride 2 (one prior lap, purple/yellow only);
+ * TENTH RIDE judges today against the last WINDOW_PREV pinned laps, the
+ * real app's whole ranking pool. After STOP, SECOND/TENTH mount the real
+ * `TimingTower` in reveal mode over a board built by the real
+ * `buildRankingReveal` (an injected synthetic window, no store reads) and,
+ * after the hold, the real `RouteNamingCard` in its WP-G "new way on this
+ * route" variant — FIRST RIDE still mounts the both-endpoints-unknown card
+ * straight away. Every SAVE/ADD WAY here is theatre: nothing is written.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, Pressable, ScrollView, StyleSheet, Text, Vibration, View } from 'react-native';
 import { tierLineColour } from './chips';
 import {
+  buildDemoReveal,
   buildDemoScript,
+  demoAddedWayLine,
   demoFmtMS,
   demoLiveViewModel,
   demoRunEndS,
@@ -54,8 +64,13 @@ import {
   demoSectorColours,
   demoStopOutcome,
   DEMO_FAKE_SAVE_MS,
+  DEMO_PRIOR_LAPS,
   DEMO_ROLL_OUT_S,
+  DEMO_ROUTE_END,
+  DEMO_ROUTE_LABEL,
+  DEMO_ROUTE_START,
   DEMO_SAVED_HOLD_MS,
+  DEMO_SPEC_VOCABULARY,
   type DemoMode,
   type DemoPhase,
   type RouteNames,
@@ -63,11 +78,13 @@ import {
 import { DEMO_WAY_ASSET, DEMO_WAY_ID } from './demoWayFixture.ts';
 import { LaunchAnimation } from './launchAnimation';
 import { LiveSectorPane } from './liveView';
+import { REVEAL_HOLD_MS, REVEAL_START_DELAY_MS, type RankingReveal } from './rankingRevealModel.ts';
 import { RouteNamingCard } from './routeNamingCard';
 import { ALL_YELLOW } from './sectorTrailModel.ts';
 import { useSettings } from './settings';
 import { colors, PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
+import { TimingTower } from './tower';
 import { appendTrailPoint, type TrailPoint } from './trailModel.ts';
 import WayMapView from './wayMapView';
 import { positionAtTime } from './wayMapMath';
@@ -96,7 +113,7 @@ export default function DemoScreen({ onFullscreenChange }: {
   const { t } = useTheme();
   const { s: settings } = useSettings();
   const styles = useMemo(() => makeStyles(t), [t]);
-  const [mode, setMode] = useState<DemoMode>('second');
+  const [mode, setMode] = useState<DemoMode>('tenth');
   const [running, setRunning] = useState(false);
   const [clockS, setClockS] = useState(0);
   const [trail, setTrail] = useState<readonly TrailPoint[]>([]);
@@ -105,8 +122,12 @@ export default function DemoScreen({ onFullscreenChange }: {
   const [phase, setPhase] = useState<DemoPhase>('idle');
   const [showAnim, setShowAnim] = useState<'rev' | null>(null);
   const [busy, setBusy] = useState(false);                          // R7 fake save
-  const [saved, setSaved] = useState<RouteNames | null>(null);      // R7 confirmation line
+  const [savedLine, setSavedLine] = useState<string | null>(null);  // R6/R7 confirmation line
   const holdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // virgin-cycle11 (brief B, R1/R6): the ranking reveal board (SECOND/TENTH only).
+  const [reveal, setReveal] = useState<RankingReveal | null>(null);
+  const [revealDone, setRevealDone] = useState(true);
+  const revealHoldRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // The scripted ride: today's fixed lap (demoModel.ts's pinned fixture).
   const script = useMemo(() => buildDemoScript(), []);
@@ -129,6 +150,7 @@ export default function DemoScreen({ onFullscreenChange }: {
   useEffect(() => () => {
     if (timer.current) clearInterval(timer.current);
     if (holdRef.current) clearTimeout(holdRef.current);
+    if (revealHoldRef.current) clearTimeout(revealHoldRef.current);
   }, []);
 
   // dot position: along the REAL ridden line (cycle 009) — same geometry for
@@ -148,25 +170,33 @@ export default function DemoScreen({ onFullscreenChange }: {
   };
 
   // virgin-cycle11 (brief A, R6): STOP-after-the-line (and the auto-STOP)
-  // land here. brief B adds the reveal build at the marked spot.
+  // land here. brief B (R1/R6): build the ranking reveal here for second/tenth
+  // — a stale 'second' closure building a two-row board for TENTH RIDE is
+  // exactly the bug `mode` in the deps avoids.
   const enterEnding = useCallback(() => {
     clearTimer();
     setRunning(false);
+    const next = buildDemoReveal(mode, Date.now());
+    setReveal(next);
+    setRevealDone(next === null);
     setPhase('ending');
-    // brief B: build the ranking reveal here for second/tenth.
-  }, []);
+  }, [mode]);
 
   const exitToIdle = useCallback(() => {
     clearTimer();
     if (holdRef.current) clearTimeout(holdRef.current);
     holdRef.current = null;
+    if (revealHoldRef.current) clearTimeout(revealHoldRef.current);
+    revealHoldRef.current = null;
     setRunning(false);
     setClockS(0);
     prevGates.current = 0;
     setTrail([]);
-    setSaved(null);
+    setSavedLine(null);
     setBusy(false);
     setShowAnim(null);
+    setReveal(null);
+    setRevealDone(true);
     setPhase('idle');
   }, []);
 
@@ -181,7 +211,7 @@ export default function DemoScreen({ onFullscreenChange }: {
     prevGates.current = 0;
     setClockS(0);
     setTrail([]);
-    setSaved(null);
+    setSavedLine(null);
     setBusy(false);
     setPhase('running');
     setRunning(true);
@@ -206,7 +236,7 @@ export default function DemoScreen({ onFullscreenChange }: {
   };
 
   // Switching mode stops any run in progress and resets every piece of
-  // scripted state — the two modes never share a run. Only reachable from
+  // scripted state — the three modes never share a run. Only reachable from
   // idle now (the pills live only on the chooser screen).
   const switchMode = (m: DemoMode) => {
     if (m === mode) return;
@@ -241,16 +271,17 @@ export default function DemoScreen({ onFullscreenChange }: {
 
   // View model built by hand — the demo has no engine, but it feeds the very
   // same pane, so what you see here is what the Record screen would draw.
-  // Used by SECOND RIDE only. R5: the lap chip stays neutral until STOP.
-  const vm = demoLiveViewModel(script, clockS, Date.now());
+  // Used by SECOND/TENTH RIDE only. R5: the lap chip stays neutral until STOP.
+  // Depth (R2): judged against the LAST DEMO_PRIOR_LAPS[mode] pinned laps.
+  const vm = demoLiveViewModel(script, clockS, Date.now(), null, DEMO_PRIOR_LAPS[mode]);
 
-  // SECOND RIDE only: gate-indexed sector verdict colours for the map's
+  // SECOND/TENTH RIDE only: gate-indexed sector verdict colours for the map's
   // sector-span prop. Gate ticks themselves are never coloured — that is the
   // point of this mode (Nathan's 2026-09-01 ruling) — so no gate-tick colour
   // array is built or passed here at all. R2: same settings.sectorColours
   // toggle the real screen reads — OFF passes ALL_YELLOW, same as RecordScreen.
   const sectorColours = settings.sectorColours
-    ? demoSectorColours(script, gatesDone, tierLineColour)
+    ? demoSectorColours(script, gatesDone, tierLineColour, DEMO_PRIOR_LAPS[mode])
     : ALL_YELLOW;
 
   const onDemoNamingSkip = useCallback(() => setShowAnim('rev'), []);
@@ -258,9 +289,23 @@ export default function DemoScreen({ onFullscreenChange }: {
     setBusy(true);
     holdRef.current = setTimeout(() => {
       setBusy(false);
-      setSaved(names);
+      setSavedLine(demoSavedLine(names));
       holdRef.current = setTimeout(() => { holdRef.current = null; setShowAnim('rev'); }, DEMO_SAVED_HOLD_MS);
     }, DEMO_FAKE_SAVE_MS);
+  }, []);
+  // R6: the WP-G "new way on this route" card's ADD WAY — same theatre.
+  const onDemoAddWaySave = useCallback((names: RouteNames) => {
+    setBusy(true);
+    holdRef.current = setTimeout(() => {
+      setBusy(false);
+      setSavedLine(demoAddedWayLine(DEMO_ROUTE_LABEL, names.specs));
+      holdRef.current = setTimeout(() => { holdRef.current = null; setShowAnim('rev'); }, DEMO_SAVED_HOLD_MS);
+    }, DEMO_FAKE_SAVE_MS);
+  }, []);
+  // R6: the reveal's hold timer — after onPlayed, the card/line appears
+  // REVEAL_HOLD_MS later, exactly RecordScreen.tsx's revealHoldRef.
+  const onRevealPlayed = useCallback(() => {
+    revealHoldRef.current = setTimeout(() => { revealHoldRef.current = null; setRevealDone(true); }, REVEAL_HOLD_MS);
   }, []);
 
   if (phase === 'running') {
@@ -304,13 +349,17 @@ export default function DemoScreen({ onFullscreenChange }: {
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.trackLine}>
-            {mode === 'first' ? `Ride saved — ${demoFmtMS(clockS)}.` : 'Ride saved.'}
+            {reveal !== null ? 'Ride saved.' : `Ride saved — ${demoFmtMS(clockS)}.`}
           </Text>
-          {/* brief B mounts the TimingTower here for second/tenth and gates the block below on revealDone */}
-          {mode === 'first' ? (
-            saved !== null ? (
-              <Text style={styles.trackLine}>{demoSavedLine(saved)}</Text>
-            ) : (
+          {reveal !== null && (
+            <TimingTower model={reveal.model} justFinished reveal climbMs={reveal.climbMs}
+              startDelayMs={REVEAL_START_DELAY_MS} onPlayed={onRevealPlayed} />
+          )}
+          {revealDone ? (
+            savedLine !== null ? (
+              <Text style={styles.trackLine}>{savedLine}</Text>
+            ) : mode === 'first' ? (
+              // brief D inserts its adjust-card branch here, before this one.
               <RouteNamingCard
                 startExistingLabel={null}
                 endExistingLabel={null}
@@ -322,13 +371,21 @@ export default function DemoScreen({ onFullscreenChange }: {
                 onSave={onDemoNamingSave}
                 onSkip={onDemoNamingSkip}
               />
+            ) : (
+              // R6: SECOND/TENTH RIDE's after-reveal card — WP-G "new way on this route".
+              <RouteNamingCard
+                startExistingLabel={DEMO_ROUTE_START}
+                endExistingLabel={DEMO_ROUTE_END}
+                loop={false}
+                busy={busy}
+                matchedWayLabel={DEMO_ROUTE_LABEL}
+                existingRoute={{ label: DEMO_ROUTE_LABEL, knownSpecLists: [[]] }}
+                vocabulary={[...DEMO_SPEC_VOCABULARY]}
+                onSave={onDemoAddWaySave}
+                onSkip={onDemoNamingSkip}
+              />
             )
-          ) : (
-            <Pressable style={styles.stopSlim} onPress={() => setShowAnim('rev')}>
-              <Text style={styles.stopSlimText}>DONE</Text>
-              <Text style={styles.stopSlimSub}>back to the demo</Text>
-            </Pressable>
-          )}
+          ) : null}
         </ScrollView>
         {showAnim === 'rev' && <LaunchAnimation reverse onDone={exitToIdle} />}
       </View>
@@ -354,12 +411,20 @@ export default function DemoScreen({ onFullscreenChange }: {
         >
           <Text style={[styles.pillText, mode === 'second' && styles.pillTextSelected]}>SECOND RIDE</Text>
         </Pressable>
+        <Pressable
+          style={[styles.pill, mode === 'tenth' ? styles.pillSelected : styles.pillOutline]}
+          onPress={() => switchMode('tenth')}
+        >
+          <Text style={[styles.pillText, mode === 'tenth' && styles.pillTextSelected]}>TENTH RIDE</Text>
+        </Pressable>
       </View>
 
       <Text style={styles.sub}>
         {mode === 'first'
           ? "A stranger's first ride: no route, no gates, a trail growing behind the dot — then the card that names the route."
-          : 'Your second ride of a route: the line, the gates, the sector strip — then how it ranked.'}
+          : mode === 'second'
+          ? 'Your second ride of a route: the line, the gates, the sector strip — then how it ranked, and the card.'
+          : 'Your tenth ride: nine earlier rides to beat — the full timing tower climbs after STOP, then the card.'}
       </Text>
 
       <Pressable style={styles.btn} onPress={start}>
