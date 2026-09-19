@@ -7,7 +7,7 @@ useless if you cannot already read a keyboard. The practice tools that do show n
 (Visual Piano, Piano Note Visualizer) are built around a connected MIDI keyboard, not a
 file you load.
 
-So: built one. `../named-keys.html` (published as the "Named Keys" artifact).
+So: built one. `../../named-keys.html` (published as the "Named Keys" artifact).
 
 ## Source chain
 
@@ -37,6 +37,6 @@ tool has a "Middle C is" dropdown that shifts every label at once.
 
 ## Reusable
 
-- `../tools/parse_midi.py` - pure-stdlib SMF parser, no mido/pretty_midi. Written because
+- `../../tools/parse_midi.py` - pure-stdlib SMF parser, no mido/pretty_midi. Written because
   the cloud sandbox has no PyPI access, so it has to run on the PC too.
-- `../named-keys.html` - loads any .mid, labelled keyboard + falling roll + press list.
+- `../../named-keys.html` - loads any .mid, labelled keyboard + falling roll + press list.

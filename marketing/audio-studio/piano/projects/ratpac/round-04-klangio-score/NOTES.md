@@ -20,7 +20,7 @@ recoverable as pure geometry - no OCR:
    bass bottom line = G2.
 4. Notehead height above the bottom line, in half-spaces, gives the diatonic degree.
 
-`../tools/extract_klangio_pdf.py` does all of this.
+`../../tools/extract_klangio_pdf.py` does all of this.
 
 ### Two gotchas found the hard way
 
@@ -74,3 +74,21 @@ pitches and, above all, to confirm there are no black keys.
 
 - `klangio_score.png` - the rendered page, for reading by eye
 - `klangio_score_notes.json` - every notehead: system, x, clef, MIDI number, name
+
+## Amendment (2026-09-19, reused on a second piece)
+
+Reusing this script on `projects/interstellar/sources/Interstellar_(Easy_Piano_Tutorial).pdf`
+surfaced two bugs that this piece's PDF happened not to trigger:
+
+1. **The `ENC` codepoint table above is this PDF's font subset, not a universal one.**
+   Font subsetting assigns codes per file; the interstellar PDF maps `clefs.F`/`clefs.G`
+   to different codes, and the hardcoded table silently misread them as noteheads,
+   defaulting every staff to treble. `extract_klangio_pdf.py` now reads each font's own
+   `/Differences` array first. Re-run against this PDF after the fix: **identical
+   output** — nothing in this file's findings was wrong.
+2. **The printed "range" line sorted note names as strings, not by pitch** (`min`/`max`
+   over e.g. `"A3"` vs `"C3"` alphabetically). For this PDF that silently swallowed the
+   true low end: it reported "A3 - G5" above; the corrected, pitch-sorted range is
+   **C3 - G5**.
+
+Full detail: `../../interstellar/NOTES.md`.

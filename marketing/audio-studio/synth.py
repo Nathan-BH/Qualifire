@@ -11,7 +11,10 @@ own soundtrack.py reaches it with `sys.path.insert(0, "..")` (or "../.."
 for a scene that's nested one level deeper, like brandmark/opening/).
 """
 import numpy as np
-from scipy.signal import lfilter
+try:
+    from scipy.signal import lfilter
+except ImportError:
+    lfilter = None  # reverb()/comb()/allpass() unavailable until scipy installs; rest of this file is pure numpy
 
 SR = 44100
 
@@ -147,6 +150,8 @@ def pulse_train(start, end, bpm, total_dur, amp=0.16, freq=170, decay=0.09, sr=S
 
 
 def comb(x, delay, fb):
+    if lfilter is None:
+        raise RuntimeError("scipy not available here - pass wet=0 to finish()/skip reverb()")
     a = np.zeros(delay + 1)
     a[0] = 1
     a[delay] = -fb

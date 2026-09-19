@@ -1,0 +1,338 @@
+[
+ {
+  "system": 0,
+  "x": 71.21,
+  "clef": "bass",
+  "midi": 41,
+  "name": "F2"
+ },
+ {
+  "system": 0,
+  "x": 71.21,
+  "clef": "treble",
+  "midi": 69,
+  "name": "A4"
+ },
+ {
+  "system": 0,
+  "x": 100.05,
+  "clef": "treble",
+  "midi": 76,
+  "name": "E5"
+ },
+ {
+  "system": 0,
+  "x": 133.34,
+  "clef": "bass",
+  "midi": 41,
+  "name": "F2"
+ },
+ {
+  "system": 0,
+  "x": 133.34,
+  "clef": "treble",
+  "midi": 76,
+  "name": "E5"
+ },
+ {
+  "system": 0,
+  "x": 161.03,
+  "clef": "treble",
+  "midi": 76,
+  "name": "E5"
+ },
+ {
+  "system": 0,
+  "x": 170.99,
+  "clef": "treble",
+  "midi": 69,
+  "name": "A4"
+ },
+ {
+  "system": 0,
+  "x": 187.48,
+  "clef": "treble",
+  "midi": 69,
+  "name": "A4"
+ },
+ {
+  "system": 0,
+  "x": 213.84,
+  "clef": "bass",
+  "midi": 41,
+  "name": "F2"
+ },
+ {
+  "system": 0,
+  "x": 213.84,
+  "clef": "treble",
+  "midi": 69,
+  "name": "A4"
+ },
+ {
+  "system": 0,
+  "x": 270.46,
+  "clef": "treble",
+  "midi": 76,
+  "name": "E5"
+ },
+ {
+  "system": 0,
+  "x": 297.87,
+  "clef": "bass",
+  "midi": 41,
+  "name": "F2"
+ },
+ {
+  "system": 0,
+  "x": 297.87,
+  "clef": "treble",
+  "midi": 76,
+  "name": "E5"
+ },
+ {
+  "system": 0,
+  "x": 318.49,
+  "clef": "bass",
+  "midi": 43,
+  "name": "G2"
+ },
+ {
+  "system": 0,
+  "x": 318.49,
+  "clef": "treble",
+  "midi": 71,
+  "name": "B4"
+ },
+ {
+  "system": 0,
+  "x": 347.42,
+  "clef": "treble",
+  "midi": 76,
+  "name": "E5"
+ },
+ {
+  "system": 0,
+  "x": 374.83,
+  "clef": "bass",
+  "midi": 43,
+  "name": "G2"
+ },
+ {
+  "system": 0,
+  "x": 374.83,
+  "clef": "treble",
+  "midi": 76,
+  "name": "E5"
+ },
+ {
+  "system": 0,
+  "x": 406.64,
+  "clef": "treble",
+  "midi": 76,
+  "name": "E5"
+ },
+ {
+  "system": 0,
+  "x": 418.96,
+  "clef": "treble",
+  "midi": 71,
+  "name": "B4"
+ },
+ {
+  "system": 0,
+  "x": 438.22,
+  "clef": "bass",
+  "midi": 43,
+  "name": "G2"
+ },
+ {
+  "system": 0,
+  "x": 438.22,
+  "clef": "treble",
+  "midi": 71,
+  "name": "B4"
+ },
+ {
+  "system": 0,
+  "x": 467.15,
+  "clef": "treble",
+  "midi": 76,
+  "name": "E5"
+ },
+ {
+  "system": 0,
+  "x": 500.44,
+  "clef": "bass",
+  "midi": 43,
+  "name": "G2"
+ },
+ {
+  "system": 0,
+  "x": 500.44,
+  "clef": "treble",
+  "midi": 76,
+  "name": "E5"
+ },
+ {
+  "system": 0,
+  "x": 528.12,
+  "clef": "bass",
+  "midi": 43,
+  "name": "G2"
+ },
+ {
+  "system": 0,
+  "x": 528.12,
+  "clef": "treble",
+  "midi": 76,
+  "name": "E5"
+ },
+ {
+  "system": 0,
+  "x": 541.06,
+  "clef": "bass",
+  "midi": 45,
+  "name": "A2"
+ },
+ {
+  "system": 0,
+  "x": 541.06,
+  "clef": "treble",
+  "midi": 72,
+  "name": "C5"
+ },
+ {
+  "system": 1,
+  "x": 57.24,
+  "clef": "bass",
+  "midi": 45,
+  "name": "A2"
+ },
+ {
+  "system": 1,
+  "x": 57.24,
+  "clef": "treble",
+  "midi": 72,
+  "name": "C5"
+ },
+ {
+  "system": 1,
+  "x": 81.65,
+  "clef": "treble",
+  "midi": 76,
+  "name": "E5"
+ },
+ {
+  "system": 1,
+  "x": 126.58,
+  "clef": "bass",
+  "midi": 45,
+  "name": "A2"
+ },
+ {
+  "system": 1,
+  "x": 126.58,
+  "clef": "treble",
+  "midi": 76,
+  "name": "E5"
+ },
+ {
+  "system": 1,
+  "x": 158.71,
+  "clef": "treble",
+  "midi": 72,
+  "name": "C5"
+ },
+ {
+  "system": 1,
+  "x": 198.45,
+  "clef": "bass",
+  "midi": 45,
+  "name": "A2"
+ },
+ {
+  "system": 1,
+  "x": 198.45,
+  "clef": "treble",
+  "midi": 72,
+  "name": "C5"
+ },
+ {
+  "system": 1,
+  "x": 215.16,
+  "clef": "treble",
+  "midi": 76,
+  "name": "E5"
+ },
+ {
+  "system": 1,
+  "x": 275.54,
+  "clef": "bass",
+  "midi": 45,
+  "name": "A2"
+ },
+ {
+  "system": 1,
+  "x": 275.54,
+  "clef": "treble",
+  "midi": 76,
+  "name": "E5"
+ },
+ {
+  "system": 1,
+  "x": 299.95,
+  "clef": "bass",
+  "midi": 43,
+  "name": "G2"
+ },
+ {
+  "system": 1,
+  "x": 299.95,
+  "clef": "treble",
+  "midi": 74,
+  "name": "D5"
+ },
+ {
+  "system": 1,
+  "x": 333.32,
+  "clef": "treble",
+  "midi": 76,
+  "name": "E5"
+ },
+ {
+  "system": 1,
+  "x": 365.23,
+  "clef": "bass",
+  "midi": 43,
+  "name": "G2"
+ },
+ {
+  "system": 1,
+  "x": 403.85,
+  "clef": "bass",
+  "midi": 43,
+  "name": "G2"
+ },
+ {
+  "system": 1,
+  "x": 419.3,
+  "clef": "treble",
+  "midi": 74,
+  "name": "D5"
+ },
+ {
+  "system": 1,
+  "x": 441.09,
+  "clef": "treble",
+  "midi": 74,
+  "name": "D5"
+ },
+ {
+  "system": 1,
+  "x": 474.47,
+  "clef": "treble",
+  "midi": 76,
+  "name": "E5"
+ }
+]

@@ -27,3 +27,36 @@ moving → green trail → purple/personal-best → resolve), in C major, plus a
 melodic arpeggio that speeds up with the runner. Full rationale and the chord table are
 in `soundv2/FEEDBACK.md`; the broader project thinking (why not an AI tool, the synthesis
 toolkit) is in `../APPROACH.md`.
+
+## soundv4 (2026-09-19) — Interstellar melody idea, not yet built
+
+A different direction, not a refinement of the chord progression above: Nathan's idea to
+put the Interstellar "Time" theme's melody pulse under this scene, timed to the gate
+crossings. Analysis + a plain preview clip (melody at its own pace, no retiming) are in
+`soundv4/FEEDBACK.md` — a single uniform video-speed change can't land all three gates on
+the beat exactly (they're unevenly spaced; the melody pulse is almost perfectly even), so
+this is waiting on Nathan's call between the options laid out there before any video gets
+retimed.
+
+**Update:** soundv4 landed 2026-09-19 — bass + E5 gate-chimes (triggered at the real
+gate-crossing times, not the melody's own clock) layered onto this existing soundtrack,
+video untouched. See `soundv4/FEEDBACK.md`.
+
+**Update:** soundv5 (2026-09-19) — corrected per Nathan: the chord progression above is
+removed entirely for this direction, not layered under it. Bass + E5 gate-chimes only,
+scoped to just the second ride (4.4-11.7s), silent the rest of the render. See
+`soundv5/FEEDBACK.md`.
+
+
+**Update:** soundv6 (2026-09-19) -- two fixes on top of soundv5: (1) `voice_a`
+(A4,A4,B4,B4,C5,C5,D5,D5 -- the line start-ride uses) had a spurious MIDI note around
+t=10s that the Klangio PDF doesn't back up; corrected (see
+`../piano/projects/interstellar/NOTES.md`) and regenerated. (2) Nathan asked for all
+three components together here, not just bass + E5 chimes -- soundv6 layers bass +
+voice_a + E5 gate-chimes, same ride-only window (4.4-11.7s) as soundv5. See
+`soundv6/FEEDBACK.md`.
+
+**Update:** soundv7 (2026-09-19) -- Nathan approved the FluidSynth trial; adopted as
+production. Same mix as soundv6 (bass + voice_a + E5 gate-chimes, same 4.4-11.7s
+window), rendered with real piano samples instead of pluck()/pad(). **Current.** See
+`soundv7/FEEDBACK.md`.

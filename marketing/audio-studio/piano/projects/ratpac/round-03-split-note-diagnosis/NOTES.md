@@ -24,7 +24,7 @@ half** - its pitch confidence dipped mid-note (decay, pedal, reverb) so it close
 and opened a new one. Klangio kept it whole, which is why at 1.65 s the only *new* press
 is G4: the A4 is still ringing from half a second earlier.
 
-`../tools/find_split_notes.py` finds **27 of these** in this file.
+`../../tools/find_split_notes.py` finds **27 of these** in this file.
 
 The press list then compounded it: notes starting within 0.13 s were grouped as one press,
 so the second half of the split A4 landed next to G4 and printed as "press G4 and A4

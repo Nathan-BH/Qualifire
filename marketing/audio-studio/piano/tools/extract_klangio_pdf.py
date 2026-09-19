@@ -21,6 +21,14 @@ actually uses - if no accidentals.* appear there, the score is all naturals).
 import re, sys, json
 from collections import Counter
 
+# Fallback code->glyph table (round-04's PDF). Each Emmentaler font embedded in a PDF is a
+# SUBSET, and the /Differences array that assigns codes to glyphs is built per file from
+# whichever glyphs that particular score happens to use - it is NOT the same across PDFs.
+# extract() now reads each font's own /Differences first; this table is only a fallback
+# for a PDF where that lookup fails. Trusting it as the primary source (round 4-6) silently
+# mis-read glyphs.G/F clefs as noteheads whenever a later PDF assigned different codes,
+# which defaulted every staff to treble and put anything actually in bass clef an
+# octave-plus too high.
 ENC = {0:'noteheads.s2', 1:'rests.1', 2:'dots.dot', 3:'noteheads.s1', 4:'flags.d3',
        5:'rests.3', 6:'rests.2', 7:'noteheads.s0', 8:'rests.0', 9:'clefs.F',
        10:'clefs.G', 11:'flags.d4', 12:'rests.4', 13:'flags.u3', 52:'four'}
@@ -52,14 +60,28 @@ def extract(path):
         if s.lstrip()[:2] in (b'q ', b'q\n') or b' cm\n' in s[:80]: cs = s.decode('latin-1'); break
     if cs is None: raise SystemExit('no page content stream found - did you run qpdf --qdf?')
 
-    # music font resource names: those whose font object is an Emmentaler
+    # music font resource names: those whose font object is an Emmentaler. Each font
+    # subset assigns its own codes, so read /Differences from ITS OWN /Encoding object
+    # rather than trusting a codepoint map lifted from a different score (see ENC above).
     txt = raw.decode('latin-1')
-    music = set()
+    music, font_enc = set(), {}
     res = re.search(r'/Font\s+(\d+) 0 R', txt)
     fd = re.search(r'%d 0 obj\s*(<<.*?>>)' % int(res.group(1)), txt, re.S).group(1)
     for rn, objn in re.findall(r'/(R\d+)\s+(\d+) 0 R', fd):
         ob = re.search(r'%s 0 obj\s*(<<.*?>>)' % objn, txt, re.S)
-        if ob and 'Emmentaler' in ob.group(1) and 'Brace' not in ob.group(1): music.add(rn)
+        if not ob or 'Emmentaler' not in ob.group(1) or 'Brace' in ob.group(1): continue
+        music.add(rn)
+        diffs = {}
+        enc_ref = re.search(r'/Encoding\s+(\d+)\s+0\s+R', ob.group(1))
+        if enc_ref:
+            eo = re.search(r'%s 0 obj\s*(<<.*?>>)' % enc_ref.group(1), txt, re.S)
+            darr = eo and re.search(r'/Differences\s*\[(.*?)\]', eo.group(1), re.S)
+            if darr:
+                code = 0
+                for tok in re.findall(r'/[A-Za-z0-9_.]+|-?\d+', darr.group(1)):
+                    if tok.startswith('/'): diffs[code] = tok[1:]; code += 1
+                    else: code = int(tok)
+        font_enc[rn] = diffs or ENC   # fall back to the old table if none found
 
     # staff lines = long horizontal strokes
     seg = [(float(a)/10, float(b)/10, float(c)/10, float(e)/10) for a,b,c,e in
@@ -91,7 +113,8 @@ def extract(path):
             else:
                 codes = [ord(c) for c in unescape(m.group(11))]
             x, y = tm[0]+td[0], tm[1]+td[1]
-            for c in codes: glyphs.append((round(x,2), round(y,2), ENC.get(c, '?%d' % c)))
+            fenc = font_enc.get(font, ENC)
+            for c in codes: glyphs.append((round(x,2), round(y,2), fenc.get(c, '?%d' % c)))
 
     staff_of = lambda y: min(range(len(staves)), key=lambda i: abs(y - sum(staves[i])/5))
     clef = {}
@@ -116,7 +139,8 @@ def extract(path):
 if __name__ == '__main__':
     staves, glyphs, notes = extract(sys.argv[1])
     print("staves:", len(staves), "| glyphs:", Counter(g[2] for g in glyphs).most_common())
-    print("noteheads:", len(notes), "| range", min(n['name'] for n in notes), "-", max(n['name'] for n in notes))
+    ordered = sorted(notes, key=lambda n: n['midi'])
+    print("noteheads:", len(notes), "| range", ordered[0]['name'], "-", ordered[-1]['name'])
     print("pitch letters used:", sorted({n['name'][0] for n in notes}))
     groups, cur = [], None
     for n in notes:
