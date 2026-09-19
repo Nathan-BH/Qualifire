@@ -38,7 +38,9 @@
  * top, the shared LiveSectorPane, a status line, STOP. The scripted clock
  * rolls past the lap by `DEMO_ROLL_OUT_S` sim-seconds and then auto-STOPs
  * into an 'ending' screen. Lap chip is neutral before STOP, exactly as the
- * real screen since the ranking reveal.
+ * real screen since the ranking reveal. FIRST RIDE's SAVE now continues into
+ * the real `GateAdjustCard` on a reference line built from the demo path
+ * (brief D); KEEP/SAVE GATES are theatre too, nothing is written.
  *
  * virgin-cycle11 brief B: a third mode, TENTH RIDE (now the default) —
  * SECOND RIDE is an honest ride 2 (one prior lap, purple/yellow only);
@@ -59,6 +61,7 @@ import {
   demoAddedWayLine,
   demoChainage,
   demoFmtMS,
+  demoGateAdjustDraft,
   demoLiveViewModel,
   demoRunEndS,
   demoSavedLine,
@@ -73,11 +76,14 @@ import {
   DEMO_ROUTE_START,
   DEMO_SAVED_HOLD_MS,
   DEMO_SPEC_VOCABULARY,
+  type DemoGateAdjustDraft,
+  type DemoGatesOutcome,
   type DemoMode,
   type DemoPhase,
   type RouteNames,
 } from './demoModel.ts';
 import { DEMO_WAY_ASSET, DEMO_WAY_ID } from './demoWayFixture.ts';
+import { GateAdjustCard } from './gateAdjustCard';
 import { LaunchAnimation } from './launchAnimation';
 import { LiveSectorPane } from './liveView';
 import { REVEAL_HOLD_MS, REVEAL_START_DELAY_MS, type RankingReveal } from './rankingRevealModel.ts';
@@ -126,6 +132,10 @@ export default function DemoScreen({ onFullscreenChange }: {
   const [showAnim, setShowAnim] = useState<'rev' | null>(null);
   const [busy, setBusy] = useState(false);                          // R7 fake save
   const [savedLine, setSavedLine] = useState<string | null>(null);  // R6/R7 confirmation line
+  const [adjust, setAdjust] = useState<DemoGateAdjustDraft | null>(null);   // brief D: the gate card's draft
+  const [pendingNames, setPendingNames] = useState<RouteNames | null>(null); // typed on card 1, echoed after card 2
+  const pendingNamesRef = useRef<RouteNames | null>(null);
+  pendingNamesRef.current = pendingNames;
   const holdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // virgin-cycle11 (brief B, R1/R6): the ranking reveal board (SECOND/TENTH only).
   const [reveal, setReveal] = useState<RankingReveal | null>(null);
@@ -220,6 +230,8 @@ export default function DemoScreen({ onFullscreenChange }: {
     setShowAnim(null);
     setReveal(null);
     setRevealDone(true);
+    setAdjust(null);
+    setPendingNames(null);
     setPhase('idle');
   }, []);
 
@@ -236,6 +248,8 @@ export default function DemoScreen({ onFullscreenChange }: {
     setTrail([]);
     setSavedLine(null);
     setBusy(false);
+    setAdjust(null);
+    setPendingNames(null);
     setPhase('running');
     setRunning(true);
     // Simulated seconds = real elapsed × RATE, read off the wall clock each
@@ -311,11 +325,30 @@ export default function DemoScreen({ onFullscreenChange }: {
   const onDemoNamingSave = useCallback((names: RouteNames) => {
     setBusy(true);
     holdRef.current = setTimeout(() => {
+      holdRef.current = null;
       setBusy(false);
-      setSavedLine(demoSavedLine(names));
-      holdRef.current = setTimeout(() => { holdRef.current = null; setShowAnim('rev'); }, DEMO_SAVED_HOLD_MS);
+      const draft = demoGateAdjustDraft(Date.now());
+      if (draft === null) {
+        // belt-and-braces: no line could be built — A's behaviour, the line at once
+        setSavedLine(demoSavedLine(names));
+        holdRef.current = setTimeout(() => { holdRef.current = null; setShowAnim('rev'); }, DEMO_SAVED_HOLD_MS);
+        return;
+      }
+      setPendingNames(names);
+      setAdjust(draft);           // R1 step 2: the gate card, no line yet — as the real screen
     }, DEMO_FAKE_SAVE_MS);
   }, []);
+  // brief D: the gate card's exits — busy theatre on SAVE only, then one line names the outcome.
+  const finishWithLine = useCallback((gates: DemoGatesOutcome) => {
+    setAdjust(null);
+    setSavedLine(demoSavedLine(pendingNamesRef.current ?? { start: '', end: '' }, gates));
+    holdRef.current = setTimeout(() => { holdRef.current = null; setShowAnim('rev'); }, DEMO_SAVED_HOLD_MS);
+  }, []);
+  const onDemoAdjustKeep = useCallback(() => finishWithLine('kept'), [finishWithLine]);
+  const onDemoAdjustSave = useCallback((_chainageM: number[]) => {
+    setBusy(true);                                        // the button dims as a real save does
+    holdRef.current = setTimeout(() => { holdRef.current = null; setBusy(false); finishWithLine('adjusted'); }, DEMO_FAKE_SAVE_MS);
+  }, [finishWithLine]);
   // R6: the WP-G "new way on this route" card's ADD WAY — same theatre.
   const onDemoAddWaySave = useCallback((names: RouteNames) => {
     setBusy(true);
@@ -382,8 +415,17 @@ export default function DemoScreen({ onFullscreenChange }: {
           {revealDone ? (
             savedLine !== null ? (
               <Text style={styles.trackLine}>{savedLine}</Text>
+            ) : adjust !== null ? (
+              <GateAdjustCard
+                wayId={DEMO_FIRST_RIDE_ID}
+                refLine={adjust.ref}
+                refLengthM={adjust.refLengthM}
+                initialChainageM={adjust.chainageM}
+                busy={busy}
+                onKeep={onDemoAdjustKeep}
+                onSave={onDemoAdjustSave}
+              />
             ) : mode === 'first' ? (
-              // brief D inserts its adjust-card branch here, before this one.
               <RouteNamingCard
                 startExistingLabel={null}
                 endExistingLabel={null}

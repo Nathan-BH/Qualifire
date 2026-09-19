@@ -98,8 +98,12 @@ replaced. Vocabulary is post-WP-3: a route is the from→to path, a way is one v
 7. **virgin-cycle11 DEMO overhaul — on-device look (phone only).** DEMO tab → FIRST RIDE →
    RUN: expect the tab bar to vanish, the map filling the top half course-up, the yellow
    trail, the status line, STOP; ~34 s later the roll-out and the 'Ride saved — m:ss.' screen
-   with the naming card; type two names → SAVE dims the button ~0.6 s → one confirmation
-   line → the reverse mark → back to the chooser with the tab bar. STOP before the line →
+   with the naming card; type two names → CREATE ROUTE dims the button ~0.6 s → the
+   'Sector gates — proposed' card with the demo's line and five seeded gates on the map;
+   tap a gate, nudge it with the pad (hold to repeat), zoom the map → KEEP GATES (or SAVE
+   GATES, which dims ~0.6 s) → one confirmation line naming kept/adjusted → the reverse
+   mark → back to the chooser with the tab bar. Nothing is saved at either step. STOP
+   before the line →
    straight back. SECOND RIDE / TENTH RIDE → after the roll-out: 'Ride saved.', the tower
    with today parked at the bottom in plain ink (all 10 rows on TENTH), ~0.5 s later the
    climb (0.8 s for SECOND, 2.0 s for TENTH), rows stepping down one by one, the hard colour

@@ -62,9 +62,9 @@ day (below).
   `activity-index.csv` and the Python side live on `main` only), `app/src/live/`
   (full-catalog pick-bias engine; candidates are ways), `app/src/store/` (sports + catalog +
   results + timing, empty-seed-capable — see below), `app/src/ui/` (six tabs:
-  RECORD / RIDES / ROUTES / RESULTS / SETTINGS / DEMO). `app/tests/`: **628 tests, 625 pass,
+  RECORD / RIDES / ROUTES / RESULTS / SETTINGS / DEMO). `app/tests/`: **634 tests, 631 pass,
   0 fail, 3 skip**. `tsc --noEmit`: clean, exit 0. Both verified 2026-09-19 (virgin-cycle11,
-  DEMO tab overhaul briefs A + B + C).
+  DEMO tab overhaul briefs A + B + C + D).
 - **The empty-seed install path is built.** `store/seed.ts` + `store/catalogStore.ts`: the
   runtime catalog is the shipped seed merged read-side with an on-phone
   `catalog.user.json` (never copied to disk, so a seed edit still reaches every install).
@@ -299,7 +299,11 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   'ending' — then the real `RouteNamingCard` in its WP-G 'new way on this route' variant,
   whose ADD WAY is theatre too. Today lands P1 of 2 (purple) / P3 of 10 (green).
   **Brief C:** synthetic self dots + the live `P` on the
-  context row (sector-unit chainage) in SECOND / TENTH RIDE.
+  context row (sector-unit chainage) in SECOND / TENTH RIDE. **Brief D:** FIRST RIDE's
+  CREATE ROUTE continues into the real `GateAdjustCard` — reference line built by the real
+  `buildRefFromRideFixes` over the demo path, gates by the real `seedGateChainages`
+  (`demoModel.ts` `demoGateAdjustDraft`); KEEP/SAVE GATES are theatre, one line names the
+  outcome, nothing is written.
 - **`CatalogDetailScreen.tsx`'s `placeDetailFor` reads the unscoped catalog**, so a place's
   detail can list another sport's routes/ways (cycle3 WP-1 Inspect, non-blocking, confirmed
   real). Needs a product decision — split "list" scoping from "deletable" scoping — not a
@@ -364,7 +368,8 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
 - `cycles/virgin-cycle11/README.md` — 2026-09-19: ranking reveal — the timing tower climbs
   after STOP instead of the rank being announced at the final gate
   (`BRIEF-ranking-reveal.md`); DEMO tab overhaul — brief A (`BRIEF-demo-fullscreen-run.md`),
-  brief B (`BRIEF-demo-tenth-ride-reveal.md`), brief C (`BRIEF-demo-self-dots.md`).
+  brief B (`BRIEF-demo-tenth-ride-reveal.md`), brief C (`BRIEF-demo-self-dots.md`),
+  brief D (`BRIEF-demo-gate-adjust.md`).
 
 ## Nathan's own files (unmanaged by any agent)
 

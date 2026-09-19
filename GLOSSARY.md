@@ -126,7 +126,8 @@ install (APK) — only needed when something native changes, like the map.
 
 **DEMO tab.** A scripted ride replayed at 25× so you can see, from the couch, what a ride
 looks like on the RECORD screen and what happens after STOP. Nothing it shows is recorded.
-Three modes: FIRST RIDE (a stranger's first ride and the naming card), SECOND RIDE (one
+Three modes: FIRST RIDE (a stranger's first ride, the naming card and the gate-adjust
+card), SECOND RIDE (one
 prior ride — a two-row tower) and TENTH RIDE (nine prior rides — the full ten-row tower
 climb). After the climb, the card a real ride would get.
 

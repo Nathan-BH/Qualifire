@@ -25,6 +25,9 @@ import { buildRankingReveal, type RankingReveal } from './rankingRevealModel.ts'
 import type { SelfTrack } from './selfRaceModel.ts';
 import { positionAtTime, type WayAsset } from './wayMapMath.ts';
 import { DEMO_WAY_ASSET, DEMO_WAY_ID } from './demoWayFixture.ts';
+import type { RefLine } from '../../core/src/index.ts';
+import { buildRefFromRideFixes, type RefFixInput } from '../live/userRefs.ts';
+import { seedGateChainages } from '../store/gateSeeding.ts';   // pure, import-free (brief D R5)
 // Re-exported so DemoScreen.tsx never has to import from '../store/**' at all
 // (Rules: DemoScreen must not import anything from app/src/store/**).
 export type { RouteNames };
@@ -129,8 +132,41 @@ export function demoStopOutcome(gatesDone: number, sectorCount: number = DEMO_SE
 /** R7: theatre timings for the fake save. */
 export const DEMO_FAKE_SAVE_MS = 600;
 export const DEMO_SAVED_HOLD_MS = 1800;
-export function demoSavedLine(names: RouteNames): string {
-  return `${names.start.trim()} → ${names.end.trim()} created · demo only, nothing saved`;
+
+/** Brief D R2: the lap the dot rode — the START→FINISH slice of the fixture path — as
+ *  RefFixInputs with synthetic 1 Hz timestamps. The timestamps only feed the stationary-run
+ *  collapse; consecutive vertices are tens of metres apart, so nothing collapses. */
+export function demoRefFixes(asset: WayAsset = DEMO_WAY_ASSET, startMs = 0): RefFixInput[] {
+  const idx = asset.gateIdx;
+  const path = asset.path;
+  if (!idx || !path || idx.length < 2 || path.length <= idx[idx.length - 1]) return [];
+  return path.slice(idx[0], idx[idx.length - 1] + 1).map(([lat, lon], i) => ({
+    lat, lon, tUnixMs: startMs + i * 1000,
+  }));
+}
+
+/** What the demo's GateAdjustCard needs — the store's GateAdjustDraft minus the real wayId
+ *  (the demo has no way). */
+export interface DemoGateAdjustDraft { ref: RefLine; refLengthM: number; chainageM: number[] }
+
+/** Brief D R2/R3: the real reference-line builder over the fixture's lap, then the real gate
+ *  seeder over it. null only if the builder refuses (< 2 vertices / < MIN_TRACK_LENGTH_M —
+ *  impossible with the shipped fixture; the screen then falls back to the line at once). */
+export function demoGateAdjustDraft(startMs: number, asset: WayAsset = DEMO_WAY_ASSET): DemoGateAdjustDraft | null {
+  const built = buildRefFromRideFixes(demoRefFixes(asset, startMs));
+  if (built === null) return null;
+  return {
+    ref: built.ref,
+    refLengthM: built.ref.length,
+    chainageM: seedGateChainages(built.ref.length, built.stopChainageM),
+  };
+}
+
+/** Brief D R4: what happened on the gate card. */
+export type DemoGatesOutcome = 'kept' | 'adjusted';
+export function demoSavedLine(names: RouteNames, gates: DemoGatesOutcome | null = null): string {
+  const g = gates === null ? '' : gates === 'kept' ? 'gates kept · ' : 'gates adjusted · ';
+  return `${names.start.trim()} → ${names.end.trim()} created · ${g}demo only, nothing saved`;
 }
 
 /** brief C, R2: sim-seconds between synthetic self fixes — the loader's DECIMATE_MIN_GAP_MS. */

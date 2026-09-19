@@ -36,10 +36,13 @@ const {
   DEMO_PRIOR_LAPS, DEMO_PRIOR_DAYS_AGO, DEMO_TODAY_RIDE_ID, DEMO_ROUTE_LABEL,
   demoHistoryFor, demoPriorLapSeconds, demoPriorResults, buildDemoReveal, demoAddedWayLine,
   demoChainage, demoSelfTracks, DEMO_SELF_FIX_STEP_S,
+  demoRefFixes, demoGateAdjustDraft,
 } = await import('../src/ui/demoModel.ts');
 const { DEMO_WAY_ID, DEMO_WAY_ASSET } = await import('../src/ui/demoWayFixture.ts');
 const { selfDotsAt, selfLivePosition } = await import('../src/ui/selfRaceModel.ts');
 const { positionAtTime } = await import('../src/ui/wayMapMath.ts');
+const { START_FRAC, FINISH_FRAC, SECTOR_FRACS, seedGateChainages } = await import('../src/store/gateSeeding.ts');
+const { MIN_TRACK_LENGTH_M } = await import('../src/store/routeCreation.ts');
 
 test('demoModel: buildDemoScript() with default secs computes gateAt/lap', () => {
   const s = buildDemoScript();
@@ -485,5 +488,98 @@ test('demoModel: everyone has finished by the end of the roll-out', () => {
   assert(
     dots.every((d) => d.state === 'finished'),
     `expected all finished, got ${dots.map((d) => [d.rideId, d.state])}`,
+  );
+});
+
+// virgin-cycle11 (DEMO overhaul, brief D) below.
+
+test('demoModel: demoRefFixes is the lap the dot rode, 1 Hz', () => {
+  const f = demoRefFixes(DEMO_WAY_ASSET, 5000);
+  const idx = DEMO_WAY_ASSET.gateIdx!;
+  const path = DEMO_WAY_ASSET.path!;
+  assert(
+    f.length === idx[idx.length - 1] - idx[0] + 1,
+    `expected ${idx[idx.length - 1] - idx[0] + 1} fixes, got ${f.length}`,
+  );
+  assert(f[0].lat === path[idx[0]][0] && f[0].lon === path[idx[0]][1], 'first fix should match path[gateIdx[0]]');
+  const last = f[f.length - 1];
+  assert(
+    last.lat === path[idx[idx.length - 1]][0] && last.lon === path[idx[idx.length - 1]][1],
+    'last fix should match path[gateIdx[last]]',
+  );
+  assert(f[0].tUnixMs === 5000, `expected first tUnixMs 5000, got ${f[0].tUnixMs}`);
+  for (let i = 1; i < f.length; i++) {
+    assert(f[i].tUnixMs === f[i - 1].tUnixMs + 1000, `fix ${i}: expected +1000ms step, got ${f[i].tUnixMs - f[i - 1].tUnixMs}`);
+  }
+  assert(f.every((x) => x.preStart === undefined && x.warmup === undefined), 'no fix should carry preStart/warmup');
+});
+
+test('demoModel: a fixture with no gateIdx yields no fixes, and no draft', () => {
+  const noGates = { ...DEMO_WAY_ASSET, gateIdx: undefined };
+  const f = demoRefFixes(noGates, 0);
+  assert(f.length === 0, `expected [], got ${f.length} fixes`);
+  const d = demoGateAdjustDraft(0, noGates);
+  assert(d === null, `expected null draft, got ${JSON.stringify(d)}`);
+});
+
+test('demoModel: the draft is a real reference line over the demo path', () => {
+  const T = 1_700_000_000_000;
+  const d = demoGateAdjustDraft(T);
+  assert(d !== null, 'expected a non-null draft from the shipped fixture');
+  assert(d!.ref.ch[0] === 0, `expected ref.ch[0] === 0, got ${d!.ref.ch[0]}`);
+  assert(d!.ref.length === d!.refLengthM, `expected ref.length === refLengthM, got ${d!.ref.length} vs ${d!.refLengthM}`);
+  assert(d!.refLengthM > MIN_TRACK_LENGTH_M, `expected refLengthM > MIN_TRACK_LENGTH_M, got ${d!.refLengthM}`);
+  assert(
+    d!.refLengthM > 3000 && d!.refLengthM < 8000,
+    `expected refLengthM in (3000, 8000) — a Leuven commute, got ${d!.refLengthM}`,
+  );
+  assert(d!.ref.rx.length === d!.ref.ch.length, 'ref.rx and ref.ch should be the same length');
+  for (let i = 1; i < d!.ref.ch.length; i++) {
+    assert(d!.ref.ch[i] >= d!.ref.ch[i - 1], `ref.ch should be non-decreasing at ${i}`);
+  }
+});
+
+test('demoModel: no stops on the scripted lap, so the proposal is the pure quantiles (R3)', () => {
+  const T = 1_700_000_000_000;
+  const d = demoGateAdjustDraft(T)!;
+  const expected = seedGateChainages(d.refLengthM, []);
+  assert(d.chainageM.length === expected.length, `expected ${expected.length} gates, got ${d.chainageM.length}`);
+  for (let i = 0; i < expected.length; i++) {
+    assert(Math.abs(d.chainageM[i] - expected[i]) < 1e-6, `gate ${i}: expected ${expected[i]}, got ${d.chainageM[i]}`);
+  }
+  const fromFracs = [START_FRAC, ...SECTOR_FRACS, FINISH_FRAC].map((f) => f * d.refLengthM);
+  for (let i = 0; i < fromFracs.length; i++) {
+    assert(Math.abs(d.chainageM[i] - fromFracs[i]) < 1e-6, `gate ${i}: expected ${fromFracs[i]} from fracs, got ${d.chainageM[i]}`);
+  }
+  assert(d.chainageM.length === 5, `expected 5 gates, got ${d.chainageM.length}`);
+  for (let i = 1; i < d.chainageM.length; i++) {
+    assert(d.chainageM[i] > d.chainageM[i - 1], `chainageM should be strictly increasing at ${i}`);
+  }
+});
+
+test('demoModel: the draft is deterministic in geometry, not in time', () => {
+  const T = 1_700_000_000_000;
+  const d1 = demoGateAdjustDraft(T)!;
+  const d2 = demoGateAdjustDraft(T + 86_400_000)!;
+  assert(d1.chainageM.length === d2.chainageM.length, 'chainageM lengths should match');
+  for (let i = 0; i < d1.chainageM.length; i++) {
+    assert(d1.chainageM[i] === d2.chainageM[i], `gate ${i}: expected equal chainageM across startMs, got ${d1.chainageM[i]} vs ${d2.chainageM[i]}`);
+  }
+  assert(d1.ref.length === d2.ref.length, `expected equal ref.length, got ${d1.ref.length} vs ${d2.ref.length}`);
+});
+
+test('demoModel: the line names the outcome (R4)', () => {
+  const n = { start: ' Home ', end: 'Work' };
+  assert(
+    demoSavedLine(n) === 'Home → Work created · demo only, nothing saved',
+    `unexpected default line: ${demoSavedLine(n)}`,
+  );
+  assert(
+    demoSavedLine(n, 'kept') === 'Home → Work created · gates kept · demo only, nothing saved',
+    `unexpected kept line: ${demoSavedLine(n, 'kept')}`,
+  );
+  assert(
+    demoSavedLine(n, 'adjusted') === 'Home → Work created · gates adjusted · demo only, nothing saved',
+    `unexpected adjusted line: ${demoSavedLine(n, 'adjusted')}`,
   );
 });
