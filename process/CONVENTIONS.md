@@ -19,7 +19,7 @@ work to the cheapest model that can hold it.
 | **Digest** | Haiku subagent (Sonnet only where Haiku's read would be unreliable) | Reads the files/state a task needs; produces a condensed, factual, line-anchored digest — exact quotes, line numbers, current behaviour, no design opinion | deciding anything, writing the brief |
 | **Plan** | Frontier — dispatched as `model: "fable"` | Reads the digest, does the thinking: designs the fix, writes a self-contained brief. May open a specific file directly to spot-check an anchor the digest leaves ambiguous, or to dry-run the finished brief | broad exploratory reading of its own |
 | **Execute** | Sonnet subagent | The edits + tests, from the brief alone | redesign, guessing |
-| **Inspect** | Frontier subagent, **fresh context** | Adversarial verification; reruns every check itself | trusting the executor's report; editing |
+| **Inspect** | Opus subagent, **fresh context** | Adversarial verification; reruns every check itself | trusting the executor's report; editing |
 
 Binding rules:
 
@@ -48,7 +48,7 @@ Binding rules:
 - **The tiers are visible.** Every dispatch is announced as it happens (tier, model,
   one-line mandate); escalations are surfaced verbatim; the task ends with a
   tier/model/tokens/outcome readout table.
-- **Mechanics:** dispatch via the Agent tool with `model: "haiku"` / `"sonnet"` / `"fable"`.
+- **Mechanics:** dispatch via the Agent tool with `model: "haiku"` / `"sonnet"` / `"fable"` / `"opus"`.
   If a stopped subagent can't be continued (no message channel), re-dispatch fresh with the
   amendment plus a note of any partial state already on disk.
 

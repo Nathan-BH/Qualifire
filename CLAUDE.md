@@ -11,7 +11,7 @@ Orientation for any Claude session working in this repo. Binding.
    the thinking: designs the fix, writes a self-contained brief. A Sonnet **Execute**
    subagent implements the brief alone under a stop-on-ambiguity rule (any anchor
    mismatch or undecided call → stop and report verbatim, never guess, never rule on it
-   from the coordinator's chat — forward it to a fresh Fable). A fresh-context Fable
+   from the coordinator's chat — forward it to a fresh Fable). A fresh-context Opus
    **Inspect** pass adversarially reruns every check before anything's called done.
    Chores under ~10 mechanical lines skip the pipeline — subagent overhead
    (~30–80k tokens) has to pay for itself. **Narrate every dispatch in chat** (tier,
