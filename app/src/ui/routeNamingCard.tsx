@@ -1,21 +1,21 @@
 /**
- * STOP-step naming card (OPEN-ITEMS item 2; COLD-START Â§3 step 5 â "the only
+ * STOP-step naming card (OPEN-ITEMS item 2; COLD-START §3 step 5 — "the only
  * true onboarding step... this is where landmarks are born on a cold start").
  * [UNTESTED ON DEVICE]
  *
  * Shown by RecordScreen's 'ending' phase whenever store/wayCreation.ts
- * drafted new endpoint(s) â since WP-F that includes a ride the live engine
+ * drafted new endpoint(s) — since WP-F that includes a ride the live engine
  * DID score against some route, as long as its endpoint pair still has no
- * way of its own (matchedRouteLabel then swaps in the "scored as X, butâ¦"
+ * way of its own (matchedRouteLabel then swaps in the "scored as X, but…"
  * sub-copy so the card never contradicts what Result shows). Since WP-G an
  * existing directed way is ALSO offered here, in variant mode
  * (`existingWay` set): the card becomes "new route on this way" instead of
  * "new way", the endpoints render as fixed text (both already exist), and
- * â¥1 spec segment is required. Dumb UI: it owns only the two text inputs
+ * ≥1 spec segment is required. Dumb UI: it owns only the two text inputs
  * and the spec segments; RecordScreen owns the draft, the build and the
  * saveUserCatalog() call. An endpoint that matched an EXISTING landmark
  * renders as fixed text, not an input. SKIP is always available and loses
- * nothing â the ride itself was already saved before this card exists.
+ * nothing — the ride itself was already saved before this card exists.
  */
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -32,13 +32,13 @@ export interface RouteNamingCardProps {
   /** start === end: one place, one input */
   loop: boolean;
   busy: boolean;
-  /** WP-F: set when the live engine scored this ride against a route â the
+  /** WP-F: set when the live engine scored this ride against a route — the
    * card's sub-copy then says so explicitly, since Result will show it as
    * scored even though these endpoints have no way of their own yet. Absent
    * or null renders the original ("does not match any way") copy. */
   matchedWayLabel?: string | null;
-  /** WP-G: set when draft.existingWayId is set â the card is then "new route
-   * on this way" (title/copy/button change, â¥1 spec required, endpoints shown
+  /** WP-G: set when draft.existingWayId is set — the card is then "new route
+   * on this way" (title/copy/button change, ≥1 spec required, endpoints shown
    * as fixed text). `knownSpecLists` = specs of the routes already on it. */
   existingRoute?: { label: string; knownSpecLists: string[][] } | null;
   /** WP-G: catalog-wide spec vocabulary for the chips (specVocabulary()). */
@@ -85,20 +85,20 @@ export function RouteNamingCard(props: RouteNamingCardProps) {
   return (
     <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
       <Text style={[st.title, { color: t.text }]}>
-        {existingRoute ? `New way on ${existingRoute.label}` : 'New route â name where you rode'}
+        {existingRoute ? `New way on ${existingRoute.label}` : 'New route — name where you rode'}
       </Text>
       <Text style={[st.sub, { color: t.textDim }]}>
         {existingRoute
           ? props.matchedWayLabel
-            ? `Scored as ${props.matchedWayLabel}. Was this a different way? Add what made it different to save it as a new way on this route â this ride becomes its reference.`
-            : `${existingRoute.label} is a route you have, but this ride did not follow any of its ways. Name what made it different to save it as a new way â this ride becomes its reference.`
+            ? `Scored as ${props.matchedWayLabel}. Was this a different way? Add what made it different to save it as a new way on this route — this ride becomes its reference.`
+            : `${existingRoute.label} is a route you have, but this ride did not follow any of its ways. Name what made it different to save it as a new way — this ride becomes its reference.`
           : props.loop
             ? props.startExistingLabel !== null
               ? `This ride looped from and back to ${props.startExistingLabel}.`
               : 'This ride looped from and back to one new place.'
             : props.matchedWayLabel
-              ? `Scored as ${props.matchedWayLabel}, but no route of yours runs between these two places. Name them to make this a way of its own â this ride becomes its reference.`
-              : 'This ride does not match any route you have. Name its start and end to make it a real way â this ride becomes its reference.'}
+              ? `Scored as ${props.matchedWayLabel}, but no route of yours runs between these two places. Name them to make this a way of its own — this ride becomes its reference.`
+              : 'This ride does not match any route you have. Name its start and end to make it a real way — this ride becomes its reference.'}
       </Text>
 
       <Text style={[st.label, { color: t.textDim }]}>STARTED AT</Text>
@@ -136,7 +136,7 @@ export function RouteNamingCard(props: RouteNamingCardProps) {
       )}
 
       <Text style={[st.label, { color: t.textDim }]}>
-        {existingRoute ? 'SPECIFICATIONS (required) â e.g. Dry, Left' : 'SPECIFICATIONS (optional) â e.g. Dry, Left'}
+        {existingRoute ? 'SPECIFICATIONS (required) — e.g. Dry, Left' : 'SPECIFICATIONS (optional) — e.g. Dry, Left'}
       </Text>
       {specs.length > 0 && (
         <View style={st.pillRow}>
@@ -147,7 +147,7 @@ export function RouteNamingCard(props: RouteNamingCardProps) {
               disabled={props.busy}
               onPress={() => removeSpecFrom(i)}
             >
-              <Text style={[st.specPillText, { color: t.text }]}>{s} Ã</Text>
+              <Text style={[st.specPillText, { color: t.text }]}>{s} ×</Text>
             </Pressable>
           ))}
         </View>
@@ -188,7 +188,7 @@ export function RouteNamingCard(props: RouteNamingCardProps) {
       {duplicate && dupList && (
         <Text style={[st.hint, { color: t.textDim }]}>
           already exists as {existingRoute!.label}
-          {dupList.length ? ` Â· ${dupList.join(' Â· ')}` : ''} â pick it on RECORD next time, or add another
+          {dupList.length ? ` · ${dupList.join(' · ')}` : ''} — pick it on RECORD next time, or add another
           specification
         </Text>
       )}
@@ -204,9 +204,9 @@ export function RouteNamingCard(props: RouteNamingCardProps) {
         <Text style={[st.skipText, { color: t.textDim }]}>
           {existingRoute
             ? props.matchedWayLabel
-              ? `no â it was ${props.matchedWayLabel}`
-              : 'skip â keep it as a plain ride'
-            : 'skip â keep it as a plain ride'}
+              ? `no — it was ${props.matchedWayLabel}`
+              : 'skip — keep it as a plain ride'
+            : 'skip — keep it as a plain ride'}
         </Text>
       </Pressable>
     </View>

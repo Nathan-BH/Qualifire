@@ -370,6 +370,13 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   (`BRIEF-ranking-reveal.md`); DEMO tab overhaul — brief A (`BRIEF-demo-fullscreen-run.md`),
   brief B (`BRIEF-demo-tenth-ride-reveal.md`), brief C (`BRIEF-demo-self-dots.md`),
   brief D (`BRIEF-demo-gate-adjust.md`).
+- `cycles/virgin-cycle12/README.md` — 2026-09-19: mojibake fix in
+  `app/src/ui/routeNamingCard.tsx` — an em dash and five other punctuation marks (…,
+  ≥, §, ·, ×) were double-encoded (UTF-8 read as Latin-1, re-saved as UTF-8) at
+  authoring time, rendering as “â” plus invisible control chars on Nathan's phone ("SPECIFICATIONS
+  (required) â e.g. Dry, Left"). 23 occurrences fixed, text-only, no logic changed. Test suite
+  unchanged (631 pass/0 fail/3 skip); full `tsc --noEmit` did not complete on this mount, a
+  fast syntax-only check passed instead. Uncommitted.
 
 ## Nathan's own files (unmanaged by any agent)
 
