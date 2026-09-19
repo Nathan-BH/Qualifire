@@ -33,7 +33,6 @@ import {
   type StartContext,
 } from '../location';
 import { liveEngine, type LiveEngineState } from '../live/engine';
-import { getLiveTowerPosition } from '../live/towerSource';
 import { LiveSectorPane, realTimebase, viewModelFromEngine } from './liveView';
 import { LaunchAnimation } from './launchAnimation';
 import { effectiveFromId, isFullscreen, liveMapOverlayFor, statusItemsFor, type RecordPhase } from './recordFlow';
@@ -46,6 +45,13 @@ import { chipColors, tierLineColour, type Tier } from './chips';
 import { ALL_YELLOW, liveSectorColours } from './sectorTrailModel.ts';
 import { fmt, ghostsFor, lapValues, sectorValues, tierFor } from './colourModel';
 import { loadSelfTracks, selfDotsAt, selfLivePosition, type SelfDot, type SelfTrack } from './selfRaceModel.ts';
+import { TimingTower } from './tower';
+import {
+  buildRankingReveal,
+  REVEAL_HOLD_MS,
+  REVEAL_START_DELAY_MS,
+  type RankingReveal,
+} from './rankingRevealModel.ts';
 import { dropRecorded, rememberRide } from './lastRide';
 import { rememberFreeRide } from '../store/freeRides';
 import { findWayWithSpecs, type RouteCreationDraft, type RouteNames } from '../store/routeCreation';
@@ -188,6 +194,15 @@ export default function RecordScreen({
    * mark's onDone (a [] closure) so the handoff can open the ride detail for
    * THIS ride instead of the retired RESULT tab. */
   const endedRef = useRef<{ rideId: string; startedAtMs: number } | null>(null);
+  // virgin-cycle11 ranking reveal — built in onEnd AFTER rememberRide (R5), shown by
+  // the 'ending' render; null = no reveal (R4), screen behaves exactly as before.
+  const [reveal, setReveal] = useState<RankingReveal | null>(null);
+  const [revealDone, setRevealDone] = useState(true);
+  // What the 'ending' screen does once the reveal has played: mount the card, or start
+  // the reverse mark. A ref, not a closure over `naming` — the tower's onPlayed fires
+  // from an animation callback captured at mount (same reason endedRef exists).
+  const postRevealRef = useRef<'card' | 'rev'>('rev');
+  const revealHoldRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [live, setLive] = useState<LiveEngineState>(liveEngine.getState());
   const [showLap, setShowLap] = useState(false);
   // PAUSE → RESUME | END (Cycle 020, Nathan 2026-08-19): an accidental-stop
@@ -537,6 +552,10 @@ export default function RecordScreen({
       // clears `last` — desired: Result must not show a stale route ride as
       // "the ride you just finished" under a free ride (WP-B section 4).
       rememberRide(finalState, s ? { rideId: s.rideId, startedAtMs: s.startedAtMs } : undefined);
+      // virgin-cycle11 ranking reveal: built HERE, right after rememberRide has
+      // already stored today's ride — buildRankingReveal's own default window
+      // (ghostsFor WITH exclusion, R5) depends on that ordering.
+      const nextReveal = s ? buildRankingReveal(finalState, s.rideId, s.startedAtMs) : null;
       // M1 fix: pass the ride's real startedAtMs (same value rememberRide got
       // above) so a free-ride record's start time isn't Date.now() at STOP.
       rememberFreeRide(finalState, s ? { startedAtMs: s.startedAtMs } : undefined); // WP-B: no-op unless this actually was a free ride with >=1 crossing
@@ -577,11 +596,14 @@ export default function RecordScreen({
       // notes5 N5: a finished ride's explicit FROM tap must not carry into
       // the next ride's setup — the next setup gets a fresh suggestion.
       setFromExplicit(false);
+      setReveal(nextReveal);
+      setRevealDone(nextReveal === null);
+      postRevealRef.current = draft === null ? 'rev' : 'card';
       setPhase('ending');
       setNaming(draft);
-      // The reversed mark waits for the naming card (its close handlers
-      // below start it); with no offer it plays at once, exactly as before.
-      if (draft === null) setShowAnim('rev');
+      // No reveal: the reverse mark plays at once, exactly as before. With a reveal it
+      // waits for onRevealPlayed (below).
+      if (draft === null && nextReveal === null) setShowAnim('rev');
     } catch (e) {
       Alert.alert('Could not stop cleanly', e instanceof Error ? e.message : String(e));
       // No navigation, no animation — stay exactly where the ride actually
@@ -592,6 +614,18 @@ export default function RecordScreen({
     } finally {
       setBusy(false);
     }
+  }, []);
+
+  // virgin-cycle11: the tower's climb-complete callback (fires once the
+  // arrival fade finishes). Holds the landed board on screen for
+  // REVEAL_HOLD_MS before whatever the 'ending' screen would have done
+  // anyway (the card, or — with no card due — the reverse mark).
+  const onRevealPlayed = useCallback(() => {
+    revealHoldRef.current = setTimeout(() => {
+      revealHoldRef.current = null;
+      setRevealDone(true);
+      if (postRevealRef.current === 'rev') setShowAnim('rev');
+    }, REVEAL_HOLD_MS);
   }, []);
 
   // OPEN-ITEMS item 2 — the naming card's two exits. Skip loses nothing: the
@@ -826,6 +860,13 @@ export default function RecordScreen({
     return tier === 'est' ? 'est' : (tier as Tier);
   };
 
+  // virgin-cycle11 R1: sector index 0 is "the whole lap" (liveView.tsx:197–198). Its
+  // tier is the rank announcement in disguise — a purple lap chip says P1 — so the
+  // live pane shows the lap as 'neutral' (no verdict yet) and the tower reveals the
+  // tier after STOP. Sectors and the flash keep their live colours.
+  const tierOfLive = (sectorIndex: number, timeS: number | null): Tier =>
+    sectorIndex === 0 ? 'neutral' : tierOf(sectorIndex, timeS);
+
   // NOTE: the gate buzz is NOT fired here. src/location/index.ts owns it —
   // it sees every fire even with the screen off, and two buzzers meant the
   // rider felt each gate twice (cycle 009). This screen only sets the flag.
@@ -898,6 +939,12 @@ export default function RecordScreen({
     const id = setInterval(tick, 250);
     return () => clearInterval(id);
   }, [phase, selfTracks, live.startGateT]);
+
+  // virgin-cycle11: the reveal's post-landing hold timer must not fire into
+  // an unmounted screen.
+  useEffect(() => () => {
+    if (revealHoldRef.current) clearTimeout(revealHoldRef.current);
+  }, []);
 
   // follow-up (live PX, R10): 'P4' among the selfs on the map, by chainage —
   // null before START, once the lap lands (the handover PosChip then owns
@@ -1064,38 +1111,63 @@ export default function RecordScreen({
   if (phase === 'ending') {
     return (
       <View style={styles.raceColumn}>
-        <Text style={styles.trackLine}>
-          {lastSummary ? `Ride saved — ${fmtElapsed(lastSummary.endMs - lastSummary.startMs)}.` : 'Ride saved.'}
-        </Text>
-        {adjust !== null ? (
-          <GateAdjustCard
-            wayId={adjust.wayId}
-            refLine={adjust.ref}
-            refLengthM={adjust.refLengthM}
-            initialChainageM={adjust.chainageM}
-            busy={busy}
-            onKeep={onAdjustKeep}
-            onSave={onAdjustSave}
-          />
-        ) : naming !== null ? (
-          <RouteNamingCard
-            startExistingLabel={existingLandmarkLabel(naming.start)}
-            endExistingLabel={existingLandmarkLabel(naming.end)}
-            loop={naming.loop}
-            busy={busy}
-            matchedWayLabel={naming.matchedWayId ? wayLabelIn(currentCatalog(), naming.matchedWayId) : null}
-            existingRoute={naming.existingRouteId ? existingRouteProps(naming.existingRouteId) : null}
-            vocabulary={specVocabulary(activeCatalog().ways)}
-            onSave={onNamingSave}
-            onSkip={onNamingSkip}
-          />
-        ) : null}
-        <View style={{ flex: 1 }} />
+        {/* virgin-cycle11: tower + card can exceed one screen on a small
+            phone — the idle screen's own ScrollView-plus-absolute-overlay
+            pattern, mirrored here. The reversed LaunchAnimation stays an
+            absolute-fill sibling below, outside the scroll. */}
+        <ScrollView
+          style={{ flex: 1, alignSelf: 'stretch' }}
+          contentContainerStyle={{ gap: 8, paddingBottom: 24 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.trackLine}>
+            {reveal !== null
+              ? 'Ride saved.' // virgin-cycle11 R2: the tower's TODAY row is the headline
+              : lastSummary ? `Ride saved — ${fmtElapsed(lastSummary.endMs - lastSummary.startMs)}.` : 'Ride saved.'}
+          </Text>
+          {reveal !== null && (
+            <TimingTower
+              model={reveal.model}
+              justFinished
+              reveal
+              climbMs={reveal.climbMs}
+              startDelayMs={REVEAL_START_DELAY_MS}
+              onPlayed={onRevealPlayed}
+            />
+          )}
+          {revealDone ? (
+            adjust !== null ? (
+              <GateAdjustCard
+                wayId={adjust.wayId}
+                refLine={adjust.ref}
+                refLengthM={adjust.refLengthM}
+                initialChainageM={adjust.chainageM}
+                busy={busy}
+                onKeep={onAdjustKeep}
+                onSave={onAdjustSave}
+              />
+            ) : naming !== null ? (
+              <RouteNamingCard
+                startExistingLabel={existingLandmarkLabel(naming.start)}
+                endExistingLabel={existingLandmarkLabel(naming.end)}
+                loop={naming.loop}
+                busy={busy}
+                matchedWayLabel={naming.matchedWayId ? wayLabelIn(currentCatalog(), naming.matchedWayId) : null}
+                existingRoute={naming.existingRouteId ? existingRouteProps(naming.existingRouteId) : null}
+                vocabulary={specVocabulary(activeCatalog().ways)}
+                onSave={onNamingSave}
+                onSkip={onNamingSkip}
+              />
+            ) : null
+          ) : null}
+        </ScrollView>
         {showAnim === 'rev' && (
           <LaunchAnimation
             reverse
             onDone={() => {
               setShowAnim(null);
+              setReveal(null); // a board must never survive into the next ride's 'ending'
               setPhase('setup');
               // WP-H: post-STOP now opens the ride detail overlay instead of
               // the retired RESULT tab. No session id (should not happen for
@@ -1159,15 +1231,15 @@ export default function RecordScreen({
         )}
         {/* LIVE surface v2 (LAYOUT §2/§2a) — real engine feed, real clock:
             rate-1 timebase anchored at recording start (whole-ride elapsed,
-            per Nathan's lap-clock ruling). posChip is null until the B-28
-            benchmark/ride-history store exists — no chip renders, never a
-            fake rank. */}
+            per Nathan's lap-clock ruling). virgin-cycle11 R1: posChip is
+            always null now — the rank is revealed after STOP by the timing
+            tower, never announced here. */}
         <LiveSectorPane
           vm={viewModelFromEngine(
             live,
             realTimebase(session.startedAtMs),
-            getLiveTowerPosition(live), // real position once the lap lands
-            tierOf,
+            null, // virgin-cycle11 R1: the rank is revealed after STOP by the tower, never here
+            tierOfLive,
             livePos,
           )}
           showLap={showLap}

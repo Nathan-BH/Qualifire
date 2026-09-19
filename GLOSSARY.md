@@ -52,8 +52,14 @@ beats their average. Yellow — the app's neutral, default colour — just means
 happened, honestly reported: not a warning, not a failure. Gate markers themselves never
 change colour; only sectors do.
 
-**Tower.** The live scoreboard that lists every sector's time and colour as it happens,
-mid-ride — built to be readable at a glance, like a race timing tower.
+**Tower (timing tower).** The ranked column of your recent laps on a way — the last nine
+plus today, fastest first — that appears when you stop the ride. Today's row climbs from
+the bottom to its place and takes its colour the instant it lands: the *ranking reveal*.
+(The thin bars under the live lap clock are the *sector strip*, not the tower.)
+
+**Ranking reveal.** The moment after STOP when the tower shows where today's lap landed —
+held back until you actually stop so the rank is a payoff, not a spoiler. A way's very
+first ride has nothing to climb past and gets "Ride saved" instead.
 
 **Reference ride.** The ride a way's official line and gates are built from. On a blank
 install the first ride you save on a new route becomes its way's reference automatically;

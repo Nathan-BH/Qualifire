@@ -2,11 +2,12 @@
  * TIMING TOWER (LAYOUT §3b, B-28/B-29, Nathan's 2026-08-15 rulings) — the
  * ranked column of past-self laps that heads the post-run board, into which
  * today's lap slots in. This component owns ANATOMY + MOTION only; which laps
- * populate it (window, dedup, gap semantics) is the PO's layer, and — B-28
- * UNBUILT — the real benchmark/ride-history store does not exist yet, so the
- * REAL app has no provider: only the Preview demo feeds it rows. View-model
- * in, pixels out — nothing here knows where rows came from (one render path,
- * LAYOUT §3.8).
+ * populate it (window, dedup, gap semantics) is the PO's layer — B-28 BUILT,
+ * virgin-cycle11: the real app's first provider is `RecordScreen.tsx`'s
+ * 'ending' phase, via `ui/rankingRevealModel.ts`; the Preview demo still
+ * feeds it scripted rows through the same view-model. View-model in, pixels
+ * out — nothing here knows where rows came from (one render path, LAYOUT
+ * §3.8).
  *
  * Row: P# · tier-coloured time (+ PB ●) · gap to P1 · date. Today ≈1.5× row
  * height, time at display size, accent-yellow left bar (identity chrome,
@@ -20,11 +21,19 @@
  * fades in over ~200 ms. Upward is the only direction — zero travel still
  * gets the arrival fade, never an animation of failure. Plays exactly once:
  * never on revisit, never from HISTORY (guarded here AND by the caller).
+ *
+ * virgin-cycle11 `reveal` mode: today's row rides up in plain ink with no
+ * position/gap, passed rows step down ONE AT A TIME instead of in lockstep,
+ * and at the landing instant a hard state flip (never a fade) reveals the
+ * tier colour, P<n> and the gap — the emotional payoff Nathan asked for
+ * (`marketing/silent-studio/ranking/rounds/v7`). Default `reveal = false`
+ * preserves every pixel of the original slot-in for the Preview screen, its
+ * only other consumer.
  */
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import type { Tier } from './chips';
-import { PURPLE_INK } from './chips';
+import { PURPLE_INK, YELLOW_TIER } from './chips';
 import { PaddockTheme, colors, radius } from './theme';
 import { useTheme } from './themeContext';
 
@@ -68,6 +77,8 @@ function timeColor(tier: Tier, t: PaddockTheme): string {
       return colors.green;
     case 'est':
       return colors.grey; // NO TIME — grey is no-data only, and this is no data
+    case 'yellow':
+      return YELLOW_TIER;
     default:
       return t.text; // neutral stays ink, never highlighted (D-022)
   }
@@ -77,6 +88,9 @@ export function TimingTower({
   model,
   justFinished = false,
   ceremony = false,
+  reveal = false,
+  climbMs = SLOT_IN_MS,
+  startDelayMs = 0,
   onPlayed,
 }: {
   model: TowerModel;
@@ -84,15 +98,34 @@ export function TimingTower({
   justFinished?: boolean;
   /** §3a.3: REFERENCE SET frame — collapses to today's all-purple row alone */
   ceremony?: boolean;
+  /** virgin-cycle11 ranking reveal: today rides up in plain ink with no P/gap, passed
+   *  rows step down one at a time, and pos + gap + tier colour appear as a HARD CUT at
+   *  the landing instant (never a fade — same rule as the sector strip). Only
+   *  meaningful with `justFinished`. Default false = the Preview's original slot-in. */
+  reveal?: boolean;
+  /** travel duration; default SLOT_IN_MS. The reveal passes climbMsFor(). */
+  climbMs?: number;
+  /** delay before travel starts; default 0. */
+  startDelayMs?: number;
   onPlayed?: () => void;
 }) {
   const { t } = useTheme();
   const s = useMemo(() => makeTowerStyles(t), [t]);
   const played = useRef(false);
+  // mounted: guards the climb's completion callback against setting state
+  // after the tower has unmounted (e.g. a fast Skip during the climb).
+  const mounted = useRef(true);
+  useEffect(() => () => {
+    mounted.current = false;
+  }, []);
   // travel: 1 = today still at the bottom, 0 = arrived at rank.
   const travel = useRef(new Animated.Value(justFinished ? 1 : 0)).current;
   // arrive: accent bar + TODAY label opacity.
   const arrive = useRef(new Animated.Value(justFinished ? 0 : 1)).current;
+  // virgin-cycle11 reveal: pos/gap/tier stay hidden until the climb lands.
+  // Set at FIRST RENDER (never a `true` initial value) — a landed flash for
+  // even one frame is exactly the spoiler this brief exists to remove.
+  const [landed, setLanded] = useState(!(justFinished && reveal));
 
   const rowsAll = model.rows;
   const todayIdxAll = rowsAll.findIndex((r) => r.today);
@@ -115,15 +148,15 @@ export function TimingTower({
     played.current = true; // plays exactly once (§3b.3)
     travel.setValue(1);
     arrive.setValue(0);
-    Animated.sequence([
-      Animated.timing(travel, {
-        toValue: 0,
-        duration: SLOT_IN_MS,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(arrive, { toValue: 1, duration: ARRIVE_MS, useNativeDriver: true }),
-    ]).start(() => onPlayed?.());
+    Animated.timing(travel, {
+      toValue: 0, duration: climbMs, delay: startDelayMs,
+      easing: Easing.out(Easing.cubic), useNativeDriver: true,
+    }).start(() => {
+      if (!mounted.current) return;
+      setLanded(true); // the hard cut: pos, gap, tier colour appear this frame
+      Animated.timing(arrive, { toValue: 1, duration: ARRIVE_MS, useNativeDriver: true })
+        .start(() => onPlayed?.());
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [justFinished]);
 
@@ -157,13 +190,13 @@ export function TimingTower({
               <View style={[s.row, s.todayRow]}>
                 <Animated.View style={[s.accentBar, { opacity: arrive }]} />
                 <Text style={[s.pos, s.posToday, { color: t.text }]}>
-                  {r.pos !== null ? `P${r.pos}` : '—'}
+                  {reveal && !landed ? '' : r.pos !== null ? `P${r.pos}` : '—'}
                 </Text>
-                <Text style={[s.time, s.timeToday, { color: timeColor(r.tier, t) }]}>
+                <Text style={[s.time, s.timeToday, { color: reveal && !landed ? t.text : timeColor(r.tier, t) }]}>
                   {r.time}
                   {r.pb ? <Text style={{ color: colors.purple }}> ●</Text> : null}
                 </Text>
-                <Text style={[s.gap, { color: t.textDim }]}>{r.gap}</Text>
+                <Text style={[s.gap, { color: t.textDim }]}>{reveal && !landed ? '' : r.gap}</Text>
                 <Animated.Text style={[s.date, s.dateToday, { color: t.text, opacity: arrive }]}>
                   TODAY
                 </Animated.Text>
@@ -175,10 +208,26 @@ export function TimingTower({
           );
         }
         const passed = todayIdx >= 0 && i > todayIdx; // steps down as today travels up
+        // virgin-cycle11 reveal: each passed row steps down on its own, the
+        // instant today's climbing top passes half a slot below that row's
+        // own top — never all in lockstep (R3). Derivation: travel runs
+        // 1 -> 0; today's top sits travel*belowDist below its final slot; a
+        // passed row, before it steps, sits todayBlockH above its final
+        // slot. The row bumps when travel*belowDist = (k-0.5)*PAST_H.
+        let rowShift = belowShift;
+        if (passed && reveal && belowDist > 0) {
+          const k = i - todayIdx;
+          const STEP_W = 0.06; // width of one step, as a fraction of travel
+          const vk = Math.min(1 - STEP_W, Math.max(0, ((k - 0.5) * PAST_H) / belowDist));
+          rowShift = travel.interpolate({
+            inputRange: [0, vk, vk + STEP_W, 1],
+            outputRange: [0, 0, -todayBlockH, -todayBlockH],
+          });
+        }
         return (
           <Animated.View
             key={`${r.date}-${r.pos}`}
-            style={[s.row, { height: PAST_H }, passed && { transform: [{ translateY: belowShift }] }]}
+            style={[s.row, { height: PAST_H }, passed && { transform: [{ translateY: rowShift }] }]}
           >
             <Text style={[s.pos, { color: t.textDim }]}>{r.pos !== null ? `P${r.pos}` : '—'}</Text>
             <Text style={[s.time, { color: timeColor(r.tier, t) }]}>

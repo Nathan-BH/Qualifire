@@ -156,6 +156,17 @@ day (below).
   Whether build7 is installed on the phone and confirmed blank on first launch is not
   recorded anywhere — UNVERIFIED; see `OPEN-ITEMS.md` item 1. Details:
   `cycles/virgin-cycle4/BUILD7-PREVIEW-BLANK-SEED.md`.
+- **Ranking reveal is built (virgin-cycle11).** The rank is no longer announced at the
+  final gate — the lap chip shows the time only, neutral, until the rider actually stops.
+  On STOP the existing `TimingTower` (`ui/tower.tsx`) mounts on the 'ending' screen with
+  real data for the first time, fed by the new pure `ui/rankingRevealModel.ts`
+  (`buildRankingReveal`, `climbMsFor`, and the tuning constants `REVEAL_START_DELAY_MS` /
+  `REVEAL_HOLD_MS` / `CLIMB_MIN_MS` / `CLIMB_PER_ROW_MS` / `CLIMB_MAX_MS`, all in that one
+  file). Today's row climbs from the bottom, passed rows step down one at a time, and a
+  hard cut at landing reveals the tier colour + `P<n>` + gap. No reveal — plain "Ride
+  saved" — for ride 1 of a way (empty comparison window), an estimated lap, a free ride,
+  or any lap with no real scored time; `app/tests/rankingreveal_suite.ts` locks all of it
+  headless.
 
 ## Open items
 
@@ -205,7 +216,12 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   gets no colour verdict on the day it's ridden — it earns a rank once stored, but nothing to
   compare against yet — one prior ride compares purple/yellow only; two or more run the full
   model on the average of that way's rides on record. The ranking window is the 9 most recent
-  previous rides plus the current one — never a global ranking, never "of 11".
+  previous rides plus the current one — never a global ranking, never "of 11". **Since
+  virgin-cycle11 the rank is revealed after STOP, not at the final gate:** the timing tower
+  (`ui/tower.tsx`, real data via `ui/rankingRevealModel.ts`) climbs today's row from the
+  bottom to its place in the same ≤ 9-plus-today window and flips it to its tier colour on
+  landing; before STOP the lap chip shows the time only (neutral, no P-chip). Ride 1 and
+  estimated laps get no reveal — plain "Ride saved".
 - **Sectors:** every way has exactly 4, gates at 25/50/75% of the way's distance — never
   scaled by length. Gates snap away from traffic-signal-controlled intersections
   (≥150 m clear) since a gate at a red light corrupts that sector's times. Adjustment UI is
@@ -221,7 +237,8 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   plus self dots:** the way's comparison window (`ghostsFor`, ≤ 9 rides) replayed from their
   own fixes, timed from the START gate; toggle `selfDots`. The reference ride races nobody;
   ride k races k − 1, capped at 9. Follow-up: three tiers by the colour model's own rule,
-  P1 on top, live `P` on the context row.
+  P1 on top, live `P` on the context row. **Since virgin-cycle11:** no rank and no lap tier
+  before STOP (R1); the ranking reveal plays on the 'ending' screen, above the naming card.
 - **Gate ticks never change colour** — sectors are coloured, gate markers stay neutral
   (Nathan's rule; cycle2 WP-E retired the last tier-coloured tick).
 - **Sports are fully separate and none is pre-seeded** — the rider names them; a way, its
@@ -317,6 +334,9 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   completion). Also the cycle that reverted tier colours to cycle7's hex (see Scoring above)
   — correcting this coordinator's own earlier misreading of Nathan's "keep the current
   colours" as endorsing cycle8 rather than cycle7.
+- `cycles/virgin-cycle11/README.md` — 2026-09-19: ranking reveal — the timing tower climbs
+  after STOP instead of the rank being announced at the final gate
+  (`BRIEF-ranking-reveal.md`).
 
 ## Nathan's own files (unmanaged by any agent)
 

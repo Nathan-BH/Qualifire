@@ -26,6 +26,12 @@ import { scoredS } from '../store/timing.ts';
  * pipeline). Returns null — and the screen then renders NO chip — whenever a
  * position would be a fiction: no track locked, no lap yet, an estimated lap
  * (D-028: estimated never ranks), or a route with no history.
+ *
+ * virgin-cycle11: the live pane no longer passes this to `LiveSectorPane`
+ * (RecordScreen passes null); the rank is revealed after STOP by the timing
+ * tower (`ui/rankingRevealModel.ts`, which uses `ghostsFor(way, rideId)`
+ * *with* exclusion because the ride is stored by then). Kept as the
+ * canonical "a position needs no priors" rule and for `live_colour_suite.ts`.
  */
 export function getLiveTowerPosition(st: LiveEngineState): string | null {
   if (st.track === null || st.lap === null) return null;

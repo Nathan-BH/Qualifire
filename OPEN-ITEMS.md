@@ -84,6 +84,14 @@ replaced. Vocabulary is post-WP-3: a route is the from→to path, a way is one v
    6. Note anything about size/colour/opacity to adjust (R5 in `BRIEF-live-self-racing.md` is
       a starting point Nathan adjusts by eye, not a hard spec).
    7. Two dots overlapping: the faster one on top (`circle-sort-key`), rider always on top.
+6. **virgin-cycle11 ranking reveal — on-device look (phone only).** Ride a way with ≥ 1
+   prior ride; at STOP expect: lap time in neutral (no P, no colour) at the final gate; on
+   STOP the tower with today parked at the bottom in plain ink; ~0.5 s later the climb; rows
+   step down one by one; a hard colour + P<n> cut at landing; ~1.5 s hold; then the naming
+   card beneath (Skip → reverse mark → ride detail). Ride 1 of a new way: no tower. Tune:
+   `REVEAL_START_DELAY_MS`, `REVEAL_HOLD_MS`, `CLIMB_*` (`ui/rankingRevealModel.ts`),
+   `STEP_W` (`ui/tower.tsx`), past rows coloured vs all-white (R3), lap-chip tier before
+   STOP (R1).
 
 ## Distribution (2026-09-09 pivot — see `deployment/`)
 
@@ -166,3 +174,7 @@ Nathan answered most of `deployment/QUESTIONS-FOR-NATHAN.md` on 2026-09-09; fold
   sector-strip redesign (`f60b6d0`), and the sector-spans map layer's completion-triggered
   line-width bump removed (`eb8ad99`) — see `cycles/virgin-cycle9/`. Full log:
   `marketing/hex-colours/SUMMARY.md`.
+- **Reduced-motion / haptic at landing for the ranking reveal (virgin-cycle11, R9).** Out
+  of scope for the first build: no settings toggle for the reveal, no earcon/haptic at the
+  landing cut (the reference animation's green chime has no in-app analogue yet), no
+  reduced-motion handling for the tower.
