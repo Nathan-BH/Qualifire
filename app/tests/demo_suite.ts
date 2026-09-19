@@ -35,8 +35,11 @@ const {
   demoRunEndS, DEMO_ROLL_OUT_S, demoStopOutcome, demoLiveViewModel, demoSavedLine, demoFmtMS,
   DEMO_PRIOR_LAPS, DEMO_PRIOR_DAYS_AGO, DEMO_TODAY_RIDE_ID, DEMO_ROUTE_LABEL,
   demoHistoryFor, demoPriorLapSeconds, demoPriorResults, buildDemoReveal, demoAddedWayLine,
+  demoChainage, demoSelfTracks, DEMO_SELF_FIX_STEP_S,
 } = await import('../src/ui/demoModel.ts');
-const { DEMO_WAY_ID } = await import('../src/ui/demoWayFixture.ts');
+const { DEMO_WAY_ID, DEMO_WAY_ASSET } = await import('../src/ui/demoWayFixture.ts');
+const { selfDotsAt, selfLivePosition } = await import('../src/ui/selfRaceModel.ts');
+const { positionAtTime } = await import('../src/ui/wayMapMath.ts');
 
 test('demoModel: buildDemoScript() with default secs computes gateAt/lap', () => {
   const s = buildDemoScript();
@@ -346,5 +349,141 @@ test('demoModel: the ADD WAY line', () => {
   assert(
     noSpecs === 'Home → Work added as a new way · demo only, nothing saved',
     `unexpected line: ${noSpecs}`,
+  );
+});
+
+// virgin-cycle11 (DEMO overhaul, brief C) below — synthetic self dots + live P.
+
+test('demoModel: demoChainage — 0 at START, 1 at G1, 4 at FINISH, clamped, monotone', () => {
+  const gateAt = [0, 185, 392, 629, 836];
+  assert(demoChainage(gateAt, 0) === 0, `t=0 expected 0, got ${demoChainage(gateAt, 0)}`);
+  assert(demoChainage(gateAt, 92.5) === 0.5, `t=92.5 expected 0.5, got ${demoChainage(gateAt, 92.5)}`);
+  assert(demoChainage(gateAt, 185) === 1, `t=185 expected 1, got ${demoChainage(gateAt, 185)}`);
+  assert(demoChainage(gateAt, 836) === 4, `t=836 expected 4, got ${demoChainage(gateAt, 836)}`);
+  assert(demoChainage(gateAt, 900) === 4, `t=900 expected 4, got ${demoChainage(gateAt, 900)}`);
+  assert(demoChainage(gateAt, -5) === 0, `t=-5 expected 0, got ${demoChainage(gateAt, -5)}`);
+  let prev = -Infinity;
+  for (let t = 0; t <= 900; t++) {
+    const v = demoChainage(gateAt, t);
+    assert(v >= prev, `demoChainage must be non-decreasing, broke at t=${t}: ${v} < ${prev}`);
+    prev = v;
+  }
+});
+
+test('demoModel: demoSelfTracks(9) shares ids/starts/laps with demoPriorResults(9)', () => {
+  const T = 2_000_000_000_000;
+  const tracks = demoSelfTracks(9, T);
+  const results = demoPriorResults(9, T);
+  assert(tracks.length === 9, `expected 9 tracks, got ${tracks.length}`);
+  assert(
+    JSON.stringify(tracks.map((t) => t.rideId)) === JSON.stringify(results.map((r) => r.rideId)),
+    `ids mismatch: ${tracks.map((t) => t.rideId)} vs ${results.map((r) => r.rideId)}`,
+  );
+  const laps = demoPriorLapSeconds(9);
+  tracks.forEach((t, k) => {
+    assert(t.startMs === results[k].startedAtMs, `tracks[${k}].startMs = ${t.startMs}, want ${results[k].startedAtMs}`);
+    assert(t.lapS === laps[k], `tracks[${k}].lapS = ${t.lapS}, want ${laps[k]}`);
+    assert(t.finishMs - t.startMs === t.lapS * 1000, `tracks[${k}] finishMs-startMs must equal lapS*1000`);
+  });
+});
+
+test('demoModel: demoSelfTracks fixes are 2s apart, start/end on the path, sM 0 -> 4', () => {
+  const T = 2_000_000_000_000;
+  const tracks = demoSelfTracks(9, T);
+  const cols = demoHistoryFor(9);
+  tracks.forEach((t, k) => {
+    const secsForCol = cols.map((sector) => sector[k]);
+    const gateAtK = buildDemoScript(secsForCol).gateAt;
+    assert(t.fixes[0].tUnixMs === t.startMs, `track ${k}: fixes[0].tUnixMs = ${t.fixes[0].tUnixMs}, want ${t.startMs}`);
+    assert(
+      t.fixes[t.fixes.length - 1].tUnixMs === t.finishMs,
+      `track ${k}: last fix tUnixMs = ${t.fixes[t.fixes.length - 1].tUnixMs}, want ${t.finishMs}`,
+    );
+    for (let i = 1; i < t.fixes.length; i++) {
+      const gap = t.fixes[i].tUnixMs - t.fixes[i - 1].tUnixMs;
+      const isLast = i === t.fixes.length - 1;
+      assert(
+        gap === DEMO_SELF_FIX_STEP_S * 1000 || (isLast && gap <= DEMO_SELF_FIX_STEP_S * 1000),
+        `track ${k}: gap at ${i} = ${gap}, want ${DEMO_SELF_FIX_STEP_S * 1000} (or <= on the last)`,
+      );
+    }
+    assert(t.fixes[0].sM === 0, `track ${k}: fixes[0].sM = ${t.fixes[0].sM}, want 0`);
+    assert(
+      t.fixes[t.fixes.length - 1].sM === 4,
+      `track ${k}: last fix sM = ${t.fixes[t.fixes.length - 1].sM}, want 4`,
+    );
+    for (let i = 1; i < t.fixes.length; i++) {
+      assert((t.fixes[i].sM ?? -1) >= (t.fixes[i - 1].sM ?? -1), `track ${k}: sM must be non-decreasing at ${i}`);
+    }
+    const first = positionAtTime(DEMO_WAY_ASSET, gateAtK, 0)!;
+    const last = positionAtTime(DEMO_WAY_ASSET, gateAtK, t.lapS)!;
+    assert(t.fixes[0].lat === first.lat && t.fixes[0].lon === first.lon, `track ${k}: first fix position mismatch`);
+    assert(
+      t.fixes[t.fixes.length - 1].lat === last.lat && t.fixes[t.fixes.length - 1].lon === last.lon,
+      `track ${k}: last fix position mismatch`,
+    );
+  });
+});
+
+test('demoModel: demoSelfTracks(1) is prior-9 only; demoSelfTracks(0) is empty', () => {
+  const T = 2_000_000_000_000;
+  const one = demoSelfTracks(1, T);
+  assert(one.length === 1, `demoSelfTracks(1, T) length = ${one.length}, want 1`);
+  assert(one[0].rideId === 'demo:prior-9', `expected rideId demo:prior-9, got ${one[0].rideId}`);
+  assert(one[0].lapS === 842, `expected lapS 842, got ${one[0].lapS}`);
+  const zero = demoSelfTracks(0, T);
+  assert(zero.length === 0, `demoSelfTracks(0, T) should be [], got length ${zero.length}`);
+});
+
+test('demoModel: before RUN every self waits parked on START', () => {
+  const T = 2_000_000_000_000;
+  const tracks = demoSelfTracks(9, T);
+  const dots = selfDotsAt(tracks, null);
+  assert(dots.length === 9, `expected 9 dots, got ${dots.length}`);
+  const start = DEMO_WAY_ASSET.path![DEMO_WAY_ASSET.gateIdx![0]];
+  assert(dots.every((d) => d.state === 'waiting'), `every dot should be 'waiting', got ${dots.map((d) => d.state)}`);
+  assert(
+    dots.every((d) => d.lat === start[0] && d.lon === start[1]),
+    `every dot should be parked at START (${start}), got ${dots.map((d) => [d.lat, d.lon])}`,
+  );
+});
+
+test('demoModel: at 836s the two fastest selfs have finished; prior-2 is best', () => {
+  const T = 2_000_000_000_000;
+  const tracks = demoSelfTracks(9, T);
+  const dots = selfDotsAt(tracks, 836_000);
+  const byId = new Map(dots.map((d) => [d.rideId, d]));
+  assert(byId.get('demo:prior-2')!.state === 'finished', 'prior-2 should be finished at 836s');
+  assert(byId.get('demo:prior-6')!.state === 'finished', 'prior-6 should be finished at 836s');
+  const others = dots.filter((d) => d.rideId !== 'demo:prior-2' && d.rideId !== 'demo:prior-6');
+  assert(
+    others.every((d) => d.state === 'racing'),
+    `the other 7 should still be racing, got ${others.map((d) => [d.rideId, d.state])}`,
+  );
+  assert(byId.get('demo:prior-2')!.best === true, 'prior-2 should be best');
+  assert(byId.get('demo:prior-2')!.rank === 1, 'prior-2 should be rank 1');
+  assert(byId.get('demo:prior-2')!.tier === 'purple', 'prior-2 should be purple');
+  assert(byId.get('demo:prior-8')!.rank === 9, 'prior-8 should be rank 9');
+  assert(byId.get('demo:prior-8')!.tier === 'yellow', 'prior-8 should be yellow');
+  assert(byId.get('demo:prior-4')!.tier === 'green', 'prior-4 should be green (below the mean)');
+});
+
+test('demoModel: the live P via demoChainage agrees with the tower', () => {
+  const T = 2_000_000_000_000;
+  const tracks = demoSelfTracks(9, T);
+  const gateAt = [0, 185, 392, 629, 836];
+  const p1 = selfLivePosition(selfDotsAt(tracks, 100_000), demoChainage(gateAt, 100));
+  assert(p1 === 1, `at 100s expected P1, got P${p1}`);
+  const p3 = selfLivePosition(selfDotsAt(tracks, 820_000), demoChainage(gateAt, 820));
+  assert(p3 === 3, `at 820s expected P3 (matching B's reveal), got P${p3}`);
+});
+
+test('demoModel: everyone has finished by the end of the roll-out', () => {
+  const T = 2_000_000_000_000;
+  const tracks = demoSelfTracks(9, T);
+  const dots = selfDotsAt(tracks, (836 + DEMO_ROLL_OUT_S) * 1000);
+  assert(
+    dots.every((d) => d.state === 'finished'),
+    `expected all finished, got ${dots.map((d) => [d.rideId, d.state])}`,
   );
 });

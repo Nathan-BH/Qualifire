@@ -38,7 +38,8 @@ START gate; the reference ride races no selfs, ride *k* races *k* − 1, capped 
 by the app's one tier rule: the fastest is purple, any other self below the window's average is
 green, the rest are yellow; the faster of two overlapping dots stacks on top. A live `P4` under
 the map shows your position among them right now, by chainage. Toggle: SETTINGS → "Race your
-past rides" (`selfDots`, on by default). *(virgin-cycle6, follow-up.)*
+past rides" (`selfDots`, on by default). *(virgin-cycle6, follow-up.)* The DEMO tab replays
+made-up selves from its own pinned laps, so you can watch the race without riding.
 
 **Gate.** An invisible line drawn across the road at a fixed spot. The moment your GPS
 trace crosses it, that's a timed event — the start, end, or boundary of a sector.

@@ -57,11 +57,13 @@ import {
   buildDemoReveal,
   buildDemoScript,
   demoAddedWayLine,
+  demoChainage,
   demoFmtMS,
   demoLiveViewModel,
   demoRunEndS,
   demoSavedLine,
   demoSectorColours,
+  demoSelfTracks,
   demoStopOutcome,
   DEMO_FAKE_SAVE_MS,
   DEMO_PRIOR_LAPS,
@@ -80,6 +82,7 @@ import { LaunchAnimation } from './launchAnimation';
 import { LiveSectorPane } from './liveView';
 import { REVEAL_HOLD_MS, REVEAL_START_DELAY_MS, type RankingReveal } from './rankingRevealModel.ts';
 import { RouteNamingCard } from './routeNamingCard';
+import { selfDotsAt, selfLivePosition } from './selfRaceModel.ts';
 import { ALL_YELLOW } from './sectorTrailModel.ts';
 import { useSettings } from './settings';
 import { colors, PaddockTheme, radius } from './theme';
@@ -132,7 +135,27 @@ export default function DemoScreen({ onFullscreenChange }: {
   // The scripted ride: today's fixed lap (demoModel.ts's pinned fixture).
   const script = useMemo(() => buildDemoScript(), []);
 
+  // virgin-cycle11 brief C: synthetic selfs for this mode's priors, built once per mode
+  // (the absolute epoch only dates them; every position is relative to startMs).
+  const builtAtMs = useRef(Date.now()).current;
+  const selfTracks = useMemo(() => demoSelfTracks(DEMO_PRIOR_LAPS[mode], builtAtMs), [mode, builtAtMs]);
+
   const gatesDone = script.gateAt.filter((g, i) => i > 0 && clockS >= g).length;
+
+  // virgin-cycle11 brief C (R3/R4/R5): elapsedMs from the demo clock (START crossing is
+  // t = 0, R3); selfDots derived from it; showSelfs reads the self-dots toggle LIVE at
+  // render level (never cached in start()'s interval closure or a []-deps callback — R4,
+  // Nathan item 4); livePos mirrors RecordScreen.tsx's own selfLivePosition rule (null
+  // before START, once the lap lands, or with self dots off).
+  const elapsedMs = clockS > 0 ? clockS * 1000 : null;
+  const selfDots = useMemo(() => selfDotsAt(selfTracks, elapsedMs), [selfTracks, elapsedMs]);
+  const showSelfs = settings.selfDots && mode !== 'first';
+  const livePos = showSelfs && elapsedMs !== null && gatesDone < script.secs.length
+    ? (() => {
+        const p = selfLivePosition(selfDots, demoChainage(script.gateAt, clockS));
+        return p === null ? null : `P${p}`;
+      })()
+    : null;
 
   // One buzz per gate, exactly as on the bike (D-019) — SECOND RIDE only.
   // A first ride has no gates to cross, so there is nothing to buzz for.
@@ -273,7 +296,7 @@ export default function DemoScreen({ onFullscreenChange }: {
   // same pane, so what you see here is what the Record screen would draw.
   // Used by SECOND/TENTH RIDE only. R5: the lap chip stays neutral until STOP.
   // Depth (R2): judged against the LAST DEMO_PRIOR_LAPS[mode] pinned laps.
-  const vm = demoLiveViewModel(script, clockS, Date.now(), null, DEMO_PRIOR_LAPS[mode]);
+  const vm = demoLiveViewModel(script, clockS, Date.now(), livePos, DEMO_PRIOR_LAPS[mode]);
 
   // SECOND/TENTH RIDE only: gate-indexed sector verdict colours for the map's
   // sector-span prop. Gate ticks themselves are never coloured — that is the
@@ -319,6 +342,7 @@ export default function DemoScreen({ onFullscreenChange }: {
             ) : (
               <WayMapView wayId={DEMO_WAY_ID} asset={DEMO_WAY_ASSET} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
                 zoom={4} sectorColours={sectorColours} leadColour={colors.grey}
+                selfs={showSelfs ? selfDots : undefined}
                 variant="live" liveState={running ? 'moving' : 'finished'} fill />
             )}
           </View>

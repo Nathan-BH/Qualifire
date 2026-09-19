@@ -22,7 +22,9 @@ import type { Tier } from './chips.tsx';
 import type { RouteNames } from '../store/routeCreation.ts';  // type-only
 import type { RideResult } from '../store/types.ts';   // type-only
 import { buildRankingReveal, type RankingReveal } from './rankingRevealModel.ts';
-import { DEMO_WAY_ID } from './demoWayFixture.ts';
+import type { SelfTrack } from './selfRaceModel.ts';
+import { positionAtTime, type WayAsset } from './wayMapMath.ts';
+import { DEMO_WAY_ASSET, DEMO_WAY_ID } from './demoWayFixture.ts';
 // Re-exported so DemoScreen.tsx never has to import from '../store/**' at all
 // (Rules: DemoScreen must not import anything from app/src/store/**).
 export type { RouteNames };
@@ -131,24 +133,83 @@ export function demoSavedLine(names: RouteNames): string {
   return `${names.start.trim()} → ${names.end.trim()} created · demo only, nothing saved`;
 }
 
+/** brief C, R2: sim-seconds between synthetic self fixes — the loader's DECIMATE_MIN_GAP_MS. */
+export const DEMO_SELF_FIX_STEP_S = 2;
+
+/** Shared column→identity mapping between demoPriorResults and demoSelfTracks (R2's
+ *  "reuse the same column→id/startedAtMs mapping"): for each of the last `priorLaps`
+ *  columns of DEMO_HISTORY (oldest first), its 1-based column index, rideId, startedAtMs
+ *  and lapS. */
+function demoPriorColumns(
+  priorLaps: number, nowMs: number,
+): { col: number; rideId: string; startedAtMs: number; lapS: number }[] {
+  const laps = demoPriorLapSeconds(priorLaps);
+  const startCol = DEMO_HISTORY[0].length - priorLaps; // 0-based index of the first included column
+  return laps.map((lapS, k) => {
+    const col = startCol + k + 1; // 1-based DEMO_HISTORY column index
+    return {
+      col,
+      rideId: `demo:prior-${col}`,
+      startedAtMs: nowMs - DEMO_PRIOR_DAYS_AGO[startCol + k] * 86_400_000,
+      lapS,
+    };
+  });
+}
+
 /** R1: the last `priorLaps` pinned laps as RideResults — the shape buildTowerModel reads
  *  (lap, startedAtMs, source). Oldest first; rideId 'demo:prior-<k>' with k the 1-based
  *  column index in DEMO_HISTORY, so brief C's SelfTracks can share the ids. */
 export function demoPriorResults(priorLaps: number, nowMs: number): RideResult[] {
-  const cols = demoHistoryFor(priorLaps);
-  const laps = demoPriorLapSeconds(priorLaps);
-  const startCol = DEMO_HISTORY[0].length - priorLaps; // 0-based index of the first included column
-  return laps.map((lapS, k) => ({
+  return demoPriorColumns(priorLaps, nowMs).map(({ rideId, startedAtMs, lapS }) => ({
     kind: 'rideResult',
     schemaVersion: 2,
-    rideId: `demo:prior-${startCol + k + 1}`,
-    startedAtMs: nowMs - DEMO_PRIOR_DAYS_AGO[startCol + k] * 86_400_000,
+    rideId,
+    startedAtMs,
     wayId: DEMO_WAY_ID,
     source: 'app',
     lap: { rawS: lapS, movingS: lapS, quality: 'clean' },
     sectors: [],
     derivedBy: { engineVersion: 'demo', gateSetVersion: 1, resultSchemaVersion: 2 },
   }));
+}
+
+/** brief C, R5: chainage in SECTOR units, 0 at START, 4 at FINISH: k + fraction of sector
+ *  k, linear in time — mirrors positionAtTime's own k/f selection exactly (same bound,
+ *  same span/f arithmetic), so two riders with the same demoChainage are at the same place
+ *  on the path. Clamped to [0, gateAt.length - 1]. */
+export function demoChainage(gateAt: readonly number[], tSec: number): number {
+  const maxK = gateAt.length - 1;
+  let k = 0;
+  while (k < maxK - 1 && tSec >= gateAt[k + 1]) k++;
+  const span = Math.max(gateAt[k + 1] - gateAt[k], 1e-6);
+  const f = Math.max(0, Math.min(1, (tSec - gateAt[k]) / span));
+  return k + f;
+}
+
+/** brief C, R2/R3: one SelfTrack per pinned prior lap (the LAST `priorLaps` columns, ids
+ *  and startedAtMs identical to demoPriorResults'), fixes sampled every
+ *  DEMO_SELF_FIX_STEP_S from t = 0 to t = lap inclusive along `asset`'s path at that lap's
+ *  own gate times; startMs = the lap's startedAtMs, finishMs = startMs + lap*1000,
+ *  lapS = lap, each fix carrying sM = demoChainage. Oldest first. [] for 0 priors. */
+export function demoSelfTracks(
+  priorLaps: number, nowMs: number, asset: WayAsset = DEMO_WAY_ASSET,
+): SelfTrack[] {
+  return demoPriorColumns(priorLaps, nowMs).map(({ col, rideId, startedAtMs, lapS }) => {
+    const secsForCol = DEMO_HISTORY.map((sector) => sector[col - 1]);
+    const gateAt = buildDemoScript(secsForCol).gateAt;
+    const sampleTimes: number[] = [];
+    for (let t = 0; t <= lapS; t += DEMO_SELF_FIX_STEP_S) sampleTimes.push(t);
+    if (sampleTimes[sampleTimes.length - 1] !== lapS) sampleTimes.push(lapS);
+    const fixes = sampleTimes.reduce<{ tUnixMs: number; lat: number; lon: number; sM: number }[]>(
+      (acc, t) => {
+        const p = positionAtTime(asset, gateAt, t);
+        if (p) acc.push({ tUnixMs: startedAtMs + t * 1000, lat: p.lat, lon: p.lon, sM: demoChainage(gateAt, t) });
+        return acc;
+      },
+      [],
+    );
+    return { rideId, startMs: startedAtMs, finishMs: startedAtMs + lapS * 1000, lapS, fixes };
+  });
 }
 
 /** R1/R4: the real reveal builder over the synthetic window. null for 'first'. */

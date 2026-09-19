@@ -106,7 +106,17 @@ replaced. Vocabulary is post-WP-3: a route is the from→to path, a way is one v
    + P<n> cut, ~1.5 s hold, then the 'New way on Home → Work' card beneath; add a spec →
    ADD WAY dims ~0.6 s → one confirmation line → the reverse mark. SETTINGS → sector colours
    ON/OFF, then DEMO → RUN: the map spans follow the toggle, the strip is coloured either
-   way. Hardware back behaves like STOP.
+   way. Hardware back behaves like STOP. SECOND RIDE: one purple dot leaves START with you;
+   you lead it through S1 and S2 (`P1` on the context row), it claws back 4 s in S3 (233 vs
+   your 237), you pull away again in S4 and finish 6 s ahead. TENTH RIDE: nine dots; you lead
+   the whole field through S1 and S2 (`P1`), then the 830 s and 835 s selves come past in S3
+   (they cross G3 at 625 s / 629 s to your 629 s) — the context row drops to `P3` and stays
+   there to the line; the other seven fall away behind; finished dots dim and park at FINISH.
+   SETTINGS → SELF DOTS off, back to DEMO, RUN → no dots, `P` gone from the context row; on
+   again → back (no restart needed). Judge size / opacity / stacking here first (cycle6 R5 is
+   a starting point); the real-ride check in item 5 still stands. **Open (Nathan, item 9):**
+   the demo redraws nine dots at ~30 fps where the real screen ticks at 4 Hz — if this
+   stutters on the phone, say so; quantising to 250 ms is one line in `DemoScreen.tsx`.
 
 ## Distribution (2026-09-09 pivot — see `deployment/`)
 

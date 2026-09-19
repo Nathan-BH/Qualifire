@@ -62,9 +62,9 @@ day (below).
   `activity-index.csv` and the Python side live on `main` only), `app/src/live/`
   (full-catalog pick-bias engine; candidates are ways), `app/src/store/` (sports + catalog +
   results + timing, empty-seed-capable — see below), `app/src/ui/` (six tabs:
-  RECORD / RIDES / ROUTES / RESULTS / SETTINGS / DEMO). `app/tests/`: **620 tests, 617 pass,
+  RECORD / RIDES / ROUTES / RESULTS / SETTINGS / DEMO). `app/tests/`: **628 tests, 625 pass,
   0 fail, 3 skip**. `tsc --noEmit`: clean, exit 0. Both verified 2026-09-19 (virgin-cycle11,
-  DEMO tab overhaul briefs A + B).
+  DEMO tab overhaul briefs A + B + C).
 - **The empty-seed install path is built.** `store/seed.ts` + `store/catalogStore.ts`: the
   runtime catalog is the shipped seed merged read-side with an on-phone
   `catalog.user.json` (never copied to disk, so a seed edit still reaches every install).
@@ -90,7 +90,14 @@ day (below).
   source/layer (MapLibre rung only), `RecordScreen.tsx` wiring, and a SETTINGS toggle
   (`selfDots`, default on). Ride 1 of a way races nobody; ride k races k − 1, capped at nine.
   Follow-up: three tiers by the colour model's own rule, P1 on top, live `P` on the context
-  row. PNG rung, DEMO tab and free mode untouched by design (R9). See
+  row. PNG rung and free mode untouched by design (R9). **The DEMO-tab half of that R9 was
+  deliberately reversed on 2026-09-19 (virgin-cycle11, `BRIEF-demo-self-dots.md`) at
+  Nathan's explicit request** ('i want to see the self dots racing alongside so i can see
+  how that works visually'): DEMO's SECOND / TENTH RIDE now replay *synthetic* selfs built
+  from the demo's pinned laps (`demoModel.ts` `demoSelfTracks`, positions from the same
+  path as the demo rider) through the same `WayMapView` `selfs` prop and `selfDots`
+  toggle — never from ride files, never touching `loadSelfTracks`. The reversal is
+  intentional, not a lapse of the old rule. See
   `cycles/virgin-cycle6/README.md`.
 - **Sector-coloured trail is built everywhere (WP-K, 2026-09-04): live map, ride-detail
   screen, gated by one settings toggle (`sectorColours`, default OFF since virgin-cycle9,
@@ -291,6 +298,8 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   `RideResult`s (`buildDemoReveal`) — same window rule, constants and hold as the real
   'ending' — then the real `RouteNamingCard` in its WP-G 'new way on this route' variant,
   whose ADD WAY is theatre too. Today lands P1 of 2 (purple) / P3 of 10 (green).
+  **Brief C:** synthetic self dots + the live `P` on the
+  context row (sector-unit chainage) in SECOND / TENTH RIDE.
 - **`CatalogDetailScreen.tsx`'s `placeDetailFor` reads the unscoped catalog**, so a place's
   detail can list another sport's routes/ways (cycle3 WP-1 Inspect, non-blocking, confirmed
   real). Needs a product decision — split "list" scoping from "deletable" scoping — not a
@@ -355,7 +364,7 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
 - `cycles/virgin-cycle11/README.md` — 2026-09-19: ranking reveal — the timing tower climbs
   after STOP instead of the rank being announced at the final gate
   (`BRIEF-ranking-reveal.md`); DEMO tab overhaul — brief A (`BRIEF-demo-fullscreen-run.md`),
-  brief B (`BRIEF-demo-tenth-ride-reveal.md`).
+  brief B (`BRIEF-demo-tenth-ride-reveal.md`), brief C (`BRIEF-demo-self-dots.md`).
 
 ## Nathan's own files (unmanaged by any agent)
 
