@@ -47,9 +47,25 @@ the HTML — any note in between gets the nearest sample pitch-shifted (never mo
 to the old oscillator tone for the brief moment before a sample finishes decoding.
 Room to go closer to real Salamander Grand Piano quality later — see that same NOTES.md
 entry and `projects/interstellar/get_salamander_samples.ps1`.
-If this tool is also published as a Cowork Artifact somewhere, that published copy
-needs a manual re-publish to pick up this change — this edit only touched the file in
-this folder.
+This tool is also published as a Cowork Artifact ("Named Keys") — found on
+2026-09-20 that it was still serving the pre-upgrade (2026-09-17) version with the old
+oscillator ping, because editing the local file here never touches a separately
+published copy. Republished it from this exact file the same day, so it now matches.
+**Rule going forward: any edit to `named-keys.html` needs a matching artifact
+republish, or the published link silently goes stale again** — they are two different
+deployments of the same code, not one thing.
+
+**Update (2026-09-20):** swapped the embedded samples again — `named-keys.html`'s
+`PIANO_SAMPLES` now holds 29 real Salamander Grand Piano recordings (not the FluidSynth
+GM-soundfont render described above), downloaded via `get_salamander_samples.ps1` from
+Nathan's own PC (Cowork's shells can't reach the host it needs). `A0` isn't in that
+sample mirror (confirmed on a repeat run, not a network fluke) — the bottom three keys
+(A0/A#0/B0) fall back to `C1` pitch-shifted down 3 semitones instead of the usual ~1.5.
+**Open issue:** Nathan still hears the old sound locally after hard-refreshing, closing
+all tabs, and switching browsers — under investigation, see
+`projects/interstellar/NOTES.md`'s 2026-09-20 update. The published Cowork "Named Keys"
+artifact has *not* been republished from this version yet, so on top of the rule above
+it is now two upgrades behind the local file (still FluidSynth, not Salamander).
 
 ### Shortcuts
 

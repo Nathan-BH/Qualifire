@@ -174,3 +174,75 @@ midiviewer.io/Klang.io use — from Nathan's own machine (outside Cowork's shell
 which both hit a 403 on that host). Run it there; if it works, tell Claude and a
 sample-based renderer mirroring `fluid_render.py`'s API can be written against the
 real files instead of the GM soundfont substitute.
+
+
+## Update (2026-09-20) — gates-saving's chime removed; the ride is retimed to the melody instead
+
+The soundv7 finding (E5 gate-chime landing 80ms from voice_a's own A4 around t=6s --
+confirmed real via onset analysis, not a rendering bug) led Nathan to a direction
+change rather than a mix tweak: "the audio should be the real reference, there should
+be no extra sound for the gates crossing... We can adapt the speed of the moving dot so
+it just aligns with the melody!"
+
+So gate_chimes.wav is retired from gates-saving's mix (still used nowhere now -- this
+piece's only consumer of it was gates-saving). soundv8's audio is just
+`bass_only.wav` + `melody_only.wav`, untouched. The video side of this
+(silent-studio/gates-saving/index.html's new RIDE_WARP, pacing the rider so the 3 real
+gates land on 3 of the melody's real E5 beats) is documented in
+`../../gates-saving/soundv8/FEEDBACK.md`.
+
+
+## Update (2026-09-20) — swapped to real Salamander samples; live-sound bug under investigation
+
+Ran `get_salamander_samples.ps1` from Nathan's own PowerShell (per its own instructions
+— Cowork's shells can't reach `raw.githubusercontent.com`). 29 of 30 notes downloaded
+(`A0.mp3` 404s — confirmed on a second run too, byte-identical download, so this mirror
+genuinely doesn't ship an A0 sample, not a transient network issue). Embedded the 29 real
+recordings into `named-keys.html`'s `PIANO_SAMPLES`, replacing the FluidSynth-rendered
+ones from the update above — same `nearestSample()`/pitch-shift fallback code, just real
+audio data. Verified byte-for-byte against the downloaded files and confirmed the HTML's
+two `<script>` blocks still parse (`node --check`). A0/A#0/B0 now fall back to `C1`
+pitch-shifted down 3 semitones (vs. the usual max ~1.5) since there's no true A0 sample —
+everything C1 and up is a real/near-exact sample.
+
+**Open issue, not yet resolved:** Nathan reports the local `named-keys.html` still plays
+the old (synthetic-sounding) piano after a hard refresh, closing all tabs, and trying a
+different browser (Edge) — rules out ordinary browser caching. The file on disk is
+confirmed correct (checked directly, byte-for-byte against the downloaded samples), so
+the leading theories are (a) `decodeAudioData()` failing silently on these specific mp3s
+in the browser and permanently falling back to the oscillator ping per note, since a
+failed decode is never retried, or (b) `warmSamples()` only starts decoding once Play is
+pressed rather than on page load, so a short piece can finish playing before decode
+completes. Added a temporary `[salamander-check]` marker to the page `<title>` to rule
+out "wrong/stale file" as a cause. Claude in Chrome can't open `file://` URLs directly,
+so getting real browser console output needs either Nathan pasting console errors or a
+localhost-served copy — next step once he confirms the title marker shows up.
+
+## Update (2026-09-20, later same day) — file confirmed correct on disk via 3 independent channels; still investigating what Nathan's browser is showing
+
+Nathan reported that opening the exact path
+(`file:///C:/Users/natha/Claude%20personal%20projects/Qualifire/marketing/audio-studio/piano/named-keys.html`)
+"looks like a different file indeed" — i.e. the `[salamander-check]` title marker didn't
+show, even after a hard refresh, closing every tab, and switching from Chrome to Edge.
+
+Before assuming a real JS/audio bug, re-verified the file itself using three *independent*
+access paths (ruling out a stale Plan9-mount view inside the Cowork sandbox, per the
+"device_bash Plan9 mount flaky" note in memory):
+1. `device_bash` (the sandbox mount) — title marker present, 7,476,119 bytes.
+2. `device_list_dir` (a separate, non-bash channel) — same size, same mtime.
+3. `device_stage_files` (an actual file transfer off Nathan's disk into the Cowork
+   container) — downloaded copy's first line is literally `<title>Named Keys
+   [salamander-check]</title>`.
+
+All three agree: the real file on Nathan's disk, at that exact path, right now, is the
+Salamander-embedded version with the marker. This rules out a silent revert/re-stub on
+the file itself — whatever Nathan is seeing, the bytes on disk are correct.
+
+**Next diagnostic handed to Nathan:** right-click `named-keys.html` in File Explorer ->
+Properties -> check Size (should read ~7.47 MB) and Date modified (today). This bypasses
+every browser entirely. If Explorer also shows the correct size, the issue is 100%
+browser-side (likely a still-running browser process surviving "closed all tabs" —
+Chrome/Edge can keep background processes alive by default) and the fix is Task Manager
+-> End Task on chrome.exe/msedge.exe, not another hard refresh. If Explorer somehow shows
+the *old* ~772KB size, that would mean something else entirely is going on with this
+path/mount and needs a fresh look.
