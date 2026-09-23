@@ -19,6 +19,10 @@ press, never notation.
                             here, it's where every method below was worked out
       interstellar/         Interstellar's "Time" theme, from a YouTube easy-piano
                             tutorial, cross-checked two ways
+      tunetank/              a short tunetank.com piano logo sting, cross-checked two
+                            ways + a waveform/spectrogram analysis; also where two real
+                            bugs in extract_klangio_pdf.py were found (TJ-array glyphs,
+                            key signatures) — see its NOTES.md
 
 ## The tool
 

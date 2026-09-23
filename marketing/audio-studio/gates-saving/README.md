@@ -85,5 +85,14 @@ times) no longer line up. `soundv9/soundtrack_v9.wav` is not built from this fol
 `../ride/soundv1/ride_master_v1.wav`, the two-scene continuous Salamander master built
 in `BRIEF-ride-loop-track.md`; its five E5 pulses land at 3.80/5.81/7.65/9.51/11.38s on
 this scene's own clock, matching the landed `index.html` to 0ms. The mux
-(`gates-saving_v8_with_sound_v9.mp4`) is built and in `all-renders/`, confirmed
+(`gates-saving_v8_with_sound_v9.mp4`) is built; `all-renders/` now holds soundv10 (cycle 16), soundv9 is kept here as the synthesised round, confirmed
 12.300000s via ffprobe. See `soundv9/FEEDBACK.md`.
+
+**Update:** soundv10 (2026-09-23) -- direction change, cycle 16: Nathan's Tunetank track replaces
+the synthesised bed. `soundv10/soundtrack_v10.wav` is the [14.0-26.3s] slice of
+`../ride/soundv2/ride_master_v2.wav` (stereo): the first pass of the track fades out over
+this scene's zoom-out lead-in (0-1.0 s here), the second pass attacks on the start pulse at
+3.80 s, and the five E5 pulses (3.80/5.81/7.65/9.51/11.38 s, unchanged from soundv9, imported
+from `ride_master.py`) punctuate the gates on top; 1.0 s fade to the end. Mux
+`gates-saving_v8_with_sound_v10.mp4` built, 12.300000s via ffprobe, in `all-renders/`.
+See `soundv10/FEEDBACK.md`.

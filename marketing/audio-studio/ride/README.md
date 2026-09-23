@@ -32,15 +32,16 @@ reader is tempted to move them under `ride/`, don't.
 
 | Part | Status | Feedback goes to |
 |---|---|---|
-| **complete ride** (this folder) | soundv1 — built, awaiting Nathan's listen | [`soundv1/FEEDBACK.md`](soundv1/FEEDBACK.md) |
-| [start-ride/](../start-ride/README.md) | soundv8 = slice 0–14.0s of the master | [`../start-ride/soundv8/FEEDBACK.md`](../start-ride/soundv8/FEEDBACK.md) |
-| [gates-saving/](../gates-saving/README.md) | soundv9 = slice 14.0–26.3s of the master | [`../gates-saving/soundv9/FEEDBACK.md`](../gates-saving/soundv9/FEEDBACK.md) |
+| **complete ride** (this folder) | soundv2 — built (Tunetank bed, cycle 16), awaiting Nathan's listen; soundv1 (synthesised piano) kept on disk for reference | [`soundv2/FEEDBACK.md`](soundv2/FEEDBACK.md) |
+| [start-ride/](../start-ride/README.md) | soundv9 = slice 0–14.0s of the soundv2 master (soundv8 = the same slice of soundv1, kept) | [`../start-ride/soundv9/FEEDBACK.md`](../start-ride/soundv9/FEEDBACK.md) |
+| [gates-saving/](../gates-saving/README.md) | soundv10 = slice 14.0–26.3s of the soundv2 master (soundv9 = the same slice of soundv1, kept) | [`../gates-saving/soundv10/FEEDBACK.md`](../gates-saving/soundv10/FEEDBACK.md) |
 
 ## Rounds
 
 | Round | Render | Status |
 |---|---|---|
-| [soundv1](soundv1/FEEDBACK.md) | ride_v1.mp4 (silent concat + master) | Built — confirmed via ffprobe at exactly 26.300000s, matching plan exactly |
+| [soundv1](soundv1/FEEDBACK.md) | ride_v1.mp4 (silent concat + master) | Earlier round, kept on disk (direction changed to the Tunetank bed in soundv2, cycle 16). Built — confirmed via ffprobe at exactly 26.300000s, matching plan exactly |
+| [soundv2](soundv2/FEEDBACK.md) | ride_v2.mp4 (silent concat + Tunetank master) | Built — 26.300000s via ffprobe; Nathan's Tunetank track placed twice (t=0 at 3.80 s, while the START box fades out, and at 16.54 s), E5 pulses on ride 2 only; see cycle 16 |
 
 `ride_master.py` builds `soundv1/ride_master_v1.wav` and the two per-scene slices
 (`../start-ride/soundv8/soundtrack_v8.wav`, `../gates-saving/soundv9/soundtrack_v9.wav`)
@@ -50,3 +51,11 @@ render of `gates-saving_v8.mp4`
 (`start-ride_v4_with_sound_v8.mp4` at 14.000000s, `gates-saving_v8_with_sound_v9.mp4`
 at 12.300000s) and the standalone `ride_v1.mp4` (26.300000s) are now built — all
 durations confirmed via ffprobe and matching plan exactly.
+
+`ride_tunetank.py` builds soundv2: `soundv2/ride_master_v2.wav` (stereo, 16-bit, 44.1 kHz) and
+the two per-scene slices (`../start-ride/soundv9/soundtrack_v9.wav`,
+`../gates-saving/soundv10/soundtrack_v10.wav`) from Nathan's stock track
+(`../piano/projects/tunetank-ride/sources/tunetank-emotional-classical-484234.mp3`,
+decoded once with ffmpeg) placed twice on the combined clock, and it imports
+`ride_master.py`'s E5 schedule for the five pulses over the second ride;
+`ride_master.py` still builds soundv1 unchanged. `check_tunetank.py` verifies the outputs.

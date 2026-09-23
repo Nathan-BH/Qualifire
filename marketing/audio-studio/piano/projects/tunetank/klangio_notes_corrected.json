@@ -1,0 +1,154 @@
+[
+ {
+  "system": 0,
+  "x": 66.45,
+  "staff": 1,
+  "clef": "treble",
+  "midi": 83,
+  "name": "B5"
+ },
+ {
+  "system": 0,
+  "x": 115.79,
+  "staff": 1,
+  "clef": "treble",
+  "midi": 66,
+  "name": "F4#"
+ },
+ {
+  "system": 0,
+  "x": 115.79,
+  "staff": 1,
+  "clef": "treble",
+  "midi": 86,
+  "name": "D6"
+ },
+ {
+  "system": 0,
+  "x": 115.79,
+  "staff": 1,
+  "clef": "treble",
+  "midi": 93,
+  "name": "A6"
+ },
+ {
+  "system": 0,
+  "x": 115.79,
+  "staff": 1,
+  "clef": "treble",
+  "midi": 98,
+  "name": "D7"
+ },
+ {
+  "system": 0,
+  "x": 147.96,
+  "staff": 1,
+  "clef": "treble",
+  "midi": 81,
+  "name": "A5"
+ },
+ {
+  "system": 0,
+  "x": 165.48,
+  "staff": 0,
+  "clef": "bass",
+  "midi": 66,
+  "name": "F4#"
+ },
+ {
+  "system": 0,
+  "x": 165.48,
+  "staff": 1,
+  "clef": "treble",
+  "midi": 98,
+  "name": "D7"
+ },
+ {
+  "system": 0,
+  "x": 183.94,
+  "staff": 1,
+  "clef": "treble",
+  "midi": 79,
+  "name": "G5"
+ },
+ {
+  "system": 0,
+  "x": 215.48,
+  "staff": 1,
+  "clef": "treble",
+  "midi": 57,
+  "name": "A3"
+ },
+ {
+  "system": 0,
+  "x": 233.42,
+  "staff": 1,
+  "clef": "treble",
+  "midi": 98,
+  "name": "D7"
+ },
+ {
+  "system": 0,
+  "x": 242.38,
+  "staff": 1,
+  "clef": "treble",
+  "midi": 54,
+  "name": "F3#"
+ },
+ {
+  "system": 0,
+  "x": 251.35,
+  "staff": 1,
+  "clef": "treble",
+  "midi": 98,
+  "name": "D7"
+ },
+ {
+  "system": 0,
+  "x": 275.1,
+  "staff": 1,
+  "clef": "treble",
+  "midi": 54,
+  "name": "F3#"
+ },
+ {
+  "system": 0,
+  "x": 275.1,
+  "staff": 1,
+  "clef": "treble",
+  "midi": 57,
+  "name": "A3"
+ },
+ {
+  "system": 0,
+  "x": 275.1,
+  "staff": 1,
+  "clef": "treble",
+  "midi": 98,
+  "name": "D7"
+ },
+ {
+  "system": 0,
+  "x": 287.57,
+  "staff": 1,
+  "clef": "treble",
+  "midi": 98,
+  "name": "D7"
+ },
+ {
+  "system": 0,
+  "x": 306.02,
+  "staff": 1,
+  "clef": "treble",
+  "midi": 98,
+  "name": "D7"
+ },
+ {
+  "system": 0,
+  "x": 318.24,
+  "staff": 1,
+  "clef": "treble",
+  "midi": 98,
+  "name": "D7"
+ }
+]

@@ -1,5 +1,11 @@
 # audio-studio — structure
 
+> **Decision note, 2026-09-23 (cycle 16):** the `synth.py` synthesised direction is dropped —
+> Nathan: "i do not wish to move forward with any of the synthesized sounds". No new round
+> uses `synth.py` audio; the ride and opening use Nathan's Tunetank recordings, the other
+> scenes get a silent round; earlier `soundvN/` rounds stay on disk for reference. See
+> `../cycles/16_ride-tunetank-soundtrack/README.md`. The text below predates this.
+
 This folder is the sound design for the same Qualifire marketing compositions as
 `../silent-studio/`. One folder per teaser ingredient, same names, same set: `brandmark`,
 `colours`, `gates-saving`, `ranking`, `start-ride`, `teaser`.
