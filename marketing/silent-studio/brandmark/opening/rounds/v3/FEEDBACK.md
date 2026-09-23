@@ -1,6 +1,6 @@
 # 01 — Opening — Round v3
 
-**Render file:** opening_v3.mp4 (not rendered yet — device_bash was unreachable this session).
+**Render file:** opening_v3.mp4 (rendered 2026-09-10; reviewed and confirmed by Nathan 2026-09-20).
 **Duration (planned):** 6.500s (195 frames at 30fps, 1920x1080, no audio).
 **Source:** ../../index.html.
 

@@ -57,6 +57,9 @@ input[type=range]{accent-color:var(--accent-bright);width:104px}
 .clock{font-family:var(--fm);font-size:13px;font-variant-numeric:tabular-nums;color:var(--ink);min-width:88px}
 
 canvas{display:block;width:100%;height:auto;background:var(--roll)}
+.rollrow{display:flex;align-items:flex-start;gap:6px}
+.rollrow canvas#cv{flex:1 1 auto;width:auto;min-width:0}
+.ruler{flex:0 0 34px;width:34px;background:var(--roll)}
 
 .flag{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px 14px;font-size:12.5px;
   background:var(--danger-soft);color:var(--danger);border-top:1px solid var(--line-soft)}
@@ -119,9 +122,11 @@ footer{color:var(--faint);font-size:11.5px;line-height:1.6}
           <option value="fit">Fit this file</option>
         </select>
       </div>
-      <div class="ctl"><label for="src">Song</label>
+      <div class="ctl"><label for="src">Track</label>
         <select id="src">
-          <option value="interstellar" selected>Interstellar (corrected) — 20 notes</option>
+          <option value="interstellar" selected>Interstellar (full theme) — 20 notes</option>
+          <option value="gates_saving">Gates &amp; Saving mix — 10 notes</option>
+          <option value="start_ride">Start Ride mix — 8 notes</option>
         </select>
       </div>
       <div class="ctl"><button id="merge" aria-pressed="false" title="Basic Pitch cuts held notes in two; this rejoins same-pitch notes less than a quarter second apart. Kyutai does not need it \u2014 its zero-gap repeats are real chord entries.">Rejoin split notes</button></div>
@@ -134,7 +139,11 @@ footer{color:var(--faint);font-size:11.5px;line-height:1.6}
         </select>
       </div>
     </div>
-    <canvas id="cv" width="1040" height="520" aria-label="Falling note roll above a labelled piano keyboard"></canvas>
+    <div class="rollrow">
+      <canvas id="ruleL" class="ruler" aria-hidden="true"></canvas>
+      <canvas id="cv" width="1040" height="520" aria-label="Falling note roll above a labelled piano keyboard"></canvas>
+      <canvas id="ruleR" class="ruler" aria-hidden="true"></canvas>
+    </div>
     <div class="flag" id="flag" hidden>
       <span id="flagtext"></span>
       <button id="fold" aria-pressed="false">Fold them into range</button>
@@ -199,11 +208,31 @@ let octOff=0;
 const nm=m=>NAMES[((m%12)+12)%12]+(Math.floor(m/12)-1+octOff);
 const fmt=s=>{s=Math.max(0,s);const m=Math.floor(s/60);return m+":"+String(Math.floor(s%60)).padStart(2,"0")+"."+Math.floor((s*10)%10);};
 
-// ---- the song this page opens with ----
+// ---- the songs this page opens with ----
+// Full Interstellar theme (both voices, all 20 notes, 0-15.04s) -- the
+// "ground truth" note data from piano/projects/interstellar/write_midi.py's
+// BASS+MELODY lists (interstellar_corrected.mid).
 const SEED_INTERSTELLAR=[[0.31,41,3.72,80],[0.31,69,0.61,95],[0.92,76,1.22,95],[2.14,69,0.64,95],[2.78,76,1.25,95],[4.03,43,3.72,80],[4.03,71,0.62,95],[4.65,76,1.23,95],[5.94,71,0.63,95],[6.61,76,1.21,95],[7.88,45,3.81,80],[7.88,72,0.66,95],[8.57,76,1.33,95],[10.06,72,0.58,95],[10.68,76,1.1,95],[11.84,43,3.2,80],[11.84,74,0.62,95],[12.5,76,1.28,95],[13.85,74,0.62,95],[14.51,76,0.53,95]];
+// gates-saving/soundv8: bass_only.wav + melody_only.wav (both voices, same as
+// above), but the video only sounds it for 4.4-11.7s (7.3s) restarted from the
+// theme's own t=0 -- so only the first 7.3s of notes are ever heard. Verified
+// against the actual soundtrack_v8.wav by onset+pitch analysis (8 onsets,
+// F2/G2 bass under A4/E5/B4/E5 melody, matching this list exactly).
+const SEED_GATES_SAVING=[[0.31,41,3.72,80],[0.31,69,0.61,95],[0.92,76,1.22,95],[2.14,69,0.64,95],[2.78,76,1.25,95],[4.03,43,3.72,80],[4.03,71,0.62,95],[4.65,76,1.23,95],[5.94,71,0.63,95],[6.61,76,1.21,95]];
+// start-ride/soundv7: bass_only.wav + voice_a.wav (the melody's "moving" line
+// only -- excludes the repeated E5 pulse), sounded for 5.3-13.8s (8.5s) of the
+// video, restarted from the theme's own t=0 -- so only the first 8.5s of notes
+// are heard, and no E5 ever appears. Verified against the actual
+// start-ride_v4_with_sound_v7.mp4 audio by onset+pitch analysis (5 onset
+// times, F2/G2/A2 bass under A4/A4/B4/B4/C5, no E5 -- matches this list).
+const SEED_START_RIDE=[[0.31,41,3.72,80],[0.31,69,0.61,95],[2.14,69,0.64,95],[4.03,43,3.72,80],[4.03,71,0.62,95],[5.94,71,0.63,95],[7.88,45,3.81,80],[7.88,72,0.66,95]];
 const SOURCES={
-  interstellar:{title:"Interstellar (corrected)",
-      notes:SEED_INTERSTELLAR.map(a=>({t:a[0],m:a[1],d:a[2],v:a[3]})), merge:false}
+  interstellar:{title:"Interstellar (full theme)",
+      notes:SEED_INTERSTELLAR.map(a=>({t:a[0],m:a[1],d:a[2],v:a[3]})), merge:false},
+  gates_saving:{title:"Gates & Saving mix (soundv8)",
+      notes:SEED_GATES_SAVING.map(a=>({t:a[0],m:a[1],d:a[2],v:a[3]})), merge:false},
+  start_ride:{title:"Start Ride mix (soundv7)",
+      notes:SEED_START_RIDE.map(a=>({t:a[0],m:a[1],d:a[2],v:a[3]})), merge:false}
 };
 let raw=SOURCES.interstellar.notes.map(n=>({...n}));
 let notes=[];
@@ -345,6 +374,9 @@ function layout(W){
 
 // ---------- drawing ----------
 const cv=document.getElementById("cv"),ctx=cv.getContext("2d");
+const ruleL=document.getElementById("ruleL"),ruleR=document.getElementById("ruleR");
+const rctxL=ruleL.getContext("2d"),rctxR=ruleR.getContext("2d");
+const RULER_W=34;
 const KEYH=112,WINDOW=6;
 let cssW=1040,cssH=520;
 function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
@@ -355,11 +387,44 @@ function resize(){
   cv.width=Math.round(cssW*dpr);cv.height=Math.round(cssH*dpr);
   cv.style.height=cssH+"px";
   ctx.setTransform(dpr,0,0,dpr,0,0);
+  for(const [rc,rx] of [[ruleL,rctxL],[ruleR,rctxR]]){
+    rc.width=Math.round(RULER_W*dpr);rc.height=Math.round(cssH*dpr);
+    rc.style.height=cssH+"px";
+    rx.setTransform(dpr,0,0,dpr,0,0);
+  }
   geom=layout(cssW);draw();
+}
+// Vertical time ruler flanking the roll: major ticks + labels every 1s,
+// medium ticks every 0.5s, minor ticks every 0.1s -- fine enough to read
+// timing against the falling notes without cluttering it with hundredths.
+function drawRuler(rx,W,rollH,pps,curTime,side){
+  rx.clearRect(0,0,W,cssH);
+  rx.font="9px 'IBM Plex Mono',monospace";
+  rx.textBaseline="middle";
+  rx.strokeStyle=css("--line");
+  rx.fillStyle=css("--muted");
+  const iStart=Math.floor(curTime*10),iEnd=Math.ceil((curTime+WINDOW)*10);
+  for(let i=iStart;i<=iEnd;i++){
+    const tt=i/10,y=rollH-(tt-curTime)*pps;
+    if(y<-1||y>rollH+1)continue;
+    const major=i%10===0,mid=!major&&i%5===0;
+    const len=major?11:(mid?7:4);
+    rx.lineWidth=major?1.2:1;
+    rx.beginPath();
+    if(side==="left"){rx.moveTo(W-len,y+0.5);rx.lineTo(W,y+0.5);}
+    else{rx.moveTo(0,y+0.5);rx.lineTo(len,y+0.5);}
+    rx.stroke();
+    if(major){
+      rx.textAlign=side==="left"?"right":"left";
+      rx.fillText(tt.toFixed(1),side==="left"?W-len-3:len+3,y);
+    }
+  }
 }
 function draw(){
   if(!geom)geom=layout(cssW);
   const rollH=cssH-KEYH,pps=rollH/WINDOW;
+  drawRuler(rctxL,RULER_W,rollH,pps,time,"left");
+  drawRuler(rctxR,RULER_W,rollH,pps,time,"right");
   const C={roll:css("--roll"),line:css("--rollline"),acc:css("--accent-bright"),
     accs:css("--accent-soft"),ink:css("--ink"),muted:css("--muted"),
     ln:css("--line"),onacc:css("--on-accent"),kw:css("--keyw"),kb:css("--keyb"),ke:css("--keyedge"),dang:css("--danger"),surf:css("--surface")};

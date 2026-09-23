@@ -14,7 +14,8 @@ the shared `../synth.py` toolkit.
 | [soundv4](soundv4/FEEDBACK.md) | start-ride_v4_with_sound_v4.mp4 | Superseded -- played the whole 14.0s, see soundv5 |
 | [soundv5](soundv5/FEEDBACK.md) | start-ride_v4_with_sound_v5.mp4 | Superseded -- voice_a carried a spurious MIDI note, see soundv6 |
 | [soundv6](soundv6/FEEDBACK.md) | start-ride_v4_with_sound_v6.mp4 | Superseded -- Nathan approved the FluidSynth piano engine, see soundv7 |
-| [soundv7](soundv7/FEEDBACK.md) | start-ride_v4_with_sound_v7.mp4 | **Current** 2026-09-19 -- same mix/window as soundv6, rendered with real piano samples (FluidSynth) instead of pluck()/pad() |
+| [soundv7](soundv7/FEEDBACK.md) | start-ride_v4_with_sound_v7.mp4 | Superseded by v8. 2026-09-19 -- same mix/window as soundv6, rendered with real piano samples (FluidSynth) instead of pluck()/pad() |
+| [soundv8](soundv8/FEEDBACK.md) | start-ride_v4_with_sound_v8.mp4 | **Current** 2026-09-20 -- built and muxed, confirmed 14.000000s via ffprobe, in `all-renders/`. Slice [0-14.0s] of `../ride/soundv1/ride_master_v1.wav`, same mix/window as soundv7, engine swapped to Salamander (cycle 14, no A/B) as part of the continuous "ride" master |
 
 ## Sonic direction so far
 Deliberately held-back: near-silence while the map sits on the start point, a

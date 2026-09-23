@@ -1,6 +1,6 @@
 # 02 — Start Ride — Round v4
 
-**Render file:** start-ride_v4.mp4 (not rendered yet — device_bash was unreachable this session).
+**Render file:** start-ride_v4.mp4 (rendered 2026-09-10; reviewed and confirmed by Nathan 2026-09-20).
 **Duration (planned):** 14.000s (420 frames at 30fps, 1920x1080, no audio).
 **Source:** ../../index.html.
 

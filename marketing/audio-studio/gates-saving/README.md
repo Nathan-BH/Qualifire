@@ -74,3 +74,16 @@ verified two ways: frame extraction (rider dot sits exactly on each gate tick at
 5.32/7.18/9.05s) and an onset scan of the audio (attacks land within ~20ms of target).
 See `soundv8/FEEDBACK.md` for the full before/after table and the one open item (first
 ride leg's ~3x speed-up hasn't been watched at full speed yet).
+
+**Update:** soundv9 (2026-09-20) -- direction change again, part of cycle 14's
+continuous "ride" master, not a bugfix on soundv8. Nathan's idea 6 moved the gates
+themselves (uniform surge, exact quarters, five E5 pulses -- see
+`../../silent-studio/gates-saving/index.html`'s `PULSE_T`/`GATE_T`/`RIDE_PROFILE`,
+`BRIEF-gates-surge-pacing.md`), so soundv8's E5 pulses (5.32/7.18/9.05s, the old gate
+times) no longer line up. `soundv9/soundtrack_v9.wav` is not built from this folder's
+`soundtrack.py` at all -- it is the [14.0-26.3s] slice of
+`../ride/soundv1/ride_master_v1.wav`, the two-scene continuous Salamander master built
+in `BRIEF-ride-loop-track.md`; its five E5 pulses land at 3.80/5.81/7.65/9.51/11.38s on
+this scene's own clock, matching the landed `index.html` to 0ms. The mux
+(`gates-saving_v8_with_sound_v9.mp4`) is built and in `all-renders/`, confirmed
+12.300000s via ffprobe. See `soundv9/FEEDBACK.md`.

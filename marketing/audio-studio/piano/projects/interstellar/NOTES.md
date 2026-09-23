@@ -246,3 +246,22 @@ Chrome/Edge can keep background processes alive by default) and the fix is Task 
 -> End Task on chrome.exe/msedge.exe, not another hard refresh. If Explorer somehow shows
 the *old* ~772KB size, that would mean something else entirely is going on with this
 path/mount and needs a fresh look.
+
+## Update (2026-09-20) — Salamander wired into the scene pipeline (cycle 14)
+
+Nathan asked whether `start-ride/soundv7` and `gates-saving/soundv8` already used the
+real Salamander samples. No: both are FluidSynth renders of the bundled GM soundfont
+(`TimGM6mb.sf2`), not Salamander. And yes, Salamander is the better sound — the
+multi-sampled Yamaha C5 that midiviewer.io/Klang.io use; the FluidSynth substitute was
+only ever a stand-in for a shell that couldn't reach the real samples.
+
+New this cycle: `../../salamander_render.py` (numpy + ffmpeg sampler over the 29 real
+mp3s in `piano/samples/salamander/`, `A0` missing) and `salamander_soundtrack.py` in
+this folder, which renders the same four layers into a new `salamander/` sub-folder
+(`bass_only.wav`, `melody_only.wav`, `voice_a.wav`, `voice_e5.wav`) and exports the
+per-layer gains calibrated to the FluidSynth files' peaks — a drop-in equivalent set,
+not a round of its own. From cycle 14 on, the ride master
+(`../../ride/ride_master.py`) renders through Salamander directly — Nathan's Q1
+answer skipped the A/B comparison round. The FluidSynth layer files in this folder
+stay on disk as the record of soundv5–v8 and as the level reference the Salamander
+gains are calibrated against.
