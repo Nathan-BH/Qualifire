@@ -2,7 +2,7 @@
 
 **Visual source:** `../../silent-studio/colours/rounds/v2/colours_v2.mp4` (19.0 s)
 **Filled in by Nathan on:** *(not yet filled in)*   **Status:** draft
-**Current soundtrack round:** soundv1 (`soundv1/FEEDBACK.md`)
+**Current soundtrack round:** soundv2 (`soundv2/FEEDBACK.md`) — silent round, cycle 16
 
 Claude fills the first three columns from the composition's timeline and from what
 `soundtrack.py` currently plays. Nathan writes in the last column — plain words, references

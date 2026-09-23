@@ -98,7 +98,7 @@ format|duration=6.500000
 ## What to listen for
 - The two final re-strikes on the wordmark (22 ms early) and the tagline (97 ms early):
   glued, or does the tagline one read early?
-- Level: the opening chord at about -10 dBFS RMS is the loudest thing in any scene so far.
+- Level: the opening chord is about -13.6 dBFS RMS (50 ms at 0.65 s); the loudest 50 ms in soundv3 is about -9 dBFS RMS (-8.7 to -9.7), similar to ride_v2 and opening soundv2 (-8.6), quieter than colours soundv1 (-7.3) and the early start-ride rounds v1-v6 (-4.4).
   Right for a brand opening, or bring `GAIN` down (Q9)?
 - The first 0.65 s: the ring starts drawing to a near-silent head. Fine, or does the ring
   want a sound of its own again? (That would be a layer on top of a track Nathan called

@@ -254,7 +254,9 @@ it plain: one column, system font, dark-on-light, nothing decorative):
   the mode the README tells Nathan to trust: what he hears is exactly the audio that the
   build would place under that frame.
 - Frame readout: `frameOf(video.currentTime, fps)`; `#shown-frame` from rVFC's
-  `metadata.mediaTime` → `frameOf(mediaTime, fps)`; if the two differ after a seek, show a
+  `metadata.mediaTime` → `shownFrameOf(mediaTime, fps)` = `round(mediaTime × fps)` (a displayed
+  frame's mediaTime is a frame-START time, rounded to whole µs by Chromium, so `floor` misreads
+  every frame n with n mod 3 = 1 as n−1 — found by Inspect 2026-09-23); if the two differ after a seek, show a
   small "(shown: N)" warning rather than hiding it.
 - Loading a file resets playback, keeps the config; picking a new video re-reads `duration`
   and rescales the canvas; file names go into `video_name` / `audio_name`.

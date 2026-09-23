@@ -10,9 +10,9 @@ same brand across opening, closing, and the teaser's own bookends. Since cycle
 16 (opening soundv3) the opening no longer uses the synthesised brand chime/stinger at all
 — it is Nathan's Tunetank piano logo recording end to end (see `opening/README.md`); the
 shared chime stays in `synth.py` for the earlier rounds only — no new round uses it
-(Nathan, 2026-09-23).
+(Nathan, 2026-09-23). Closing's soundv3 (cycle 16) is silent: no synthesised sound moves forward and no cycle-16 recording fits 4.0 s.
 
 | Sub-scene | Status | Feedback goes to |
 |---|---|---|
 | [opening/](opening/README.md) | in progress — soundv3 | `opening/soundv3/FEEDBACK.md` |
-| [closing/](closing/README.md) | in progress — soundv1 | `closing/soundv1/FEEDBACK.md` |
+| [closing/](closing/README.md) | soundv3 — silent round (cycle 16) | `closing/soundv3/FEEDBACK.md` |

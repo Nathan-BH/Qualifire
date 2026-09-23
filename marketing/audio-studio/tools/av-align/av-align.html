@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>av-align: audio to video alignment</title>
+<style>
+:root { color-scheme: light; }
+body { font: 14px/1.45 system-ui, "Segoe UI", sans-serif; color: #1b1b1b; background: #fafafa; margin: 0 auto; padding: 12px 16px 40px; max-width: 1000px; }
+h1 { font-size: 20px; margin: 4px 0 8px; }
+h2 { font-size: 15px; margin: 18px 0 6px; border-bottom: 1px solid #ccc; padding-bottom: 2px; }
+details { background: #fff; border: 1px solid #ccc; border-radius: 4px; padding: 6px 12px; margin-bottom: 8px; }
+summary { cursor: pointer; font-weight: 600; }
+#status { font: 12px/1.4 ui-monospace, Consolas, monospace; background: #eef3f6; border: 1px solid #c7d4dc; padding: 4px 8px; min-height: 1.4em; border-radius: 3px; margin: 6px 0; word-break: break-word; }
+#drop { border: 2px dashed #999; border-radius: 6px; padding: 10px; text-align: center; color: #555; margin: 6px 0; }
+#drop.over { border-color: #1a6b8a; background: #e4f1f6; }
+.row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 6px 0; }
+label { white-space: nowrap; }
+button { font: inherit; padding: 3px 9px; border: 1px solid #888; border-radius: 3px; background: #f1f1f1; cursor: pointer; }
+button:hover { background: #e3e3e3; }
+button:disabled { opacity: 0.4; cursor: default; }
+input[type="number"] { width: 6.5em; }
+input[type="text"] { width: 5em; }
+input.wide { width: 24em; max-width: 100%; }
+video { display: block; width: 100%; max-width: 960px; background: #000; }
+#time { font: 600 15px ui-monospace, Consolas, monospace; }
+#shown-frame { font: 12px ui-monospace, Consolas, monospace; color: #555; }
+canvas { display: block; width: 100%; height: 160px; border: 1px solid #999; background: #fff; cursor: crosshair; }
+.prow { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; padding: 4px 0; border-bottom: 1px solid #e2e2e2; }
+.frames { font: 12px ui-monospace, Consolas, monospace; color: #555; min-width: 5.5em; }
+table { border-collapse: collapse; font: 12px ui-monospace, Consolas, monospace; }
+th, td { border: 1px solid #ccc; padding: 2px 8px; text-align: left; }
+tr.attack td { background: #fff3c4; font-weight: 600; }
+#config-out { width: 100%; height: 14em; font: 12px/1.35 ui-monospace, Consolas, monospace; box-sizing: border-box; }
+footer { margin-top: 24px; color: #555; font-size: 12px; }
+@media (prefers-color-scheme: dark) { :root { color-scheme: dark; } body { background: #181a1c; color: #e4e4e4; } details, #status, .row { color: inherit; } details { background: #202326; border-color: #444; } #status { background: #22303a; border-color: #35505f; } button { background: #2c2f33; color: #eee; border-color: #666; } th, td { border-color: #555; } tr.attack td { background: #4a4218; } canvas { border-color: #555; } .frames, #shown-frame, footer { color: #aaa; } }
+</style></head><body>
+<script id="av-config">
+/* AV-ALIGN CONFIG BEGIN */
+window.AV_CONFIG = {
+  "scene": "ride",
+  "fps": 30,
+  "video_name": "ride_v2_silent.mp4",
+  "audio_name": "tunetank-emotional-classical-484234.mp3",
+  "nudge_target": "T1",
+  "placements": [
+    { "label": "T1", "at": 3.8000, "gain": 0.4500, "note": "ride 1: audio t=0 while the START box fades out (3.55-4.00); the value to nudge" },
+    { "label": "T2", "at": 16.5400, "gain": 0.4500, "note": "ride 2: 17.80 - 1.26, attack on the start pulse; derived in ride_tunetank.py, do not nudge" }
+  ],
+  "markers": [
+    { "label": "START click", "t": 3.2000 },
+    { "label": "START box fade begins", "t": 3.5500 },
+    { "label": "camera push-in begins", "t": 3.8000 },
+    { "label": "START box gone", "t": 4.0000 },
+    { "label": "rider moves", "t": 5.3000 },
+    { "label": "rider stops", "t": 13.8000 },
+    { "label": "scene cut / zoom-out begins", "t": 14.0000 },
+    { "label": "zoom-out ends", "t": 15.0000 },
+    { "label": "ride-2 start pulse (E5)", "t": 17.8000 },
+    { "label": "gate 1 pulse", "t": 19.8100 },
+    { "label": "gate 2 pulse", "t": 21.6500 },
+    { "label": "gate 3 pulse", "t": 23.5100 },
+    { "label": "finish pulse", "t": 25.3800 },
+    { "label": "video ends", "t": 26.3000 }
+  ],
+  "presets": [
+    { "scene": "opening", "fps": 30, "video_name": "opening_v3.mp4", "audio_name": "tunetank-piano-logo-484286.mp3", "nudge_target": "T0", "placements": [ { "label": "T0", "at": 0.0000, "gain": 0.8500, "note": "file t=0 on video t=0" } ], "markers": [ { "label": "ring halfway", "t": 0.6500 }, { "label": "slash in", "t": 1.3000 }, { "label": "mark fades", "t": 2.1500 }, { "label": "wordmark tween", "t": 2.9500 }, { "label": "tagline tween", "t": 3.3500 }, { "label": "fade to black", "t": 5.5000 }, { "label": "video ends", "t": 6.5000 } ] }
+  ]
+};
+/* AV-ALIGN CONFIG END */
+</script>
+<h1>av-align: audio to video alignment</h1>
+<details id="about" open="">
+<summary>What this tool will and will not do</summary>
+<p><strong>Will:</strong></p>
+<ul>
+<li>Open any mp4 the browser can decode (all Qualifire renders: h264, yuv420p, 30 fps) and any wav or mp3.</li>
+<li>Step one frame forward or back (33.33 ms at 30 fps), step 10 frames, jump to a time or a frame, and show time in seconds (3 decimals) and the frame number (0-based, frame 0 = 0.000 s).</li>
+<li>Draw the audio waveform on the video clock, shifted by the offset, with a playhead, frame ticks when zoomed in, and the audio attacks (onsets) marked and listed in both audio time and video time.</li>
+<li>Let you place the same audio file more than once (the ride uses two placements, T1 and T2), nudge the selected placement by 1 frame, 10 ms or 100 ms, and type an exact value.</li>
+<li>Play video and audio together at the chosen offset (real time, Web Audio clock), and scrub: while stepping frames, play exactly the 33.33 ms of audio that belongs to the frame on screen. Scrub is exact by construction and is the mode to trust.</li>
+<li>Save copy: download a copy of this whole page with the current offsets, markers and file names written into the config block; the rest of the file is unchanged.</li>
+</ul>
+<p><strong>Will not:</strong></p>
+<ul>
+<li>Change any file in the repo, any render, any WAV, or any brief. It is a viewer. A number you settle on becomes a change only when the coordinator re-runs the relevant build with it.</li>
+<li>Guarantee sample-exact real-time sync. Browser video and Web Audio run on different clocks; the page re-syncs whenever they drift more than about 25 ms, so real-time playback is right to about 1 frame (33 ms) on a wired output, and worse on Bluetooth (100 to 200 ms of latency the page cannot see). Judge with scrub and the onset markers; use real-time playback for the feel.</li>
+<li>Mix, fade, apply gain curves, or reproduce the E5 pulse layer. To hear the built mix, load the built master WAV with one placement at 0.0.</li>
+<li>Know where your files are. Browsers expose only the file name of a picked file, so a saved copy records names, not paths.</li>
+<li>Work in Firefox as intended (no requestVideoFrameCallback; it falls back to a coarser clock and says so). Chrome and Edge on Windows are the targets.</li>
+</ul>
+<p>A placement offset "at" is the video time (seconds on the video clock, 0 = first frame) at which the audio file t = 0 is placed. Positive means the audio starts later than the video.</p>
+</details>
+<div id="status"></div>
+<div id="drop">Drop an mp4 and an audio file (wav or mp3) here, or use the pickers below.</div>
+<div class="row">
+<label>Video <input type="file" id="video-file" accept="video/mp4"></label>
+<label>Audio <input type="file" id="audio-file" accept="audio/*"></label>
+<label>Preset <select id="preset"></select></label>
+<label>fps <input type="number" id="fps" min="1" max="240" step="1" value="30"></label>
+</div>
+<video id="video" muted="" playsinline="" preload="auto"></video>
+<div id="transport" class="row">
+<button id="step-back10" title="10 frames back (Shift+Left)">-10f</button>
+<button id="step-back" title="1 frame back (Left)">-1f</button>
+<button id="play" title="Play or pause (Space)">Play / pause</button>
+<button id="step-fwd" title="1 frame forward (Right)">+1f</button>
+<button id="step-fwd10" title="10 frames forward (Shift+Right)">+10f</button>
+<button id="stop">Stop</button>
+<span id="time"></span>
+<span id="shown-frame"></span>
+</div>
+<div class="row">
+<label>Go to time (s) <input type="number" id="goto-time" step="0.001" min="0"></label>
+<label>Go to frame <input type="number" id="goto-frame" step="1" min="0"></label>
+<label><input type="checkbox" id="scrub" checked=""> play this frame's audio when stepping</label>
+<label><input type="checkbox" id="loop-frame"> repeat the frame's audio 3x</label>
+</div>
+<h2>Waveform (video clock)</h2>
+<div class="row"><label>Zoom <select id="zoom"><option value="all">all</option><option value="zoom">+/- 2 s around the playhead</option></select></label></div>
+<canvas id="wave"></canvas>
+<h2>Placements</h2>
+<div id="placements"></div>
+<div id="nudges" class="row">
+<button id="n-1f-">-1f</button><button id="n-100-">-100 ms</button><button id="n-10-">-10 ms</button>
+<button id="n-10p">+10 ms</button><button id="n-100p">+100 ms</button><button id="n-1fp">+1f</button>
+<button id="add-placement">Add placement</button>
+</div>
+<h2>Markers</h2>
+<div id="markers"></div>
+<div class="row"><button id="add-marker">Add marker at playhead</button></div>
+<section id="onsets">
+<h2>Detected attacks (onsets)</h2>
+<div class="row">
+<label>Floor <input type="range" id="onset-floor" min="-60" max="-20" step="1" value="-45"> <span id="onset-floor-v"></span> dBFS</label>
+<label>Jump <input type="range" id="onset-jump" min="3" max="12" step="0.5" value="6"> <span id="onset-jump-v"></span> dB</label>
+</div>
+<div id="onset-msg"></div>
+<table id="onset-table"><thead></thead><tbody></tbody></table>
+</section>
+<section id="config">
+<h2>Config (what Save copy writes)</h2>
+<textarea id="config-out" readonly="" spellcheck="false"></textarea>
+<div class="row"><button id="save-copy">Save copy</button><button id="copy-config">Copy config</button></div>
+</section>
+<footer>This page changes nothing in the repository. A saved copy is a proposal; the coordinator applies it by re-running the build.</footer>
+<script id="av-core">
+// Pure functions only: no document/window access. Evaluated by av-align.test.mjs under node's vm.
+const AVCore = (() => {
+  // The delimiters are assembled from parts so that the literal text occurs once in the whole file (in the config block).
+  const delim = w => "/* AV-ALIGN CONFIG " + w + " */";
+
+  const frameOf = (t, fps) => Math.max(0, Math.floor(t * fps + 1e-6));
+  const timeOfFrame = (n, fps) => n / fps;
+  // The frame on screen from requestVideoFrameCallback's mediaTime, which is a frame-START time rounded to whole microseconds (can sit just below n/fps).
+  const shownFrameOf = (mediaTime, fps) => Math.max(0, Math.round(mediaTime * fps));
+  const seekTimeOfFrame = (n, fps) => (n + 0.5) / fps; // seeking exactly on a boundary can show the previous frame in Chromium
+  const roundTenthMs = t => Math.round(t * 1e4) / 1e4;
+  const nudge = (at, deltaS) => roundTenthMs(at + deltaS);
+  // +-1 frame nudge: a value already on the frame grid (to within the 4-decimal rounding) steps grid to grid, so repeated nudges do not drift.
+  const nudgeFrames = (at, dir, fps) => {
+    const g = at * fps, r = Math.round(g);
+    return roundTenthMs(((Math.abs(g - r) < 0.005 ? r : g) + dir) / fps);
+  };
+  const fmtSeconds = t => t.toFixed(3);
+  const fmtFrames = (t, fps) => (t * fps).toFixed(2);
+  const videoTimeOfAudio = (tA, at) => tA + at;
+  const audioTimeOfVideo = (tV, at) => tV - at;
+  const scrubWindow = (tV, at, fps) => [tV - at, tV - at + 1 / fps];
+
+  // Onset detector: first-difference high-pass, 5 ms RMS blocks in dB, jump against the max of the previous `look` blocks.
+  function detectOnsets(mono, sr, opts) {
+    const o = Object.assign({ win: 0.005, look: 4, jumpDb: 6, floorDb: -45, minGap: 0.06 }, opts || {});
+    const w = Math.round(o.win * sr), nb = Math.floor(mono.length / w);
+    const db = new Float64Array(nb);
+    for (let b = 0; b < nb; b++) {
+      let s = 0;
+      const i0 = b * w;
+      for (let i = i0; i < i0 + w; i++) {
+        const d = i === 0 ? mono[0] : mono[i] - mono[i - 1];
+        s += d * d;
+      }
+      db[b] = 20 * Math.log10(Math.max(Math.sqrt(s / w), 1e-9));
+    }
+    const out = [];
+    let last = -Infinity;
+    for (let i = o.look; i < nb; i++) {
+      let mx = -Infinity;
+      for (let k = i - o.look; k < i; k++) if (db[k] > mx) mx = db[k];
+      const t = i * w / sr;
+      if (db[i] - mx > o.jumpDb && db[i] > o.floorDb && t - last > o.minGap) {
+        out.push({ t: Math.round(t * 1000) / 1000, db: Math.round(db[i] * 10) / 10 });
+        last = t;
+      }
+    }
+    return out;
+  }
+
+  // [min, max] per bin over samples [i0, i1); bin b covers [i0 + b*w, i0 + (b+1)*w) with w = (i1 - i0) / bins.
+  function peakBins(mono, i0, i1, bins) {
+    const out = new Float32Array(2 * bins), w = (i1 - i0) / bins;
+    for (let b = 0; b < bins; b++) {
+      const s = Math.max(0, Math.floor(i0 + b * w));
+      const e = Math.min(mono.length, Math.max(s + 1, Math.floor(i0 + (b + 1) * w)));
+      let mn = Infinity, mx = -Infinity;
+      for (let i = s; i < e; i++) {
+        const v = mono[i];
+        if (v < mn) mn = v;
+        if (v > mx) mx = v;
+      }
+      if (mn === Infinity) { mn = 0; mx = 0; }
+      out[2 * b] = mn;
+      out[2 * b + 1] = mx;
+    }
+    return out;
+  }
+
+  // The text of the config block is evaluated in a scratch object, never the whole page.
+  function parseConfig(blockText) {
+    const scratch = {};
+    new Function("window", blockText)(scratch);
+    if (!scratch.AV_CONFIG) throw new Error("config block did not define AV_CONFIG");
+    return scratch.AV_CONFIG;
+  }
+
+  // Deterministic text between the BEGIN and END delimiter lines, byte-for-byte the shipped layout.
+  function serializeConfig(cfg) {
+    const str = s => JSON.stringify(String(s)).replace(/</g, "\\u003c");
+    const n4 = v => Number(v).toFixed(4);
+    const P = p => '{ "label": ' + str(p.label) + ', "at": ' + n4(p.at) + ', "gain": ' + n4(p.gain) + ', "note": ' + str(p.note) + " }";
+    const M = m => '{ "label": ' + str(m.label) + ', "t": ' + n4(m.t) + " }";
+    const inline = (a, f) => a.length ? "[ " + a.map(f).join(", ") + " ]" : "[]";
+    const Q = q => '{ "scene": ' + str(q.scene) + ', "fps": ' + Math.round(q.fps) + ', "video_name": ' + str(q.video_name) +
+      ', "audio_name": ' + str(q.audio_name) + ', "nudge_target": ' + str(q.nudge_target) +
+      ', "placements": ' + inline(q.placements, P) + ', "markers": ' + inline(q.markers, M) + " }";
+    const block = (a, f) => a.length ? "[\n" + a.map(x => "    " + f(x)).join(",\n") + "\n  ]" : "[]";
+    return "window.AV_CONFIG = {\n" +
+      '  "scene": ' + str(cfg.scene) + ",\n" +
+      '  "fps": ' + Math.round(cfg.fps) + ",\n" +
+      '  "video_name": ' + str(cfg.video_name) + ",\n" +
+      '  "audio_name": ' + str(cfg.audio_name) + ",\n" +
+      '  "nudge_target": ' + str(cfg.nudge_target) + ",\n" +
+      '  "placements": ' + block(cfg.placements, P) + ",\n" +
+      '  "markers": ' + block(cfg.markers, M) + ",\n" +
+      '  "presets": ' + block(cfg.presets || [], Q) + "\n" +
+      "};\n";
+  }
+
+  // Replace exactly the text between the two delimiter lines; anything else is an error.
+  function applyConfig(sourceHtml, cfg) {
+    const b = delim("BEGIN") + "\n", e = delim("END");
+    if (sourceHtml.split(b).length !== 2 || sourceHtml.split(e).length !== 2) throw new Error("config block not found exactly once");
+    const ib = sourceHtml.indexOf(b) + b.length, ie = sourceHtml.indexOf(e);
+    if (ie < ib) throw new Error("config block delimiters out of order");
+    return { html: sourceHtml.slice(0, ib) + serializeConfig(cfg) + sourceHtml.slice(ie), replaced: 1 };
+  }
+
+  function formatCopyName(scene, date) {
+    const p = (v, n) => String(v).padStart(n || 2, "0");
+    const safe = String(scene).replace(/[^A-Za-z0-9_-]/g, "_");
+    return "av-align." + safe + "." + p(date.getFullYear(), 4) + p(date.getMonth() + 1) + p(date.getDate()) + "-" + p(date.getHours()) + p(date.getMinutes()) + ".html";
+  }
+
+  return { frameOf, shownFrameOf, timeOfFrame, seekTimeOfFrame, roundTenthMs, nudge, nudgeFrames, fmtSeconds, fmtFrames, videoTimeOfAudio, audioTimeOfVideo,
+    scrubWindow, detectOnsets, peakBins, parseConfig, serializeConfig, applyConfig, formatCopyName };
+})();
+if (typeof module !== "undefined" && module.exports) module.exports = AVCore;
+</script>
+<script id="av-app">
+// First statement: capture the page as loaded, before any DOM mutation, so Save copy works from the pristine text.
+const PRISTINE = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+
+(() => {
+  "use strict";
+  const C = AVCore;
+  const $ = id => document.getElementById(id);
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const SHIPPED = clone(window.AV_CONFIG);
+  const cfg = clone(window.AV_CONFIG);
+  let sel = Math.max(0, cfg.placements.findIndex(p => p.label === cfg.nudge_target));
+  const S = { ctx: null, buf: null, mono: null, norm: 1, onsets: [], sources: [], playing: false, first: false, resyncs: 0,
+    token: 0, shown: null, vurl: null, msg: "", vinfo: "", ainfo: "", cache: null };
+  const video = $("video"), canvas = $("wave");
+  const hasRvfc = typeof video.requestVideoFrameCallback === "function";
+  const fps = () => Math.max(1, Math.round(cfg.fps) || 30);
+  const total = () => (video.src && isFinite(video.duration)) ? Math.round(video.duration * fps()) : 0;
+  const curT = () => video.src ? video.currentTime : 0;
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text != null) e.textContent = text;
+    return e;
+  }
+
+  function setStatus() {
+    $("status").textContent = [S.vinfo, S.ainfo, hasRvfc ? "" : "no requestVideoFrameCallback: coarser clock",
+      (S.playing || S.resyncs) ? "resyncs: " + S.resyncs : "", S.msg].filter(Boolean).join(" | ") || "load a video and an audio file";
+  }
+
+  // ---------- audio ----------
+  function ensureCtx() {
+    if (!S.ctx) S.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    return S.ctx;
+  }
+
+  function stopAll() {
+    for (const r of S.sources) {
+      r.ended = true;
+      try { r.node.onended = null; r.node.stop(); } catch (e) { /* not started or already stopped */ }
+      try { r.node.disconnect(); r.gain.disconnect(); } catch (e) { /* already disconnected */ }
+    }
+    S.sources = [];
+  }
+
+  function pausePlay() {
+    S.playing = false;
+    S.token++;
+    try { video.pause(); } catch (e) { /* no media */ }
+    stopAll();
+  }
+
+  function readFile(file) {
+    return new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.onerror = () => rej(r.error || new Error("read error"));
+      r.readAsArrayBuffer(file);
+    });
+  }
+
+  async function loadAudio(file) {
+    try {
+      pausePlay();
+      S.msg = "decoding " + file.name + " ...";
+      setStatus();
+      const ab = await readFile(file);
+      const buf = await ensureCtx().decodeAudioData(ab);
+      const n = buf.length, nch = buf.numberOfChannels, mono = new Float32Array(n);
+      let peak = 0;
+      for (let ch = 0; ch < nch; ch++) {
+        const d = buf.getChannelData(ch);
+        for (let i = 0; i < n; i++) {
+          mono[i] += d[i];
+          const a = Math.abs(d[i]);
+          if (a > peak) peak = a;
+        }
+      }
+      if (nch > 1) for (let i = 0; i < n; i++) mono[i] /= nch;
+      let mp = 0;
+      for (let i = 0; i < n; i++) { const a = Math.abs(mono[i]); if (a > mp) mp = a; }
+      S.buf = buf; S.mono = mono; S.norm = mp > 1e-6 ? 1 / mp : 1; S.cache = null;
+      cfg.audio_name = file.name;
+      S.ainfo = "audio " + file.name + ": " + buf.sampleRate + " Hz, " + nch + " ch, " + buf.duration.toFixed(3) + " s, peak " +
+        (20 * Math.log10(Math.max(peak, 1e-9))).toFixed(1) + " dBFS";
+      S.msg = "";
+      computeOnsets();
+      changed(false);
+    } catch (e) {
+      S.msg = "audio load failed: " + (e && e.message ? e.message : e);
+    }
+    setStatus();
+  }
+
+  function computeOnsets() {
+    S.onsets = S.mono ? C.detectOnsets(S.mono, S.buf.sampleRate, { floorDb: +$("onset-floor").value, jumpDb: +$("onset-jump").value }) : [];
+  }
+
+  // Real-time: schedule one placement so that what reaches the output at (now + lead + latency) is the audio for that video time.
+  function startPlacement(i, m) {
+    const p = cfg.placements[i], ctx = S.ctx;
+    if (!S.buf || !p) return;
+    S.sources = S.sources.filter(r => { if (r.i === i && !r.scrub) { r.ended = true; try { r.node.onended = null; r.node.stop(); r.node.disconnect(); } catch (e) { /* ignore */ } return false; } return true; });
+    const lat = ctx.outputLatency || 0;
+    const lead = Math.max(0, 0.05 - lat);
+    let o0 = m + lead + lat - p.at, when = ctx.currentTime + lead;
+    if (o0 >= S.buf.duration) return;
+    if (o0 < 0) { when += -o0; o0 = 0; }
+    const node = ctx.createBufferSource(), g = ctx.createGain();
+    node.buffer = S.buf;
+    g.gain.value = p.gain;
+    node.connect(g); g.connect(ctx.destination);
+    const rec = { node, gain: g, i, o0, when, ended: false, scrub: false };
+    node.onended = () => { rec.ended = true; };
+    node.start(when, o0);
+    S.sources.push(rec);
+  }
+
+  function startAll(m) { cfg.placements.forEach((p, i) => startPlacement(i, m)); }
+
+  function tick(m) {
+    if (S.first) { S.first = false; S.resyncs = 0; startAll(m); return; }
+    const c = S.ctx.currentTime, lat = S.ctx.outputLatency || 0;
+    for (const r of S.sources.slice()) {
+      if (r.ended || r.scrub) continue;
+      const drift = (m - cfg.placements[r.i].at) - (r.o0 + c - lat - r.when);
+      if (Math.abs(drift) > 0.025) { S.resyncs++; startPlacement(r.i, m); }
+    }
+  }
+
+  function onFrame(now, meta) {
+    if (!S.playing) return;
+    S.shown = C.shownFrameOf(meta.mediaTime, fps());
+    tick(meta.mediaTime);
+    video.requestVideoFrameCallback(onFrame);
+  }
+
+  function loop() {
+    if (!S.playing) { refresh(); return; }
+    if (!hasRvfc) tick(video.currentTime);
+    refresh();
+    setStatus();
+    requestAnimationFrame(loop);
+  }
+
+  async function togglePlay() {
+    if (!video.src) return;
+    if (S.playing) { pausePlay(); refresh(); setStatus(); return; }
+    try { await ensureCtx().resume(); } catch (e) { /* ignore */ }
+    stopAll();
+    S.token++;
+    if (video.ended || video.currentTime >= video.duration - 0.001) video.currentTime = 0;
+    S.playing = true; S.first = true; S.resyncs = 0;
+    if (hasRvfc) video.requestVideoFrameCallback(onFrame);
+    try { await video.play(); } catch (e) { S.playing = false; S.msg = "play failed: " + e.message; setStatus(); return; }
+    requestAnimationFrame(loop);
+  }
+
+  // Scrub: play exactly the audio slice that belongs to frame n, per placement, with 2 ms fades.
+  function scrubPlay(n) {
+    if (!S.buf) return;
+    const ctx = ensureCtx();
+    ctx.resume();
+    const reps = $("loop-frame").checked ? 3 : 1, T = 1 / fps(), t0 = ctx.currentTime + 0.01;
+    cfg.placements.forEach((p, i) => {
+      const win = C.scrubWindow(C.timeOfFrame(n, fps()), p.at, fps());
+      const c0 = Math.max(0, win[0]), c1 = Math.min(S.buf.duration, win[1]), len = c1 - c0;
+      if (len <= 0.0005) return;
+      for (let k = 0; k < reps; k++) {
+        const w = t0 + k * T + (c0 - win[0]), f = Math.min(0.002, len / 2), v = p.gain;
+        const node = ctx.createBufferSource(), g = ctx.createGain();
+        node.buffer = S.buf;
+        g.gain.setValueAtTime(0, w);
+        g.gain.linearRampToValueAtTime(v, w + f);
+        g.gain.setValueAtTime(v, w + len - f);
+        g.gain.linearRampToValueAtTime(0, w + len);
+        node.connect(g); g.connect(ctx.destination);
+        node.start(w, c0, len);
+        S.sources.push({ node, gain: g, i, scrub: true, ended: false });
+      }
+    });
+  }
+
+  // ---------- video ----------
+  function videoInfo() {
+    S.vinfo = video.src && isFinite(video.duration)
+      ? "video " + cfg.video_name + ": " + video.videoWidth + "x" + video.videoHeight + ", " + C.fmtSeconds(video.duration) + " s = " + total() + " frames at " + fps() + " fps"
+      : "";
+  }
+
+  function loadVideo(file) {
+    pausePlay();
+    if (S.vurl) URL.revokeObjectURL(S.vurl);
+    S.vurl = URL.createObjectURL(file);
+    S.shown = null;
+    cfg.video_name = file.name;
+    S.msg = "loading " + file.name + " ...";
+    video.src = S.vurl;
+    setStatus();
+  }
+
+  function stepTo(n, scrub) {
+    if (!video.src) return;
+    if (S.playing) pausePlay(); else stopAll();
+    const tot = total();
+    n = Math.max(0, tot ? Math.min(tot - 1, n) : n);
+    const my = ++S.token;
+    let done = false;
+    const after = () => {
+      if (done || my !== S.token) return;
+      done = true;
+      refresh();
+      if (scrub !== false && $("scrub").checked) scrubPlay(n);
+    };
+    video.addEventListener("seeked", after, { once: true });
+    setTimeout(after, 400);
+    video.currentTime = C.seekTimeOfFrame(n, fps());
+    if (hasRvfc) video.requestVideoFrameCallback((now, meta) => { S.shown = C.shownFrameOf(meta.mediaTime, fps()); refresh(); });
+    refresh();
+  }
+  const stepBy = d => {
+    const tot = total(), cur = C.frameOf(curT(), fps());
+    stepTo(Math.max(0, (tot ? Math.min(tot - 1, cur) : cur) + d));
+  };
+
+  function refresh() {
+    const tot = total(), f0 = C.frameOf(curT(), fps()), f = tot ? Math.min(tot - 1, f0) : f0, t = C.timeOfFrame(f, fps());
+    $("time").textContent = C.fmtSeconds(t) + " s · frame " + f + " / " + tot;
+    if (!hasRvfc) $("shown-frame").textContent = "shown frame: n/a";
+    else if (S.shown == null) $("shown-frame").textContent = "shown frame: -";
+    else $("shown-frame").textContent = "shown frame: " + S.shown + ((!S.playing && S.shown !== f) ? " (shown: " + S.shown + ", clock says " + f + ")" : "");
+    if (document.activeElement !== $("goto-time")) $("goto-time").value = C.fmtSeconds(t);
+    if (document.activeElement !== $("goto-frame")) $("goto-frame").value = f;
+    drawWave();
+  }
+
+  // ---------- waveform ----------
+  function viewRange() {
+    const t = curT();
+    if ($("zoom").value === "zoom") return [t - 2, t + 2];
+    let end = (video.src && isFinite(video.duration)) ? video.duration : 0;
+    if (S.buf) for (const p of cfg.placements) end = Math.max(end, p.at + S.buf.duration);
+    return [0, end > 0 ? end : 30];
+  }
+
+  function drawWave() {
+    const dpr = window.devicePixelRatio || 1;
+    const W = Math.max(200, Math.round(canvas.clientWidth * dpr)), H = Math.round(160 * dpr);
+    if (canvas.width !== W) canvas.width = W;
+    if (canvas.height !== H) canvas.height = H;
+    const g = canvas.getContext("2d");
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.fillStyle = "#fff"; g.fillRect(0, 0, W, H);
+    const F = fps(), zoom = $("zoom").value === "zoom", v = viewRange(), v0 = v[0], span = v[1] - v[0], X = t => (t - v0) / span * W;
+    const mid = 88 * dpr, amp = 40 * dpr;
+    if (zoom) {
+      g.strokeStyle = "#e4e4e4"; g.lineWidth = 1; g.beginPath();
+      for (let n = Math.ceil(v0 * F); n <= v[1] * F; n++) { const x = Math.round(X(n / F)) + 0.5; g.moveTo(x, 0); g.lineTo(x, H); }
+      g.stroke();
+    }
+    g.strokeStyle = "#ddd"; g.beginPath(); g.moveTo(0, mid + 0.5); g.lineTo(W, mid + 0.5); g.stroke();
+    if (S.buf && S.mono) {
+      const sr = S.buf.sampleRate;
+      cfg.placements.forEach((p, i) => {
+        const a0 = Math.max(0, v0 - p.at), a1 = Math.min(S.buf.duration, v[1] - p.at);
+        if (a1 <= a0) return;
+        const x0 = Math.floor(X(a0 + p.at)), x1 = Math.ceil(X(a1 + p.at)), bins = Math.max(1, x1 - x0);
+        const key = i + "|" + p.at + "|" + v0 + "|" + v[1] + "|" + W;
+        let pb;
+        if (!zoom && S.cache && S.cache.key === key) pb = S.cache.pb;
+        else { pb = C.peakBins(S.mono, Math.floor(a0 * sr), Math.ceil(a1 * sr), bins); if (!zoom) S.cache = { key, pb }; }
+        g.strokeStyle = i === 0 ? "#1a6b8a" : "#86bdd0";
+        g.globalAlpha = i === sel ? 1 : 0.75;
+        g.beginPath();
+        for (let b = 0; b < bins; b++) {
+          const x = x0 + b + 0.5, top = mid - pb[2 * b + 1] * S.norm * amp;
+          let bot = mid - pb[2 * b] * S.norm * amp;
+          if (bot - top < 1) bot = top + 1;
+          g.moveTo(x, top); g.lineTo(x, bot);
+        }
+        g.stroke();
+        g.globalAlpha = 1;
+      });
+    }
+    g.font = Math.round(10 * dpr) + "px system-ui, sans-serif";
+    g.textBaseline = "top";
+    cfg.markers.forEach((mk, idx) => {
+      if (mk.t < v0 || mk.t > v[1]) return;
+      const x = Math.round(X(mk.t)) + 0.5;
+      g.strokeStyle = "#c4463c"; g.globalAlpha = 0.5;
+      g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke();
+      g.globalAlpha = 1; g.fillStyle = "#a22";
+      const w = g.measureText(mk.label).width, tx = x + 3 + w > W ? x - 3 - w : x + 3;
+      g.fillText(mk.label, tx, (idx % 3) * 12 * dpr + 2);
+    });
+    cfg.placements.forEach((p, i) => {
+      g.strokeStyle = i === 0 ? "#1a6b8a" : "#5aa3bd";
+      g.beginPath();
+      for (const o of S.onsets) {
+        const tv = C.videoTimeOfAudio(o.t, p.at);
+        if (tv < v0 || tv > v[1]) continue;
+        const x = Math.round(X(tv)) + 0.5;
+        g.moveTo(x, H - 16 * dpr + i * 4 * dpr); g.lineTo(x, H - 10 * dpr + i * 4 * dpr);
+      }
+      g.stroke();
+    });
+    g.fillStyle = "#555"; g.textBaseline = "bottom";
+    g.fillText(v0.toFixed(2) + " s", 3, H - 1);
+    const endLbl = v[1].toFixed(2) + " s";
+    g.fillText(endLbl, W - g.measureText(endLbl).width - 3, H - 1);
+    if (video.src) {
+      const x = Math.round(X(curT())) + 0.5;
+      g.strokeStyle = "#d00"; g.lineWidth = Math.max(1, dpr);
+      g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke();
+      g.lineWidth = 1;
+    }
+  }
+
+  // ---------- placements, markers, onsets, config ----------
+  function bump(d) {
+    const p = cfg.placements[sel];
+    if (!p) return;
+    p.at = C.nudge(p.at, d);
+    changed(true);
+  }
+
+  function bumpFrames(dir) {
+    const p = cfg.placements[sel];
+    if (!p) return;
+    p.at = C.nudgeFrames(p.at, dir, fps());
+    changed(true);
+  }
+
+  function num(input, fn) {
+    input.onchange = () => { const v = parseFloat(input.value); if (isFinite(v)) fn(v); changed(true); };
+  }
+
+  function renderPlacements() {
+    const box = $("placements");
+    box.textContent = "";
+    cfg.placements.forEach((p, i) => {
+      const row = el("div", "prow");
+      const radio = el("input"); radio.type = "radio"; radio.name = "nudge"; radio.checked = i === sel;
+      radio.onchange = () => { sel = i; cfg.nudge_target = p.label; changed(false); };
+      const rl = el("label"); rl.appendChild(radio); rl.appendChild(document.createTextNode(" nudge this one"));
+      const lab = el("input"); lab.type = "text"; lab.value = p.label;
+      lab.onchange = () => { p.label = lab.value || p.label; if (i === sel) cfg.nudge_target = p.label; changed(false); };
+      const at = el("input"); at.type = "number"; at.step = "0.0001"; at.value = Number(p.at).toFixed(4);
+      num(at, v => { p.at = C.roundTenthMs(v); });
+      const fr = el("span", "frames", C.fmtFrames(p.at, fps()) + " f");
+      const ga = el("input"); ga.type = "number"; ga.step = "0.01"; ga.min = "0"; ga.value = Number(p.gain).toFixed(4);
+      num(ga, v => { p.gain = Math.max(0, C.roundTenthMs(v)); });
+      const note = el("input", "wide"); note.type = "text"; note.value = p.note;
+      note.onchange = () => { p.note = note.value; changed(false); };
+      const rm = el("button", null, "Remove"); rm.disabled = cfg.placements.length < 2;
+      rm.onclick = () => { cfg.placements.splice(i, 1); sel = Math.min(sel, cfg.placements.length - 1); cfg.nudge_target = cfg.placements[sel].label; changed(true); };
+      const a = el("label"); a.appendChild(document.createTextNode("at (s) ")); a.appendChild(at);
+      const b = el("label"); b.appendChild(document.createTextNode("gain ")); b.appendChild(ga);
+      [rl, lab, a, fr, b, note, rm].forEach(x => row.appendChild(x));
+      box.appendChild(row);
+    });
+  }
+
+  function renderMarkers() {
+    const box = $("markers");
+    box.textContent = "";
+    cfg.markers.forEach((mk, i) => {
+      const row = el("div", "prow");
+      const lab = el("input", "wide"); lab.type = "text"; lab.value = mk.label;
+      lab.onchange = () => { mk.label = lab.value; changed(false); };
+      const t = el("input"); t.type = "number"; t.step = "0.0001"; t.value = Number(mk.t).toFixed(4);
+      num(t, v => { mk.t = C.roundTenthMs(v); });
+      const fr = el("span", "frames", "f " + C.frameOf(mk.t, fps()));
+      const go = el("button", null, "Go"); go.onclick = () => stepTo(C.frameOf(mk.t, fps()));
+      const rm = el("button", null, "Remove"); rm.onclick = () => { cfg.markers.splice(i, 1); changed(false); };
+      const tl = el("label"); tl.appendChild(document.createTextNode("t (s) ")); tl.appendChild(t);
+      [lab, tl, fr, go, rm].forEach(x => row.appendChild(x));
+      box.appendChild(row);
+    });
+  }
+
+  function renderOnsets() {
+    $("onset-floor-v").textContent = $("onset-floor").value;
+    $("onset-jump-v").textContent = $("onset-jump").value;
+    const head = $("onset-table").tHead, body = $("onset-table").tBodies[0];
+    head.textContent = ""; body.textContent = "";
+    if (!S.buf) { $("onset-msg").textContent = "Load an audio file to detect attacks."; return; }
+    const CAP = 100;
+    $("onset-msg").textContent = S.onsets.length + " onset(s) found" + (S.onsets.length > CAP ? "; showing the first " + CAP : "") + ". The first one is the attack.";
+    const hr = el("tr");
+    ["audio t (s)", "dB"].forEach(h => hr.appendChild(el("th", null, h)));
+    cfg.placements.forEach(p => hr.appendChild(el("th", null, "video t / frame (" + p.label + ")")));
+    head.appendChild(hr);
+    S.onsets.slice(0, CAP).forEach((o, k) => {
+      const tr = el("tr", k === 0 ? "attack" : null);
+      tr.appendChild(el("td", null, C.fmtSeconds(o.t) + (k === 0 ? "  attack" : "")));
+      tr.appendChild(el("td", null, o.db.toFixed(1)));
+      cfg.placements.forEach(p => {
+        const tv = C.videoTimeOfAudio(o.t, p.at), td = el("td");
+        td.appendChild(document.createTextNode(C.fmtSeconds(tv) + " s / f " + C.frameOf(tv, fps()) + " "));
+        const go = el("button", null, "go"); go.disabled = tv < 0 || !video.src;
+        go.onclick = () => stepTo(C.frameOf(tv, fps()));
+        td.appendChild(go);
+        tr.appendChild(td);
+      });
+      body.appendChild(tr);
+    });
+  }
+
+  function changed(restart) {
+    renderPlacements(); renderMarkers(); renderOnsets();
+    $("config-out").value = C.serializeConfig(cfg);
+    $("fps").value = fps();
+    videoInfo(); setStatus();
+    S.cache = null;
+    refresh();
+    if (restart && S.playing) { stopAll(); startAll(curT()); }
+  }
+
+  function renderPresetOptions() {
+    const s = $("preset");
+    s.textContent = "";
+    const o0 = el("option", null, "as loaded: " + SHIPPED.scene); o0.value = "-1"; s.appendChild(o0);
+    SHIPPED.presets.forEach((q, i) => { const o = el("option", null, "preset: " + q.scene); o.value = String(i); s.appendChild(o); });
+  }
+
+  // ---------- wiring ----------
+  video.addEventListener("loadedmetadata", () => { S.msg = ""; videoInfo(); stepTo(0, false); changed(false); });
+  video.addEventListener("error", () => { S.msg = "video failed to load (codec not supported?)"; setStatus(); });
+  video.addEventListener("ended", () => { S.playing = false; stopAll(); refresh(); setStatus(); });
+
+  $("video-file").onchange = e => { if (e.target.files[0]) loadVideo(e.target.files[0]); };
+  $("audio-file").onchange = e => { if (e.target.files[0]) loadAudio(e.target.files[0]); };
+  const drop = $("drop");
+  drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+  drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+  drop.addEventListener("drop", e => {
+    e.preventDefault(); drop.classList.remove("over");
+    for (const f of e.dataTransfer.files) {
+      if (f.type.startsWith("video/") || /\.mp4$/i.test(f.name)) loadVideo(f);
+      else if (f.type.startsWith("audio/") || /\.(wav|mp3)$/i.test(f.name)) loadAudio(f);
+    }
+  });
+
+  $("preset").onchange = () => {
+    const v = +$("preset").value, src = v < 0 ? SHIPPED : SHIPPED.presets[v];
+    pausePlay();
+    ["scene", "fps", "video_name", "audio_name", "nudge_target", "placements", "markers"].forEach(k => { cfg[k] = clone(src[k]); });
+    sel = Math.max(0, cfg.placements.findIndex(p => p.label === cfg.nudge_target));
+    S.msg = "config replaced from '" + src.scene + "' (earlier edits discarded); load " + cfg.video_name + " and " + cfg.audio_name;
+    changed(false);
+  };
+  $("fps").onchange = () => { const v = Math.round(+$("fps").value); if (v >= 1 && v <= 240) cfg.fps = v; changed(false); };
+
+  $("step-back10").onclick = () => stepBy(-10);
+  $("step-back").onclick = () => stepBy(-1);
+  $("step-fwd").onclick = () => stepBy(1);
+  $("step-fwd10").onclick = () => stepBy(10);
+  $("play").onclick = togglePlay;
+  $("stop").onclick = () => { pausePlay(); refresh(); setStatus(); };
+  $("goto-time").onchange = () => { const v = parseFloat($("goto-time").value); if (isFinite(v)) stepTo(C.frameOf(v, fps())); };
+  $("goto-frame").onchange = () => { const v = parseInt($("goto-frame").value, 10); if (isFinite(v)) stepTo(v); };
+  $("zoom").onchange = () => { S.cache = null; refresh(); };
+  canvas.addEventListener("click", e => {
+    const r = canvas.getBoundingClientRect(), v = viewRange();
+    stepTo(C.frameOf(v[0] + (e.clientX - r.left) / r.width * (v[1] - v[0]), fps()));
+  });
+  window.addEventListener("resize", () => { S.cache = null; drawWave(); });
+
+  const nudges = { "n-100-": -0.1, "n-10-": -0.01, "n-10p": 0.01, "n-100p": 0.1 };
+  Object.keys(nudges).forEach(id => { $(id).onclick = () => bump(nudges[id]); });
+  $("n-1f-").onclick = () => bumpFrames(-1);
+  $("n-1fp").onclick = () => bumpFrames(1);
+  $("add-placement").onclick = () => {
+    const p = clone(cfg.placements[sel] || { label: "P", at: 0, gain: 0.5, note: "" });
+    let k = cfg.placements.length + 1;
+    while (cfg.placements.some(q => q.label === "P" + k)) k++;
+    p.label = "P" + k; p.note = "duplicate of " + (cfg.placements[sel] ? cfg.placements[sel].label : "new");
+    cfg.placements.push(p); sel = cfg.placements.length - 1; cfg.nudge_target = p.label;
+    changed(true);
+  };
+  $("add-marker").onclick = () => {
+    cfg.markers.push({ label: "marker " + (cfg.markers.length + 1), t: C.roundTenthMs(C.timeOfFrame(C.frameOf(curT(), fps()), fps())) });
+    changed(false);
+  };
+  $("onset-floor").oninput = () => { computeOnsets(); renderOnsets(); drawWave(); };
+  $("onset-jump").oninput = () => { computeOnsets(); renderOnsets(); drawWave(); };
+
+  $("save-copy").onclick = () => {
+    try {
+      const r = C.applyConfig(PRISTINE, cfg);
+      if (r.replaced !== 1) { S.msg = "Save copy failed: config block not found exactly once"; setStatus(); return; }
+      const name = C.formatCopyName(cfg.scene, new Date());
+      const url = URL.createObjectURL(new Blob([r.html], { type: "text/html;charset=utf-8" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      S.msg = "saved " + name + " (Downloads folder)";
+    } catch (e) { S.msg = "Save copy failed: " + e.message; }
+    setStatus();
+  };
+  $("copy-config").onclick = () => {
+    const ta = $("config-out");
+    const fallback = () => { ta.focus(); ta.select(); S.msg = "clipboard unavailable: text selected, press Ctrl+C"; setStatus(); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(ta.value).then(() => { S.msg = "config copied"; setStatus(); }, fallback);
+    } else fallback();
+  };
+
+  document.addEventListener("click", e => { if (e.target.tagName === "BUTTON") e.target.blur(); });
+  document.addEventListener("change", e => { const t = e.target.type; if (t === "radio" || t === "checkbox" || t === "range") e.target.blur(); });
+  document.addEventListener("keydown", e => {
+    const tag = e.target.tagName;
+    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || e.ctrlKey || e.altKey || e.metaKey) return;
+    if (e.key === "ArrowLeft") { e.preventDefault(); stepBy(e.shiftKey ? -10 : -1); }
+    else if (e.key === "ArrowRight") { e.preventDefault(); stepBy(e.shiftKey ? 10 : 1); }
+    else if (e.key === " ") { e.preventDefault(); togglePlay(); }
+    else if (e.key === ",") { e.preventDefault(); bumpFrames(-1); }
+    else if (e.key === ".") { e.preventDefault(); bumpFrames(1); }
+  });
+
+  renderPresetOptions();
+  changed(false);
+})();
+</script></body></html>

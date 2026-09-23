@@ -1,2 +1,3 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+marketing/audio-studio/tools/av-align/* text eol=lf

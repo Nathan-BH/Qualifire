@@ -50,6 +50,8 @@ scene's `soundtrack.py` imports from it instead of redefining tones — see
 off its own inline copy onto the shared `synth.py` in soundv3 (2026-09-13); every
 scene now imports it.
 
+Cross-scene tooling lives in `tools/` — first entry `tools/av-align/av-align.html` (cycle 16), Nathan's offline frame-stepping audio/video alignment page; see its README.
+
 A scene folder is:
 ```
 <scene>/

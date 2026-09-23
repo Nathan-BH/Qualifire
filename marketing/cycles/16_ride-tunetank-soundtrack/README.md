@@ -1,5 +1,8 @@
 # Cycle 16 — the Tunetank track as the ride's soundtrack (start-ride + gates-saving), E5 pulses kept for the gates
 
+> **Executed 2026-09-23 (all four briefs; Inspect PASS).** Items A, B, D and the alignment tool landed and were independently re-run by fresh Opus inspectors; a fix pass corrected the tool's shown-frame readout, time readout, last-frame clamp, nudge drift and some FEEDBACK wording. `audio-studio/all-renders/` now holds 3 sounded (Tunetank) + 4 silent renders, no synthesised audio. Remaining for Nathan: listen to `ride/soundv2/ride_v2.mp4` and `brandmark/opening/soundv3/opening_v3_with_sound_v3.mp4`; nudge T1 = 3.80 with the tool if needed.
+
+
 ## Revised 2026-09-23 after Nathan's answers (`questionsfornathan.md`)
 
 - **Q1 → `T1` is now 3.80 s, not 3.20.** Nathan: play is pressed while the yellow START box
