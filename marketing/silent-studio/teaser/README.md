@@ -6,7 +6,26 @@ ingredient compositions listed below, in this order. Order and in/out points are
 a property of this file, not of the ingredient folders — each ingredient is a
 standalone composition with its own README, render and feedback rounds.
 
-## Cut sheet (v7 — rounds/v7/teaser_v7.mp4, 47.6s) — superseded by v8
+## Cut sheet (v9 — rounds/v9/teaser_v9.mp4, 47.6s) — current
+
+**Built and confirmed** (2026-09-23, cycle 17): `rounds/v9/teaser_v9.mp4` exists; ffprobe reads
+47.600000s / 1428 frames, matching the five-part sum exactly (stream-copy concat, all
+parts h264/1920x1080/30fps). Concat list and recipe: `rounds/v9/concat.txt` /
+`rounds/v9/FEEDBACK.md`.
+
+| # | Ingredient | Source render | Length | Plays at |
+|---|---|---|---|---|
+| 1 | brandmark/opening | opening_v3.mp4 | 6.500s | 0:00.000–0:06.500 |
+| 2 | start-ride | start-ride_v4.mp4 | 14.000s | 0:06.500–0:20.500 |
+| 3 | gates-saving | gates-saving_v9.mp4 | 12.300s | 0:20.500–0:32.800 |
+| 4 | ranking | ranking_v8.mp4 | 10.800s | 0:32.800–0:43.600 |
+| 5 | brandmark/closing | closing_v5.mp4 | 4.000s | 0:43.600–0:47.600 |
+
+What changed since v8: gates-saving `v6` -> `v9` (inverted gate easing, cycle 17: the rider
+slows at each gate and speeds up between them); ranking `v7` -> `v8` and closing `v4` -> `v5`
+are byte-identical re-issues (no visual change); opening and start-ride unchanged.
+
+## Cut sheet (v7 — rounds/v7/teaser_v7.mp4, 47.6s) — superseded by v9
 
 **Built and confirmed** (2026-09-16): `rounds/v7/teaser_v7.mp4` exists; ffprobe reads
 47.600000s, matching the five-part sum exactly (stream-copy concat, all parts
@@ -158,4 +177,5 @@ it should eventually move to `archive/`.
 | [v5](rounds/v5/FEEDBACK.md) | teaser_v5.mp4 | 2026-09-10 | Not yet assembled (5 ingredient renders pending) — colours dropped per Nathan's v4 feedback |
 | [v6](rounds/v6/FEEDBACK.md) | teaser_v6.mp4 | 2026-09-13 | Built (46.9s per ingredient sum at the time) — superseded by v7 |
 | [v7](rounds/v7/FEEDBACK.md) | teaser_v7.mp4 | 2026-09-16 | Built, 47.6s confirmed — virgin-cycle9's gates-saving/ranking/closing fixes — superseded by v8 |
-| [v8](rounds/v8/FEEDBACK.md) | teaser_v8.mp4 | 2026-09-16 | Built, 47.6s confirmed — ranking swapped to v7 (white-then-green colour flip) — current |
+| [v8](rounds/v8/FEEDBACK.md) | teaser_v8.mp4 | 2026-09-16 | Built, 47.6s confirmed — ranking swapped to v7 (white-then-green colour flip) — superseded by v9 |
+| [v9](rounds/v9/FEEDBACK.md) | teaser_v9.mp4 | 2026-09-23 | Built, 47.6s confirmed — gates-saving v9 (inverted gate easing, cycle 17); ranking v8 / closing v5 re-issues (same bytes) — current |

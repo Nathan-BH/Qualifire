@@ -15,4 +15,4 @@ shared chime stays in `synth.py` for the earlier rounds only — no new round us
 | Sub-scene | Status | Feedback goes to |
 |---|---|---|
 | [opening/](opening/README.md) | in progress — soundv3 | `opening/soundv3/FEEDBACK.md` |
-| [closing/](closing/README.md) | soundv3 — silent round (cycle 16) | `closing/soundv3/FEEDBACK.md` |
+| [closing/](closing/README.md) | no sound round current — silent (cycle 16); soundv3 withdrawn (cycle 17), see `../../silent-studio/brandmark/closing/rounds/v5/` | — |

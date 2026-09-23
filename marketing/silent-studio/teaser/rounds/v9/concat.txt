@@ -1,0 +1,5 @@
+file '../../../all-renders/opening_v3.mp4'
+file '../../../all-renders/start-ride_v4.mp4'
+file '../../../all-renders/gates-saving_v9.mp4'
+file '../../../all-renders/ranking_v8.mp4'
+file '../../../all-renders/closing_v5.mp4'

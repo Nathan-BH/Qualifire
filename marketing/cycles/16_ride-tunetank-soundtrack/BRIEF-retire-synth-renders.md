@@ -1,5 +1,7 @@
 # BRIEF — retire the synthesised renders: a silent round for closing, colours, ranking and teaser (cycle 16, item D)
 
+> **Superseded in part by cycle 17 (2026-09-23):** the four silent `soundvN` rounds this brief created (§4.2) and their `audio-studio/all-renders/` copies are withdrawn to `_to_delete/` — Nathan: silent renders live in `silent-studio/`, not as audio-studio rounds — and the §4.3 doc lines are re-pointed. The reasoning in §0–§1 (no synthesised sound moves forward; no cycle-16 sound fits these four scenes) and the options in §7 still stand. See `../17_silent-versions-gate-easing-and-tool-ui/BRIEF-silent-studio-versions-and-ride.md`.
+
 **Status: ready to execute (2026-09-23, Plan tier, Fable, second revision).** Sonnet-executable:
 four new round folders (each: one mp4 that is a byte-identical copy of the scene's latest
 silent render, one `FEEDBACK.md`), four `audio-studio/all-renders/` replacements (replaced

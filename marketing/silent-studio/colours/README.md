@@ -44,4 +44,5 @@ give feedback in this folder's `rounds/vN/FEEDBACK.md`.
 | [v1](rounds/v1/FEEDBACK.md) | colours_v1.mp4 | 2026-09-09 | Feedback received, see v2 |
 | [v2](rounds/v2/FEEDBACK.md) | colours_v2.mp4 | 2026-09-10 | Not rendered yet |
 | [v3](rounds/v3/FEEDBACK.md) | colours_v3.mp4 | 2026-09-16 | Rendered, 19.0s confirmed, awaiting Nathan's feedback |
-| [v4](rounds/v4/FEEDBACK.md) | colours_v4.mp4 | 2026-09-16 | Rendered, 19.0s confirmed, awaiting Nathan's feedback |
+| [v4](rounds/v4/FEEDBACK.md) | colours_v4.mp4 | 2026-09-16 | Rendered, 19.0s confirmed — replaced by the v5 re-issue (same bytes) |
+| [v5](rounds/v5/FEEDBACK.md) | colours_v5.mp4 | 2026-09-23 | Re-issue, byte-identical to v4 (cycle 17: silent renders live here; the audio-studio silent round is withdrawn) — current pick |

@@ -3,7 +3,9 @@
 > **Decision note, 2026-09-23 (cycle 16):** the `synth.py` synthesised direction is dropped —
 > Nathan: "i do not wish to move forward with any of the synthesized sounds". No new round
 > uses `synth.py` audio; the ride and opening use Nathan's Tunetank recordings, the other
-> scenes get a silent round; earlier `soundvN/` rounds stay on disk for reference. See
+> scenes have no sound round — their deliverable is the silent render in
+> `../silent-studio/all-renders/` (cycle 17 withdrew cycle 16's audio-studio "silent
+> rounds"); earlier `soundvN/` rounds stay on disk for reference. See
 > `../cycles/16_ride-tunetank-soundtrack/README.md`. The text below predates this.
 
 This folder is the sound design for the same Qualifire marketing compositions as
@@ -19,6 +21,8 @@ with that round's render + audio (e.g. `gates-saving_v4_with_sound_v2.mp4`), so
 only for a scene nobody's touched yet. Nathan did this by hand once, for gates-saving's
 soundv2; every other round (including first-pass soundv1s) is Claude's job as soon as
 that round is built — no "is it good enough yet" gate.
+
+> Note, 2026-09-23 (cycle 17): `all-renders/` here holds **sounded** renders only. A scene's silent starting point is read from `../silent-studio/all-renders/` directly — nothing silent is copied into this folder any more.
 
 **This folder has a silent twin: `../silent-studio/all-renders/`**, which holds the
 same set of current picked renders but without audio (flat filenames, no
@@ -110,13 +114,14 @@ inside those two reaches the shared `synth.py`, one level further up than usual.
 
 | Folder | Status | Feedback goes to |
 |---|---|---|
-| `gates-saving/` | in progress — soundv1 (pulse + single chord), soundv2 (chord progression + plucked arpeggio + reverb), soundv3 (whoosh on zoom-out, start-ride's C-G-Am-F loop boosted to 165-210bpm, migrated onto shared `synth.py`) — muxed onto `gates-saving_v5.mp4`, and again onto `gates-saving_v6.mp4` unchanged (virgin-cycle9's visual fix touched no gate-crossing timings) | `gates-saving/soundv3/FEEDBACK.md` |
+| `gates-saving/` | in progress — soundv1 (pulse + single chord), soundv2 (chord progression + plucked arpeggio + reverb), soundv3 (whoosh on zoom-out, start-ride's C-G-Am-F loop boosted to 165-210bpm, migrated onto shared `synth.py`) — muxed onto `gates-saving_v5.mp4`, and again onto `gates-saving_v6.mp4` unchanged (virgin-cycle9's visual fix touched no gate-crossing timings) … soundv11 (cycle 17): soundv10's Tunetank slice re-muxed onto gates-saving_v9 (inverted easing) | `gates-saving/soundv11/FEEDBACK.md` |
 | `brandmark/opening/` | in progress — soundv1, soundv2 (ring-draw pitch sweep, swoosh, new two-beat BRAND_STINGER replacing the old chime pair) — muxed onto the existing `opening_v3.mp4` | `brandmark/opening/soundv2/FEEDBACK.md` |
 | `brandmark/closing/` | in progress — soundv1, soundv2 (full two-beat BRAND_STINGER reusing opening's soundv2 motif, retimed to the new v3 visual) — muxed onto `closing_v3.mp4` | `brandmark/closing/soundv2/FEEDBACK.md` |
 | `colours/` | in progress — soundv1 | `colours/soundv1/FEEDBACK.md` |
 | `ranking/` | in progress — soundv1, soundv2 (new `droplet_run()` rising/accelerating crescendo synced to the new v5 climb), soundv3 (settle chime GREEN_CHIME not PURPLE_CHIME — Today is a P2 finish, not a personal best, virgin-cycle9) — muxed onto `ranking_v6.mp4` | `ranking/soundv3/FEEDBACK.md` |
 | `start-ride/` | in progress — soundv1, soundv2 (true silence before the button click, click on press, driving C-G-Am-F loop at 155bpm) — muxed onto the existing `start-ride_v4.mp4` | `start-ride/soundv2/FEEDBACK.md` |
 | `teaser/` | in progress — soundv1 (independent composition, not a concat — see `APPROACH.md`), soundv2 (rebuilt for the 47.6s teaser_v6 cut, each section now echoes its scene's current motif at the exact right instant) | `teaser/soundv2/FEEDBACK.md` |
+| `ride/` | family folder for the two-scene ride (start-ride + gates-saving as one soundtrack); the silent picture is `../silent-studio/ride/` (cycle 17) | `ride/soundv3/FEEDBACK.md` |
 
 ## The one rule
 

@@ -216,33 +216,32 @@
     gsap.set('#cam', { x: 0, y: 0, scale: 1, transformOrigin: '50% 50%' });
     gsap.set('#cam', { x: camStart.x, y: camStart.y, scale: CAM_S });
 
-    // Melody-aligned pacing, take 2 (cycle 14, Nathan's idea 6): the rider still crosses
-    // each gate exactly on one of the soundtrack's own E5 pulses (no gate-chime in the
-    // audio -- see audio-studio/gates-saving/soundv8/FEEDBACK.md for take 1), but the
-    // pacing is now designed from the music instead of fitted to it: FIVE consecutive E5
-    // pulses carry the ride -- start line, gate 1, gate 2, gate 3, finish line -- and the
-    // gates sit at exact quarters of the route (GATES), so every leg is 0.25 of the route
-    // in one E5 interval (~1.9 s). Within each leg the rider's speed is a half-cosine ramp
-    // chain: up to a PEAK at each gate, down to a trough between gates, the same shape at
-    // every gate ("uniform surge"); the first leg is one ramp up from the start speed to
-    // the gate-1 peak, the last leg one ramp down from the gate-3 peak to the finish
-    // speed. Because a ramp from speed a to b over d seconds covers d*(a+b)/2 of the
+    // Melody-aligned pacing, take 3 (cycle 17, Nathan's feedback on v8): the rider still
+    // crosses each gate exactly on one of the soundtrack's own E5 pulses -- FIVE consecutive
+    // pulses carry the ride (start line, gate 1, gate 2, gate 3, finish line) and the gates
+    // sit at exact quarters of the route (GATES), so every leg is 0.25 of the route in one
+    // E5 interval (~1.9 s). Take 2 (cycle 14) had the speed shape backwards: it PEAKED at
+    // each gate and dipped between them. Nathan wants the opposite -- "speed up in between
+    // gates and slow down at the gates" -- so the profile is now the mirror image: within
+    // each leg the rider's speed is a half-cosine ramp chain DOWN to a DIP at every pulse
+    // (start line, the three gates, finish line -- the same rule at all five) and UP to a
+    // CREST at the leg's mid-time; every leg, the first and the last included, is one
+    // dip-crest-dip cycle, so the rider rolls out of the start gently and arrives at the
+    // finish gently. Because a ramp from speed a to b over d seconds covers d*(a+b)/2 of the
     // route, every pulse is hit at its PULSE_T by construction and speed is continuous
     // everywhere (no jolts). Numbers and the calculation:
-    // marketing/cycles/14_ride-loop-surge-and-salamander/BRIEF-gates-surge-pacing.md
+    // marketing/cycles/17_silent-versions-gate-easing-and-tool-ui/BRIEF-gate-easing-inversion.md
     var PULSE_T = [0, 2.01, 3.85, 5.71, 7.58]; // ride-relative seconds of the five E5 pulses = video 3.80 / 5.81 / 7.65 / 9.51 / 11.38
     var GATE_T = PULSE_T.slice(1, 4);          // the gate crossings (pulses 2-4)
-    var SURGE_A = 0.6;                         // peak = (1+A) x mean of the two adjacent legs' mean speeds; trough = whatever lands the leg
+    var DIP_A = 0.6;                           // dip = (1-A) x mean of the adjacent legs' mean speeds; crest = whatever lands the leg
     var RIDE_PROFILE = (function () {
-      var F = [0].concat(GATES).concat([1]), n = F.length - 1, D = [], vbar = [], v = [], trough = [], k;
+      var F = [0].concat(GATES).concat([1]), n = F.length - 1, D = [], vbar = [], v = [], crest = [], segs = [], k;
       for (k = 0; k < n; k++) { D[k] = PULSE_T[k + 1] - PULSE_T[k]; vbar[k] = (F[k + 1] - F[k]) / D[k]; }
-      for (k = 1; k < n; k++) v[k] = (1 + SURGE_A) * (vbar[k - 1] + vbar[k]) / 2;   // peak speed at every gate
-      v[0] = 2 * vbar[0] - v[1];                                                     // start speed: the first ramp lands gate 1 on its pulse
-      v[n] = 2 * vbar[n - 1] - v[n - 1];                                             // finish speed: the last ramp lands the finish on its pulse
-      var segs = [[D[0], v[0], v[1]]];                                               // [duration, vFrom, vTo] half-cosine speed ramps
-      for (k = 1; k < n - 1; k++) { trough[k] = 2 * vbar[k] - (v[k] + v[k + 1]) / 2; segs.push([D[k] / 2, v[k], trough[k]]); segs.push([D[k] / 2, trough[k], v[k + 1]]); }
-      segs.push([D[n - 1], v[n - 1], v[n]]);
-      return { segs: segs, D: D, vbar: vbar, v: v, trough: trough, dur: PULSE_T[n] };
+      for (k = 1; k < n; k++) v[k] = (1 - DIP_A) * (vbar[k - 1] + vbar[k]) / 2;   // dip speed at every gate
+      v[0] = (1 - DIP_A) * vbar[0];                                               // start line: the same dip rule, one adjacent leg
+      v[n] = (1 - DIP_A) * vbar[n - 1];                                           // finish line: the same dip rule, one adjacent leg
+      for (k = 0; k < n; k++) { crest[k] = 2 * vbar[k] - (v[k] + v[k + 1]) / 2; segs.push([D[k] / 2, v[k], crest[k]]); segs.push([D[k] / 2, crest[k], v[k + 1]]); }   // per leg: [duration, vFrom, vTo] half-cosine ramps dip -> crest -> dip; the crest is what lands the leg
+      return { segs: segs, D: D, vbar: vbar, v: v, crest: crest, dur: PULSE_T[n] };
     })();
     // Route fraction at ride-relative time t. Monotone as long as every ramp stays above 0.
     function rideFrac(t) {

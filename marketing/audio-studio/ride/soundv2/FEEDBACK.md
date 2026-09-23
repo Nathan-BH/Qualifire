@@ -3,6 +3,10 @@
 **Render file:** `ride_master_v2.wav` (built); `ride_v2.mp4` (built — confirmed via ffprobe at
 exactly 26.300000s). **Source:** `../ride_tunetank.py`.
 
+*(2026-09-23, cycle 17: `concat.txt` re-pointed from absolute `/sessions/...` paths to repo-relative ones; the
+gates-saving half is now referenced from its round folder because `all-renders/` moved on to v9.
+The mp4s here are unchanged.)*
+
 ## What this is
 
 Nathan (cycle 16): "It should start only after the click, when the actual ride starts … the

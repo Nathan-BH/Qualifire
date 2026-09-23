@@ -1,7 +1,6 @@
 # gates-saving — sound design
 
-Source video: `../all-renders/gates-saving_v4.mp4` (12.3s, 1920x1080, silent — the
-picked HyperFrames render, position 3 of the teaser).
+Source video: `../../silent-studio/all-renders/gates-saving_v9.mp4` (12.3s, 1920x1080, silent — the picked HyperFrames render, position 3 of the teaser; read from silent-studio since cycle 17). Earlier rounds sat on v4/v5/v6/v8.
 
 Source code: `soundtrack.py` here — the canonical synthesis script, edited in place
 each round (mirrors how `index.html` works in `../../silent-studio/gates-saving/`).
@@ -96,3 +95,5 @@ this scene's zoom-out lead-in (0-1.0 s here), the second pass attacks on the sta
 from `ride_master.py`) punctuate the gates on top; 1.0 s fade to the end. Mux
 `gates-saving_v8_with_sound_v10.mp4` built, 12.300000s via ffprobe, in `all-renders/`.
 See `soundv10/FEEDBACK.md`.
+
+**Update:** soundv11 (2026-09-23) -- cycle 17: re-mux only. Item B inverted the gate easing (fast between gates, slow at them); the E5 pulse frames did not move, so `soundv10/soundtrack_v10.wav` is muxed unchanged onto `gates-saving_v9.mp4`, which replaces `gates-saving_v8_with_sound_v10.mp4` in `../all-renders/` (soundv10 is kept here as the same sound on the older picture). See `soundv11/FEEDBACK.md`.

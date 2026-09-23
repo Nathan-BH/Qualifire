@@ -1,9 +1,11 @@
 # ride — sound design (assembled track)
 
 "ride" is the two product-scene rides (`start-ride` then `gates-saving`) heard as one
-continuous soundtrack, not a HyperFrames composition of its own — there is no
-`silent-studio/ride/` twin. It exists because the teaser plays these two scenes
-back-to-back (`../../silent-studio/teaser/rounds/v8/concat.txt`), so the audio should
+continuous soundtrack, not a HyperFrames composition of its own — since cycle 17
+(2026-09-23) its silent picture lives in `../../silent-studio/ride/` (`ride_v1.mp4` =
+start-ride_v4 + gates-saving_v9), assembled by concat like the teaser. It exists because
+the teaser plays these two scenes back-to-back
+(`../../silent-studio/teaser/rounds/v8/concat.txt`), so the audio should
 be one performance across the cut, not two independently-faded clips.
 
 **Combined clock:** start-ride owns video 0–14.0s, gates-saving 14.0–26.3s. Content
@@ -32,9 +34,9 @@ reader is tempted to move them under `ride/`, don't.
 
 | Part | Status | Feedback goes to |
 |---|---|---|
-| **complete ride** (this folder) | soundv2 — built (Tunetank bed, cycle 16), awaiting Nathan's listen; soundv1 (synthesised piano) kept on disk for reference | [`soundv2/FEEDBACK.md`](soundv2/FEEDBACK.md) |
+| **complete ride** (this folder) | soundv3 — built (cycle 17 re-mux of the soundv2 Tunetank master onto the inverted-easing picture), awaiting Nathan's listen; soundv2 and soundv1 kept on disk for reference | [`soundv3/FEEDBACK.md`](soundv3/FEEDBACK.md) |
 | [start-ride/](../start-ride/README.md) | soundv9 = slice 0–14.0s of the soundv2 master (soundv8 = the same slice of soundv1, kept) | [`../start-ride/soundv9/FEEDBACK.md`](../start-ride/soundv9/FEEDBACK.md) |
-| [gates-saving/](../gates-saving/README.md) | soundv10 = slice 14.0–26.3s of the soundv2 master (soundv9 = the same slice of soundv1, kept) | [`../gates-saving/soundv10/FEEDBACK.md`](../gates-saving/soundv10/FEEDBACK.md) |
+| [gates-saving/](../gates-saving/README.md) | soundv11 = soundv10's slice (14.0–26.3s of the soundv2 master) re-muxed onto gates-saving_v9 (cycle 17); soundv10 / soundv9 kept | [`../gates-saving/soundv11/FEEDBACK.md`](../gates-saving/soundv11/FEEDBACK.md) |
 
 ## Rounds
 
@@ -42,6 +44,7 @@ reader is tempted to move them under `ride/`, don't.
 |---|---|---|
 | [soundv1](soundv1/FEEDBACK.md) | ride_v1.mp4 (silent concat + master) | Earlier round, kept on disk (direction changed to the Tunetank bed in soundv2, cycle 16). Built — confirmed via ffprobe at exactly 26.300000s, matching plan exactly |
 | [soundv2](soundv2/FEEDBACK.md) | ride_v2.mp4 (silent concat + Tunetank master) | Built — 26.300000s via ffprobe; Nathan's Tunetank track placed twice (t=0 at 3.80 s, while the START box fades out, and at 16.54 s), E5 pulses on ride 2 only; see cycle 16 |
+| [soundv3](soundv3/FEEDBACK.md) | ride_v1_with_sound_v3.mp4 (silent-studio ride_v1 + the soundv2 master, unchanged) | Built 2026-09-23 — 26.300000s via ffprobe; cycle 17 re-mux: gates-saving's easing inverted, pulse times unchanged. In `../all-renders/`. |
 
 `ride_master.py` builds `soundv1/ride_master_v1.wav` and the two per-scene slices
 (`../start-ride/soundv8/soundtrack_v8.wav`, `../gates-saving/soundv9/soundtrack_v9.wav`)

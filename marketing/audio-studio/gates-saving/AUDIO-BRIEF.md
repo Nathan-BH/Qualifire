@@ -2,7 +2,7 @@
 
 **Visual source:** `../../silent-studio/gates-saving/rounds/v5/gates-saving_v5.mp4` (12.4 s)
 **Filled in by Nathan on:** *(not yet filled in)*   **Status:** draft
-**Current soundtrack round:** soundv3 (`soundv3/FEEDBACK.md`)
+**Current soundtrack round:** soundv11 (`soundv11/FEEDBACK.md`) — Tunetank bed + Salamander E5 pulses (cycle 16), re-muxed onto gates-saving_v9 (cycle 17)
 
 Claude fills the first three columns from the composition's timeline and from what
 `soundtrack.py` currently plays. Nathan writes in the last column — plain words, references

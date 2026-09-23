@@ -9,6 +9,31 @@ and read the numbers off before any build is re-run.
 
 Path: `C:\Users\natha\Claude personal projects\Qualifire\marketing\audio-studio\tools\av-align\av-align.html`
 
+## The page since cycle 17 (2026-09-23)
+
+The page is laid out like a small editing suite, dark only. **Viewer** top left with a transport bar
+(first frame, -10, -1, play/pause, +1, +10, last frame, stop), a large `HH:MM:SS:FF` timecode (frame-based,
+so it always agrees with the `frame n / total` readout beside it) and the go-to fields; **inspector** on
+the right with the placement cards (click a card to select it, the six nudge buttons sit right under
+them) and tabs for Markers, Onsets and Config; **timeline dock** across the bottom with a time ruler, one
+lane per placement, the onset lane, marker flags and a red playhead; **status bar** at the very bottom
+(info, warning and error messages, with an icon, never colour alone; warnings and errors are also
+repeated in a banner under the top bar). Video, waveform and the nudge buttons are visible together at
+1440x900 and 1920x1080; below 1100 px the panels stack and the page scrolls. Before anything is loaded the
+viewer shows two drop cards (Browse or drag the files onto the viewer); once loaded, the file chips in the
+top bar are buttons that choose a different file. The old "will / will not" text now lives behind the
+`?` button.
+
+Next to **Save copy** a badge reads "● N changes" when the current values differ from this file; click it
+to see each difference (for a placement: `T1 at 3.8000 → 3.9667 s (+5 f, +166.7 ms)`). "N changes" is
+exactly what **Save copy** would carry; no badge means the saved copy would be identical to this file.
+Nothing about the numbers changed: the frame maths, scrub, real-time play, onset detection, presets and
+the config block format are those of cycle 16 (`node av-align.test.mjs` is unchanged and still 36/36).
+
+Keys: `←` `→` step one frame, `Shift+←/→` ten frames, `Space` play/pause, `,` `.` nudge the selected
+placement one frame earlier/later, `Home` `End` first/last frame, `?` this help, `Esc` closes it. All keys
+are ignored while a text, number or drop-down field has focus.
+
 ## What this tool will and will not do
 
 **Will:**
@@ -45,7 +70,7 @@ A placement's `at` is **the video time (seconds on the video's own clock, 0 = fi
 
 | Scene | Video | Audio | Placements |
 |---|---|---|---|
-| ride | `marketing/audio-studio/ride/soundv2/ride_v2_silent.mp4` (before the ride brief has run: the two silent renders in `marketing/silent-studio/all-renders/`, one at a time) | `marketing/audio-studio/piano/projects/tunetank-ride/sources/tunetank-emotional-classical-484234.mp3` with the shipped placements, or `ride_master_v2.wav` with one placement at 0.0000 to hear the built mix | T1 (nudge) and T2 (derived, do not nudge) |
+| ride | `marketing/silent-studio/all-renders/ride_v1.mp4` (cycle 17; `marketing/audio-studio/ride/soundv2/ride_v2_silent.mp4` is the same clock on the older gates-saving_v8 picture) | `marketing/audio-studio/piano/projects/tunetank-ride/sources/tunetank-emotional-classical-484234.mp3` with the shipped placements, or `ride_master_v2.wav` with one placement at 0.0000 to hear the built mix | T1 (nudge) and T2 (derived, do not nudge) |
 | opening | `marketing/silent-studio/all-renders/opening_v3.mp4` | `marketing/audio-studio/piano/projects/tunetank/sources/tunetank-piano-logo-484286.mp3` | preset "opening", one placement T0 |
 
 Windows / OneDrive: the folder is under OneDrive-synced `Claude personal projects`. An mp4 that shows a

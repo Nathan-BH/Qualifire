@@ -2,7 +2,7 @@
 
 **Visual source:** `../../silent-studio/ranking/rounds/v6/ranking_v6.mp4` (10.8 s)
 **Filled in by Nathan on:** *(not yet filled in)*   **Status:** draft
-**Current soundtrack round:** soundv4 (`soundv4/FEEDBACK.md`) — silent round, cycle 16
+**Current soundtrack round:** none — the scene is silent; soundv4 was withdrawn in cycle 17 (silent renders live in silent-studio); the last audio round on disk is soundv3 (synthesised, reference only)
 
 Claude fills the first three columns from the composition's timeline and from what
 `soundtrack.py` currently plays. Nathan writes in the last column — plain words, references

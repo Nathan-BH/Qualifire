@@ -45,7 +45,8 @@ day file per composition, same vN. Full ruling and mechanism:
 | `ranking/` | product scene: rank fragment, timing tower | yes (v2, 2026-09-10; needs `map.png`, see `_map/`) | 4 | `ranking/rounds/v2/FEEDBACK.md` (most recent round) |
 | `colours/` | "Why purple is rare" — 60s tier/colour explainer | yes | 5 (uses 0–55s of the render) | `colours/rounds/v1/FEEDBACK.md` |
 | `_map/` | basemap capture page for the three product scenes (not a composition) | — | — | — |
-| `teaser/` | the assembled full video | stale (see below) | — | `teaser/rounds/v2/FEEDBACK.md` |
+| `teaser/` | the assembled full video | no (concat, see below) | — | `teaser/rounds/v9/FEEDBACK.md` |
+| `ride/` | the two product rides back to back (start-ride + gates-saving), the deliverable the ride soundtrack is written against — assembled by concat like the teaser (added 2026-09-23, cycle 17) | no (concat) | — (a deliverable of its own, not a teaser ingredient) | `ride/rounds/v1/FEEDBACK.md` |
 | `all-renders/` | current-render mirror, silent (see below) | — | — | — |
 
 ## all-renders — the current-picked-render mirror (READ THIS BEFORE ANY CLEANUP PASS)
@@ -72,10 +73,14 @@ have one — flag superseded files in `OPEN-ITEMS.md`'s cleanup section instead 
 trying to move them). Checklist: at most one night and one day file per composition,
 same vN; a new round replaces both or moves the stale `_day` to `safe_to_delete/`.
 
+Since cycle 17 (2026-09-23) this folder is the *only* home of silent renders:
+`audio-studio/all-renders/` holds sounded renders only, and a scene with no current sound
+round has no file there at all. `ride_v1.mp4` (cycle 17) is the eighth composition here.
+
 ## teaser — the full video
 
-Assembled by ffmpeg concat of cuts of the ingredients above; current build v2 = 105.5s
-at `teaser/rounds/v2/teaser_v2.mp4`; the ordered cut sheet is in `teaser/README.md`;
+Assembled by ffmpeg concat of cuts of the ingredients above; current build v9 = 47.6s
+at `teaser/rounds/v9/teaser_v9.mp4` (cycle 17); the ordered cut sheet is in `teaser/README.md`;
 `teaser/index.html` does not produce it (it's the old 11.2s brand teaser and the source
 code for the two lockup variants). The production method is still undecided — either
 split every ingredient into its own `index.html` and rebuild teaser as one real

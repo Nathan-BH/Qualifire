@@ -3,7 +3,8 @@
 > **Decision note, 2026-09-23 (cycle 16):** the synthesised (`synth.py`) approach described
 > below is dropped — Nathan: "i do not wish to move forward with any of the synthesized
 > sounds". New rounds use recordings Nathan picks (Tunetank tracks for the ride and the
-> opening) or are silent; older rounds stay on disk for reference. See
+> opening) or have no sound round (their deliverable is the silent render in
+> `../silent-studio/`, cycle 17); older rounds stay on disk for reference. See
 > `../cycles/16_ride-tunetank-soundtrack/README.md`.
 
 Ideas and decisions so far, kept current as we iterate. Per-scene detail belongs in

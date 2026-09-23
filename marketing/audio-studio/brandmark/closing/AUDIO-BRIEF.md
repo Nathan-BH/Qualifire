@@ -2,7 +2,7 @@
 
 **Visual source:** `../../../silent-studio/brandmark/closing/rounds/v3/closing_v3.mp4` (4.0 s)
 **Filled in by Nathan on:** *(not yet filled in)*   **Status:** draft
-**Current soundtrack round:** soundv3 (`soundv3/FEEDBACK.md`) — silent round, cycle 16
+**Current soundtrack round:** none — the scene is silent; soundv3 was withdrawn in cycle 17 (silent renders live in silent-studio); the last audio round on disk is soundv2 (synthesised, reference only)
 
 Claude fills the first three columns from the composition's timeline and from what
 `soundtrack.py` currently plays. Nathan writes in the last column — plain words, references
