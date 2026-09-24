@@ -143,6 +143,23 @@ try {
         if (-not $Message) { $Message = 'qualifire preview OTA update' }
         Say "no -Message given; using last commit subject: $Message"
     }
+    # Windows arg-parsing gotcha (Nathan, 2026-09-24 -- hit on a real commit
+    # subject with embedded quotes, `RIDES: ... "no way" rides ...`):
+    # PowerShell does NOT escape a literal " inside "$Message" when it builds
+    # the command line for the native exe below (eas-cli, reached through the
+    # npx.cmd/node shim chain) -- the embedded quote closes --message's value
+    # early and everything after it lands as stray positional args, which
+    # eas-cli then rejects ("Unexpected argument: ..."). This is message-only
+    # text, never code, so swapping any embedded " for ' is the simplest safe
+    # fix -- correctly escaping through two shim layers (cmd.exe, then
+    # node's own argv parser) is not worth chasing for a human-readable
+    # string. Applies to BOTH the -Message param and the git-derived
+    # fallback above -- a hand-typed -Message with a quote in it hits the
+    # exact same failure.
+    if ($Message -match '"') {
+        Warn 'commit message contains a double quote -- eas-cli chokes on it through the npx/node shim chain; using '' instead for this publish'
+        $Message = $Message -replace '"', "'"
+    }
 
     # --------------------------------------------- 4. Expo CLI + account
     # Checked in BOTH dry run and real run: npx has to fetch eas-cli itself on
