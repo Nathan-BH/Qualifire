@@ -1,0 +1,85 @@
+
+=== real kit, viewport 1440x810 ===
+     load + decode of 9 wavs + video: 948 ms
+PASS 1440x810 9 lanes
+PASS 1440x810 decoded sample counts equal the manifest's for all 9 lanes  [logo:372096 bed:663552 a-strings:663552 a-other:663552 b-piano:663552 b-drums:663552 b-bass:663552 b-other:663552 e5:374850]
+PASS 1440x810 data-peak of logo matches the manifest peak 0.9997 within 0.0005  [0.9997]
+PASS 1440x810 data-peak of bed matches the manifest peak 1.0435 within 0.0005  [1.0435]
+PASS 1440x810 data-peak of a-strings matches the manifest peak 0.8648 within 0.0005  [0.8648]
+PASS 1440x810 data-peak of a-other matches the manifest peak 1.1309 within 0.0005  [1.1309]
+PASS 1440x810 data-peak of b-piano matches the manifest peak 0.9046 within 0.0005  [0.9046]
+PASS 1440x810 data-peak of b-drums matches the manifest peak 0.9119 within 0.0005  [0.9119]
+PASS 1440x810 data-peak of b-bass matches the manifest peak 0.2241 within 0.0005  [0.2241]
+PASS 1440x810 data-peak of b-other matches the manifest peak 1.0384 within 0.0005  [1.0384]
+PASS 1440x810 data-peak of e5 matches the manifest peak 0.5025 within 0.0005  [0.5025]
+PASS 1440x810 bed data-peak >= 1.04 (float WAV decoded unclipped)  [1.0435]
+PASS 1440x810 a-other data-peak >= 1.10 (float WAV decoded unclipped)  [1.1309]
+     data-peak per lane: {"logo":0.9997,"bed":1.0435,"a-strings":0.8648,"a-other":1.1309,"b-piano":0.9046,"b-drums":0.9119,"b-bass":0.2241,"b-other":1.0384,"e5":0.5025}
+PASS 1440x810 status is plain ready with no leftover error  [ready · 9 lanes]
+PASS 1440x810 lane height 81 px  [81,81,81,81,81,81,81,81,81]
+PASS 1440x810 no page scroll (810 <= 810)
+PASS 1440x810 no overlaps and everything inside the viewport
+PASS 1440x810 lane canvases share the ruler width (702)  [702,702,702,702,702,702,702,702,702,702]
+PASS 1440x810 f729 = 24.300 s: readout  [24.300 s f729]
+PASS 1440x810 f729: bed src 14.000 | 1.260 (instance 1 tail, instance 2 = the ATTACK), e5 src 0.000 (the start pulse), logo none  [src 14.000 | 1.260 | src 0.000 | src —]
+PASS 1440x810 f729: every stem shows src 14.000 | 1.260
+PASS 1440x810 f0: logo src 0.000
+PASS 1440x810 default copy list = header + 16 clip lines exactly as in the brief's step-8 table  [17 lines]
+PASS 1440x810 after bed -> A swap: bed lines muted, A lines not
+PASS 1440x810 zoom 0.5 s at f729 window [24.05,24.55]  [[24.05,24.55]]
+PASS 1440x810 play 1.5 s over the real kit: video advanced 1.46 s (>= 1.2), context running
+     resyncs (reported, not asserted): 0
+PASS 1440x810 zero console errors
+
+=== real kit, viewport 1440x900 ===
+     load + decode of 9 wavs + video: 642 ms
+PASS 1440x900 9 lanes
+PASS 1440x900 decoded sample counts equal the manifest's for all 9 lanes  [logo:372096 bed:663552 a-strings:663552 a-other:663552 b-piano:663552 b-drums:663552 b-bass:663552 b-other:663552 e5:374850]
+PASS 1440x900 status is plain ready with no leftover error  [ready · 9 lanes]
+PASS 1440x900 lane height 91 px  [91,91,91,91,91,91,91,91,91]
+PASS 1440x900 no page scroll (900 <= 900)
+PASS 1440x900 no overlaps and everything inside the viewport
+PASS 1440x900 lane canvases share the ruler width (702)  [702,702,702,702,702,702,702,702,702,702]
+PASS 1440x900 f729 = 24.300 s: readout  [24.300 s f729]
+PASS 1440x900 f729: bed src 14.000 | 1.260 (instance 1 tail, instance 2 = the ATTACK), e5 src 0.000 (the start pulse), logo none  [src 14.000 | 1.260 | src 0.000 | src —]
+PASS 1440x900 f729: every stem shows src 14.000 | 1.260
+PASS 1440x900 f0: logo src 0.000
+PASS 1440x900 default copy list = header + 16 clip lines exactly as in the brief's step-8 table  [17 lines]
+PASS 1440x900 after bed -> A swap: bed lines muted, A lines not
+PASS 1440x900 zero console errors
+
+=== real kit, viewport 1920x990 ===
+     load + decode of 9 wavs + video: 756 ms
+PASS 1920x990 9 lanes
+PASS 1920x990 decoded sample counts equal the manifest's for all 9 lanes  [logo:372096 bed:663552 a-strings:663552 a-other:663552 b-piano:663552 b-drums:663552 b-bass:663552 b-other:663552 e5:374850]
+PASS 1920x990 status is plain ready with no leftover error  [ready · 9 lanes]
+PASS 1920x990 lane height 96 px  [96,96,96,96,96,96,96,96,96]
+PASS 1920x990 no page scroll (990 <= 990)
+PASS 1920x990 no overlaps and everything inside the viewport
+PASS 1920x990 lane canvases share the ruler width (1027)  [1027,1027,1027,1027,1027,1027,1027,1027,1027,1027]
+PASS 1920x990 f729 = 24.300 s: readout  [24.300 s f729]
+PASS 1920x990 f729: bed src 14.000 | 1.260 (instance 1 tail, instance 2 = the ATTACK), e5 src 0.000 (the start pulse), logo none  [src 14.000 | 1.260 | src 0.000 | src —]
+PASS 1920x990 f729: every stem shows src 14.000 | 1.260
+PASS 1920x990 f0: logo src 0.000
+PASS 1920x990 default copy list = header + 16 clip lines exactly as in the brief's step-8 table  [17 lines]
+PASS 1920x990 after bed -> A swap: bed lines muted, A lines not
+PASS 1920x990 zero console errors
+
+=== real kit, viewport 1920x1080 ===
+     load + decode of 9 wavs + video: 655 ms
+PASS 1920x1080 9 lanes
+PASS 1920x1080 decoded sample counts equal the manifest's for all 9 lanes  [logo:372096 bed:663552 a-strings:663552 a-other:663552 b-piano:663552 b-drums:663552 b-bass:663552 b-other:663552 e5:374850]
+PASS 1920x1080 status is plain ready with no leftover error  [ready · 9 lanes]
+PASS 1920x1080 lane height 96 px  [96,96,96,96,96,96,96,96,96]
+PASS 1920x1080 no page scroll (1080 <= 1080)
+PASS 1920x1080 no overlaps and everything inside the viewport
+PASS 1920x1080 lane canvases share the ruler width (1027)  [1027,1027,1027,1027,1027,1027,1027,1027,1027,1027]
+PASS 1920x1080 f729 = 24.300 s: readout  [24.300 s f729]
+PASS 1920x1080 f729: bed src 14.000 | 1.260 (instance 1 tail, instance 2 = the ATTACK), e5 src 0.000 (the start pulse), logo none  [src 14.000 | 1.260 | src 0.000 | src —]
+PASS 1920x1080 f729: every stem shows src 14.000 | 1.260
+PASS 1920x1080 f0: logo src 0.000
+PASS 1920x1080 default copy list = header + 16 clip lines exactly as in the brief's step-8 table  [17 lines]
+PASS 1920x1080 after bed -> A swap: bed lines muted, A lines not
+PASS 1920x1080 zero console errors
+
+ALL PASS: 69/69 checks

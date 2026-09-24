@@ -1,0 +1,49 @@
+prep_kit.py  2026-09-24T19:04:13Z
+repo root   /sessions/rcw-011hszes8a4m4hvabzah8zk2/mnt/Qualifire
+audio-studio /sessions/rcw-011hszes8a4m4hvabzah8zk2/mnt/Qualifire/marketing/audio-studio
+constants: T1 3.80 ATTACK 1.26 T2 16.54 GAIN_BED 0.45 BED_FADE (26.3, 1.0) E5_FADE (26.3, 0.5) GAIN 1.50 GAIN_VOICE_E5 0.5723 MASTER_DUR 26.3
+
+== step 3: video (short-GOP proxy) ==
+md5 source 07f9c5b495519c97cdec3987decc027f expected 07f9c5b495519c97cdec3987decc027f
+proxy kept (checks pass)
+proxy: 1428 frames, 143 keyframes (every 10), timestamps identical to the source (max diff 0.000000 s), 15.5 MB
+ffprobe: codec_name=h264, width=1920, height=1080, r_frame_rate=30/1, nb_frames=1428, duration=47.600000
+
+== step 4: decode_stereo (ffmpeg -ac 2 -ar 44100 -f f32le) -> 32-bit float WAV ==
+logo         372096 samples  8.4376 s  peak  -0.00 dBFS  over 1.0: 0  src md5 8e4f098354fafa7e8b28e3ff9de7dd9b  src ffprobe 8.437531 s  <- marketing/audio-studio/piano/projects/tunetank/sources/tunetank-piano-logo-484286.mp3
+bed          663552 samples  15.0465 s  peak  +0.37 dBFS  over 1.0: 583  src md5 a5ea27ca9bd0742beb78bf61bc0ae5fa  src ffprobe 15.046531 s  <- marketing/audio-studio/stemsplitter/tunetank-emotional-classical/sources/original.mp3
+a-strings    663552 samples  15.0465 s  peak  -1.26 dBFS  over 1.0: 0  src md5 bccc4bec083ad2efcba297af948ef049  src ffprobe 15.072653 s  <- marketing/audio-studio/stemsplitter/tunetank-emotional-classical/sources/strings-model_strings.mp3
+a-other      663552 samples  15.0465 s  peak  +1.07 dBFS  over 1.0: 29  src md5 6053334755d323b6914dca84ca02e47f  src ffprobe 15.072653 s  <- marketing/audio-studio/stemsplitter/tunetank-emotional-classical/sources/strings-model_other.mp3
+b-piano      663552 samples  15.0465 s  peak  -0.87 dBFS  over 1.0: 0  src md5 9eabc826512c17af35be031692ac2c09  src ffprobe 15.072653 s  <- marketing/audio-studio/stemsplitter/tunetank-emotional-classical/sources/6stem_piano.mp3
+b-drums      663552 samples  15.0465 s  peak  -0.80 dBFS  over 1.0: 0  src md5 a70feb799bde8d5036dbd1ae675d0c0b  src ffprobe 15.072653 s  <- marketing/audio-studio/stemsplitter/tunetank-emotional-classical/sources/6stem_drums.mp3
+b-bass       663552 samples  15.0465 s  peak -12.99 dBFS  over 1.0: 0  src md5 429385f689136f84467330bbee179655  src ffprobe 15.072653 s  <- marketing/audio-studio/stemsplitter/tunetank-emotional-classical/sources/6stem_bass.mp3
+b-other      663552 samples  15.0465 s  peak  +0.33 dBFS  over 1.0: 3  src md5 206628054a027d31204f030c6a6f5da6  src ffprobe 15.072653 s  <- marketing/audio-studio/stemsplitter/tunetank-emotional-classical/sources/6stem_other.mp3
+left out on purpose: 6stem_instrum (= whole mix, corr 1.000 in Plan's check), 6stem_guitar and 6stem_vocals (peak 0.000)
+
+== step 5: E5 lane ==
+e5 tau (ride clock) [17.8, 19.81, 21.65, 23.51, 25.38]   peak 0.5025
+i0 = 784980 ; e5.wav 374850 samples = 8.5000 s ; pulses in the file at [0.0, 2.01, 3.85, 5.71, 7.58] s
+
+== step 6: kit chain vs ride/soundv2/ride_master_v2.wav ==
+shapes: existing (1159830, 2), re-render (1159830, 2)
+max |existing - re-render| = 0 LSB ; samples > 1 LSB: 0 ; samples > 2 LSB: 0
+max |derived e5 (existing L - bed layer) - rendered e5| = 0.000031 (rule <= 1e-3)
+pulse rms(50 ms after)/rms(50 ms before): 113189177, 113189177, 113189177, 18054, 9413  (rule >= 100)
+master reproduction: PASS (max 0 LSB)
+
+== step 7: alignment guard (kit wavs, mono, |k| <= 4410 samples; corr = c[k*]/sqrt(sum ref^2 * sum x^2)) ==
+self-test (100 zeros prepended): k = 100 corr 1.0000
+  stem a-strings  vs bed: k =     0 samples (0.000 ms)  corr 0.7842   [report only]
+  stem a-other    vs bed: k =     0 samples (0.000 ms)  corr 0.8913   [report only]
+  stem b-piano    vs bed: k =     0 samples (0.000 ms)  corr 0.5390   [report only]
+  stem b-drums    vs bed: k =     0 samples (0.000 ms)  corr 0.4782   [report only]
+  stem b-bass     vs bed: k =    12 samples (0.272 ms)  corr 0.4834   [report only]
+  stem b-other    vs bed: k =     0 samples (0.000 ms)  corr 0.8305   [report only]
+  sum A (a-strings + a-other) vs bed: k = 0 samples corr 0.9999
+  sum B (b-piano + b-drums + b-bass + b-other) vs bed: k = 0 samples corr 0.9998
+file_offset_s: A = 0.0, B = 0.0
+
+== step 8: manifest ==
+wrote manifest.json: 9 tracks, 16 clips
+
+PREP OK

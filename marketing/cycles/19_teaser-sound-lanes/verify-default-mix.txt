@@ -1,0 +1,7 @@
+kit format: float32 (max |sample| over the kit: 1.1309)
+clips mixed (4): logo@0.000, bed@10.300, bed@23.040, e5@24.300
+mix length: 2099160 frames = 47.6000 s
+(a) render [6.5, 32.8) vs ride_master_v2.wav: frames 1159830, max |diff| 1 LSB (at frame 816792), rms(diff) 0.0031 LSB, samples > 2 LSB: 0  -> ok
+(b) render [0, 6.5) vs soundtrack_v3.wav: frames 286650, max |diff| 0 LSB (at frame 0), rms(diff) 0.0000 LSB, samples > 2 LSB: 0  -> ok
+(c) render [32.8, 47.6): 652680 frames, non-zero samples: 0  -> ok
+MIX OK
