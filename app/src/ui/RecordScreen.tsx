@@ -1370,13 +1370,13 @@ export default function RecordScreen({
         ) : null}
         {/* Q4 (WP-1): zero sports blocks the whole setup flow — a ride
             cannot start without a sport for it to belong to. No onboarding
-            screen; SETTINGS -> SPORTS only. */}
+            screen; SETTINGS -> SPORTS only. Nathan 2026-09-24: dropped the
+            explanatory body copy (too much AI-sounding text for a real
+            product) — the label alone, extended with the destination, is
+            enough. */}
         {noSport ? (
           <View style={styles.startFlow}>
-            <Text style={styles.flowLabel}>SET UP A SPORT FIRST</Text>
-            <Text style={styles.sub}>
-              Rides belong to a sport — bike, run, walk, whatever you call it. Add one in SETTINGS → SPORTS, then come back.
-            </Text>
+            <Text style={styles.flowLabel}>SET UP A SPORT FIRST — GO TO SETTINGS</Text>
           </View>
         ) : (
           <>
@@ -1487,8 +1487,11 @@ export default function RecordScreen({
       {/* RECORD — arms the ride (Cycle 024, WP-A2, Nathan 2026-08-19): plays
           the launch mark, then the RACE screen is ready but not moving until
           START is pressed there. Amber, no red (D-013) — see WP-A2's
-          NEEDS-NATHAN #1 for the red option. Q4 (WP-1): replaced by a GO TO
-          SETTINGS button, same bigBtn styling, while zero sports exist. */}
+          NEEDS-NATHAN #1 for the red option. Q4 (WP-1): while zero sports
+          exist the button still presses through to SETTINGS, but Nathan
+          2026-09-24 wants it reading as the normal RECORD button (not a
+          distinct "GO TO SETTINGS" label) — only the subtext below it flags
+          the missing sport. */}
       <Pressable
         style={[styles.bigBtn, styles.startYellow, busy && styles.busy]}
         disabled={busy}
@@ -1496,8 +1499,8 @@ export default function RecordScreen({
       >
         {noSport ? (
           <>
-            <Text style={[styles.bigBtnText, styles.startText]}>GO TO SETTINGS</Text>
-            <Text style={[styles.bigBtnSub, styles.startSub]}>add a sport to start recording</Text>
+            <Text style={[styles.bigBtnText, styles.startText]}>{'●'} RECORD</Text>
+            <Text style={[styles.bigBtnSub, styles.startSub]}>no sport selected</Text>
           </>
         ) : (
           <>
