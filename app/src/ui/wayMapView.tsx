@@ -853,13 +853,13 @@ function MapLibreWayMap(props: WayMapProps & {
           <M.Layer id="self-dot" type="circle"
             layout={{ 'circle-sort-key': ['get', 'sortKey'] }}
             paint={{
-              'circle-radius': 5,
+              'circle-radius': 6,
               // R5′: the app's one tier rule, tokens from tierColour.ts (never chipColors().text).
               'circle-color': ['match', ['get', 'tier'],
                 'purple', tierLineColour('purple') as string,
                 'green', tierLineColour('green') as string,
                 tierLineColour('yellow') as string],
-              // R5″: state-only opacity; every self sits under the rider's 1.0.
+              // R5″: state-only opacity; every self sits under the rider's 0.85.
               'circle-opacity': ['case', ['==', ['get', 'state'], 'finished'], 0.35, 0.7],
               'circle-stroke-color': CASING,
               'circle-stroke-width': 1.5,
@@ -875,6 +875,7 @@ function MapLibreWayMap(props: WayMapProps & {
                 rungs. */}
             <M.Layer id="rider-dot" type="circle" paint={{
               'circle-radius': 7,
+              'circle-opacity': 0.85,
               'circle-color': off ? '#FFFFFF' : colors.riderBlue,
               'circle-stroke-color': off ? colors.riderBlue : '#FFFFFF',
               'circle-stroke-width': 2,
