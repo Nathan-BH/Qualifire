@@ -72,9 +72,27 @@ export interface RideRowModel {
 
 /**
  * One row per stored ride, newest first. A ride with no derived result yet
- * (not backfilled) — or one whose result matched no route — renders as "no
- * route — recorded only" (WP-B will later specialise this into a "free
- * rides" category; keeping it generic here is deliberate, per this brief).
+ * (not backfilled), or one whose result matched no way, falls through the
+ * two overrides below before landing on `wayName: null` (rendered by the
+ * caller as "no way — recorded only"):
+ *
+ * virgin-cycle13 (Nathan 2026-09-24): a "no way" ride was indistinguishable
+ * from a free ride, AND a ride that later became a route's own reference
+ * stayed "no way" forever — matching only ever runs against ways that
+ * existed at backfill time, and a permanent unmatched marker
+ * (resultsStore.ts) means it is never retried once the ride's own way is
+ * minted from it. Both are display-only fixes; neither touches matching:
+ *  1. `referenceWayFor(rideId)` — this ride founded a way (Way.referenceRideId)
+ *     — wins outright: shown as "<way name> — ref" via the SAME `labelFor`
+ *     already used for a matched wayId, `wayId` stays null (D-025: no real
+ *     lap was ever derived for it, so nothing here pretends one was).
+ *  2. `pickLabelFor(rideId)` — the START-time pick logged to the ride's own
+ *     GPX+ events sidecar (N9's PickEvent) — "<fromLabel> → <toLabel>",
+ *     covering both a free ride ("new → new") and a route-mode ride that
+ *     genuinely matched nothing. Absent (pre-N9 ride, or no sidecar) falls
+ *     through to plain `wayName: null`.
+ * Both are optional and default to "nothing on file" so every existing
+ * caller/test is unaffected.
  *
  * `laps(routeId, excl)` must exclude the ride's own rideId from its history
  * (mockup's `rankInTower` in-place semantics, colourModel's own contract) —
@@ -91,6 +109,8 @@ export function buildRideRows(
   resultFor: (rideId: string) => RideResult | null,
   laps: (wayId: string, excl: string) => number[],
   labelFor: (id: string) => string = wayLabel,
+  referenceWayFor: (rideId: string) => { id: string } | null = () => null,
+  pickLabelFor: (rideId: string) => string | null = () => null,
 ): RideRowModel[] {
   return [...metas]
     .sort((a, b) => b.startMs - a.startMs)
@@ -98,12 +118,14 @@ export function buildRideRows(
       const dateLabel = dateTimeLabel(m.startMs);
       const result = resultFor(m.rideId);
       if (result === null || result.wayId === null) {
+        const refWay = referenceWayFor(m.rideId);
+        const wayName = refWay !== null ? `${labelFor(refWay.id)} — ref` : pickLabelFor(m.rideId);
         return {
           rideId: m.rideId,
           startMs: m.startMs,
           dateLabel,
           wayId: null,
-          wayName: null,
+          wayName,
           lapS: null,
           lapLabel: 'no lap',
           quality: null,

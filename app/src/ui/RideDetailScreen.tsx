@@ -54,8 +54,9 @@ import { specVocabulary } from '../store/waySpecs.ts';
 import { RouteNamingCard } from './routeNamingCard.tsx';
 import { GateAdjustCard } from './gateAdjustCard.tsx';
 import { createExpoFsAdapter } from '../storage/expoFsAdapter.ts';
+import { decodeEventsFile } from '../storage/eventsJsonl.ts';
 import { deleteRide, exportGpxPlus, listRides } from '../storage';
-import type { RideMeta } from '../storage/types';
+import type { PickEvent, RideMeta } from '../storage/types';
 import { gpxBaseName, saveGpx } from './saveGpx.ts';
 
 function tierColour(tier: UiTier, t: PaddockTheme): string {
@@ -136,6 +137,12 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
   const [draft, setDraft] = useState<RouteCreationDraft | null | 'pending'>('pending');
   const [naming, setNaming] = useState(false);
   const [adjust, setAdjust] = useState<GateAdjustDraft | null>(null);
+  // virgin-cycle13 (Nathan 2026-09-24): "<from> → <to>" fallback for the
+  // "no way" card below — the ride's own START-time pick, read once from its
+  // GPX+ events sidecar. Only ever used when the ride is neither a matched
+  // route nor a way's own reference (model.referenceOf, below), so it's
+  // fetched lazily off that same condition rather than for every ride.
+  const [pickLabel, setPickLabel] = useState<string | null>(null);
 
   // The Delete confirm's copy needs meta's own timestamps — resolved once on
   // mount from the same source RidesScreen uses (listRides()); Export/Delete
@@ -190,6 +197,38 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [request.rideId, request.startedAtMs, tick, s.timing],
   );
+
+  // virgin-cycle13: only fetched for the card that actually needs it (kind
+  // !== 'route' and not a way's own reference — see the render below and
+  // rideHistoryModel.ts's buildRideRows doc comment for the same fallback
+  // chain on the RIDES list). Best-effort, mirrors the fixes effect above.
+  useEffect(() => {
+    if (model.kind === 'route' || model.referenceOf !== null) {
+      setPickLabel(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const fs = createExpoFsAdapter();
+        const text = await fs.readText(`rides/${request.rideId}.events.jsonl`);
+        if (text === null) {
+          if (!cancelled) setPickLabel(null);
+          return;
+        }
+        const { events } = decodeEventsFile(text);
+        const pick = events.find((e): e is PickEvent => e.kind === 'pick');
+        if (!cancelled) {
+          setPickLabel(pick && pick.fromLabel && pick.toLabel ? `${pick.fromLabel} → ${pick.toLabel}` : null);
+        }
+      } catch {
+        if (!cancelled) setPickLabel(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [request.rideId, model.kind, model.referenceOf]);
 
   // §3.3: the retroactive naming offer, drafted against the CURRENT catalog
   // with this ride's own matched route as the WP-F endpoint hint. Re-drafted
@@ -432,6 +471,33 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
             />
           </View>
         </View>
+      ) : model.referenceOf !== null ? (
+        // virgin-cycle13 (Nathan 2026-09-24): this ride founded a way
+        // (Way.referenceRideId) but its OWN result never matched anything —
+        // matching only runs against ways that existed at backfill time, and
+        // a permanent unmatched marker (resultsStore.ts) means it's never
+        // retried once the way is minted from this very ride. Read straight
+        // off the catalog, same as the kind==='route' reference line above —
+        // no fabricated lap/rank/sectors, this ride genuinely has none on
+        // file.
+        <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder, alignItems: 'center' }]}>
+          <Text style={{ color: t.textDim }}>{wayLabelIn(currentCatalog(), model.referenceOf.id)} — ref</Text>
+          <Text style={{ color: t.textDim, fontSize: 12.5, marginTop: 4 }}>
+            this ride is the reference for this way — no lap time on file for it
+          </Text>
+          <View style={{ alignSelf: 'stretch', marginTop: 10 }}>
+            <WayMapView
+              variant="browse"
+              wayId={null}
+              lat={null}
+              lon={null}
+              zoom={1}
+              height={300}
+              showRider={false}
+              trail={fixes ?? undefined}
+            />
+          </View>
+        </View>
       ) : model.kind === 'free' && model.free ? (
         <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder, alignItems: 'center' }]}>
           <Text style={{ color: t.textDim }}>FREE RIDE</Text>
@@ -461,8 +527,12 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
           </View>
         </View>
       ) : (
+        // virgin-cycle13: pickLabel (this ride's own START-time from/to,
+        // fetched above) covers both a free ride ("new → new") and a
+        // route-mode ride that genuinely matched nothing; falls back to the
+        // old plain text only for a pre-GPX+ ride with no sidecar pick at all.
         <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-          <Text style={{ color: t.textDim }}>no way — recorded only</Text>
+          <Text style={{ color: t.textDim }}>{pickLabel ?? 'no way — recorded only'}</Text>
           <Text style={{ color: t.textDim, marginTop: 4 }}>sector times not on file for this ride</Text>
           <View style={{ alignSelf: 'stretch', marginTop: 10 }}>
             <WayMapView

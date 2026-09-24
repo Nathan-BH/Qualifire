@@ -142,6 +142,49 @@ test('ridehistory: buildRideRows — a missed-gate lap (quality missed) reads "n
   assert(rows[0].quality === 'missed', `non-clean quality must surface, got ${rows[0].quality}`);
 });
 
+test('virgin-cycle13: buildRideRows — a "no way" ride that founded a way shows "<way name> — ref", via the same labelFor', () => {
+  const metas: RideMeta[] = [{ rideId: 'r1', startMs: 1000, endMs: 2000, nFixes: 10 }];
+  const rows = buildRideRows(
+    metas, () => null, () => [],
+    (id) => (id === 'way:gymhome' ? 'Gym → Home' : id),
+    (rideId) => (rideId === 'r1' ? { id: 'way:gymhome' } : null),
+    () => 'SHOULD NOT WIN — pick label must lose to a reference way',
+  );
+  assert(rows[0].wayName === 'Gym → Home — ref',
+    `a reference ride must show "<way name> — ref" ahead of any pick label, got ${rows[0].wayName}`);
+  assert(rows[0].wayId === null,
+    'wayId stays null for a reference override — no real lap was ever derived for this ride (D-025)');
+});
+
+test('virgin-cycle13: buildRideRows — a "no way" ride with no reference falls back to its START pick, "<from> → <to>"', () => {
+  const metas: RideMeta[] = [{ rideId: 'r1', startMs: 1000, endMs: 2000, nFixes: 10 }];
+  const rows = buildRideRows(
+    metas, () => null, () => [], undefined,
+    () => null, // not a reference
+    (rideId) => (rideId === 'r1' ? 'new → new' : null),
+  );
+  assert(rows[0].wayName === 'new → new',
+    `a free/unmatched ride with a START pick on file must show "<from> → <to>", got ${rows[0].wayName}`);
+});
+
+test('virgin-cycle13: buildRideRows — neither a reference nor a pick label on file still renders wayName null (old "no way" fallback text is the caller\'s job)', () => {
+  const metas: RideMeta[] = [{ rideId: 'r1', startMs: 1000, endMs: 2000, nFixes: 10 }];
+  const rows = buildRideRows(metas, () => null, () => []); // referenceWayFor/pickLabelFor both default to () => null
+  assert(rows[0].wayName === null,
+    `with nothing on file wayName must stay null — got ${rows[0].wayName}`);
+});
+
+test('virgin-cycle13: buildRideRows — a MATCHED ride never consults referenceWayFor/pickLabelFor at all', () => {
+  const metas: RideMeta[] = [{ rideId: 'r1', startMs: 1000, endMs: 2000, nFixes: 10 }];
+  const result = makeResult('r1', 'Morning', 1000, { movingS: 500, rawS: 500, quality: 'clean' }, []);
+  const rows = buildRideRows(
+    metas, () => result, () => [], undefined,
+    () => { throw new Error('referenceWayFor must not be called for a matched ride'); },
+    () => { throw new Error('pickLabelFor must not be called for a matched ride'); },
+  );
+  assert(rows[0].wayName === 'Home Work Dry', `a matched ride keeps its normal labelFor result, got ${rows[0].wayName}`);
+});
+
 // ============================================================ lapCellLabel
 
 test('ridehistory: lapCellLabel — the RIDES/RESULT shared rule: real time, ~raw when estimated, else "no lap"', () => {

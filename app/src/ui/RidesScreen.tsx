@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { listRides } from '../storage';
-import type { RideMeta } from '../storage/types';
+import type { PickEvent, RideMeta } from '../storage/types';
 import { decodeIndex } from '../storage/rideIndex';
 import { backfillMissingResults, getStoredResult } from '../store/resultsStore';
 import { currentCatalog } from '../store/catalogStore';
@@ -17,6 +17,7 @@ import { effectiveRideSportId, wayIdsOfSport } from '../store/sports';
 import { activeSportId, currentSports } from '../store/sportStore';
 import { wayLabelIn } from '../store/defaultWay';
 import { createExpoFsAdapter } from '../storage/expoFsAdapter';
+import { decodeEventsFile } from '../storage/eventsJsonl';
 import { buildRideRows } from './rideHistoryModel';
 import { lapValues } from './colourModel';
 import { useSettings } from './settings';
@@ -34,6 +35,12 @@ export default function RidesScreen() {
   // Bumped after a backfill pass so buildRideRows re-reads resultsStore's
   // module-level map — React has no way to know that map changed on its own.
   const [resultsTick, setResultsTick] = useState(0);
+  // virgin-cycle13 (Nathan 2026-09-24): "<from> → <to>" for a ride whose own
+  // stored result is null/unmatched, read once per rideId from its GPX+
+  // events sidecar (N9's PickEvent) — see the effect below and
+  // rideHistoryModel.ts's buildRideRows doc comment for the full "no way"
+  // fallback chain (reference ride first, this second).
+  const [pickLabels, setPickLabels] = useState<Map<string, string>>(new Map());
 
   const refresh = useCallback(async () => {
     try {
@@ -108,12 +115,57 @@ export default function RidesScreen() {
     };
   }, [rides]);
 
+  // virgin-cycle13: fills pickLabels for whatever's left "no way" after the
+  // backfill pass above AND the reference-ride override (computed inline
+  // below, from the catalog — no I/O) — best-effort, one small sidecar read
+  // per still-unnamed ride, same non-throwing discipline as the backfill
+  // effect. Runs after resultsTick so a ride that DID get backfilled this
+  // pass is correctly skipped rather than fetched for nothing.
+  useEffect(() => {
+    if (rides === null || rides.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const need = rides.filter((m) => {
+        if (pickLabels.has(m.rideId)) return false;
+        const res = getStoredResult(m.rideId);
+        if (res !== null && res.wayId !== null) return false; // already named
+        if (currentCatalog().ways.some((w) => w.referenceRideId === m.rideId)) return false; // reference wins, no fetch needed
+        return true;
+      });
+      if (need.length === 0) return;
+      const fs = createExpoFsAdapter();
+      const updates = new Map(pickLabels);
+      for (const m of need) {
+        try {
+          const text = await fs.readText(`rides/${m.rideId}.events.jsonl`);
+          if (text !== null) {
+            const { events } = decodeEventsFile(text);
+            const pick = events.find((e): e is PickEvent => e.kind === 'pick');
+            if (pick && pick.fromLabel && pick.toLabel) {
+              updates.set(m.rideId, `${pick.fromLabel} → ${pick.toLabel}`);
+            }
+          }
+        } catch { /* best-effort — the row just falls back to "no way" */ }
+      }
+      if (!cancelled) setPickLabels(updates);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rides, resultsTick]);
+
   const rows = useMemo(
     // WP-G: labelFor is routeLabelIn so a user-minted route shows its way + specs, not the raw route:<rideId> id.
+    // virgin-cycle13: referenceWayFor/pickLabelFor are the "no way" fallback
+    // chain (buildRideRows doc comment) — reference ride first, then this
+    // effect's sidecar-derived pick label, then plain null (unchanged).
     () => buildRideRows(rides ?? [], getStoredResult, (wayId, excl) => lapValues(wayId, excl),
-      (id) => wayLabelIn(currentCatalog(), id)),
+      (id) => wayLabelIn(currentCatalog(), id),
+      (rideId) => currentCatalog().ways.find((w) => w.referenceRideId === rideId) ?? null,
+      (rideId) => pickLabels.get(rideId) ?? null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rides, resultsTick, s.timing],
+    [rides, resultsTick, s.timing, pickLabels],
   );
   const sportLabel = currentSports().sports.find((sp) => sp.id === activeSportId())?.label ?? null;
   return (
