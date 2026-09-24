@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teaser sound lanes</title>
+<style>
+:root {
+  --bg: #0f1216; --panel: #171b21; --panel2: #1d222a; --line: #2b323d; --text: #dfe5ee; --muted: #8f99a9;
+  --accent: #5b9bff; --red: #ff4d4f; --amber: #fbbf24; --ok: #4ade80;
+  --left: 605px; --laneh: 81px; --hdrw: 132px;
+  --mono: ui-monospace, "Cascadia Mono", Consolas, "Liberation Mono", monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px/1.35 system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+body { display: grid; grid-template-rows: 36px minmax(0, 1fr) 24px; overflow: hidden; }
+body[data-layout="stacked"] { display: block; height: auto; min-height: 100%; overflow: visible; }
+html:has(body[data-layout="stacked"]) { height: auto; overflow-x: hidden; overflow-y: auto; }
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; background: #232a34; border: 1px solid var(--line); border-radius: 4px; padding: 0 10px; height: 28px; cursor: pointer; }
+button:hover:not(:disabled) { background: #2c3541; }
+button:disabled { opacity: 0.4; cursor: default; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+button.primary { background: #2b5fb8; border-color: #3d73d1; }
+button.primary:hover:not(:disabled) { background: #3369c6; }
+input[type="text"] { font: 12px var(--mono); color: var(--text); background: #0c0f13; border: 1px solid var(--line); border-radius: 3px; padding: 0 5px; height: 22px; width: 100%; min-width: 0; }
+input[type="text"].bad { border-color: var(--red); background: #2a1215; }
+.muted { color: var(--muted); }
+.grow { flex: 1 1 auto; }
+
+#topbar { display: flex; align-items: center; gap: 10px; padding: 0 12px; height: 36px; border-bottom: 1px solid var(--line); background: var(--panel); min-width: 0; }
+#topbar h1 { font-size: 14px; font-weight: 600; margin: 0; white-space: nowrap; }
+#topbar button { height: 26px; }
+#kit-info { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; font-size: 12px; }
+#btn-help { width: 26px; padding: 0; font-weight: 700; }
+
+#main { display: grid; grid-template-columns: var(--left) minmax(0, 1fr); min-height: 0; min-width: 0; }
+body[data-layout="stacked"] #main { display: block; }
+#left { display: flex; flex-direction: column; gap: 6px; padding: 8px 12px 8px 12px; min-height: 0; min-width: 0; overflow: hidden; }
+body[data-layout="stacked"] #left { overflow: visible; }
+#fx-banner { background: #3a2a0b; color: var(--amber); border: 1px solid #6b4b0f; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+
+#video-panel { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border: 1px solid var(--line); flex: none; overflow: hidden; }
+#video { width: 100%; height: 100%; object-fit: contain; display: block; background: #000; }
+#empty-card { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-align: center; padding: 12px; background: rgba(15, 18, 22, 0.92); }
+#empty-card .big { height: 36px; padding: 0 18px; font-size: 14px; }
+#empty-card p { margin: 0; font-size: 12px; max-width: 440px; }
+body.dragging #video-panel { outline: 2px dashed var(--accent); outline-offset: -4px; }
+
+#readout { height: 44px; display: flex; align-items: baseline; gap: 18px; flex: none; overflow: hidden; }
+#rd-time { font: 600 30px/44px var(--mono); white-space: pre; }
+#rd-frame { font: 500 22px/44px var(--mono); color: var(--muted); }
+
+#transport { flex: none; display: flex; flex-direction: column; gap: 4px; }
+#transport .row { display: flex; align-items: center; gap: 6px; }
+#transport .row1 { height: 40px; }
+#transport .row1 button { height: 36px; min-width: 42px; font-size: 14px; padding: 0 8px; }
+#transport .row1 button#btn-play { min-width: 92px; background: #2b5fb8; border-color: #3d73d1; }
+#transport .row2 { height: 26px; font-size: 12px; white-space: nowrap; }
+#transport .row2 button { height: 24px; padding: 0 7px; font-size: 12px; }
+#transport .row2 button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #06121f; }
+#go-to { width: 104px; }
+#transport .row2 .zl { margin-left: 8px; }
+#transport label { display: flex; align-items: center; gap: 4px; color: var(--muted); }
+
+#clip-editor { flex: none; height: 84px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); padding: 3px 8px; overflow: hidden; font-size: 12px; }
+#ed-hint { color: var(--muted); padding-top: 6px; }
+#ed-head { display: flex; align-items: center; gap: 6px; height: 22px; }
+#ed-head .ttl { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#ed-head button { height: 20px; font-size: 11px; padding: 0 7px; }
+#ed-grid { display: grid; grid-template-columns: repeat(4, 1fr); column-gap: 8px; }
+#ed-grid .cell { display: grid; grid-template-columns: auto 1fr; column-gap: 4px; align-items: center; height: 28px; align-content: start; }
+#ed-grid .cell label { color: var(--muted); font-size: 11px; white-space: nowrap; }
+#ed-grid .cell .val { font: 12px var(--mono); height: 20px; line-height: 20px; }
+#ed-grid .cell .fr { grid-column: 2; font: 11px/11px var(--mono); color: var(--muted); height: 11px; }
+#ed-grid input[type="text"] { height: 18px; font-size: 12px; }
+
+#howto { flex: 1 1 auto; min-height: 0; overflow: hidden; color: var(--muted); font-size: 12px; line-height: 1.3; border-top: 1px solid var(--line); padding-top: 5px; }
+#howto ol, .panel ol { margin: 0; padding-left: 16px; }
+#howto li { margin-bottom: 1px; }
+#howto-short { padding-top: 2px; }
+
+#right { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; border-left: 1px solid var(--line); overflow: hidden; }
+body[data-layout="stacked"] #right { border-left: 0; border-top: 1px solid var(--line); }
+#ruler-row { display: flex; height: 18px; flex: none; }
+.ruler-sp { width: var(--hdrw); flex: none; background: var(--panel); border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+#ruler { flex: 1 1 0; min-width: 0; width: 0; height: 18px; display: block; cursor: pointer; background: var(--panel); border-bottom: 1px solid var(--line); }
+#lanes { display: flex; flex-direction: column; min-height: 0; }
+.lane { display: flex; height: var(--laneh); flex: none; border-bottom: 1px solid var(--line); }
+.lane-hdr { position: relative; width: var(--hdrw); flex: none; padding: 3px 2px 2px 8px; border-right: 1px solid var(--line); background: var(--panel); overflow: hidden; }
+.lane-hdr::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--gc, #888); }
+.lane-top { display: flex; align-items: center; gap: 2px; height: 20px; }
+.lane-label { flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 10.5px; font-weight: 600; }
+.lane-top button { width: 17px; height: 17px; padding: 0; font: 600 11px/1 system-ui, sans-serif; border-radius: 3px; flex: none; }
+.lane-top button[aria-pressed="true"].b-mute { background: #b45309; border-color: #d97706; color: #fff; }
+.lane-top button[aria-pressed="true"].b-solo { background: var(--accent); border-color: var(--accent); color: #06121f; }
+.lane-src { margin-top: 1px; font: 11px/16px var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lane-src.warn { color: var(--amber); font-size: 10px; }
+.lane-src .v { color: var(--text); }
+.lane-cv { flex: 1 1 0; min-width: 0; width: 0; height: 100%; display: block; cursor: pointer; background: #12161c; }
+.lane.silent .lane-cv { opacity: 0.4; }
+.lane.silent .lane-label { opacity: 0.6; }
+#playhead { position: absolute; top: 0; bottom: 0; left: 0; width: 2px; margin-left: -1px; background: var(--red); pointer-events: none; z-index: 3; }
+#playhead::before { content: ""; position: absolute; top: 0; left: -4px; border: 5px solid transparent; border-top-color: var(--red); border-bottom: 0; }
+
+#status { position: relative; display: flex; align-items: center; gap: 12px; padding: 0 12px; height: 24px; border-top: 1px solid var(--line); background: var(--panel); font-size: 12px; min-width: 0; }
+#status-text { flex: 0 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+#status-text.err { color: #ff8a8c; }
+#status button { height: 18px; font-size: 11px; padding: 0 7px; }
+#resyncs { color: var(--amber); }
+#progress { position: absolute; left: 0; top: 0; height: 2px; width: 0; background: var(--accent); }
+body[data-layout="stacked"] #status { position: sticky; bottom: 0; }
+
+.panel { position: fixed; right: 12px; top: 44px; width: min(600px, calc(100vw - 24px)); max-height: calc(100vh - 80px); overflow: auto; background: var(--panel2); border: 1px solid #3a4351; border-radius: 6px; padding: 12px; z-index: 20; box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5); font-size: 13px; }
+.panel h2 { margin: 0 0 8px; font-size: 14px; }
+.panel .keys { margin: 8px 0 0; color: var(--muted); font-size: 12px; }
+.panel .bar { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+#clip-list { width: 100%; height: 260px; resize: vertical; font: 12px/1.4 var(--mono); color: var(--text); background: #0c0f13; border: 1px solid var(--line); border-radius: 4px; padding: 6px; white-space: pre; overflow: auto; }
+</style>
+</head>
+<body>
+<header id="topbar">
+  <h1>Teaser sound lanes</h1>
+  <button id="btn-open-top" type="button">Open kit folder</button>
+  <span id="kit-info" class="muted"></span>
+  <span class="grow"></span>
+  <button id="btn-copy" type="button" disabled>Copy list</button>
+  <button id="btn-help" type="button" aria-label="How to use" title="How to use (?)">?</button>
+</header>
+<div id="main">
+  <section id="left">
+    <div id="fx-banner" hidden>Firefox is not supported: open this page in Chrome or Edge.</div>
+    <div id="video-panel">
+      <video id="video" muted playsinline preload="auto"></video>
+      <div id="empty-card">
+        <button id="btn-open" class="big primary" type="button">Open kit folder</button>
+        <p>or drop the folder here</p>
+        <p class="muted">The kit is <b>marketing/audio-studio/tools/teaser-lanes/kit</b> (made by prep_kit.py).</p>
+      </div>
+    </div>
+    <div id="readout"><span id="rd-time">0.000 s</span> <span id="rd-frame">f0</span></div>
+    <div id="transport">
+      <div class="row row1">
+        <button id="btn-first" type="button" title="First frame (Home)" disabled>|&lt;</button>
+        <button id="btn-back10" type="button" title="Back 10 frames (Shift+Left)" disabled>&lt;&lt;</button>
+        <button id="btn-back1" type="button" title="Back 1 frame (Left)" disabled>&lt;</button>
+        <button id="btn-play" type="button" title="Play / pause (Space)" disabled>Play</button>
+        <button id="btn-fwd1" type="button" title="Forward 1 frame (Right)" disabled>&gt;</button>
+        <button id="btn-fwd10" type="button" title="Forward 10 frames (Shift+Right)" disabled>&gt;&gt;</button>
+        <button id="btn-last" type="button" title="Last frame (End)" disabled>&gt;|</button>
+      </div>
+      <div class="row row2">
+        <span class="muted">go to</span><input id="go-to" type="text" inputmode="decimal" placeholder="24.3 or f729" autocomplete="off" spellcheck="false" disabled>
+        <label><input id="scrub" type="checkbox" checked> sound when stepping</label>
+        <span class="muted zl">zoom</span>
+        <button type="button" class="zoom" data-zoom="all" aria-pressed="true" title="Whole teaser (1)">All</button>
+        <button type="button" class="zoom" data-zoom="10" aria-pressed="false" title="10 s around the playhead (2)">10 s</button>
+        <button type="button" class="zoom" data-zoom="2" aria-pressed="false" title="2 s around the playhead (3)">2 s</button>
+        <button type="button" class="zoom" data-zoom="0.5" aria-pressed="false" title="0.5 s, every frame (4)">0.5 s</button>
+      </div>
+    </div>
+    <div id="clip-editor">
+      <div id="ed-hint">Click a clip block to edit it, or press + on a lane to add one at the playhead.</div>
+      <div id="ed-body" hidden>
+        <div id="ed-head"><span class="ttl">clip: <b id="ed-track"></b></span><button id="btn-dup" type="button">Duplicate at playhead</button><button id="btn-del" type="button">Delete</button></div>
+        <div id="ed-grid">
+          <div class="cell"><label for="ed-in">in</label><input id="ed-in" type="text" autocomplete="off" spellcheck="false"><span class="fr" id="fr-in"></span></div>
+          <div class="cell"><label for="ed-out">out</label><input id="ed-out" type="text" autocomplete="off" spellcheck="false"><span class="fr" id="fr-out"></span></div>
+          <div class="cell"><label for="ed-len">len</label><input id="ed-len" type="text" autocomplete="off" spellcheck="false"><span class="fr" id="fr-len"></span></div>
+          <div class="cell"><label for="ed-at">at</label><input id="ed-at" type="text" autocomplete="off" spellcheck="false"><span class="fr" id="fr-at"></span></div>
+          <div class="cell"><label>end</label><span class="val" id="ed-end"></span><span class="fr" id="fr-end"></span></div>
+          <div class="cell"><label for="ed-gain">gain</label><input id="ed-gain" type="text" autocomplete="off" spellcheck="false"></div>
+          <div class="cell"><label for="ed-fin">fade in</label><input id="ed-fin" type="text" autocomplete="off" spellcheck="false"><span class="fr" id="fr-fin"></span></div>
+          <div class="cell"><label for="ed-fout">fade out</label><input id="ed-fout" type="text" autocomplete="off" spellcheck="false"><span class="fr" id="fr-fout"></span></div>
+        </div>
+      </div>
+    </div>
+    <div id="howto"><div id="howto-body"></div><div id="howto-short" hidden>press ? for the how-to</div></div>
+  </section>
+  <section id="right">
+    <div id="ruler-row"><div class="ruler-sp"></div><canvas id="ruler" data-ticks="seconds" data-window="[0,0]"></canvas></div>
+    <div id="lanes"></div>
+    <div id="playhead" hidden></div>
+  </section>
+</div>
+<footer id="status" data-resyncs="0">
+  <div id="progress"></div>
+  <span id="status-text">open the kit folder to begin</span>
+  <span id="resyncs" hidden></span>
+  <button id="btn-reset" type="button" hidden>Reset to defaults</button>
+</footer>
+<input id="kit-input" type="file" webkitdirectory multiple hidden>
+<div id="copy-panel" class="panel" hidden role="dialog" aria-label="Clip list">
+  <h2>Clip list, paste it into chat</h2>
+  <textarea id="clip-list" readonly spellcheck="false"></textarea>
+  <div class="bar"><button id="btn-copy-go" type="button" class="primary">Copy</button><span id="copy-msg" class="muted"></span><span class="grow"></span><button id="btn-copy-close" type="button">Close</button></div>
+</div>
+<div id="help-panel" class="panel" hidden role="dialog" aria-label="How to use">
+  <h2>How to use</h2>
+  <ol id="help-list"></ol>
+  <p class="keys">Keys: Space play/pause . Left/Right one frame . Shift+Left/Right ten frames . Home/End first/last frame . 1 2 3 4 zoom All / 10 s / 2 s / 0.5 s . Delete removes the selected clip . Esc closes this / deselects . ? this help</p>
+  <div class="bar"><span class="grow"></span><button id="btn-help-close" type="button">Close</button></div>
+</div>
+<script id="lanes-core">
+// Pure functions only: no document/window access. Evaluated by teaser-lanes.test.mjs under node's vm.
+const LanesCore = (() => {
+  const clamp = (lo, x, hi) => Math.max(lo, Math.min(hi, x));
+  const EPS = 1e-9;
+
+  // ---- frames and time (copied from av-align's core, not imported) ----
+  const frameOf = (t, fps) => Math.max(0, Math.floor(t * fps + 1e-6));
+  const timeOfFrame = (n, fps) => n / fps;
+  // The frame on screen from requestVideoFrameCallback's mediaTime, a frame-START time rounded to whole microseconds (can sit just below n/fps).
+  const shownFrameOf = (mediaTime, fps) => Math.max(0, Math.round(mediaTime * fps));
+  const seekTimeOfFrame = (n, fps) => (n + 0.5) / fps; // seeking exactly on a boundary can show the previous frame in Chromium
+  const roundTenthMs = t => Math.round(t * 1e4) / 1e4;
+  const nudge = (at, deltaS) => roundTenthMs(at + deltaS);
+  // +-1 frame nudge: a value already on the frame grid steps grid to grid, so repeated nudges do not drift.
+  const nudgeFrames = (at, dir, fps) => {
+    const g = at * fps, r = Math.round(g);
+    return roundTenthMs(((Math.abs(g - r) < 0.005 ? r : g) + dir) / fps);
+  };
+
+  // [min, max] per bin over samples [i0, i1); bin b covers [i0 + b*w, i0 + (b+1)*w) with w = (i1 - i0) / bins.
+  function peakBins(mono, i0, i1, bins) {
+    const out = new Float32Array(2 * bins), w = (i1 - i0) / bins;
+    for (let b = 0; b < bins; b++) {
+      const s = Math.max(0, Math.floor(i0 + b * w));
+      const e = Math.min(mono.length, Math.max(s + 1, Math.floor(i0 + (b + 1) * w)));
+      let mn = Infinity, mx = -Infinity;
+      for (let i = s; i < e; i++) {
+        const v = mono[i];
+        if (v < mn) mn = v;
+        if (v > mx) mx = v;
+      }
+      if (mn === Infinity) { mn = 0; mx = 0; }
+      out[2 * b] = mn;
+      out[2 * b + 1] = mx;
+    }
+    return out;
+  }
+
+  // ---- formatting ----
+  // Three decimals, rounding half up on the decimal value (Number.prototype.toFixed rounds 15.0465 down to 15.046 because the double sits just under it).
+  function fmt3(x) {
+    const neg = x < 0, k = Math.round(Math.abs(x) * 1e4), r = Math.floor((k + 5) / 10);
+    const s = String(Math.floor(r / 1000)) + "." + String(r % 1000).padStart(3, "0");
+    return neg && r !== 0 ? "-" + s : s;
+  }
+  const fmtSeconds = t => fmt3(t);
+  const fmtFrame = n => "f" + n;
+  const fmtNum = x => fmt3(x).replace(/0+$/, "").replace(/\.$/, "");
+  function parseTimeEntry(s, fps) {
+    if (typeof s === "number") return Number.isFinite(s) && s >= 0 ? s : null;
+    if (typeof s !== "string") return null;
+    let m;
+    if ((m = /^\s*(\d+(?:\.\d*)?|\.\d+)\s*$/.exec(s))) return parseFloat(m[1]);
+    if ((m = /^\s*f(\d+)\s*$/i.exec(s))) return parseInt(m[1], 10) / fps;
+    if ((m = /^\s*(\d+):(\d+(?:\.\d*)?|\.\d+)\s*$/.exec(s))) return parseInt(m[1], 10) * 60 + parseFloat(m[2]);
+    return null;
+  }
+
+  // ---- clips and the two clocks ----
+  const clipLen = c => roundTenthMs(c.out - c.in);
+  const clipEnd = c => roundTenthMs(c.at + clipLen(c));
+  // Render time -> the sound's own (source) time; at inclusive, end exclusive.
+  function sourceTimeAt(c, tR) {
+    if (tR < c.at - EPS || tR >= clipEnd(c) - EPS) return null;
+    return c.in + Math.max(0, tR - c.at);
+  }
+  const fileTimeOfSource = (track, tS) => tS + ((track && track.file_offset_s) || 0);
+  const clipsUnder = (clips, trackId, tR) =>
+    clips.filter(c => c.track === trackId && sourceTimeAt(c, tR) !== null).sort((a, b) => a.at - b.at);
+  function laneReadout(clips, trackId, tR) {
+    const u = clipsUnder(clips, trackId, tR);
+    return u.length ? sourceTimeAt(u[0], tR) : null;
+  }
+  // Every clip of the lane under the playhead (overlapping clips each have their own source time), in order of `at`.
+  const laneReadouts = (clips, trackId, tR) => clipsUnder(clips, trackId, tR).map(c => sourceTimeAt(c, tR));
+  function gainAt(c, tR) {
+    const end = clipEnd(c);
+    if (tR < c.at || tR >= end) return 0;
+    const fi = c.fade_in > 0 ? Math.min(1, (tR - c.at) / c.fade_in) : 1;
+    const fo = c.fade_out > 0 ? Math.min(1, (end - tR) / c.fade_out) : 1;
+    return c.gain * fi * fo;
+  }
+  // The part of clip c that falls inside frame n (used for exact scrubbing), or null.
+  function frameSlice(c, track, n, fps) {
+    const end = clipEnd(c), s0 = Math.max(n / fps, c.at), s1 = Math.min((n + 1) / fps, end), len = s1 - s0;
+    if (!(len > 0.0005)) return null;
+    return { fileStart: fileTimeOfSource(track, c.in + (s0 - c.at)), len, gain: gainAt(c, (s0 + s1) / 2) };
+  }
+  // Real-time play from render time tR: where and how long to start the source, and the fade-out timing relative to that start.
+  function startParams(c, track, tR) {
+    const len = clipLen(c), end = clipEnd(c);
+    let rel = tR - c.at;
+    if (rel >= len - EPS) return null;
+    const delay = rel < 0 ? roundTenthMs(-rel) : 0;
+    rel = roundTenthMs(Math.max(0, rel));
+    return {
+      delay,
+      fileOffset: roundTenthMs(fileTimeOfSource(track, c.in + rel)),
+      dur: roundTenthMs(len - rel),
+      g0: gainAt(c, c.at + rel),
+      tFadeOutStart: roundTenthMs(Math.max(0, end - c.fade_out - (c.at + rel))),
+      tEnd: roundTenthMs(len - rel),
+      gain: c.gain
+    };
+  }
+  function audible(lanes) {
+    const anySolo = lanes.some(l => l.solo), m = new Map();
+    for (const l of lanes) m.set(l.id, anySolo ? !!l.solo : !l.muted);
+    return m;
+  }
+  function validateClip(c, track, video) {
+    const errors = [], warnings = [];
+    const num = (k, dflt) => {
+      const raw = c[k];
+      if (raw === undefined || raw === null || raw === "") {
+        if (dflt === undefined) { errors.push(k + " is missing"); return 0; }
+        return dflt;
+      }
+      const v = Number(raw);
+      if (!Number.isFinite(v)) { errors.push(k + " is not a number"); return dflt === undefined ? 0 : dflt; }
+      return v;
+    };
+    const clip = Object.assign({}, c);
+    clip.in = roundTenthMs(num("in"));
+    clip.out = roundTenthMs(num("out"));
+    clip.at = roundTenthMs(num("at"));
+    clip.gain = Math.round(num("gain", 1) * 1000) / 1000;
+    clip.fade_in = roundTenthMs(num("fade_in", 0));
+    clip.fade_out = roundTenthMs(num("fade_out", 0));
+    if (!errors.length) {
+      if (track && typeof track.source_len_s === "number" && clip.out > track.source_len_s + EPS) {
+        clip.out = track.source_len_s;
+        warnings.push("out is past the end of the sound; clamped to " + fmtNum(track.source_len_s) + " s");
+      }
+      if (clip.in < 0) errors.push("in < 0");
+      if (clip.out <= clip.in) errors.push("out <= in");
+      if (clip.at < 0) errors.push("at < 0");
+      if (video && typeof video.duration_s === "number" && clip.at >= video.duration_s) errors.push("at >= end of the video (" + fmtNum(video.duration_s) + " s)");
+      if (clip.gain < 0 || clip.gain > 4) errors.push("gain must be between 0 and 4");
+      if (clip.fade_in < 0) errors.push("fade in < 0");
+      if (clip.fade_out < 0) errors.push("fade out < 0");
+      if (clip.out > clip.in && clip.fade_in + clip.fade_out > roundTenthMs(clip.out - clip.in) + EPS) errors.push("fade in + fade out is longer than the clip");
+    }
+    return { ok: errors.length === 0, clip, errors, warnings };
+  }
+  // Render intervals where two or more clips of the track overlap (merged).
+  function overlaps(clips, trackId) {
+    const cs = clips.filter(c => c.track === trackId), iv = [];
+    for (let i = 0; i < cs.length; i++) {
+      for (let j = i + 1; j < cs.length; j++) {
+        const lo = Math.max(cs[i].at, cs[j].at), hi = Math.min(clipEnd(cs[i]), clipEnd(cs[j]));
+        if (hi - lo > EPS) iv.push([lo, hi]);
+      }
+    }
+    iv.sort((a, b) => a[0] - b[0]);
+    const out = [];
+    for (const [lo, hi] of iv) {
+      const last = out[out.length - 1];
+      if (last && lo <= last[1] + EPS) last[1] = Math.max(last[1], hi);
+      else out.push([lo, hi]);
+    }
+    return out.map(([lo, hi]) => [roundTenthMs(lo), roundTenthMs(hi)]);
+  }
+
+  // ---- the plain-words clip list (exact format, see the brief) ----
+  function formatClipList(state) {
+    const v = state.video, aud = audible(state.lanes);
+    const lines = ["teaser-lanes · " + v.file + " · " + v.fps + " fps · " + fmtSeconds(v.duration_s) + " s · times in seconds; source = that sound's own clock, render = the video's"];
+    for (const lane of state.lanes) {
+      const cs = state.clips.filter(c => c.track === lane.id).map((c, i) => ({ c, i })).sort((a, b) => a.c.at - b.c.at || a.i - b.i);
+      for (const { c } of cs) {
+        const parts = ["gain " + fmtNum(c.gain)];
+        if (c.fade_in > 0) parts.push("fade in " + fmtNum(c.fade_in) + " s");
+        if (c.fade_out > 0) parts.push("fade out " + fmtNum(c.fade_out) + " s");
+        if (!aud.get(lane.id)) parts.push("muted");
+        if (lane.status === "missing" || lane.status === "failed") parts.push("file missing");
+        lines.push(lane.id + ": source " + fmtSeconds(c.in) + "-" + fmtSeconds(c.out) + " s -> render " + fmtSeconds(c.at) + "-" + fmtSeconds(clipEnd(c)) + " s (" + parts.join(", ") + ")");
+      }
+    }
+    return lines.join("\n");
+  }
+
+  // ---- manifest and state ----
+  function parseManifest(objOrText) {
+    let m = objOrText;
+    if (typeof m === "string") {
+      try { m = JSON.parse(m); } catch (e) { throw new Error("manifest: not valid JSON (" + e.message + ")"); }
+    }
+    if (!m || typeof m !== "object") throw new Error("manifest: not an object");
+    m = JSON.parse(JSON.stringify(m));
+    if (m.version !== 1) throw new Error("manifest: version must be 1 (got " + m.version + ")");
+    const v = m.video;
+    if (!v || typeof v.file !== "string" || !v.file) throw new Error("manifest: video.file missing");
+    if (!(v.fps > 0)) throw new Error("manifest: video.fps missing");
+    if (!(v.duration_s > 0)) throw new Error("manifest: video.duration_s missing");
+    if (!Number.isInteger(v.frames)) throw new Error("manifest: video.frames missing");
+    if (v.frames !== Math.round(v.duration_s * v.fps)) throw new Error("manifest: video.frames " + v.frames + " does not match duration_s x fps (" + Math.round(v.duration_s * v.fps) + ")");
+    if (!Array.isArray(m.groups) || !m.groups.length) throw new Error("manifest: groups missing");
+    const gids = new Set();
+    for (const g of m.groups) {
+      if (!g || typeof g.id !== "string" || typeof g.label !== "string") throw new Error("manifest: a group needs id and label");
+      gids.add(g.id);
+    }
+    if (!Array.isArray(m.tracks) || !m.tracks.length) throw new Error("manifest: tracks missing");
+    const ids = new Set();
+    for (const t of m.tracks) {
+      const id = t && t.id;
+      if (typeof id !== "string" || !/^[a-z0-9-]+$/.test(id)) throw new Error("manifest: track id " + JSON.stringify(id) + " must match [a-z0-9-]+");
+      if (ids.has(id)) throw new Error("manifest: duplicate track id " + id);
+      ids.add(id);
+      if (typeof t.label !== "string" || !t.label) throw new Error("manifest: track " + id + " has no label");
+      if (!gids.has(t.group)) throw new Error("manifest: track " + id + " has unknown group " + t.group);
+      if (typeof t.file !== "string" || !t.file) throw new Error("manifest: track " + id + " has no file");
+      if (!(typeof t.source_len_s === "number" && t.source_len_s > 0)) throw new Error("manifest: track " + id + " needs source_len_s > 0");
+      if (typeof t.muted !== "boolean") throw new Error("manifest: track " + id + " needs muted true/false");
+      if (t.file_offset_s === undefined) t.file_offset_s = 0;
+      if (typeof t.file_offset_s !== "number") throw new Error("manifest: track " + id + " has a non-numeric file_offset_s");
+    }
+    const byId = new Map(m.tracks.map(t => [t.id, t]));
+    if (!Array.isArray(m.clips)) m.clips = [];
+    m.clips = m.clips.map((c, i) => {
+      const t = c && byId.get(c.track);
+      if (!t) throw new Error("manifest: clip " + (i + 1) + " refers to unknown track " + (c && c.track));
+      const r = validateClip(c, t, v);
+      if (!r.ok) throw new Error("manifest: clip " + (i + 1) + " (" + c.track + "): " + r.errors.join("; "));
+      return r.clip;
+    });
+    return m;
+  }
+  const nextClipId = clips => "c" + (clips.reduce((mx, c) => Math.max(mx, parseInt(String(c.id || "c0").slice(1), 10) || 0), 0) + 1);
+  function buildState(manifest) {
+    return {
+      video: manifest.video,
+      groups: manifest.groups,
+      lanes: manifest.tracks.map(t => ({ id: t.id, label: t.label, group: t.group, file: t.file, file_offset_s: t.file_offset_s || 0, source_len_s: t.source_len_s, muted: !!t.muted, solo: false, status: "pending" })),
+      clips: manifest.clips.map((c, i) => ({ id: "c" + (i + 1), track: c.track, in: c.in, out: c.out, at: c.at, gain: c.gain === undefined ? 1 : c.gain, fade_in: c.fade_in || 0, fade_out: c.fade_out || 0 })),
+      sel: null,
+      zoom: "all"
+    };
+  }
+  const stateKey = manifest => "teaser-lanes:" + manifest.kit + ":" + manifest.video.file + ":" + manifest.tracks.map(t => t.id).join(",");
+  function serializeState(state) {
+    const muted = {};
+    for (const l of state.lanes) muted[l.id] = !!l.muted;
+    return JSON.stringify({ clips: state.clips.map(c => ({ track: c.track, in: c.in, out: c.out, at: c.at, gain: c.gain, fade_in: c.fade_in, fade_out: c.fade_out })), muted });
+  }
+  function restoreState(saved, manifest) {
+    const s = typeof saved === "string" ? JSON.parse(saved) : saved, st = buildState(manifest), byId = new Map(manifest.tracks.map(t => [t.id, t]));
+    let dropped = 0;
+    st.clips = [];
+    for (const c of (s && Array.isArray(s.clips) ? s.clips : [])) {
+      const t = c && byId.get(c.track);
+      const r = t ? validateClip(c, t, manifest.video) : null;
+      if (!r || !r.ok) { dropped++; continue; }
+      st.clips.push({ id: "c" + (st.clips.length + 1), track: r.clip.track, in: r.clip.in, out: r.clip.out, at: r.clip.at, gain: r.clip.gain, fade_in: r.clip.fade_in, fade_out: r.clip.fade_out });
+    }
+    const mu = (s && s.muted) || {};
+    for (const l of st.lanes) if (typeof mu[l.id] === "boolean") l.muted = mu[l.id];
+    return { state: st, dropped };
+  }
+
+  // ---- layout and the shared time axis ----
+  const laneHeight = (innerH, N) => clamp(40, Math.floor((innerH - 78) / N), 96);
+  const layoutMode = innerW => (innerW >= 1100 ? "side" : "stacked");
+  const leftWidth = innerW => clamp(520, Math.round(0.42 * innerW), 760);
+  function windowFor(zoom, tPlay, dur) {
+    if (zoom === "all") return [0, dur];
+    const w = { "10": 10, "2": 2, "0.5": 0.5 }[String(zoom)];
+    if (!w) return [0, dur];
+    if (w >= dur) return [0, dur];
+    const t0 = clamp(0, tPlay - w / 2, dur - w);
+    return [roundTenthMs(t0), roundTenthMs(t0 + w)];
+  }
+  const xOfTime = (t, win, width) => (t - win[0]) / (win[1] - win[0]) * width;
+  const timeOfX = (x, win, width) => win[0] + x / width * (win[1] - win[0]);
+  // The kit root: the directory holding manifest.json with the shortest path (paths like "kit/manifest.json"). Returns the prefix ("" or "kit/") or null.
+  function kitRootOf(paths) {
+    let best = null;
+    for (const p of paths) {
+      const q = String(p).replace(/\\/g, "/");
+      if (q === "manifest.json" || q.endsWith("/manifest.json")) {
+        const pre = q.slice(0, q.length - "manifest.json".length);
+        if (best === null || pre.length < best.length) best = pre;
+      }
+    }
+    return best;
+  }
+
+  return { clamp, frameOf, timeOfFrame, shownFrameOf, seekTimeOfFrame, roundTenthMs, nudge, nudgeFrames, peakBins,
+    fmtSeconds, fmtFrame, fmtNum, parseTimeEntry, clipLen, clipEnd, sourceTimeAt, fileTimeOfSource, clipsUnder, laneReadout, laneReadouts, gainAt, frameSlice, startParams,
+    audible, validateClip, overlaps, formatClipList, parseManifest, nextClipId, buildState, stateKey, serializeState, restoreState,
+    laneHeight, layoutMode, leftWidth, windowFor, xOfTime, timeOfX, kitRootOf };
+})();
+if (typeof module !== "undefined" && module.exports) module.exports = LanesCore;
+</script>
+<script id="lanes-app">
+// App: DOM, audio engine, drawing. Everything testable lives in LanesCore above.
+(() => {
+  "use strict";
+  const C = LanesCore;
+  const $ = id => document.getElementById(id);
+  const SR = 44100;
+  const COLORS = { open: "#9aa3b2", bed: "#5b9bff", A: "#2dd4bf", B: "#a78bfa", pulse: "#fbbf24" };
+  const HOWTO = [
+    "Open the kit folder (tools/teaser-lanes/kit, made by prep_kit.py). Everything loads at once.",
+    "Space plays and pauses. Left/Right step one frame (Shift: ten). Home/End: first/last frame. Type a time (or f + frame) in the box and press Enter.",
+    "Each lane on the right is one sound. M mutes it, S solos it. Two clocks: the render clock (under the video) and each lane's own source clock (src, in its header).",
+    "A shaded block is a clip: \"play source in-out of this sound from render start\". Click a block to edit its numbers below; Enter applies.",
+    "+ on a lane adds a clip at the playhead. Duplicate puts a copy of the selected clip at the playhead. Delete removes it.",
+    "Zoom: All / 10 s / 2 s / 0.5 s around the playhead (0.5 s shows every frame). Click anywhere in the lanes or the ruler to move the playhead there.",
+    "Copy list gives one plain line per clip to paste into chat. Nothing is written to disk; clips and mutes are remembered in this browser (Reset restores today's teaser sound).",
+    "Lanes A (strings + other) and B (piano + drums + bass + other) are two splits of the same bed: unmute one split OR the bed, not both. Real-time play is right to about one frame (worse on Bluetooth); stepping is exact."
+  ];
+
+  const MONO = "ui-monospace, Consolas, \"Liberation Mono\", monospace";
+  const video = $("video");
+  const hasRvfc = typeof video.requestVideoFrameCallback === "function";
+  const S = {
+    manifest: null, st: null, ctx: null, master: null, lanes: {}, fps: 30, total: 0, frame: 0, shown: null,
+    playing: false, first: false, token: 0, resyncs: 0, sources: [], vurl: null, loaded: false, loadId: 0,
+    base: "open the kit folder to begin", msg: null, restored: false, stepTimer: 0, drawReq: false, drawFull: true
+  };
+
+  // ---------- small helpers ----------
+  const clamp = C.clamp;
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); return true; } catch (e) { return false; } },
+    del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } }
+  };
+  function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
+
+  function renderStatus() {
+    const t = $("status-text");
+    let txt = S.base;
+    if (S.msg) txt += (txt ? " · " : "") + (S.msg.kind === "err" ? "⚠ " : "") + S.msg.text;
+    t.textContent = txt;
+    t.title = txt;
+    t.className = S.msg && S.msg.kind === "err" ? "err" : "";
+    $("status").dataset.resyncs = String(S.resyncs);
+    const r = $("resyncs");
+    r.hidden = !(S.resyncs > 0);
+    r.textContent = "resyncs: " + S.resyncs;
+    $("btn-reset").hidden = !S.restored;
+  }
+  function say(text, kind) { S.msg = text ? { text, kind: kind || "info" } : null; renderStatus(); }
+  function setProgress(f) { $("progress").style.width = (f >= 1 || f <= 0 ? 0 : f * 100) + "%"; }
+
+  const st = () => S.st;
+  const laneOf = id => S.st.lanes.find(l => l.id === id);
+  const selClip = () => S.st && S.st.clips.find(c => c.id === S.st.sel) || null;
+  const curFrame = () => (S.playing ? (S.shown !== null ? S.shown : C.frameOf(video.currentTime, S.fps)) : S.frame);
+  const curTime = () => (S.playing ? video.currentTime : S.frame / S.fps);
+  const frameTime = () => C.timeOfFrame(clamp(0, curFrame(), Math.max(0, S.total - 1)), S.fps);
+  const curWindow = () => C.windowFor(S.st.zoom, S.playing ? video.currentTime : frameTime(), S.manifest.video.duration_s);
+
+  // ---------- audio engine ----------
+  function ensureCtx() {
+    if (!S.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      S.ctx = new AC({ sampleRate: SR });
+      S.master = S.ctx.createGain();
+      S.master.connect(S.ctx.destination);
+      S.ctx.onstatechange = () => { document.body.dataset.ctx = S.ctx.state; };
+      document.body.dataset.ctx = S.ctx.state;
+    }
+    return S.ctx;
+  }
+  function applyAudible() {
+    if (!S.st) return;
+    const a = C.audible(S.st.lanes);
+    for (const l of S.st.lanes) {
+      const R = S.lanes[l.id];
+      if (R && R.gain) R.gain.gain.value = a.get(l.id) ? 1 : 0;
+      if (R && R.el) {
+        R.el.classList.toggle("muted", !!l.muted);
+        R.el.classList.toggle("solo", !!l.solo);
+        R.el.classList.toggle("silent", !a.get(l.id));
+        R.bMute.setAttribute("aria-pressed", l.muted ? "true" : "false");
+        R.bSolo.setAttribute("aria-pressed", l.solo ? "true" : "false");
+      }
+    }
+  }
+  function stopAll() {
+    for (const r of S.sources) {
+      r.ended = true;
+      try { r.node.onended = null; r.node.stop(); } catch (e) { /* not started or already stopped */ }
+      try { r.node.disconnect(); r.gain.disconnect(); } catch (e) { /* already disconnected */ }
+    }
+    S.sources = [];
+  }
+  function pausePlay() {
+    const was = S.playing;
+    if (was) S.frame = clamp(0, curFrame(), Math.max(0, S.total - 1));
+    S.playing = false;
+    S.token++;
+    try { video.pause(); } catch (e) { /* no media */ }
+    stopAll();
+    if (was) { $("btn-play").textContent = "Play"; refresh(true); }
+  }
+  function startClip(c, lane, m) {
+    const R = S.lanes[lane.id], ctx = S.ctx;
+    if (!R || !R.buf) return null;
+    const lat = ctx.outputLatency || 0, lead = Math.max(0, 0.05 - lat);
+    const tR0 = m + lead + lat;
+    const p = C.startParams(c, lane, tR0);
+    if (!p || p.fileOffset >= R.buf.duration) return null;
+    const when = ctx.currentTime + lead + p.delay;
+    const node = ctx.createBufferSource(), g = ctx.createGain();
+    node.buffer = R.buf;
+    const rel = Math.max(0, tR0 - c.at);
+    g.gain.setValueAtTime(p.g0, when);
+    if (c.fade_in > 0 && rel < c.fade_in) g.gain.linearRampToValueAtTime(c.gain, when + (c.fade_in - rel));
+    if (c.fade_out > 0) {
+      // started inside the fade-out: p.g0 is already the current level, so just ramp down from it
+      if (p.tFadeOutStart > 0) g.gain.setValueAtTime(c.gain, when + p.tFadeOutStart);
+      g.gain.linearRampToValueAtTime(0, when + p.tEnd);
+    }
+    node.connect(g);
+    g.connect(R.gain);
+    const rec = { node, gain: g, clipId: c.id, laneId: lane.id, rel0: rel, when, ended: false, scrub: false };
+    node.onended = () => { rec.ended = true; };
+    node.start(when, p.fileOffset, p.dur);
+    S.sources.push(rec);
+    return rec;
+  }
+  function startAll(m) {
+    for (const c of S.st.clips) { const l = laneOf(c.track); if (l) startClip(c, l, m); }
+  }
+  function killRec(r) {
+    r.ended = true;
+    try { r.node.onended = null; r.node.stop(); r.node.disconnect(); r.gain.disconnect(); } catch (e) { /* ignore */ }
+    S.sources = S.sources.filter(x => x !== r);
+  }
+  function tick(m) {
+    if (S.first) { S.first = false; S.resyncs = 0; startAll(m); return; }
+    const c = S.ctx.currentTime, lat = S.ctx.outputLatency || 0;
+    for (const r of S.sources.slice()) {
+      if (r.ended || r.scrub || c - lat < r.when) continue;
+      const clip = S.st.clips.find(x => x.id === r.clipId);
+      if (!clip) continue;
+      const drift = (m - clip.at) - (r.rel0 + c - lat - r.when);
+      if (Math.abs(drift) > 0.025) {
+        S.resyncs++;
+        killRec(r);
+        const l = laneOf(clip.track);
+        if (l) startClip(clip, l, m);
+      }
+    }
+  }
+  function onFrame(now, meta) {
+    if (!S.playing) return;
+    S.shown = C.shownFrameOf(meta.mediaTime, S.fps);
+    tick(meta.mediaTime);
+    video.requestVideoFrameCallback(onFrame);
+  }
+  function loop() {
+    if (!S.playing) return;
+    if (!hasRvfc) tick(video.currentTime);
+    refresh(false);
+    requestAnimationFrame(loop);
+  }
+  async function togglePlay() {
+    if (!S.loaded) return;
+    if (S.playing) { pausePlay(); return; }
+    try { await ensureCtx().resume(); } catch (e) { /* ignore */ }
+    document.body.dataset.ctx = S.ctx.state;
+    stopAll();
+    S.token++;
+    if (video.ended || video.currentTime >= video.duration - 0.001) video.currentTime = 0;
+    S.playing = true; S.first = true; S.resyncs = 0; S.shown = null;
+    $("btn-play").textContent = "Pause";
+    if (hasRvfc) video.requestVideoFrameCallback(onFrame);
+    try { await video.play(); } catch (e) { S.playing = false; $("btn-play").textContent = "Play"; say("play failed: " + e.message, "err"); return; }
+    requestAnimationFrame(loop);
+  }
+  // Scrub: exactly the slice of every clip that belongs to frame n, 2 ms fades; muted lanes stay silent.
+  function scrubPlay(n) {
+    if (!S.ctx) return;
+    const ctx = S.ctx;
+    ctx.resume();
+    const aud = C.audible(S.st.lanes), T = 1 / S.fps, t0 = ctx.currentTime + 0.01;
+    for (const c of S.st.clips) {
+      const lane = laneOf(c.track), R = S.lanes[c.track];
+      if (!lane || !R || !R.buf || !aud.get(lane.id)) continue;
+      const s = C.frameSlice(c, lane, n, S.fps);
+      if (!s || s.fileStart >= R.buf.duration) continue;
+      const s0 = Math.max(n * T, c.at), w = t0 + (s0 - n * T), f = Math.min(0.002, s.len / 2);
+      const node = ctx.createBufferSource(), g = ctx.createGain();
+      node.buffer = R.buf;
+      g.gain.setValueAtTime(0, w);
+      g.gain.linearRampToValueAtTime(s.gain, w + f);
+      g.gain.setValueAtTime(s.gain, w + s.len - f);
+      g.gain.linearRampToValueAtTime(0, w + s.len);
+      node.connect(g); g.connect(R.gain);
+      node.start(w, s.fileStart, s.len);
+      S.sources.push({ node, gain: g, clipId: c.id, laneId: c.track, scrub: true, ended: false });
+    }
+  }
+
+  // ---------- stepping and seeking ----------
+  function stepTo(n, scrub) {
+    if (!S.loaded) return;
+    if (S.playing) pausePlay(); else stopAll();
+    n = clamp(0, n, Math.max(0, S.total - 1));
+    S.frame = n; S.shown = null;
+    const my = ++S.token;
+    let done = false;
+    const after = () => {
+      if (done || my !== S.token) return;
+      done = true;
+      refresh(true);
+      if (scrub !== false && $("scrub").checked) scrubPlay(n);
+    };
+    video.addEventListener("seeked", after, { once: true });
+    setTimeout(after, 400);
+    if (hasRvfc) video.requestVideoFrameCallback(() => { if (my === S.token) refresh(false); });
+    video.currentTime = C.seekTimeOfFrame(n, S.fps);
+    refresh(true);
+  }
+  const stepBy = d => stepTo(curFrame() + d);
+  function seekToTime(t) { stepTo(Math.min(S.total - 1, C.frameOf(t, S.fps))); }
+
+  // ---------- drawing ----------
+  function prep(cv) {
+    const dpr = window.devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+    if (!w || !h) return null;
+    const bw = Math.round(w * dpr), bh = Math.round(h * dpr);
+    if (cv.width !== bw || cv.height !== bh) { cv.width = bw; cv.height = bh; }
+    const g = cv.getContext("2d");
+    g.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { w, h, g };
+  }
+  function rgba(hex, a) {
+    const n = parseInt(hex.slice(1), 16);
+    return "rgba(" + (n >> 16) + "," + ((n >> 8) & 255) + "," + (n & 255) + "," + a + ")";
+  }
+  function drawLane(l) {
+    const R = S.lanes[l.id];
+    if (!R || !R.cv) return;
+    const p = prep(R.cv);
+    if (!p) return;
+    const { w, h, g } = p, win = curWindow(), col = COLORS[l.group] || "#aaa", mid = h / 2;
+    g.clearRect(0, 0, w, h);
+    g.fillStyle = "#12161c";
+    g.fillRect(0, 0, w, h);
+    g.strokeStyle = "rgba(255,255,255,0.05)";
+    g.beginPath(); g.moveTo(0, Math.round(mid) + 0.5); g.lineTo(w, Math.round(mid) + 0.5); g.stroke();
+    const clips = S.st.clips.filter(c => c.track === l.id);
+    const missing = l.status === "missing" || l.status === "failed";
+    for (const c of clips) {
+      const x0 = C.xOfTime(c.at, win, w), x1 = C.xOfTime(C.clipEnd(c), win, w);
+      if (x1 < 0 || x0 > w) continue;
+      const bx0 = Math.max(0, x0), bx1 = Math.min(w, x1);
+      g.fillStyle = rgba(col, missing ? 0.05 : 0.18);
+      g.fillRect(bx0, 1, Math.max(1, bx1 - bx0), h - 2);
+      if (R.bins && !missing) {
+        g.fillStyle = col;
+        const bw = R.binW, nb = R.bins.length / 2, amp = (h / 2 - 3) * R.norm;
+        for (let px = Math.floor(bx0); px < Math.ceil(bx1); px++) {
+          const tA = Math.max(c.at, C.timeOfX(px, win, w)), tB = Math.min(C.clipEnd(c), C.timeOfX(px + 1, win, w));
+          if (tB <= tA) continue;
+          const fA = C.fileTimeOfSource(l, c.in + (tA - c.at)) * SR / bw, fB = C.fileTimeOfSource(l, c.in + (tB - c.at)) * SR / bw;
+          let b0 = Math.floor(fA), b1 = Math.max(b0 + 1, Math.ceil(fB));
+          if (b0 >= nb || b1 <= 0) continue;
+          b0 = Math.max(0, b0); b1 = Math.min(nb, b1);
+          let mn = Infinity, mx = -Infinity;
+          for (let b = b0; b < b1; b++) {
+            const a = R.bins[2 * b], z = R.bins[2 * b + 1];
+            if (a < mn) mn = a;
+            if (z > mx) mx = z;
+          }
+          const y0 = mid - mx * amp, y1 = mid - mn * amp;
+          g.fillRect(px, y0, 1, Math.max(1, y1 - y0));
+        }
+      }
+      // border, selection
+      const sel = c.id === S.st.sel;
+      g.lineWidth = sel ? 2 : 1;
+      g.strokeStyle = sel ? "#ffffff" : rgba(col, 0.9);
+      if (missing) g.setLineDash([4, 3]);
+      g.strokeRect(x0 + 0.5, sel ? 1 : 0.5, Math.max(1, x1 - x0 - 1), sel ? h - 2 : h - 1);
+      g.setLineDash([]);
+      if (x1 - x0 >= 60) {
+        g.fillStyle = "rgba(255,255,255,0.75)";
+        g.font = "9px " + MONO;
+        g.textBaseline = "top";
+        if (x0 >= 0) { g.fillText("in", x0 + 3, 2); g.fillRect(x0 + 1, 0, 1, 7); }
+        g.textBaseline = "bottom";
+        if (x1 <= w) { g.fillText("out", x1 - 19, h - 2); g.fillRect(x1 - 2, h - 7, 1, 7); }
+      }
+    }
+    // overlaps, hatched
+    const ov = C.overlaps(clips, l.id);
+    R.el.dataset.overlaps = String(ov.length);
+    for (const [a, b] of ov) {
+      const xa = Math.max(0, C.xOfTime(a, win, w)), xb = Math.min(w, C.xOfTime(b, win, w));
+      if (xb <= xa) continue;
+      g.save();
+      g.beginPath(); g.rect(xa, 0, xb - xa, h); g.clip();
+      g.strokeStyle = "rgba(255,255,255,0.55)";
+      g.lineWidth = 1;
+      g.beginPath();
+      for (let x = xa - h; x < xb; x += 6) { g.moveTo(x, h); g.lineTo(x + h, 0); }
+      g.stroke();
+      g.restore();
+    }
+    if (missing) {
+      g.fillStyle = "rgba(251,191,36,0.85)";
+      g.font = "10px " + MONO;
+      g.textBaseline = "bottom";
+      g.fillText(l.status === "failed" ? "decode failed: " + l.file : "missing: " + l.file, 6, h - 3);
+    }
+  }
+  const STEPS = [[10, 2], [5, 1], [2, 0.5], [1, 0.2], [0.5, 0.1], [0.2, 0.05], [0.1, 0.02], [0.05, 0.01], [0.01, 0.002]];
+  function drawRuler() {
+    const cv = $("ruler"), p = prep(cv);
+    if (!p) return;
+    const { w, h, g } = p, win = curWindow(), fps = S.fps, mono = MONO;
+    const span = win[1] - win[0], pps = w / span;
+    g.clearRect(0, 0, w, h);
+    g.fillStyle = "#171b21"; g.fillRect(0, 0, w, h);
+    g.font = "10px " + mono; g.textBaseline = "top";
+    const frames = S.st.zoom === "2" || S.st.zoom === "0.5";
+    cv.dataset.ticks = frames ? "frames" : "seconds";
+    cv.dataset.window = JSON.stringify(win);
+    cv.dataset.framePx = String(Math.round(pps / fps * 100) / 100);
+    if (frames) {
+      const f0 = Math.ceil(win[0] * fps - 1e-6), f1 = Math.floor(win[1] * fps + 1e-6), every = S.st.zoom === "0.5" ? 1 : 5;
+      const cur = frameTime() * fps;
+      const cx = C.xOfTime(Math.round(cur) / fps, win, w);
+      g.fillStyle = "rgba(255,77,79,0.22)"; g.fillRect(cx, 0, pps / fps, h);
+      for (let f = f0; f <= f1; f++) {
+        const x = C.xOfTime(f / fps, win, w);
+        const lab = f % every === 0;
+        g.fillStyle = lab ? "#9aa5b6" : "#566072";
+        g.fillRect(Math.round(x), lab ? 10 : 13, 1, lab ? 8 : 5);
+        if (lab) { g.fillStyle = "#c9d1de"; g.fillText("f" + f, x + 3, 1); }
+      }
+    } else {
+      const pair = STEPS.slice().reverse().find(s => s[0] * pps >= 46) || STEPS[0];
+      const major = pair[0], minor = pair[1];
+      for (let t = Math.ceil(win[0] / minor - 1e-9) * minor; t <= win[1] + 1e-9; t += minor) {
+        const isMajor = Math.abs(t / major - Math.round(t / major)) < 1e-6;
+        const x = C.xOfTime(t, win, w);
+        g.fillStyle = isMajor ? "#9aa5b6" : "#566072";
+        g.fillRect(Math.round(x), isMajor ? 9 : 14, 1, isMajor ? 9 : 4);
+        if (isMajor) { g.fillStyle = "#c9d1de"; g.fillText(C.fmtNum(Math.round(t * 1e4) / 1e4), x + 3, 1); }
+      }
+    }
+  }
+  function placePlayhead() {
+    const ph = $("playhead"), ruler = $("ruler");
+    if (!S.st || !ruler.clientWidth) { ph.hidden = true; return; }
+    const w = ruler.clientWidth, x = C.xOfTime(curTime(), curWindow(), w);
+    ph.hidden = x < -1 || x > w + 1;
+    ph.style.height = (18 + $("lanes").offsetHeight) + "px";
+    ph.style.bottom = "auto";
+    ph.style.transform = "translateX(" + (ruler.offsetLeft + x) + "px)";
+  }
+  function drawAll() {
+    if (!S.st) return;
+    for (const l of S.st.lanes) drawLane(l);
+    drawRuler();
+    placePlayhead();
+  }
+  function requestDraw(full) {
+    if (full) S.drawFull = true;
+    if (S.drawReq) return;
+    S.drawReq = true;
+    requestAnimationFrame(() => {
+      S.drawReq = false;
+      if (!S.st) return;
+      if (S.drawFull || S.st.zoom !== "all") { S.drawFull = false; drawAll(); } else placePlayhead();
+    });
+  }
+
+  // ---------- readouts ----------
+  function updateLaneSrc() {
+    if (!S.st) return;
+    const n = clamp(0, curFrame(), Math.max(0, S.total - 1)), t = n / S.fps;
+    for (const l of S.st.lanes) {
+      const R = S.lanes[l.id];
+      if (!R) continue;
+      const box = R.src;
+      if (l.status === "missing") { box.className = "lane-src warn"; box.textContent = "missing: " + l.file; box.title = "missing: " + l.file; continue; }
+      if (l.status === "failed") { box.className = "lane-src warn"; box.textContent = "decode failed: " + l.file; box.title = box.textContent; continue; }
+      const vs = C.laneReadouts(S.st.clips, l.id, t + 1e-9).map(C.fmtSeconds);
+      box.className = "lane-src";
+      box.textContent = "src ";
+      box.appendChild(el("span", "v", vs.length ? vs.join(" | ") : "\u2014"));
+      R.el.dataset.src = vs.join("|");
+      box.title = vs.length > 1 ? "two clips overlap here: source times " + vs.join(" and ") : "source clock of this sound at the playhead";
+    }
+  }
+  function refresh(full) {
+    if (!S.st) return;
+    const n = clamp(0, curFrame(), Math.max(0, S.total - 1));
+    $("rd-time").textContent = C.fmtSeconds(n / S.fps) + " s";
+    $("rd-frame").textContent = C.fmtFrame(n);
+    updateLaneSrc();
+    requestDraw(!!full);
+  }
+
+  // ---------- clip editor ----------
+  const FIELDS = ["in", "out", "len", "at", "gain", "fin", "fout"];
+  const frText = v => "f" + (Math.round(v * S.fps * 100) / 100);
+  function refreshEditor(force) {
+    const c = selClip();
+    $("ed-hint").hidden = !!c;
+    $("ed-body").hidden = !c;
+    $("btn-del").disabled = !c;
+    if (!c) return;
+    $("ed-track").textContent = c.track;
+    const vals = { in: c.in, out: c.out, len: C.clipLen(c), at: c.at, gain: c.gain, fin: c.fade_in, fout: c.fade_out };
+    for (const f of FIELDS) {
+      const inp = $("ed-" + f);
+      if (document.activeElement === inp && !force) continue;
+      inp.value = f === "gain" ? C.fmtNum(vals[f]) : C.fmtSeconds(vals[f]);
+      inp.classList.remove("bad");
+      inp.dataset.orig = inp.value;
+      if (f !== "gain") $("fr-" + f).textContent = frText(vals[f]);
+    }
+    $("ed-end").textContent = C.fmtSeconds(C.clipEnd(c));
+    $("fr-end").textContent = frText(C.clipEnd(c));
+  }
+  function syncMeta() { document.body.dataset.clips = S.st ? String(S.st.clips.length) : "0"; }
+  function persist() {
+    const ok = store.set(C.stateKey(S.manifest), C.serializeState(S.st));
+    if (!ok) say("cannot remember state in this browser");
+  }
+  function changed(restartPlay) {
+    syncMeta();
+    persist();
+    refreshEditor(true);
+    updateLaneSrc();
+    requestDraw(true);
+    if (restartPlay && S.playing) {
+      const m = video.currentTime;
+      stopAll(); S.first = false; startAll(m);
+    }
+  }
+  function applyField(f) {
+    const c = selClip();
+    if (!c) return;
+    const inp = $("ed-" + f);
+    if (inp.value === inp.dataset.orig) { inp.classList.remove("bad"); return; }
+    const raw = inp.value.trim();
+    let v;
+    if (f === "gain") v = /^\d*\.?\d+$/.test(raw) || /^\d+\.$/.test(raw) ? parseFloat(raw) : null;
+    else v = C.parseTimeEntry(raw, S.fps);
+    if (v === null) { inp.classList.add("bad"); say("\"" + raw + "\" is not a number" + (f === "gain" ? "" : " (seconds, or f + frame)"), "err"); return; }
+    const next = Object.assign({}, c);
+    if (f === "in") next.in = v;
+    else if (f === "out") next.out = v;
+    else if (f === "len") next.out = C.roundTenthMs(c.in + v);
+    else if (f === "at") next.at = v;
+    else if (f === "gain") next.gain = v;
+    else if (f === "fin") next.fade_in = v;
+    else if (f === "fout") next.fade_out = v;
+    const r = C.validateClip(next, laneOf(c.track), S.manifest.video);
+    if (!r.ok) { inp.classList.add("bad"); say(f + ": " + r.errors.join("; "), "err"); return; }
+    Object.assign(c, r.clip);
+    say(r.warnings.length ? r.warnings.join("; ") : "");
+    changed(true);
+  }
+  function addClip(laneId) {
+    const l = laneOf(laneId);
+    if (!l || l.status !== "ready") return;
+    const at = C.roundTenthMs(clamp(0, curFrame(), S.total) / S.fps);
+    if (at >= S.manifest.video.duration_s) { say("playhead is at the end", "err"); return; }
+    const r = C.validateClip({ track: laneId, in: 0, out: l.source_len_s, at, gain: 1, fade_in: 0, fade_out: 0 }, l, S.manifest.video);
+    if (!r.ok) { say(r.errors.join("; "), "err"); return; }
+    const c = Object.assign({ id: C.nextClipId(S.st.clips) }, r.clip);
+    S.st.clips.push(c);
+    S.st.sel = c.id;
+    say(r.warnings.join("; "));
+    changed(true);
+  }
+  function duplicateSel() {
+    const c = selClip();
+    if (!c) { say("select a clip first", "err"); return; }
+    const at = C.roundTenthMs(clamp(0, curFrame(), S.total) / S.fps);
+    const r = C.validateClip(Object.assign({}, c, { at }), laneOf(c.track), S.manifest.video);
+    if (!r.ok) { say(r.errors.join("; "), "err"); return; }
+    const d = Object.assign({}, r.clip, { id: C.nextClipId(S.st.clips) });
+    S.st.clips.push(d);
+    S.st.sel = d.id;
+    say("");
+    changed(true);
+  }
+  function deleteSel() {
+    const c = selClip();
+    if (!c) return;
+    S.st.clips = S.st.clips.filter(x => x !== c);
+    S.st.sel = null;
+    say("");
+    changed(true);
+  }
+
+  // ---------- lanes DOM ----------
+  function buildLanesDom() {
+    const box = $("lanes");
+    box.textContent = "";
+    S.lanes = {};
+    for (const l of S.st.lanes) {
+      const row = el("div", "lane");
+      row.dataset.lane = l.id;
+      row.dataset.overlaps = "0";
+      row.dataset.samples = "";
+      row.dataset.src = "";
+      const hdr = el("div", "lane-hdr");
+      hdr.style.setProperty("--gc", COLORS[l.group] || "#888");
+      const top = el("div", "lane-top");
+      const lab = el("span", "lane-label", l.label);
+      lab.title = l.id;
+      const bM = el("button", "b-mute", "M"), bS = el("button", "b-solo", "S"), bA = el("button", "b-add", "+");
+      for (const b of [bM, bS, bA]) b.type = "button";
+      bM.title = "Mute"; bS.title = "Solo"; bA.title = "Add a clip of this sound at the playhead";
+      bM.setAttribute("aria-pressed", "false"); bS.setAttribute("aria-pressed", "false");
+      top.append(lab, bM, bS, bA);
+      const src = el("div", "lane-src", "src —");
+      hdr.append(top, src);
+      const cv = el("canvas", "lane-cv");
+      row.append(hdr, cv);
+      box.appendChild(row);
+      S.lanes[l.id] = { el: row, cv, src, bMute: bM, bSolo: bS, bAdd: bA, buf: null, bins: null, binW: 22, norm: 1, gain: null };
+      bM.onclick = () => { l.muted = !l.muted; bM.blur(); applyAudible(); persist(); };
+      bS.onclick = () => { l.solo = !l.solo; bS.blur(); applyAudible(); persist(); };
+      bA.onclick = () => { bA.blur(); addClip(l.id); };
+      cv.addEventListener("click", e => onCanvasClick(e, cv, l.id));
+    }
+    applyAudible();
+  }
+  function onCanvasClick(e, cv, laneId) {
+    if (!S.loaded) return;
+    const rect = cv.getBoundingClientRect(), w = cv.clientWidth;
+    const t = C.timeOfX(e.clientX - rect.left, curWindow(), w);
+    if (laneId) {
+      const hit = S.st.clips.filter(c => c.track === laneId && t >= c.at && t < C.clipEnd(c));
+      if (hit.length) { S.st.sel = hit[hit.length - 1].id; refreshEditor(true); requestDraw(true); }
+    }
+    say("");
+    seekToTime(t);
+  }
+
+  // ---------- layout ----------
+  function fitHowto() {
+    const body = $("howto-body"), short = $("howto-short");
+    body.hidden = false; short.hidden = true;
+    if (document.body.dataset.layout === "stacked" || $("howto").scrollHeight > $("howto").clientHeight + 1) { body.hidden = true; short.hidden = false; }
+  }
+  function applyLayout() {
+    const W = window.innerWidth, H = window.innerHeight, mode = C.layoutMode(W);
+    document.body.dataset.layout = mode;
+    const root = document.documentElement.style;
+    root.setProperty("--left", C.leftWidth(W) + "px");
+    const N = S.st ? S.st.lanes.length : 9;
+    root.setProperty("--laneh", (mode === "side" ? C.laneHeight(H, N) : 40) + "px");
+    fitHowto();
+    if (S.st) { S.drawFull = true; requestDraw(true); }
+  }
+
+  // ---------- loading a kit ----------
+  function unloadKit() {
+    S.loadId++;
+    pausePlay();
+    stopAll();
+    S.loaded = false; S.st = null; S.manifest = null; S.restored = false;
+    document.body.dataset.clips = "0";
+    if (S.vurl) { URL.revokeObjectURL(S.vurl); S.vurl = null; }
+    video.removeAttribute("src"); try { video.load(); } catch (e) { /* ignore */ }
+    $("lanes").textContent = ""; S.lanes = {};
+    $("empty-card").hidden = false;
+    $("kit-info").textContent = "";
+    $("playhead").hidden = true;
+    setEnabled(false);
+    $("rd-time").textContent = "0.000 s"; $("rd-frame").textContent = "f0";
+    refreshEditor(true);
+    $("ed-hint").hidden = false; $("ed-body").hidden = true;
+  }
+  function setEnabled(on) {
+    for (const id of ["btn-first", "btn-back10", "btn-back1", "btn-play", "btn-fwd1", "btn-fwd10", "btn-last", "go-to", "btn-copy"]) $(id).disabled = !on;
+  }
+  function waitVideo(file) {
+    return new Promise((res, rej) => {
+      S.vurl = URL.createObjectURL(file);
+      const ok = () => { video.removeEventListener("error", bad); res(); };
+      const bad = () => { video.removeEventListener("loadedmetadata", ok); rej(new Error("The video could not be opened in this browser.")); };
+      video.addEventListener("loadedmetadata", ok, { once: true });
+      video.addEventListener("error", bad, { once: true });
+      video.src = S.vurl;
+    });
+  }
+  async function openKit(entries) {
+    unloadKit();
+    const my = S.loadId;
+    S.base = ""; S.msg = null;
+    const root = C.kitRootOf(entries.map(e => e.path));
+    if (root === null) { S.base = ""; say("That folder has no manifest.json. Open the kit folder made by prep_kit.py.", "err"); return; }
+    const byName = new Map();
+    for (const e of entries) {
+      if (!e.path.startsWith(root)) continue;
+      const rest = e.path.slice(root.length);
+      if (rest && rest.indexOf("/") < 0) byName.set(rest, e.file);
+    }
+    let manifest;
+    try { manifest = C.parseManifest(await byName.get("manifest.json").text()); } catch (e) {
+      S.base = "";
+      say(e.message || String(e), "err");
+      return;
+    }
+    if (my !== S.loadId) return;
+    if (!byName.has(manifest.video.file)) { S.base = ""; say("Kit is missing " + manifest.video.file + " — run prep_kit.py again.", "err"); return; }
+    S.manifest = manifest; S.fps = manifest.video.fps; S.total = manifest.video.frames;
+    // state: defaults, then whatever this browser remembered
+    let st0 = C.buildState(manifest), restoredNote = "";
+    const saved = store.get(C.stateKey(manifest));
+    if (saved) {
+      try {
+        const r = C.restoreState(saved, manifest);
+        st0 = r.state; S.restored = true;
+        restoredNote = "restored your last clips and mutes" + (r.dropped ? " (" + r.dropped + " clip" + (r.dropped > 1 ? "s" : "") + " dropped)" : "");
+      } catch (e) { S.restored = false; }
+    }
+    S.st = st0;
+    $("empty-card").hidden = true;
+    $("kit-info").textContent = "kit: " + manifest.kit + " · " + manifest.video.file;
+    buildLanesDom();
+    syncMeta();
+    applyLayout();
+    const N = manifest.tracks.length + 1;
+    S.base = "loading 1 / " + N + " · " + manifest.video.file;
+    setProgress(1 / N); renderStatus();
+    ensureCtx();
+    try { await waitVideo(byName.get(manifest.video.file)); } catch (e) { if (my === S.loadId) { say(e.message, "err"); } return; }
+    if (my !== S.loadId) return;
+    if (Math.abs(video.duration - manifest.video.duration_s) > 0.1) say("the video is " + video.duration.toFixed(3) + " s, the manifest says " + manifest.video.duration_s + " s", "err");
+    let k = 1;
+    for (const l of S.st.lanes) {
+      k++;
+      S.base = "loading " + k + " / " + N + " · " + l.file;
+      setProgress(k / N); renderStatus();
+      const R = S.lanes[l.id];
+      const f = byName.get(l.file);
+      if (!f) { l.status = "missing"; R.bMute.disabled = R.bSolo.disabled = R.bAdd.disabled = true; updateLaneSrc(); requestDraw(true); continue; }
+      l.status = "loading";
+      try {
+        const buf = await S.ctx.decodeAudioData(await f.arrayBuffer());
+        if (my !== S.loadId) return;
+        const n = buf.length, mono = new Float32Array(n), nch = buf.numberOfChannels;
+        let pkAll = 0;
+        for (let ch = 0; ch < nch; ch++) { const d = buf.getChannelData(ch); for (let i = 0; i < n; i++) { const v = d[i]; mono[i] += v; const av = v < 0 ? -v : v; if (av > pkAll) pkAll = av; } }
+        let pk = 0;
+        for (let i = 0; i < n; i++) { if (nch > 1) mono[i] /= nch; const a = Math.abs(mono[i]); if (a > pk) pk = a; }
+        const nb = Math.max(1, Math.ceil(n / 22));
+        R.buf = buf; R.bins = C.peakBins(mono, 0, n, nb); R.binW = n / nb; R.norm = pk > 1e-6 ? 1 / pk : 1;
+        R.gain = S.ctx.createGain(); R.gain.connect(S.master);
+        R.el.dataset.samples = String(n);
+        R.el.dataset.peak = pkAll.toFixed(4);
+        l.status = "ready";
+      } catch (e) {
+        if (my !== S.loadId) return;
+        l.status = "failed"; R.bMute.disabled = R.bSolo.disabled = R.bAdd.disabled = true;
+      }
+      applyAudible(); updateLaneSrc(); requestDraw(true);
+    }
+    if (my !== S.loadId) return;
+    setProgress(0);
+    S.loaded = true;
+    setEnabled(true);
+    S.base = "ready · " + N - 1 + " lanes";
+    S.base = "ready · " + (N - 1) + " lanes" + (restoredNote ? " · " + restoredNote : "");
+    applyAudible();
+    $("btn-copy").disabled = false;
+    refreshEditor(true);
+    renderStatus();
+    stepTo(0, false);
+  }
+
+  // ---------- file input and drag/drop ----------
+  const fromInput = files => Array.from(files).map(f => ({ file: f, path: (f.webkitRelativePath || f.name).replace(/\\/g, "/") }));
+  function readAllEntries(reader) {
+    return new Promise((res, rej) => {
+      const out = [];
+      const next = () => reader.readEntries(batch => { if (!batch.length) res(out); else { out.push(...batch); next(); } }, rej);
+      next();
+    });
+  }
+  async function walk(entry, prefix, out) {
+    if (entry.isFile) {
+      const file = await new Promise((res, rej) => entry.file(res, rej));
+      out.push({ file, path: prefix + entry.name });
+    } else if (entry.isDirectory) {
+      const kids = await readAllEntries(entry.createReader());
+      for (const k of kids) await walk(k, prefix + entry.name + "/", out);
+    }
+  }
+  async function fromDrop(dt) {
+    const out = [], items = dt.items ? Array.from(dt.items) : [];
+    const entries = items.map(i => (i.webkitGetAsEntry ? i.webkitGetAsEntry() : null)).filter(Boolean);
+    if (entries.length) { for (const e of entries) await walk(e, "", out); return out; }
+    return fromInput(dt.files);
+  }
+
+  // ---------- copy list ----------
+  function openCopy() {
+    if (!S.st) return;
+    const ta = $("clip-list");
+    ta.value = C.formatClipList(S.st);
+    $("help-panel").hidden = true;
+    $("copy-panel").hidden = false;
+    $("copy-msg").textContent = "";
+    ta.focus(); ta.select();
+  }
+  async function doCopy() {
+    const ta = $("clip-list"), lines = ta.value.split("\n").length;
+    ta.focus(); ta.select();
+    let ok = false;
+    try { await navigator.clipboard.writeText(ta.value); ok = true; } catch (e) { /* fall back */ }
+    if (!ok) { try { ok = document.execCommand("copy"); } catch (e) { ok = false; } }
+    $("copy-msg").textContent = ok ? "copied " + lines + " lines" : "could not copy; the text is selected, press Ctrl+C";
+  }
+  function toggleHelp(on) {
+    const p = $("help-panel");
+    p.hidden = on === undefined ? !p.hidden : !on;
+    if (!p.hidden) $("copy-panel").hidden = true;
+  }
+
+  // ---------- wiring ----------
+  function setZoom(z) {
+    if (!S.st) return;
+    S.st.zoom = z;
+    for (const b of document.querySelectorAll("button.zoom")) b.setAttribute("aria-pressed", b.dataset.zoom === z ? "true" : "false");
+    refresh(true);
+  }
+  function wire() {
+    const pick = () => $("kit-input").click();
+    $("btn-open").onclick = pick;
+    $("btn-open-top").onclick = pick;
+    $("kit-input").addEventListener("change", e => { const en = fromInput(e.target.files); e.target.value = ""; if (en.length) openKit(en); });
+    let dragDepth = 0;
+    window.addEventListener("dragenter", e => { e.preventDefault(); dragDepth++; document.body.classList.add("dragging"); });
+    window.addEventListener("dragleave", () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) document.body.classList.remove("dragging"); });
+    window.addEventListener("dragover", e => e.preventDefault());
+    window.addEventListener("drop", async e => {
+      e.preventDefault(); dragDepth = 0; document.body.classList.remove("dragging");
+      try { const en = await fromDrop(e.dataTransfer); if (en.length) openKit(en); } catch (err) { say("could not read the dropped folder: " + err.message, "err"); }
+    });
+    $("btn-first").onclick = () => stepTo(0);
+    $("btn-back10").onclick = () => stepBy(-10);
+    $("btn-back1").onclick = () => stepBy(-1);
+    $("btn-fwd1").onclick = () => stepBy(1);
+    $("btn-fwd10").onclick = () => stepBy(10);
+    $("btn-last").onclick = () => stepTo(S.total - 1);
+    $("btn-play").onclick = () => { $("btn-play").blur(); togglePlay(); };
+    $("go-to").addEventListener("keydown", e => {
+      if (e.key !== "Enter") return;
+      const v = C.parseTimeEntry($("go-to").value, S.fps);
+      if (v === null) { $("go-to").classList.add("bad"); say("go to: type seconds (24.3), f + frame (f729) or m:ss", "err"); return; }
+      $("go-to").classList.remove("bad"); say("");
+      seekToTime(v);
+      $("go-to").blur();
+    });
+    $("go-to").addEventListener("input", () => $("go-to").classList.remove("bad"));
+    for (const b of document.querySelectorAll("button.zoom")) b.onclick = () => { b.blur(); setZoom(b.dataset.zoom); };
+    $("ruler").addEventListener("click", e => onCanvasClick(e, $("ruler"), null));
+    for (const f of FIELDS) {
+      const inp = $("ed-" + f);
+      inp.addEventListener("keydown", e => { if (e.key === "Enter") { applyField(f); inp.blur(); } else if (e.key === "Escape") { inp.value = inp.dataset.orig; inp.classList.remove("bad"); inp.blur(); e.stopPropagation(); } });
+      inp.addEventListener("blur", () => applyField(f));
+    }
+    $("btn-dup").onclick = () => { $("btn-dup").blur(); duplicateSel(); };
+    $("btn-del").onclick = () => { $("btn-del").blur(); deleteSel(); };
+    $("btn-copy").onclick = openCopy;
+    $("btn-copy-go").onclick = doCopy;
+    $("btn-copy-close").onclick = () => { $("copy-panel").hidden = true; };
+    $("btn-help").onclick = () => toggleHelp();
+    $("btn-help-close").onclick = () => toggleHelp(false);
+    $("btn-reset").onclick = () => {
+      if (!S.manifest) return;
+      store.del(C.stateKey(S.manifest));
+      const old = S.st, fresh = C.buildState(S.manifest);
+      for (const l of fresh.lanes) { const o = old.lanes.find(x => x.id === l.id); if (o) l.status = o.status; }
+      fresh.zoom = old.zoom;
+      S.st = fresh; S.restored = false;
+      applyAudible(); say("back to today's teaser sound"); changed(true);
+      store.del(C.stateKey(S.manifest));
+    };
+    video.addEventListener("ended", () => { if (S.playing) pausePlay(); });
+    window.addEventListener("resize", () => applyLayout());
+    if (typeof ResizeObserver === "function") new ResizeObserver(() => { if (S.st) requestDraw(true); }).observe($("right"));
+    window.addEventListener("keydown", onKey);
+  }
+  function onKey(e) {
+    const a = document.activeElement, tag = a && a.tagName;
+    if (tag === "TEXTAREA" || (tag === "INPUT" && a.type === "text")) { if (e.key === "Escape" && tag === "TEXTAREA") $("copy-panel").hidden = true; return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const k = e.key;
+    if (k === "Escape") {
+      if (!$("copy-panel").hidden || !$("help-panel").hidden) { $("copy-panel").hidden = true; $("help-panel").hidden = true; }
+      else if (S.st && S.st.sel) { S.st.sel = null; refreshEditor(true); requestDraw(true); }
+      return;
+    }
+    if (k === "?") { e.preventDefault(); toggleHelp(); return; }
+    if (!S.loaded) return;
+    if (k === " ") { e.preventDefault(); togglePlay(); }
+    else if (k === "ArrowRight") { e.preventDefault(); stepBy(e.shiftKey ? 10 : 1); }
+    else if (k === "ArrowLeft") { e.preventDefault(); stepBy(e.shiftKey ? -10 : -1); }
+    else if (k === "Home") { e.preventDefault(); stepTo(0); }
+    else if (k === "End") { e.preventDefault(); stepTo(S.total - 1); }
+    else if (k === "1" || k === "2" || k === "3" || k === "4") setZoom(["all", "10", "2", "0.5"][+k - 1]);
+    else if (k === "Delete") { e.preventDefault(); deleteSel(); }
+  }
+
+  function init() {
+    const ol = $("help-list"), hb = $("howto-body"), ol2 = document.createElement("ol");
+    for (const line of HOWTO) { ol.appendChild(el("li", "", line)); ol2.appendChild(el("li", "", line)); }
+    hb.appendChild(ol2);
+    if (!hasRvfc) $("fx-banner").hidden = false;
+    wire();
+    applyLayout();
+    renderStatus();
+  }
+  init();
+})();
+</script>
+</body>
+</html>
