@@ -1,17 +1,18 @@
 # stemsplitter
 
 Stem separation for the audio-studio: splitting stock tracks into parts (strings, piano,
-drums…) so a bed can be rebuilt from some of them. Started 2026-09-24.
+drums…) so a bed can be rebuilt from some of them. Started 2026-09-24. Cycle log: `../../cycles/18_stemsplitter-first-pass/` (first pass).
 
 ## Contents
 
 | path | what |
 |---|---|
-| `REVIEW-gemini-stemsplitter.md` | review of the Gemini chat export (`Downloads/gemini stemplitter export.pdf`): which tool to use (MVSEP, not UVR5) and whether it is worth it for cycle 16 |
+| `REVIEW-gemini-stemsplitter.md` | review of the Gemini chat export (PDF copied to `../../cycles/18_stemsplitter-first-pass/`): which tool to use (MVSEP, not UVR5) and whether it is worth it for cycle 16 |
 | `tunetank-emotional-classical/` | the MVSEP stems of the cycle-16 ride bed, with analysis |
 | `tunetank-emotional-classical/WAVEFORM-NOTES.md` | **start here**: findings, timeline, what it means for the ride |
 | `tunetank-emotional-classical/sources/` | the stems (renamed) + `original.mp3` reference copy |
 | `tunetank-emotional-classical/figures/` | `stems_overview.png` (all stems stacked) + one `waveform_<stem>.png` per non-empty stem |
+| `tunetank-emotional-classical/chroma_stems.py` | chord read (pitch classes per chord, key estimate); `chroma_output.txt` is its verbatim output |
 | `tunetank-emotional-classical/analyze_stems.py` | makes the numbers and the overview figure; `analysis_output.txt` is its verbatim output |
 
 ## Log
@@ -41,3 +42,5 @@ Folder `mvsep-tunetank-emotional-classical- fuller analysis/` (BS-Roformer 6-ste
 
 The Downloads copies are left in place (nothing deleted). The project copies in `sources/` are
 the ones the scripts read.
+- **2026-09-24**: Checked the vocals/guitar stems (empty) → `WAVEFORM-NOTES.md`. Whole first pass logged as cycle 18.
+- **2026-09-24**: Described what the track sounds like, from the stems, and read the chords (Am–F–C–G–Am) → `WAVEFORM-NOTES.md` "What it sounds like" + "Harmony".

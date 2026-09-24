@@ -1,7 +1,7 @@
 # Review of the Gemini "stem splitter" chat export — 2026-09-24
 
-Source reviewed: `C:\Users\natha\Downloads\gemini stemplitter export.pdf` (a copy also sits in
-`marketing/cycles/16_ride-tunetank-soundtrack/`). Context: cycle 16, where
+Source reviewed: `C:\Users\natha\Downloads\gemini stemplitter export.pdf` (a copy is in
+`marketing/cycles/18_stemsplitter-first-pass/`). Context: cycle 16, where
 `tunetank-emotional-classical-484234.mp3` (15.05 s, stereo, lossy) is the bed under both rides
 at `GAIN_BED = 0.45`, with the Salamander E5 piano pulses layered on top of ride 2.
 

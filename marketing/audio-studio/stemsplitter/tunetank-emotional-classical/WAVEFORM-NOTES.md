@@ -97,6 +97,78 @@ Consequences to decide on, not done here:
 - Level: strings alone are about 5.4 dB quieter (RMS) than the original, so `GAIN_BED` would need
   about +5 dB for the same bed loudness, or keep 0.45 and let the E5 pulses sit more forward.
 
+## What it sounds like, read from the stems (added 2026-09-24)
+
+This description comes from the waveforms, the envelopes and the chord read below, without
+listening. Nathan read it and agreed.
+
+**Form.** A slow, steady cinematic cue that plays one gesture five times, with no build-up and no
+melodic climax:
+
+- **Opening:** a short swell of about 1 s (probably a reverse cymbal or riser) leads into a
+  downbeat at 1.26 s.
+- **Body:** strings enter on that downbeat and hold one even, sustained layer for 10 s.
+- **Piano:** above the strings it strikes a chord every 2.45 s and lets each one decay about
+  20 dB before the next. The pacing is spacious and patient, like a slow heartbeat. That is about
+  98 BPM if each chord is one 4/4 bar.
+- **Percussion:** soft, getting denser and louder toward 9.5–10.7 s. It is the only layer that
+  builds, a gentle push into the last chord.
+- **Ending:** strings and bass drop out together at 11.1 s. The last piano chord rings alone for
+  about 4 s into silence. The piece closes on an exposed, fading piano chord, not an ensemble fade:
+  a quiet, lingering ending.
+
+**Character.** Reflective and bittersweet more than dramatic. The chords are a minor-starting
+four-chord loop that returns to minor (next section).
+
+## Harmony: chord read (`chroma_stems.py` → `chroma_output.txt`)
+
+Pitch-class (chroma) energy per chord segment, computed separately on three stems. They
+agree on every chord, and the bass stem gives an unambiguous root each time:
+
+| chord | time (file s) | piano | strings | bass root | chord |
+|---|---|---|---|---|---|
+| 1 | 1.24 | E A C | A E C | A | **A minor** |
+| 2 | 3.70 | F C A | F A C | F | **F major** |
+| 3 | 6.15 | E G C | C G E | C | **C major** |
+| 4 | 8.60 | G D B | G B D | G | **G major** |
+| 5 | 11.05 | E A C | (strings gone) | (bass gone) | **A minor**, piano only |
+
+- **Progression: Am – F – C – G – Am**, i.e. vi – IV – I – V in C major (or i – VI – III – VII
+  in A minor). This is the familiar "emotional/epic" four-chord loop. Starting and ending on the
+  minor chord gives the bittersweet colour.
+- **Key:** Krumhansl estimate on the whole body gives C major 0.94. A minor ties with F major at
+  0.73, but A minor is the same notes as C major (relative minor), and the piece begins and ends
+  on Am. Best description: **A minor / C major, all white keys, no accidentals.**
+- **Voicing:** the piano's strongest pitch class on the Am chords is E (the fifth, on top), and
+  on C it is E and G nearly equal. Octave and register are not measured here (chroma folds
+  octaves).
+
+**For the ride:** the Salamander E5 gate pulses (`ride_master.py`) are an **E**, which belongs to
+Am and C and is a passing tone against F and G. In ride 2 the pulses fall across chords 1–4
+(see the clash table above), so some land on F or G. A pitch-level reason, on top of the rhythm
+one, to remove the track's piano under ride 2, or to pick the pulse pitch per chord if it stays.
+
+Caveat: the chord names are inferred from spectral energy on lossy stems. Three independent stems
+agreeing makes them solid, but they are not a transcription. The Klangio/Muscriptor route in
+`../../piano/projects/tunetank/` would be the cross-check if exact voicings are ever needed.
+
+## Empty stems: vocals and guitar (added 2026-09-24)
+
+| stem | RMS | peak |
+|---|---|---|
+| 6stem_vocals | −111.7 dBFS | 0.0001 (≈ −80 dBFS) |
+| 6stem_guitar | −102.3 dBFS | 0.0001 (≈ −80 dBFS) |
+| 6stem_bass (quietest real stem, for scale) | −26.5 dBFS | 0.22 |
+
+Both files are silent: 75–85 dB below the quietest real stem, below what an MP3 at this level
+meaningfully carries. Their correlations with the original (0.18 / 0.14) come from leakage at
+noise level. The guitar's −25 ms alignment lag in `analysis_output.txt` is the correlator fitting
+noise, not a real offset. An empty stem means the model assigned nothing to that label; it does not
+prove there is no plucked sound. A soft harp or pizzicato part would more likely land in
+*other* or *piano*. The strings split (strings + other rebuild the original to −36.7 dB, with other
+following the swell and piano tail) shows no separate plucked line. "No vocals" is certain; "no
+guitar" is a well-supported inference. Check by ear: `strings-model_other.mp3`, 3–10 s.
+
 ## Caveats
 
 - These are lossy stems of a lossy source (MP3 320 kbps from an MP3 256 kbps original). Listen to
