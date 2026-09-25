@@ -1,0 +1,7 @@
+teaser-lanes · video.webm · 30 fps · 60.000 s · times in seconds; source = that sound's own clock, render = the video's; muted = leave that clip out
+logo: source 0.000-1.000 s -> render 0.000-1.000 s (gain 0.85, fade out 0.2 s)
+bed: source 0.000-12.000 s -> render 1.000-13.000 s (gain 0.45)
+bed: source 0.000-5.000 s -> render 20.000-25.000 s (gain 0.45, fade in 0.5 s, fade out 1 s, muted)
+a-strings: source 2.000-10.000 s -> render 44.000-52.000 s (gain 0.6)
+e5: source 0.000-3.000 s -> render 2.000-5.000 s (gain 1)
+ghost: source 0.000-1.000 s -> render 0.000-1.000 s (gain 1)

@@ -1,0 +1,24 @@
+{
+  "format": "teaser-lanes-arrangement",
+  "version": 1,
+  "kit": "teaser-lanes",
+  "video": {"file": "teaser_v9-proxy.mp4", "name": "teaser_v9.mp4", "fps": 30, "duration_s": 47.6, "frames": 1428},
+  "created": "2026-09-24 21:49",
+  "note": "converted from arrangement_v1.txt (Nathan's first hand-tweaked arrangement, 2026-09-24) by tests/convert-arrangement.mjs",
+  "muted": {"logo": true, "bed": false, "a-strings": true, "a-other": true, "b-piano": false, "b-drums": false, "b-bass": true, "b-other": true, "e5": false},
+  "clips": [
+    {"track": "logo", "in": 0, "out": 6.5, "at": 0, "gain": 0.85, "fade_in": 0, "fade_out": 0.5},
+    {"track": "bed", "in": 0, "out": 15.0465, "at": 10.3, "gain": 0.45, "fade_in": 0, "fade_out": 0},
+    {"track": "bed", "in": 0, "out": 15, "at": 22.6, "gain": 0.45, "fade_in": 2.5, "fade_out": 1},
+    {"track": "a-strings", "in": 0, "out": 15.0465, "at": 35, "gain": 0.45, "fade_in": 0, "fade_out": 0},
+    {"track": "a-other", "in": 0, "out": 15.0465, "at": 10.3, "gain": 0.45, "fade_in": 0, "fade_out": 0},
+    {"track": "a-other", "in": 0, "out": 9.76, "at": 23.04, "gain": 0.45, "fade_in": 0, "fade_out": 1},
+    {"track": "b-piano", "in": 0, "out": 10.5, "at": 0, "gain": 0.45, "fade_in": 0, "fade_out": 0},
+    {"track": "b-piano", "in": 0, "out": 15, "at": 35, "gain": 0.45, "fade_in": 0, "fade_out": 0},
+    {"track": "b-drums", "in": 0, "out": 15.0465, "at": 26.5, "gain": 0.45, "fade_in": 5, "fade_out": 0},
+    {"track": "b-bass", "in": 0, "out": 15.0465, "at": 35, "gain": 0.45, "fade_in": 0, "fade_out": 0},
+    {"track": "b-other", "in": 0, "out": 15.0465, "at": 10.3, "gain": 0.45, "fade_in": 0, "fade_out": 0},
+    {"track": "b-other", "in": 0, "out": 9.76, "at": 23.04, "gain": 0.45, "fade_in": 0, "fade_out": 1},
+    {"track": "e5", "in": 0, "out": 8.5, "at": 24.3, "gain": 0.3, "fade_in": 2, "fade_out": 0}
+  ]
+}

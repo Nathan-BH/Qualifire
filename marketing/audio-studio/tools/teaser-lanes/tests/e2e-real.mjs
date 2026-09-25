@@ -107,6 +107,56 @@ for (const [W, H] of [[1440, 810], [1440, 900], [1920, 990], [1920, 1080]]) {
   await page.keyboard.press("Escape");
 
   await page.screenshot({ path: join(out, "real-main-" + tag + ".png") });
+
+  if (tag === "1440x900") {
+    // ---- open/save arrangement (open-arrangement brief, 2026-09-24) ----
+    const fixturesDir = join(here, "fixtures");
+    const stripCut = s => s.replace(/, cut by the video end at [0-9.]+ s/g, "");
+    const arrTxtLines = readFileSync(join(fixturesDir, "arrangement_v1.txt"), "utf8").replace(/\n$/, "").split("\n");
+    const arrJsonObj = JSON.parse(readFileSync(join(fixturesDir, "arrangement_v1.json"), "utf8"));
+
+    async function openArr(path, name) {
+      await page.setInputFiles("#arr-input", path);
+      await page.waitForFunction(n => document.getElementById("status-text").textContent.includes("opened " + n), name, { timeout: 5000 });
+      const st = norm(await page.textContent("#status-text"));
+      check(tag + " open " + name + ": 13 clips, 0 dropped, no different-video note", st.includes("opened " + name + ": 13 clips (0 dropped)") && !st.includes("made for"), st);
+      check(tag + " open " + name + ": data-clips 13", (await page.getAttribute("body", "data-clips")) === "13");
+      const mutedLanes = await page.evaluate(() => Array.from(document.querySelectorAll(".lane")).filter(l => l.classList.contains("muted")).map(l => l.dataset.lane).join(","));
+      check(tag + " open " + name + ": lanes muted exactly logo, a-strings, a-other, b-bass, b-other", mutedLanes === "logo,a-strings,a-other,b-bass,b-other", mutedLanes);
+      await page.click("#btn-copy");
+      const bodyLines = (await page.inputValue("#clip-list")).split("\n").slice(1).map(stripCut);
+      const fixtureBody = arrTxtLines.slice(1).map(stripCut);
+      check(tag + " open " + name + ": copy list lines 2-14 equal the fixture's lines 2-14", JSON.stringify(bodyLines) === JSON.stringify(fixtureBody), bodyLines.join(" | "));
+      await page.keyboard.press("Escape");
+    }
+    await openArr(join(fixturesDir, "arrangement_v1.txt"), "arrangement_v1.txt");
+    await openArr(join(fixturesDir, "arrangement_v1.json"), "arrangement_v1.json");
+
+    // R4: M and S must still work after Open on the real kit «Ruling 4, 2026-09-25»
+    await page.click('.lane[data-lane="e5"] .b-mute');
+    check(tag + " R4: M on e5 after Open works; Undo hidden", (await page.getAttribute('.lane[data-lane="e5"]', "class")).includes("muted") && (await page.locator("#btn-undo").isHidden()));
+    await page.click("#btn-copy");
+    const e5Line = stripCut((await page.inputValue("#clip-list")).split("\n").find(l => l.startsWith("e5:")));
+    check(tag + " R4: copy list line for e5 (muted) matches", e5Line === "e5: source 0.000-8.500 s -> render 24.300-32.800 s (gain 0.3, fade in 2 s, muted)", e5Line);
+    await page.keyboard.press("Escape");
+    await page.click('.lane[data-lane="e5"] .b-mute');
+    check(tag + " R4: M on e5 again -> class gone", !(await page.getAttribute('.lane[data-lane="e5"]', "class")).includes("muted"));
+
+    await page.click('.lane[data-lane="bed"] .b-solo');
+    check(tag + " R4: S on bed after Open works; e5 silent", (await page.getAttribute('.lane[data-lane="bed"] .b-solo', "aria-pressed")) === "true" && (await page.getAttribute('.lane[data-lane="e5"]', "class")).includes("silent"));
+    await page.click('.lane[data-lane="bed"] .b-solo');
+    check(tag + " R4: S on bed again -> aria-pressed false", (await page.getAttribute('.lane[data-lane="bed"] .b-solo', "aria-pressed")) === "false");
+
+    const [dl] = await Promise.all([page.waitForEvent("download"), page.click("#btn-save-arr")]);
+    const savedObj = JSON.parse(readFileSync(await dl.path(), "utf8"));
+    check(tag + " save: clips deep-equal the fixture's clips", JSON.stringify(savedObj.clips) === JSON.stringify(arrJsonObj.clips));
+    check(tag + " save: muted deep-equals the fixture's muted", JSON.stringify(savedObj.muted) === JSON.stringify(arrJsonObj.muted));
+    check(tag + " save: video.duration_s 47.6", savedObj.video.duration_s === 47.6, String(savedObj.video.duration_s));
+    check(tag + " save: format tag right", savedObj.format === "teaser-lanes-arrangement" && savedObj.version === 1);
+
+    await page.screenshot({ path: join(out, "real-arr-1440x900.png") });
+  }
+
   if (W === 1440 && H === 810) {
     await page.keyboard.press("4"); await settle(page);
     await page.screenshot({ path: join(out, "real-zoom05-" + tag + ".png") });

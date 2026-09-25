@@ -312,5 +312,242 @@ eq("overlaps three clips merge", C.overlaps([{ track: "t", in: 0, out: 4, at: 0 
   ok("html: title", /<title>Teaser sound lanes<\/title>/.test(html));
 }
 
+// ============================================================
+// 19. open / save an arrangement (open-arrangement brief, 2026-09-24; kit arg per Ruling 3)
+// ============================================================
+const fxDir = join(here, "tests", "fixtures");
+const fxTxt = readFileSync(join(fxDir, "arrangement_v1.txt"), "utf8");
+const fxJsonText = readFileSync(join(fxDir, "arrangement_v1.json"), "utf8");
+const fxManifestText = readFileSync(join(fxDir, "manifest-real.json"), "utf8");
+const fxSynTxt = readFileSync(join(fxDir, "syn.txt"), "utf8");
+
+// 19.1 parseClipLine table
+{
+  const logoLine = "logo: source 0.000-6.500 s -> render 0.000-6.500 s (gain 0.85, fade out 0.5 s, muted)";
+  eq("parseClipLine: Nathan's logo line", C.parseClipLine(logoLine), { track: "logo", in: 0, out: 6.5, at: 0, gain: 0.85, fade_in: 0, fade_out: 0.5, muted: true });
+  const bed2Line = "bed: source 0.000-15.000 s -> render 22.600-37.600 s (gain 0.45, fade in 2.5 s, fade out 1 s)";
+  eq("parseClipLine: bed line 2", C.parseClipLine(bed2Line), { track: "bed", in: 0, out: 15, at: 22.6, gain: 0.45, fade_in: 2.5, fade_out: 1, muted: false });
+  const e5Line = "e5: source 0.000-8.500 s -> render 24.300-32.800 s (gain 0.3, fade in 2 s)";
+  eq("parseClipLine: e5 line", C.parseClipLine(e5Line), { track: "e5", in: 0, out: 8.5, at: 24.3, gain: 0.3, fade_in: 2, fade_out: 0, muted: false });
+  const rulings2Line = "a-strings: source 0.000-10.000 s -> render 44.000-54.000 s (gain 0.45, muted, cut by the video end at 47.600 s)";
+  eq("parseClipLine: Ruling-2 style line with the cut suffix", C.parseClipLine(rulings2Line), { track: "a-strings", in: 0, out: 10, at: 44, gain: 0.45, fade_in: 0, fade_out: 0, muted: true });
+  const drumsLine = "b-drums: source 0.000-1.000 s -> render 3.000-4.000 s (gain 1, muted, file missing)";
+  eq("parseClipLine: file missing part is ignored, muted kept", C.parseClipLine(drumsLine), { track: "b-drums", in: 0, out: 1, at: 3, gain: 1, fade_in: 0, fade_out: 0, muted: true });
+  ok("parseClipLine: header line -> null", C.parseClipLine(fxTxt.split(/\r?\n/)[0]) === null);
+  ok("parseClipLine: empty string -> null", C.parseClipLine("") === null);
+  eq("parseClipLine: unknown part -> bad", C.parseClipLine("bed: source 0-1 s -> render 0-1 s (gain 1, loud)"), { bad: true });
+  ok("parseClipLine: capitalized track -> null", C.parseClipLine("Bed: source 0.000-1.000 s -> render 0.000-1.000 s (gain 1)") === null);
+}
+
+// 19.2 parseArrangementText(arrangement_v1.txt)
+const expectedMuted = { logo: true, bed: false, "a-strings": true, "a-other": true, "b-piano": false, "b-drums": false, "b-bass": true, "b-other": true, e5: false };
+{
+  const p = C.parseArrangementText(fxTxt);
+  ok("parseArrangementText(arrangement_v1.txt): 13 clips", p.clips.length === 13, String(p.clips.length));
+  eq("parseArrangementText(arrangement_v1.txt): rejected []", p.rejected, []);
+  eq("parseArrangementText(arrangement_v1.txt): muted map", p.muted, expectedMuted);
+  eq("parseArrangementText(arrangement_v1.txt): clips[3] raw (pre-clamp)", p.clips[3], { track: "a-strings", in: 0, out: 15.047, at: 35, gain: 0.45, fade_in: 0, fade_out: 0 });
+  ok("parseArrangementText(arrangement_v1.txt): clips[12].track e5", p.clips[12].track === "e5");
+}
+
+// 19.3 tolerance: Ruling-2 header + "cut by" suffix, CRLF, junk lines
+{
+  const rul2Header = "teaser-lanes · teaser_v9-proxy.mp4 · 30 fps · 47.600 s · times in seconds; source = that sound's own clock, render = the video's; muted = leave that clip out";
+  const withCut = fxTxt.split(/\r?\n/).map((line, i) => {
+    if (i === 0) return rul2Header;
+    if (/render 35\.000-/.test(line)) return line.replace(/\)\s*$/, ", cut by the video end at 47.600 s)");
+    return line;
+  }).join("\n");
+  const p2 = C.parseArrangementText(withCut);
+  eq("tolerance: Ruling-2 header + cut suffix -> same clips", p2.clips, C.parseArrangementText(fxTxt).clips);
+  eq("tolerance: Ruling-2 header + cut suffix -> same muted", p2.muted, expectedMuted);
+  const crlf = fxTxt.replace(/\n/g, "\r\n");
+  const p3 = C.parseArrangementText(crlf);
+  eq("tolerance: CRLF -> same clips", p3.clips, C.parseArrangementText(fxTxt).clips);
+  eq("tolerance: CRLF -> same muted", p3.muted, expectedMuted);
+  const withJunk = fxTxt + "bed: source 0-1 s -> render 0-1 s (gain 1, loud)\njust a line of prose, not a clip at all\n";
+  const p4 = C.parseArrangementText(withJunk);
+  eq("tolerance: junk lines -> same clips", p4.clips, C.parseArrangementText(fxTxt).clips);
+  eq("tolerance: bad-part junk line rejected, counted (line 15)", p4.rejected, [15]);
+}
+
+// 19.4 empty-file / no-clip-lines errors
+{
+  throwsWith("parseArrangementText('hello\\nworld') throws no clip lines found", () => C.parseArrangementText("hello\nworld\n"), "no clip lines found");
+  throwsWith("parseArrangement('') throws the file is empty", () => C.parseArrangement(""), "the file is empty");
+  throwsWith("parseArrangement('  \\n') throws the file is empty", () => C.parseArrangement("  \n"), "the file is empty");
+}
+
+// 19.5 parseArrangement(arrangement_v1.json)
+{
+  const a = C.parseArrangement(fxJsonText);
+  ok("parseArrangement(json fixture): kind json", a.kind === "json");
+  ok("parseArrangement(json fixture): 13 clips", a.clips.length === 13);
+  eq("parseArrangement(json fixture): muted", a.muted, expectedMuted);
+  ok("parseArrangement(json fixture): video.duration_s 47.6", a.video.duration_s === 47.6);
+  ok("parseArrangement(json fixture): kit teaser-lanes", a.kit === "teaser-lanes");
+  ok("parseArrangement(json fixture): created", a.created === "2026-09-24 21:49");
+}
+
+// 19.6 JSON errors (parseArrangementJson directly, string or object)
+{
+  throwsWith("parseArrangementJson: wrong format tag", () => C.parseArrangementJson({ format: "x", clips: [] }), "not a teaser-lanes arrangement");
+  throwsWith("parseArrangementJson: unknown version", () => C.parseArrangementJson({ format: "teaser-lanes-arrangement", version: 2, clips: [] }), "unknown arrangement version 2");
+  throwsWith("parseArrangementJson: clips missing", () => C.parseArrangementJson({ format: "teaser-lanes-arrangement", version: 1 }), "\"clips\" is missing");
+  throwsWith("parseArrangementJson: clip field not a number", () => C.parseArrangementJson({ format: "teaser-lanes-arrangement", version: 1, clips: [{ track: "bed", in: "a", out: 1, at: 0 }] }), "clip 1: in is not a number");
+  throwsWith("parseArrangementJson: clip track missing", () => C.parseArrangementJson({ format: "teaser-lanes-arrangement", version: 1, clips: [{ in: 0, out: 1, at: 0 }] }), "clip 1: track is missing");
+  throwsWith("parseArrangementJson: muted not an object", () => C.parseArrangementJson({ format: "teaser-lanes-arrangement", version: 1, clips: [], muted: 5 }), "\"muted\" is not an object");
+  throwsWith("parseArrangementJson: '{' not valid JSON", () => C.parseArrangementJson("{"), "not valid JSON");
+  throwsWith("parseArrangementJson: '[1,2]' not a JSON object", () => C.parseArrangementJson("[1,2]"), "not a JSON object");
+  ok("parseArrangementJson: extra keys ignored, no throw", (() => {
+    const r = C.parseArrangementJson({ format: "teaser-lanes-arrangement", version: 1, colour: "blue", clips: [{ track: "bed", in: 0, out: 1, at: 0, id: "c9" }] });
+    return r.clips.length === 1 && r.clips[0].track === "bed";
+  })());
+}
+
+// 19.7 applyArrangement(parseArrangement(arrangement_v1.txt), parseManifest(manifest-real.json))
+let realManifest, realStateFromTxt;
+{
+  realManifest = C.parseManifest(fxManifestText);
+  const arrTxt = C.parseArrangement(fxTxt);
+  const rTxt = C.applyArrangement(arrTxt, realManifest);
+  realStateFromTxt = rTxt.state;
+  ok("applyArrangement(txt): dropped 0", rTxt.dropped === 0);
+  ok("applyArrangement(txt): state.clips.length 13", rTxt.state.clips.length === 13);
+  eq("applyArrangement(txt): clips[3]", rTxt.state.clips[3], { id: "c4", track: "a-strings", in: 0, out: 15.0465, at: 35, gain: 0.45, fade_in: 0, fade_out: 0 });
+  ok("applyArrangement(txt): note empty", rTxt.note === "");
+  const mutedLanes = rTxt.state.lanes.filter(l => l.muted).map(l => l.id);
+  eq("applyArrangement(txt): muted lanes exactly", mutedLanes, ["logo", "a-strings", "a-other", "b-bass", "b-other"]);
+  ok("applyArrangement(txt): every solo false", rTxt.state.lanes.every(l => l.solo === false));
+
+  const arrJson = C.parseArrangement(fxJsonText);
+  const rJson = C.applyArrangement(arrJson, realManifest);
+  eq("applyArrangement(json): deep-equal state to the txt result", rJson.state, rTxt.state);
+
+  const listLines = C.formatClipList(rTxt.state).split("\n").slice(1).map(l => l.replace(/, cut by the video end at [0-9.]+ s/g, ""));
+  const fixtureLines = fxTxt.split(/\r?\n/).slice(1, 14);
+  eq("applyArrangement(txt) round trip through formatClipList equals the fixture's 13 lines", listLines, fixtureLines);
+}
+
+// 19.8 round trip JSON, byte-identical
+{
+  const arr = C.parseArrangement(fxJsonText);
+  const r = C.applyArrangement(arr, realManifest);
+  const roundTrip = C.formatArrangementJson(r.state, realManifest.kit, { created: "2026-09-24 21:49", note: "converted from arrangement_v1.txt (Nathan's first hand-tweaked arrangement, 2026-09-24) by tests/convert-arrangement.mjs" });
+  ok("formatArrangementJson round trip === arrangement_v1.json fixture, byte for byte", roundTrip === fxJsonText, roundTrip === fxJsonText ? "" : "MISMATCH");
+
+  const synthManifestObj = {
+    kit: "teaser-lanes", version: 1,
+    video: { file: "video.webm", fps: 30, duration_s: 60, frames: 1800 },
+    groups: [{ id: "open", label: "Opening" }, { id: "bed", label: "Bed" }, { id: "A", label: "A" }, { id: "B", label: "B" }, { id: "pulse", label: "Pulses" }],
+    tracks: [
+      { id: "logo", label: "logo", group: "open", file: "logo.wav", source_len_s: 1, muted: false },
+      { id: "bed", label: "bed", group: "bed", file: "bed.wav", source_len_s: 12, muted: true },
+      { id: "a-strings", label: "strings A", group: "A", file: "a-strings.wav", source_len_s: 12, muted: false },
+      { id: "b-drums", label: "drums B", group: "B", file: "b-drums.wav", source_len_s: 12, muted: true },
+      { id: "e5", label: "E5 pulses", group: "pulse", file: "e5.wav", source_len_s: 3, muted: false }
+    ],
+    clips: []
+  };
+  const synthManifest = C.parseManifest(synthManifestObj);
+  const arrSyn = C.parseArrangement(fxSynTxt);
+  const rSyn = C.applyArrangement(arrSyn, synthManifest);
+  const expected461 = "{\n  \"format\": \"teaser-lanes-arrangement\",\n  \"version\": 1,\n  \"kit\": \"teaser-lanes\",\n  \"video\": {\"file\": \"video.webm\", \"name\": \"video.webm\", \"fps\": 30, \"duration_s\": 60, \"frames\": 1800},\n  \"created\": \"CREATED\",\n  \"note\": \"\",\n  \"muted\": {\"logo\": false, \"bed\": true, \"a-strings\": false, \"b-drums\": true, \"e5\": false},\n  \"clips\": [\n    {\"track\": \"logo\", \"in\": 0, \"out\": 1, \"at\": 0, \"gain\": 0.85, \"fade_in\": 0, \"fade_out\": 0.2},\n    {\"track\": \"bed\", \"in\": 0, \"out\": 12, \"at\": 1, \"gain\": 0.45, \"fade_in\": 0, \"fade_out\": 0},\n    {\"track\": \"bed\", \"in\": 0, \"out\": 5, \"at\": 20, \"gain\": 0.45, \"fade_in\": 0.5, \"fade_out\": 1},\n    {\"track\": \"a-strings\", \"in\": 2, \"out\": 10, \"at\": 44, \"gain\": 0.6, \"fade_in\": 0, \"fade_out\": 0},\n    {\"track\": \"e5\", \"in\": 0, \"out\": 3, \"at\": 2, \"gain\": 1, \"fade_in\": 0, \"fade_out\": 0}\n  ]\n}\n";
+  const out461 = C.formatArrangementJson(rSyn.state, synthManifest.kit, { created: "CREATED", note: "" });
+  ok("formatArrangementJson on the §6.1 fixture equals the §4.1 literal", out461 === expected461, out461 === expected461 ? "" : "\n" + out461);
+}
+
+// 19.9 ordering, determinism, solo-not-saved, kit undefined
+{
+  const st = {
+    video: { file: "video.webm", fps: 30, duration_s: 60, frames: 1800 },
+    lanes: [
+      { id: "logo", muted: false, solo: false }, { id: "bed", muted: false, solo: false },
+      { id: "a-strings", muted: false, solo: false }, { id: "b-drums", muted: false, solo: false }, { id: "e5", muted: false, solo: false }
+    ],
+    clips: [
+      { id: "c1", track: "e5", in: 0, out: 3, at: 2, gain: 1, fade_in: 0, fade_out: 0 },
+      { id: "c2", track: "bed", in: 0, out: 5, at: 20, gain: 0.45, fade_in: 0, fade_out: 1 },
+      { id: "c3", track: "bed", in: 0, out: 12, at: 1, gain: 0.45, fade_in: 0, fade_out: 0 },
+      { id: "c4", track: "logo", in: 0, out: 1, at: 0, gain: 0.85, fade_in: 0, fade_out: 0.2 }
+    ]
+  };
+  const out = C.formatArrangementJson(st, "teaser-lanes", { created: "CREATED", note: "" });
+  const order = out.match(/"track": "([a-z0-9-]+)", "in": (\d+)/g).map(s => s.match(/"track": "([a-z0-9-]+)"/)[1] + "@" + s.match(/"in": (\d+)/)[1]);
+  const outTracks = [];
+  for (const m of out.matchAll(/\{"track": "([a-z0-9-]+)", "in": \d+, "out": \d+, "at": (\d+)/g)) outTracks.push(m[1] + "@" + m[2]);
+  eq("formatArrangementJson orders clips: lane order then at", outTracks, ["logo@0", "bed@1", "bed@20", "e5@2"]);
+  ok("formatArrangementJson is deterministic (twice)", C.formatArrangementJson(st, "teaser-lanes", { created: "CREATED", note: "" }) === out);
+  const stSolo = JSON.parse(JSON.stringify(st));
+  stSolo.lanes[0].solo = true; stSolo.lanes[0].muted = false;
+  const outSolo = C.formatArrangementJson(stSolo, "teaser-lanes", { created: "CREATED", note: "" });
+  ok("formatArrangementJson: solo true, muted false writes false", /"muted": \{"logo": false/.test(outSolo), outSolo);
+  const outNoKit = C.formatArrangementJson(st, undefined, { created: "CREATED", note: "" });
+  ok("formatArrangementJson: kit undefined writes \"kit\": \"\",", outNoKit.includes("  \"kit\": \"\","), outNoKit.split("\n")[3]);
+}
+
+// 19.10 applyArrangement notes and drop/clamp behaviour
+{
+  const arrDiffVideo = { clips: [], muted: {}, video: { name: "teaser_v8.mp4", fps: 30, duration_s: 46 } };
+  const rDiffVideo = C.applyArrangement(arrDiffVideo, realManifest);
+  ok("applyArrangement: different-video note", rDiffVideo.note === "made for a different video (teaser_v8.mp4, 46.000 s)", rDiffVideo.note);
+
+  const arrSameVideoDiffFile = { clips: [], muted: {}, video: { file: "other.mp4", fps: 30, duration_s: 47.6 } };
+  const rSameVideo = C.applyArrangement(arrSameVideoDiffFile, realManifest);
+  ok("applyArrangement: matching video (file name not compared) -> no note", rSameVideo.note === "", rSameVideo.note);
+
+  const arrKit = { clips: [], muted: {}, video: { file: "teaser_v9-proxy.mp4", fps: 30, duration_s: 47.6 }, kit: "x" };
+  const rKit = C.applyArrangement(arrKit, realManifest);
+  ok("applyArrangement: different kit note (video matching)", rKit.note === "made for kit x", rKit.note);
+
+  const arrGhost = { clips: [{ track: "ghost", in: 0, out: 1, at: 0, gain: 1, fade_in: 0, fade_out: 0 }, { track: "bed", in: 0, out: 5, at: 0, gain: 1, fade_in: 0, fade_out: 0 }], muted: {} };
+  const rGhost = C.applyArrangement(arrGhost, realManifest);
+  ok("applyArrangement: clip on unknown lane dropped, others kept", rGhost.dropped === 1 && rGhost.state.clips.length === 1, JSON.stringify(rGhost));
+
+  const arrAtEnd = { clips: [{ track: "bed", in: 0, out: 5, at: 47.6, gain: 1, fade_in: 0, fade_out: 0 }], muted: {} };
+  const rAtEnd = C.applyArrangement(arrAtEnd, realManifest);
+  ok("applyArrangement: clip at the video end is dropped", rAtEnd.dropped === 1 && rAtEnd.state.clips.length === 0);
+
+  const arrClamp = { clips: [{ track: "a-strings", in: 0, out: 15.047, at: 35, gain: 0.45, fade_in: 0, fade_out: 0 }], muted: {} };
+  const rClamp = C.applyArrangement(arrClamp, realManifest);
+  ok("applyArrangement: out 15.047 kept, clamped to 15.0465", rClamp.dropped === 0 && rClamp.state.clips[0].out === 15.0465, JSON.stringify(rClamp.state.clips));
+}
+
+// 19.13-16 «Ruling 4, 2026-09-25»
+{
+  throwsWith("parseArrangement('[1,2]') is not JSON, no clip lines found", () => C.parseArrangement("[1,2]"), "no clip lines found");
+  const arrBracketNotes = C.parseArrangement("[my notes]\nbed: source 0.000-1.000 s -> render 0.000-1.000 s (gain 1)\n");
+  ok("parseArrangement: text starting with '[' opens as text", arrBracketNotes.kind === "text" && arrBracketNotes.clips.length === 1 && arrBracketNotes.clips[0].track === "bed", JSON.stringify(arrBracketNotes));
+
+  eq("parseClipLine: no render end -> null", C.parseClipLine("bed: source 0.000-1.000 s -> render 0.000 s (gain 1)"), null);
+
+  ok("applyArrangement: video {} -> no note", C.applyArrangement({ clips: [], muted: {}, video: {} }, realManifest).note === "");
+  ok("applyArrangement: video {name} only -> no note", C.applyArrangement({ clips: [], muted: {}, video: { name: "x.mp4" } }, realManifest).note === "");
+  ok("applyArrangement: video {fps, duration_s} -> different-video note", C.applyArrangement({ clips: [], muted: {}, video: { fps: 30, duration_s: 46 } }, realManifest).note === "made for a different video (?, 46.000 s)");
+
+  throwsWith("parseArrangementJson: version as string \"1\" -> quoted in message", () => C.parseArrangementJson({ format: "teaser-lanes-arrangement", version: "1", clips: [] }), "unknown arrangement version \"1\"");
+  throwsWith("parseArrangementJson: version 2 (number) -> unquoted in message", () => C.parseArrangementJson({ format: "teaser-lanes-arrangement", version: 2, clips: [] }), "unknown arrangement version 2");
+}
+
+// 19.11 arrangementFileName / arrangementStamp
+{
+  ok("arrangementFileName(2026-09-24 21:49)", C.arrangementFileName(new Date(2026, 8, 24, 21, 49)) === "arrangement_20260924-2149.json");
+  ok("arrangementStamp(2026-09-24 21:49)", C.arrangementStamp(new Date(2026, 8, 24, 21, 49)) === "2026-09-24 21:49");
+  ok("arrangementFileName(2026-01-05 09:07)", C.arrangementFileName(new Date(2026, 0, 5, 9, 7)) === "arrangement_20260105-0907.json");
+}
+
+// 19.12 hygiene additions
+{
+  ok("html: btn-open-arr exactly once", (html.match(/id="btn-open-arr"/g) || []).length === 1);
+  ok("html: btn-save-arr exactly once", (html.match(/id="btn-save-arr"/g) || []).length === 1);
+  ok("html: btn-undo exactly once", (html.match(/id="btn-undo"/g) || []).length === 1);
+  ok("html: arr-input exactly once", (html.match(/id="arr-input"/g) || []).length === 1);
+  const howtoBlock = html.match(/const HOWTO = \[([\s\S]*?)\];/);
+  const howtoLines = howtoBlock ? howtoBlock[1].split("\n").filter(l => /^\s{4}"/.test(l)) : [];
+  ok("html: HOWTO has 8 entries", howtoLines.length === 8, String(howtoLines.length));
+  ok("html: HOWTO entry 7 is the Copy list / Save / Open sentence", /^\s*"Copy list gives one line per clip/.test(howtoLines[6] || "") && /Save arrangement/.test(howtoLines[6] || ""), howtoLines[6]);
+  ok("html: HOWTO entry 8 starts with Lanes A (", /^\s*"Lanes A \(/.test(howtoLines[7] || ""), howtoLines[7]);
+}
+
 console.log(fails ? fails + " FAILED of " + n : "ALL PASS: " + n + "/" + n + " passed");
 process.exit(fails ? 1 : 0);

@@ -31,7 +31,7 @@ input[type="text"].bad { border-color: var(--red); background: #2a1215; }
 
 #topbar { display: flex; align-items: center; gap: 10px; padding: 0 12px; height: 36px; border-bottom: 1px solid var(--line); background: var(--panel); min-width: 0; }
 #topbar h1 { font-size: 14px; font-weight: 600; margin: 0; white-space: nowrap; }
-#topbar button { height: 26px; }
+#topbar button { height: 26px; white-space: nowrap; flex: none; }
 #kit-info { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; font-size: 12px; }
 #btn-help { width: 26px; padding: 0; font-weight: 700; }
 
@@ -126,6 +126,8 @@ body[data-layout="stacked"] #status { position: sticky; bottom: 0; }
   <span id="kit-info" class="muted"></span>
   <span class="grow"></span>
   <button id="btn-copy" type="button" disabled>Copy list</button>
+  <button id="btn-open-arr" type="button" disabled>Open arrangement</button>
+  <button id="btn-save-arr" type="button" disabled>Save arrangement</button>
   <button id="btn-help" type="button" aria-label="How to use" title="How to use (?)">?</button>
 </header>
 <div id="main">
@@ -189,8 +191,10 @@ body[data-layout="stacked"] #status { position: sticky; bottom: 0; }
   <span id="status-text">open the kit folder to begin</span>
   <span id="resyncs" hidden></span>
   <button id="btn-reset" type="button" hidden>Reset to defaults</button>
+  <button id="btn-undo" type="button" hidden>Undo</button>
 </footer>
 <input id="kit-input" type="file" webkitdirectory multiple hidden>
+<input id="arr-input" type="file" accept=".json,.txt,application/json,text/plain" hidden>
 <div id="copy-panel" class="panel" hidden role="dialog" aria-label="Clip list">
   <h2>Clip list, paste it into chat</h2>
   <textarea id="clip-list" readonly spellcheck="false"></textarea>
@@ -491,10 +495,145 @@ const LanesCore = (() => {
     return best;
   }
 
+  // ---- open / save an arrangement file (open-arrangement brief, 2026-09-24; kit argument per Ruling 3, 2026-09-25) ----
+  const ARRANGEMENT_FORMAT = "teaser-lanes-arrangement"; // version 1
+  const CLIP_LINE_RE = /^\s*([a-z0-9-]+):\s*source\s+(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*s\s*->\s*render\s+(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*s\s*\((.*)\)\s*$/;
+  // One line of a pasted clip list, or null when the line is not a clip line (header, blank, prose).
+  // { bad: true } when it looks like a clip line but has an unrecognized part in the parentheses.
+  function parseClipLine(line) {
+    const m = CLIP_LINE_RE.exec(line);
+    if (!m) return null;
+    const track = m[1], inV = parseFloat(m[2]), outV = parseFloat(m[3]), at = parseFloat(m[4]);
+    // m[5] (render end) is read by the regex but ignored: the source range and the start define the clip.
+    let gain = 1, fade_in = 0, fade_out = 0, muted = false;
+    const parts = m[6].split(/,\s*/);
+    for (const part of parts) {
+      let pm;
+      if ((pm = /^gain\s+(\d+(?:\.\d+)?)$/.exec(part))) { gain = parseFloat(pm[1]); continue; }
+      if ((pm = /^fade in\s+(\d+(?:\.\d+)?)\s*s$/.exec(part))) { fade_in = parseFloat(pm[1]); continue; }
+      if ((pm = /^fade out\s+(\d+(?:\.\d+)?)\s*s$/.exec(part))) { fade_out = parseFloat(pm[1]); continue; }
+      if (/^muted$/.test(part)) { muted = true; continue; }
+      if (/^file missing$/.test(part)) continue;
+      if (/^cut by the video end at .*$/.test(part)) continue;
+      return { bad: true };
+    }
+    return { track, in: inV, out: outV, at, gain, fade_in, fade_out, muted };
+  }
+  function parseArrangementText(text) {
+    const linesArr = text.split(/\r?\n/);
+    const clips = [], muted = {}, rejected = [];
+    for (let i = 0; i < linesArr.length; i++) {
+      const r = parseClipLine(linesArr[i]);
+      if (r === null) continue;
+      if (r.bad) { rejected.push(i + 1); continue; }
+      clips.push({ track: r.track, in: r.in, out: r.out, at: r.at, gain: r.gain, fade_in: r.fade_in, fade_out: r.fade_out });
+      if (muted[r.track] === undefined) muted[r.track] = false;
+      if (r.muted) muted[r.track] = true;
+    }
+    if (!clips.length) throw new Error("no clip lines found (expected lines like \"bed: source 0.000-15.047 s -> render 10.300-25.347 s (gain 0.45)\")");
+    return { kind: "text", clips, muted, rejected };
+  }
+  function parseArrangementJson(textOrObj) {
+    let obj = textOrObj;
+    if (typeof obj === "string") {
+      try { obj = JSON.parse(obj); } catch (e) { throw new Error("not valid JSON (" + e.message + ")"); }
+    }
+    if (!obj || typeof obj !== "object" || Array.isArray(obj)) throw new Error("not a JSON object");
+    if (obj.format !== ARRANGEMENT_FORMAT) throw new Error("not a teaser-lanes arrangement (expected \"format\": \"teaser-lanes-arrangement\")");
+    if (obj.version !== 1) throw new Error("unknown arrangement version " + JSON.stringify(obj.version) + " (this page reads version 1)");
+    if (!Array.isArray(obj.clips)) throw new Error("\"clips\" is missing or not a list");
+    const clips = [];
+    for (let i = 0; i < obj.clips.length; i++) {
+      const c = obj.clips[i] || {}, n = i + 1;
+      if (typeof c.track !== "string" || !/^[a-z0-9-]+$/.test(c.track)) throw new Error("clip " + n + ": track is missing");
+      for (const f of ["in", "out", "at"]) {
+        if (typeof c[f] !== "number" || !Number.isFinite(c[f])) throw new Error("clip " + n + ": " + f + " is not a number");
+      }
+      for (const f of ["gain", "fade_in", "fade_out"]) {
+        if (c[f] !== undefined && (typeof c[f] !== "number" || !Number.isFinite(c[f]))) throw new Error("clip " + n + ": " + f + " is not a number");
+      }
+      clips.push({ track: c.track, in: c.in, out: c.out, at: c.at, gain: c.gain === undefined ? 1 : c.gain, fade_in: c.fade_in === undefined ? 0 : c.fade_in, fade_out: c.fade_out === undefined ? 0 : c.fade_out });
+    }
+    let muted = {};
+    if (obj.muted !== undefined) {
+      if (!obj.muted || typeof obj.muted !== "object" || Array.isArray(obj.muted)) throw new Error("\"muted\" is not an object");
+      for (const k of Object.keys(obj.muted)) if (typeof obj.muted[k] === "boolean") muted[k] = obj.muted[k];
+    }
+    const result = { kind: "json", clips, muted };
+    if (obj.video !== undefined) result.video = obj.video;
+    if (obj.kit !== undefined) result.kit = obj.kit;
+    if (obj.created !== undefined) result.created = obj.created;
+    if (obj.note !== undefined) result.note = obj.note;
+    return result;
+  }
+  // File extension is never consulted: content decides.
+  function parseArrangement(text) {
+    if (text.trim() === "") throw new Error("the file is empty");
+    const t = text.replace(/^\s+/, "");
+    if (t[0] === "{") {
+      let obj;
+      try { obj = JSON.parse(text); } catch (e) { throw new Error("not valid JSON (" + e.message + ")"); }
+      return parseArrangementJson(obj);
+    }
+    return parseArrangementText(text);
+  }
+  function applyArrangement(arr, manifest) {
+    const r = restoreState({ clips: arr.clips, muted: arr.muted }, manifest);
+    let note = "";
+    if (arr.video && typeof arr.video === "object" && Number.isFinite(arr.video.fps) && Number.isFinite(arr.video.duration_s) && (arr.video.fps !== manifest.video.fps || Math.abs(arr.video.duration_s - manifest.video.duration_s) > 0.0015)) {
+      note = "made for a different video (" + (arr.video.name || arr.video.file || "?") + ", " + fmtSeconds(arr.video.duration_s) + " s)";
+    } else if (typeof arr.kit === "string" && arr.kit !== manifest.kit) {
+      note = "made for kit " + arr.kit;
+    }
+    return { state: r.state, dropped: r.dropped, note };
+  }
+  // kit: the loaded manifest's `kit` string, passed explicitly (state carries no kit id; Ruling 3, 2026-09-25).
+  function formatArrangementJson(state, kit, meta) {
+    const v = state.video;
+    const videoObj = { file: v.file, name: v.name || v.file, fps: v.fps, duration_s: v.duration_s, frames: v.frames };
+    const mutedObj = {};
+    for (const l of state.lanes) mutedObj[l.id] = !!l.muted;
+    const laneOrder = new Map(state.lanes.map((l, i) => [l.id, i]));
+    const clipsSorted = state.clips.map((c, i) => ({ c, i })).sort((a, b) => {
+      const la = laneOrder.get(a.c.track), lb = laneOrder.get(b.c.track);
+      if (la !== lb) return la - lb;
+      if (a.c.at !== b.c.at) return a.c.at - b.c.at;
+      return a.i - b.i;
+    }).map(x => x.c);
+    const oneLine = o => "{" + Object.keys(o).map(k => JSON.stringify(k) + ": " + JSON.stringify(o[k])).join(", ") + "}";
+    const lines = [
+      "{",
+      "  \"format\": " + JSON.stringify(ARRANGEMENT_FORMAT) + ",",
+      "  \"version\": 1,",
+      "  \"kit\": " + JSON.stringify(typeof kit === "string" ? kit : "") + ",",
+      "  \"video\": " + oneLine(videoObj) + ",",
+      "  \"created\": " + JSON.stringify(meta.created) + ",",
+      "  \"note\": " + JSON.stringify(meta.note) + ",",
+      "  \"muted\": " + oneLine(mutedObj) + ",",
+      "  \"clips\": ["
+    ];
+    clipsSorted.forEach((c, i) => {
+      const o = { track: c.track, in: c.in, out: c.out, at: c.at, gain: c.gain, fade_in: c.fade_in, fade_out: c.fade_out };
+      lines.push("    " + oneLine(o) + (i === clipsSorted.length - 1 ? "" : ","));
+    });
+    lines.push("  ]");
+    lines.push("}");
+    return lines.join("\n") + "\n";
+  }
+  function arrangementFileName(date) {
+    const p2 = n => String(n).padStart(2, "0");
+    return "arrangement_" + date.getFullYear() + p2(date.getMonth() + 1) + p2(date.getDate()) + "-" + p2(date.getHours()) + p2(date.getMinutes()) + ".json";
+  }
+  function arrangementStamp(date) {
+    const p2 = n => String(n).padStart(2, "0");
+    return date.getFullYear() + "-" + p2(date.getMonth() + 1) + "-" + p2(date.getDate()) + " " + p2(date.getHours()) + ":" + p2(date.getMinutes());
+  }
+
   return { clamp, frameOf, timeOfFrame, shownFrameOf, seekTimeOfFrame, roundTenthMs, nudge, nudgeFrames, peakBins,
     fmtSeconds, fmtFrame, fmtNum, parseTimeEntry, clipLen, clipEnd, sourceTimeAt, fileTimeOfSource, clipsUnder, laneReadout, laneReadouts, gainAt, frameSlice, startParams,
     audible, validateClip, overlaps, formatClipList, parseManifest, nextClipId, buildState, stateKey, serializeState, restoreState,
-    laneHeight, layoutMode, leftWidth, windowFor, xOfTime, timeOfX, kitRootOf };
+    laneHeight, layoutMode, leftWidth, windowFor, xOfTime, timeOfX, kitRootOf,
+    parseClipLine, parseArrangementText, parseArrangementJson, parseArrangement, applyArrangement, formatArrangementJson, arrangementFileName, arrangementStamp, ARRANGEMENT_FORMAT };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = LanesCore;
 </script>
@@ -513,8 +652,8 @@ if (typeof module !== "undefined" && module.exports) module.exports = LanesCore;
     "A shaded block is a clip: \"play source in-out of this sound from render start\". Click a block to edit its numbers below; Enter applies.",
     "+ on a lane adds a clip at the playhead. Duplicate puts a copy of the selected clip at the playhead. Delete removes it.",
     "Zoom: All / 10 s / 2 s / 0.5 s around the playhead (0.5 s shows every frame). Click anywhere in the lanes or the ruler to move the playhead there.",
-    "Copy list gives one plain line per clip to paste into chat. Nothing is written to disk; clips and mutes are remembered in this browser (Reset restores today's teaser sound).",
-    "Lanes A (strings + other) and B (piano + drums + bass + other) are two splits of the same bed: unmute one split OR the bed, not both. Real-time play is right to about one frame (worse on Bluetooth); stepping is exact."
+    "Copy list gives one line per clip to paste into chat. Save arrangement keeps your clips and mutes in a small file; Open arrangement brings them back, Undo undoes that.",
+    "Lanes A (strings + other) and B (piano + drums + bass + other) split the same bed: unmute one split OR the bed, not both. Play is right to about a frame; stepping is exact."
   ];
 
   const MONO = "ui-monospace, Consolas, \"Liberation Mono\", monospace";
@@ -523,7 +662,8 @@ if (typeof module !== "undefined" && module.exports) module.exports = LanesCore;
   const S = {
     manifest: null, st: null, ctx: null, master: null, lanes: {}, fps: 30, total: 0, frame: 0, shown: null,
     playing: false, first: false, token: 0, resyncs: 0, sources: [], vurl: null, loaded: false, loadId: 0,
-    base: "open the kit folder to begin", msg: null, restored: false, stepTimer: 0, drawReq: false, drawFull: true
+    base: "open the kit folder to begin", msg: null, restored: false, stepTimer: 0, drawReq: false, drawFull: true,
+    undo: null
   };
 
   // ---------- small helpers ----------
@@ -547,6 +687,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = LanesCore;
     r.hidden = !(S.resyncs > 0);
     r.textContent = "resyncs: " + S.resyncs;
     $("btn-reset").hidden = !S.restored;
+    $("btn-undo").hidden = !S.undo;
   }
   function say(text, kind) { S.msg = text ? { text, kind: kind || "info" } : null; renderStatus(); }
   function setProgress(f) { $("progress").style.width = (f >= 1 || f <= 0 ? 0 : f * 100) + "%"; }
@@ -935,6 +1076,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = LanesCore;
     if (!ok) say("cannot remember state in this browser");
   }
   function changed(restartPlay) {
+    S.undo = null;
     syncMeta();
     persist();
     refreshEditor(true);
@@ -1030,8 +1172,8 @@ if (typeof module !== "undefined" && module.exports) module.exports = LanesCore;
       row.append(hdr, cv);
       box.appendChild(row);
       S.lanes[l.id] = { el: row, cv, src, bMute: bM, bSolo: bS, bAdd: bA, buf: null, bins: null, binW: 22, norm: 1, gain: null };
-      bM.onclick = () => { l.muted = !l.muted; bM.blur(); applyAudible(); persist(); };
-      bS.onclick = () => { l.solo = !l.solo; bS.blur(); applyAudible(); persist(); };
+      bM.onclick = () => { const L = laneOf(l.id); if (!L) return; L.muted = !L.muted; bM.blur(); applyAudible(); changed(); renderStatus(); };
+      bS.onclick = () => { const L = laneOf(l.id); if (!L) return; L.solo = !L.solo; bS.blur(); applyAudible(); persist(); };
       bA.onclick = () => { bA.blur(); addClip(l.id); };
       cv.addEventListener("click", e => onCanvasClick(e, cv, l.id));
     }
@@ -1071,7 +1213,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = LanesCore;
     S.loadId++;
     pausePlay();
     stopAll();
-    S.loaded = false; S.st = null; S.manifest = null; S.restored = false;
+    S.loaded = false; S.st = null; S.manifest = null; S.restored = false; S.undo = null;
     document.body.dataset.clips = "0";
     if (S.vurl) { URL.revokeObjectURL(S.vurl); S.vurl = null; }
     video.removeAttribute("src"); try { video.load(); } catch (e) { /* ignore */ }
@@ -1085,7 +1227,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = LanesCore;
     $("ed-hint").hidden = false; $("ed-body").hidden = true;
   }
   function setEnabled(on) {
-    for (const id of ["btn-first", "btn-back10", "btn-back1", "btn-play", "btn-fwd1", "btn-fwd10", "btn-last", "go-to", "btn-copy"]) $(id).disabled = !on;
+    for (const id of ["btn-first", "btn-back10", "btn-back1", "btn-play", "btn-fwd1", "btn-fwd10", "btn-last", "go-to", "btn-copy", "btn-open-arr", "btn-save-arr"]) $(id).disabled = !on;
   }
   function waitVideo(file) {
     return new Promise((res, rej) => {
@@ -1178,6 +1320,8 @@ if (typeof module !== "undefined" && module.exports) module.exports = LanesCore;
     S.base = "ready · " + (N - 1) + " lanes" + (restoredNote ? " · " + restoredNote : "");
     applyAudible();
     $("btn-copy").disabled = false;
+    $("btn-open-arr").disabled = false;
+    $("btn-save-arr").disabled = false;
     refreshEditor(true);
     renderStatus();
     stepTo(0, false);
@@ -1206,6 +1350,70 @@ if (typeof module !== "undefined" && module.exports) module.exports = LanesCore;
     const entries = items.map(i => (i.webkitGetAsEntry ? i.webkitGetAsEntry() : null)).filter(Boolean);
     if (entries.length) { for (const e of entries) await walk(e, "", out); return out; }
     return fromInput(dt.files);
+  }
+
+  // ---------- open / save an arrangement (open-arrangement brief, 2026-09-24) ----------
+  async function openArrangementFile(file) {
+    if (!S.loaded) { say("open the kit folder first, then the arrangement", "err"); return; }
+    let arr, r;
+    try {
+      const text = await file.text();
+      arr = C.parseArrangement(text);
+      r = C.applyArrangement(arr, S.manifest);
+    } catch (e) {
+      say("could not open " + file.name + ": " + e.message, "err");
+      return;
+    }
+    const old = S.st;
+    const before = C.serializeState(old);
+    const fresh = r.state;
+    for (const l of fresh.lanes) { const o = old.lanes.find(x => x.id === l.id); if (o) l.status = o.status; }
+    fresh.zoom = old.zoom;
+    fresh.sel = null;
+    for (const l of fresh.lanes) l.solo = false;
+    S.st = fresh;
+    S.restored = true;
+    applyAudible();
+    changed(true);
+    S.undo = { label: "opening " + file.name, restore: () => restoreSerialized(before) };
+    const n = fresh.clips.length;
+    const k = arr.rejected ? arr.rejected.length : 0;
+    let msg = "opened " + file.name + ": " + n + " clip" + (n === 1 ? "" : "s") + " (" + r.dropped + " dropped";
+    if (k) msg += ", " + k + " line" + (k === 1 ? "" : "s") + " not understood: line " + arr.rejected.join(", ");
+    msg += ")" + (r.note ? " · " + r.note : "");
+    say(msg);
+  }
+  function restoreSerialized(saved) {
+    const old = S.st;
+    const r = C.restoreState(saved, S.manifest);
+    for (const l of r.state.lanes) { const o = old.lanes.find(x => x.id === l.id); if (o) l.status = o.status; }
+    r.state.zoom = old.zoom;
+    S.st = r.state;
+    applyAudible();
+    changed(true);
+  }
+  function saveArrangement() {
+    if (!S.st) return;
+    const now = new Date();
+    const name = C.arrangementFileName(now);
+    const text = C.formatArrangementJson(S.st, S.manifest.kit, { created: C.arrangementStamp(now), note: "" });
+    const n = S.st.clips.length;
+    const blob = new Blob([text], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    say("saved " + name + " (" + n + " clips) to your Downloads folder; move it into teaser/arrangements/");
+  }
+  function undoLast() {
+    const u = S.undo;
+    if (!u) return;
+    S.undo = null;
+    u.restore();
+    say("back to the clips before " + u.label);
   }
 
   // ---------- copy list ----------
@@ -1250,6 +1458,13 @@ if (typeof module !== "undefined" && module.exports) module.exports = LanesCore;
     window.addEventListener("dragover", e => e.preventDefault());
     window.addEventListener("drop", async e => {
       e.preventDefault(); dragDepth = 0; document.body.classList.remove("dragging");
+      const fl = e.dataTransfer.files, it0 = e.dataTransfer.items && e.dataTransfer.items[0];
+      const en0 = it0 && it0.webkitGetAsEntry ? it0.webkitGetAsEntry() : null;
+      if (fl && fl.length === 1 && !(en0 && en0.isDirectory)) {
+        if (!S.loaded) { say("open the kit folder first, then the arrangement", "err"); return; }
+        await openArrangementFile(fl[0]);
+        return;
+      }
       try { const en = await fromDrop(e.dataTransfer); if (en.length) openKit(en); } catch (err) { say("could not read the dropped folder: " + err.message, "err"); }
     });
     $("btn-first").onclick = () => stepTo(0);
@@ -1280,6 +1495,10 @@ if (typeof module !== "undefined" && module.exports) module.exports = LanesCore;
     $("btn-copy").onclick = openCopy;
     $("btn-copy-go").onclick = doCopy;
     $("btn-copy-close").onclick = () => { $("copy-panel").hidden = true; };
+    $("btn-open-arr").onclick = () => { $("btn-open-arr").blur(); $("arr-input").click(); };
+    $("arr-input").addEventListener("change", async e => { const f = e.target.files[0]; e.target.value = ""; if (f) await openArrangementFile(f); });
+    $("btn-save-arr").onclick = () => { $("btn-save-arr").blur(); saveArrangement(); };
+    $("btn-undo").onclick = () => { $("btn-undo").blur(); undoLast(); };
     $("btn-help").onclick = () => toggleHelp();
     $("btn-help-close").onclick = () => toggleHelp(false);
     $("btn-reset").onclick = () => {
