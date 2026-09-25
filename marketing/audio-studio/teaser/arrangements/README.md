@@ -15,11 +15,16 @@ that says which arrangement it came from.
   b-piano / b-drums / b-bass / b-other = split B (6-stem model); e5 = the five gate-pulse piano notes.
   A and B are two splits of the same bed, so the bed plus its own stems play the same music twice.
 
+## Open one in the tool
+
+In `../../tools/teaser-lanes/teaser-lanes.html`, open the kit, then press **Open arrangement** and pick the folder's `.json` (or the `.txt`; both work) — or drop the file on the page. **Save arrangement** downloads a new `arrangement_YYYYMMDD-HHMM.json`; move it into a new `arrangement_vN/` folder here.
+
 ## Versions
 
 | file | made | what |
 |---|---|---|
 | `arrangement_v1/arrangement_v1.txt` | 2026-09-24 | Nathan's first hand-tweaked arrangement, pasted verbatim (nothing edited). |
+| `arrangement_v1/arrangement_v1.json` | 2026-09-24 | The same arrangement as a file the tool opens (Open arrangement); made from the .txt by `tools/teaser-lanes/tests/convert-arrangement.mjs`, nothing edited. |
 | `arrangement_v1/IDEA-v1.md` | 2026-09-24 | Nathan's intent in his own words (to fill in). |
 | `arrangement_v1/FEEDBACK-v1.md` | not written yet | Claude's feedback, written after IDEA-v1.md is filled in. |
 
@@ -29,4 +34,5 @@ that says which arrangement it came from.
 - Clips that run past the end of the video (`a-strings` 35.000-50.047, `b-piano` 35.000-50.000, `b-bass` 35.000-50.047) would be cut at 47.6 s; `b-drums` ends at 41.547.
 - `muted` = the state of that lane's M switch (or a solo elsewhere) in the tool when the list was copied. It is NOT yet confirmed to mean "leave that clip out".
   Until Nathan says so in IDEA-v1.md, treat muted lines as "present in the tool, silent while listening".
+- `arrangement_v1.json` holds the same 13 clips; `15.047` s source ends are stored as `15.0465` (the exact file length; the list rounds it to 15.047).
 - Nothing here has been listened to by Claude.
