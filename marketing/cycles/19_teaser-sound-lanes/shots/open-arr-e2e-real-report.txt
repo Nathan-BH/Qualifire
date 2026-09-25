@@ -1,0 +1,102 @@
+
+=== real kit, viewport 1440x810 ===
+     load + decode of 9 wavs + video: 519 ms
+PASS 1440x810 9 lanes
+PASS 1440x810 decoded sample counts equal the manifest's for all 9 lanes  [logo:372096 bed:663552 a-strings:663552 a-other:663552 b-piano:663552 b-drums:663552 b-bass:663552 b-other:663552 e5:374850]
+PASS 1440x810 data-peak of logo matches the manifest peak 0.9997 within 0.0005  [0.9997]
+PASS 1440x810 data-peak of bed matches the manifest peak 1.0435 within 0.0005  [1.0435]
+PASS 1440x810 data-peak of a-strings matches the manifest peak 0.8648 within 0.0005  [0.8648]
+PASS 1440x810 data-peak of a-other matches the manifest peak 1.1309 within 0.0005  [1.1309]
+PASS 1440x810 data-peak of b-piano matches the manifest peak 0.9046 within 0.0005  [0.9046]
+PASS 1440x810 data-peak of b-drums matches the manifest peak 0.9119 within 0.0005  [0.9119]
+PASS 1440x810 data-peak of b-bass matches the manifest peak 0.2241 within 0.0005  [0.2241]
+PASS 1440x810 data-peak of b-other matches the manifest peak 1.0384 within 0.0005  [1.0384]
+PASS 1440x810 data-peak of e5 matches the manifest peak 0.5025 within 0.0005  [0.5025]
+PASS 1440x810 bed data-peak >= 1.04 (float WAV decoded unclipped)  [1.0435]
+PASS 1440x810 a-other data-peak >= 1.10 (float WAV decoded unclipped)  [1.1309]
+     data-peak per lane: {"logo":0.9997,"bed":1.0435,"a-strings":0.8648,"a-other":1.1309,"b-piano":0.9046,"b-drums":0.9119,"b-bass":0.2241,"b-other":1.0384,"e5":0.5025}
+PASS 1440x810 status is plain ready with no leftover error  [ready · 9 lanes]
+PASS 1440x810 lane height 81 px  [81,81,81,81,81,81,81,81,81]
+PASS 1440x810 no page scroll (810 <= 810)
+PASS 1440x810 no overlaps and everything inside the viewport
+PASS 1440x810 lane canvases share the ruler width (702)  [702,702,702,702,702,702,702,702,702,702]
+PASS 1440x810 f729 = 24.300 s: readout  [24.300 s f729]
+PASS 1440x810 f729: bed src 14.000 | 1.260 (instance 1 tail, instance 2 = the ATTACK), e5 src 0.000 (the start pulse), logo none  [src 14.000 | 1.260 | src 0.000 | src —]
+PASS 1440x810 f729: every stem shows src 14.000 | 1.260
+PASS 1440x810 f0: logo src 0.000
+PASS 1440x810 default copy list = header + 16 clip lines exactly as in the brief's step-8 table  [17 lines]
+PASS 1440x810 after bed -> A swap: bed lines muted, A lines not
+PASS 1440x810 zoom 0.5 s at f729 window [24.05,24.55]  [[24.05,24.55]]
+PASS 1440x810 play 1.5 s over the real kit: video advanced 1.49 s (>= 1.2), context running
+     resyncs (reported, not asserted): 0
+PASS 1440x810 zero console errors
+
+=== real kit, viewport 1440x900 ===
+     load + decode of 9 wavs + video: 495 ms
+PASS 1440x900 9 lanes
+PASS 1440x900 decoded sample counts equal the manifest's for all 9 lanes  [logo:372096 bed:663552 a-strings:663552 a-other:663552 b-piano:663552 b-drums:663552 b-bass:663552 b-other:663552 e5:374850]
+PASS 1440x900 status is plain ready with no leftover error  [ready · 9 lanes]
+PASS 1440x900 lane height 91 px  [91,91,91,91,91,91,91,91,91]
+PASS 1440x900 no page scroll (900 <= 900)
+PASS 1440x900 no overlaps and everything inside the viewport
+PASS 1440x900 lane canvases share the ruler width (702)  [702,702,702,702,702,702,702,702,702,702]
+PASS 1440x900 f729 = 24.300 s: readout  [24.300 s f729]
+PASS 1440x900 f729: bed src 14.000 | 1.260 (instance 1 tail, instance 2 = the ATTACK), e5 src 0.000 (the start pulse), logo none  [src 14.000 | 1.260 | src 0.000 | src —]
+PASS 1440x900 f729: every stem shows src 14.000 | 1.260
+PASS 1440x900 f0: logo src 0.000
+PASS 1440x900 default copy list = header + 16 clip lines exactly as in the brief's step-8 table  [17 lines]
+PASS 1440x900 after bed -> A swap: bed lines muted, A lines not
+PASS 1440x900 open arrangement_v1.txt: 13 clips, 0 dropped, no different-video note  [ready · 9 lanes · opened arrangement_v1.txt: 13 clips (0 dropped)]
+PASS 1440x900 open arrangement_v1.txt: data-clips 13
+PASS 1440x900 open arrangement_v1.txt: lanes muted exactly logo, a-strings, a-other, b-bass, b-other  [logo,a-strings,a-other,b-bass,b-other]
+PASS 1440x900 open arrangement_v1.txt: copy list lines 2-14 equal the fixture's lines 2-14  [logo: source 0.000-6.500 s -> render 0.000-6.500 s (gain 0.85, fade out 0.5 s, muted) | bed: source 0.000-15.047 s -> render 10.300-25.347 s (gain 0.45) | bed: source 0.000-15.000 s -> render 22.600-37.600 s (gain 0.45, fade in 2.5 s, fade out 1 s) | a-strings: source 0.000-15.047 s -> render 35.000-50.047 s (gain 0.45, muted) | a-other: source 0.000-15.047 s -> render 10.300-25.347 s (gain 0.45, muted) | a-other: source 0.000-9.760 s -> render 23.040-32.800 s (gain 0.45, fade out 1 s, muted) | b-piano: source 0.000-10.500 s -> render 0.000-10.500 s (gain 0.45) | b-piano: source 0.000-15.000 s -> render 35.000-50.000 s (gain 0.45) | b-drums: source 0.000-15.047 s -> render 26.500-41.547 s (gain 0.45, fade in 5 s) | b-bass: source 0.000-15.047 s -> render 35.000-50.047 s (gain 0.45, muted) | b-other: source 0.000-15.047 s -> render 10.300-25.347 s (gain 0.45, muted) | b-other: source 0.000-9.760 s -> render 23.040-32.800 s (gain 0.45, fade out 1 s, muted) | e5: source 0.000-8.500 s -> render 24.300-32.800 s (gain 0.3, fade in 2 s)]
+PASS 1440x900 open arrangement_v1.json: 13 clips, 0 dropped, no different-video note  [ready · 9 lanes · opened arrangement_v1.json: 13 clips (0 dropped)]
+PASS 1440x900 open arrangement_v1.json: data-clips 13
+PASS 1440x900 open arrangement_v1.json: lanes muted exactly logo, a-strings, a-other, b-bass, b-other  [logo,a-strings,a-other,b-bass,b-other]
+PASS 1440x900 open arrangement_v1.json: copy list lines 2-14 equal the fixture's lines 2-14  [logo: source 0.000-6.500 s -> render 0.000-6.500 s (gain 0.85, fade out 0.5 s, muted) | bed: source 0.000-15.047 s -> render 10.300-25.347 s (gain 0.45) | bed: source 0.000-15.000 s -> render 22.600-37.600 s (gain 0.45, fade in 2.5 s, fade out 1 s) | a-strings: source 0.000-15.047 s -> render 35.000-50.047 s (gain 0.45, muted) | a-other: source 0.000-15.047 s -> render 10.300-25.347 s (gain 0.45, muted) | a-other: source 0.000-9.760 s -> render 23.040-32.800 s (gain 0.45, fade out 1 s, muted) | b-piano: source 0.000-10.500 s -> render 0.000-10.500 s (gain 0.45) | b-piano: source 0.000-15.000 s -> render 35.000-50.000 s (gain 0.45) | b-drums: source 0.000-15.047 s -> render 26.500-41.547 s (gain 0.45, fade in 5 s) | b-bass: source 0.000-15.047 s -> render 35.000-50.047 s (gain 0.45, muted) | b-other: source 0.000-15.047 s -> render 10.300-25.347 s (gain 0.45, muted) | b-other: source 0.000-9.760 s -> render 23.040-32.800 s (gain 0.45, fade out 1 s, muted) | e5: source 0.000-8.500 s -> render 24.300-32.800 s (gain 0.3, fade in 2 s)]
+PASS 1440x900 R4: M on e5 after Open works; Undo hidden
+PASS 1440x900 R4: copy list line for e5 (muted) matches  [e5: source 0.000-8.500 s -> render 24.300-32.800 s (gain 0.3, fade in 2 s, muted)]
+PASS 1440x900 R4: M on e5 again -> class gone
+PASS 1440x900 R4: S on bed after Open works; e5 silent
+PASS 1440x900 R4: S on bed again -> aria-pressed false
+PASS 1440x900 save: clips deep-equal the fixture's clips
+PASS 1440x900 save: muted deep-equals the fixture's muted
+PASS 1440x900 save: video.duration_s 47.6  [47.6]
+PASS 1440x900 save: format tag right
+PASS 1440x900 zero console errors
+
+=== real kit, viewport 1920x990 ===
+     load + decode of 9 wavs + video: 512 ms
+PASS 1920x990 9 lanes
+PASS 1920x990 decoded sample counts equal the manifest's for all 9 lanes  [logo:372096 bed:663552 a-strings:663552 a-other:663552 b-piano:663552 b-drums:663552 b-bass:663552 b-other:663552 e5:374850]
+PASS 1920x990 status is plain ready with no leftover error  [ready · 9 lanes]
+PASS 1920x990 lane height 96 px  [96,96,96,96,96,96,96,96,96]
+PASS 1920x990 no page scroll (990 <= 990)
+PASS 1920x990 no overlaps and everything inside the viewport
+PASS 1920x990 lane canvases share the ruler width (1027)  [1027,1027,1027,1027,1027,1027,1027,1027,1027,1027]
+PASS 1920x990 f729 = 24.300 s: readout  [24.300 s f729]
+PASS 1920x990 f729: bed src 14.000 | 1.260 (instance 1 tail, instance 2 = the ATTACK), e5 src 0.000 (the start pulse), logo none  [src 14.000 | 1.260 | src 0.000 | src —]
+PASS 1920x990 f729: every stem shows src 14.000 | 1.260
+PASS 1920x990 f0: logo src 0.000
+PASS 1920x990 default copy list = header + 16 clip lines exactly as in the brief's step-8 table  [17 lines]
+PASS 1920x990 after bed -> A swap: bed lines muted, A lines not
+PASS 1920x990 zero console errors
+
+=== real kit, viewport 1920x1080 ===
+     load + decode of 9 wavs + video: 567 ms
+PASS 1920x1080 9 lanes
+PASS 1920x1080 decoded sample counts equal the manifest's for all 9 lanes  [logo:372096 bed:663552 a-strings:663552 a-other:663552 b-piano:663552 b-drums:663552 b-bass:663552 b-other:663552 e5:374850]
+PASS 1920x1080 status is plain ready with no leftover error  [ready · 9 lanes]
+PASS 1920x1080 lane height 96 px  [96,96,96,96,96,96,96,96,96]
+PASS 1920x1080 no page scroll (1080 <= 1080)
+PASS 1920x1080 no overlaps and everything inside the viewport
+PASS 1920x1080 lane canvases share the ruler width (1027)  [1027,1027,1027,1027,1027,1027,1027,1027,1027,1027]
+PASS 1920x1080 f729 = 24.300 s: readout  [24.300 s f729]
+PASS 1920x1080 f729: bed src 14.000 | 1.260 (instance 1 tail, instance 2 = the ATTACK), e5 src 0.000 (the start pulse), logo none  [src 14.000 | 1.260 | src 0.000 | src —]
+PASS 1920x1080 f729: every stem shows src 14.000 | 1.260
+PASS 1920x1080 f0: logo src 0.000
+PASS 1920x1080 default copy list = header + 16 clip lines exactly as in the brief's step-8 table  [17 lines]
+PASS 1920x1080 after bed -> A swap: bed lines muted, A lines not
+PASS 1920x1080 zero console errors
+
+ALL PASS: 86/86 checks

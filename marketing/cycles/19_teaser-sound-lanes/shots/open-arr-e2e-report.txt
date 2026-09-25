@@ -1,0 +1,416 @@
+
+=== viewport 1440x900 (side layout expected) ===
+PASS 1440x900 empty: Open kit folder button and ? exist
+PASS 1440x900 empty: transport disabled
+PASS 1440x900 empty: Open/Save arrangement buttons disabled
+PASS 1440x900 empty: dropping an arrangement before a kit says so
+PASS 1440x900 loaded: 5 lanes
+PASS 1440x900 loaded: b-drums shows missing: b-drums.wav  [missing: b-drums.wav]
+PASS 1440x900 loaded: readout 0.000 s f0  [0.000 s f0]
+PASS 1440x900 loaded: decoded sample counts  [logo:88200,bed:529200,a-strings:529200,b-drums:,e5:132300]
+PASS 1440x900 loaded: bed data-peak exists and is <= 1.0000 (synthetic 16-bit kit)  [0.7970]
+PASS 1440x900 layout mode
+PASS 1440x900 after load: Open/Save arrangement buttons enabled
+PASS 1440x900 ArrowRight x3 -> 0.100 s f3  [0.100 s f3]
+PASS 1440x900 f3: logo src 0.100, bed src dash  [src 0.100 | src —]
+PASS 1440x900 go to f60 -> 2.000 s f60  [2.000 s f60]
+PASS 1440x900 f60: bed src 1.000, e5 src 0.000  [src 1.000 | src 0.000]
+PASS 1440x900 Shift+Right = ten frames -> f70  [2.333 s f70]
+PASS 1440x900 Home -> f0
+PASS 1440x900 End -> f1799  [59.967 s f1799]
+PASS 1440x900 layout after load: lane canvases share the ruler width (702 px)  [702,702,702,702,702]
+PASS 1440x900 layout after load: no horizontal scroll  [1440 vs 1440]
+PASS 1440x900 layout after load: no overlap between video, readout, transport, editor, how-to, ruler, lanes
+PASS 1440x900 layout after load: no page scroll (scrollHeight 900 <= innerHeight 900)
+PASS 1440x900 layout after load: every box inside the viewport
+PASS 1440x900 layout after load: video panel width 581 >= 520
+PASS 1440x900 layout after load: video entirely left of every lane canvas
+PASS 1440x900 layout after load: lane height 96 >= 40
+     measured 1440x900: video panel 581x327, lane height 96, lane canvas width 702, how-to full text shown: true
+PASS 1440x900 how-to full text shown iff the viewport is at least 1440x900  [shown: true]
+PASS 1440x900 M on bed -> class muted and aria-pressed
+PASS 1440x900 S on e5 -> only e5 audible  [logo,bed,a-strings,b-drums]
+PASS 1440x900 undo: back to defaults (a-strings and b-drums silent)  [a-strings,b-drums]
+PASS 1440x900 go to 44 -> f1320  [44.000 s f1320]
+PASS 1440x900 + on a-strings: clip added and selected
+PASS 1440x900 editor: out 10 -> end 54.000  [54.000]
+PASS 1440x900 editor: at 44.000, len 10.000
+PASS 1440x900 go to 47.5 -> a-strings src 3.500  [src 3.500]
+PASS 1440x900 unmuted a-strings
+PASS 1440x900 layout with a clip selected: lane canvases share the ruler width (702 px)  [702,702,702,702,702]
+PASS 1440x900 layout with a clip selected: no horizontal scroll  [1440 vs 1440]
+PASS 1440x900 layout with a clip selected: no overlap between video, readout, transport, editor, how-to, ruler, lanes
+PASS 1440x900 layout with a clip selected: no page scroll (scrollHeight 900 <= innerHeight 900)
+PASS 1440x900 layout with a clip selected: every box inside the viewport
+PASS 1440x900 layout with a clip selected: video panel width 581 >= 520
+PASS 1440x900 layout with a clip selected: video entirely left of every lane canvas
+PASS 1440x900 layout with a clip selected: lane height 96 >= 40
+PASS 1440x900 copy list equals the expected 9 lines exactly
+PASS 1440x900 Copy button reports a result  [copied 9 lines]
+PASS 1440x900 Esc closes the copy panel
+PASS 1440x900 before duplicate: a-strings has no overlaps
+PASS 1440x900 Duplicate at playhead -> 9 clips, selected copy at 47.500  [47.500]
+PASS 1440x900 overlap [47.5, 54] on a-strings -> data-overlaps 1
+PASS 1440x900 Delete -> 8 clips, overlaps back to 0
+PASS 1440x900 Delete with nothing selected does nothing
+PASS 1440x900 zoom 2 s: ruler shows frame ticks
+PASS 1440x900 zoom 0.5 s: window [43.75,44.25]  [[43.75,44.25]]
+PASS 1440x900 zoom 0.5 s: frame ticks 46.8 px apart (>= 40)
+PASS 1440x900 click at the middle of frame 1323 in a lane seeks to f1323  [44.100 s f1323]
+PASS 1440x900 zoom back to All
+PASS 1440x900 click on the bed block at 5 s selects it and seeks to about f150 (+-1 px)  [bed 4.933 s f148]
+PASS 1440x900 click on the ruler at 30 s seeks to about f900 (+-1 px)  [30.000 s f900]
+PASS 1440x900 play 700 ms: video advanced 0.69 s (>= 0.5)  [10.017 -> 10.703]
+PASS 1440x900 AudioContext state running  [running]
+     resyncs during that play (reported, not asserted): 0
+PASS 1440x900 after pause the readout moved on  [10.667 s f320]
+PASS 1440x900 play into the end: stops by itself, button says Play again, readout on the last frames  [59.967 s f1799]
+PASS 1440x900 reload + reopen: status says restored  [ready · 5 lanes · restored your last clips and mutes]
+PASS 1440x900 restored: 8 clips and a-strings unmuted
+PASS 1440x900 Reset: back to the manifest's 7 clips, a-strings muted again
+PASS 1440x900 Reset button hidden afterwards
+--- robustness at 1440x900
+PASS 1440x900 go-to garbage: visible error, readout unchanged
+PASS 1440x900 editor: out 0 (<= in) is refused with a message  [ready · 5 lanes · restored your last clips and mutes · ⚠ out: out <= in]
+PASS 1440x900 editor: gain 5 is refused with a message  [ready · 5 lanes · restored your last clips and mutes · ⚠ gain: gain must be between 0 and 4]
+PASS 1440x900 editor: gain -1 is refused with a message  [ready · 5 lanes · restored your last clips and mutes · ⚠ "-1" is not a number]
+PASS 1440x900 + at the last frame: no crash, one clip added  [8]
+PASS 1440x900 Delete removes it again
+PASS 1440x900 open syn.txt: status reports 5 clips, 1 dropped  [ready · 5 lanes · restored your last clips and mutes · opened syn.txt: 5 clips (1 dropped)]
+PASS 1440x900 open syn.txt: data-clips 5
+PASS 1440x900 open syn.txt: bed muted, a-strings not, b-drums muted
+PASS 1440x900 open syn.txt: no lane soloed
+PASS 1440x900 open syn.txt: Undo button visible
+PASS 1440x900 open syn.txt: Reset button visible
+PASS 1440x900 open syn.txt: copy list header  [teaser-lanes · video.webm · 30 fps · 60.000 s · times in seconds; source = that sound's own clock, render = the video's]
+PASS 1440x900 open syn.txt: copy list 5 clip lines match §6.1  [logo: source 0.000-1.000 s -> render 0.000-1.000 s (gain 0.85, fade out 0.2 s) | bed: source 0.000-12.000 s -> render 1.000-13.000 s (gain 0.45, muted) | bed: source 0.000-5.000 s -> render 20.000-25.000 s (gain 0.45, fade in 0.5 s, fade out 1 s, muted) | a-strings: source 2.000-10.000 s -> render 44.000-52.000 s (gain 0.6) | e5: source 0.000-3.000 s -> render 2.000-5.000 s (gain 1)]
+PASS 1440x900 open syn.txt: copy panel closes again
+PASS 1440x900 undo: focus left the Undo button
+PASS 1440x900 undo: back to 7 clips, a-strings muted again
+PASS 1440x900 undo: status names what it undid  [ready · 5 lanes · restored your last clips and mutes · back to the clips before opening syn.txt]
+PASS 1440x900 undo: button hidden afterwards
+PASS 1440x900 + on logo: Undo stays hidden (nothing to clear)
+PASS 1440x900 delete it: back to 7 clips
+PASS 1440x900 drop syn.txt on the page: opened again
+PASS 1440x900 after E: data-clips 5
+PASS 1440x900 save: filename matches arrangement_YYYYMMDD-HHMM.json  [arrangement_20260925-0148.json]
+PASS 1440x900 save: created is a local YYYY-MM-DD HH:MM of today  [2026-09-25 01:48]
+PASS 1440x900 save: focus left the Save button
+PASS 1440x900 save: byte-identical to the §4.1 literal (created normalized to CREATED)
+PASS 1440x900 save: status names the file and clip count  [ready · 5 lanes · restored your last clips and mutes · saved arrangement_20260925-0148.json (5 clips) to your Downloads folder; move it into teaser/arrangements/]
+PASS 1440x900 reopen the saved file: 5 clips, 0 dropped  [ready · 5 lanes · restored your last clips and mutes · opened arrangement_20260925-0148.json: 5 clips (0 dropped)]
+PASS 1440x900 reopen the saved file: data-clips 5
+PASS 1440x900 reopen the saved file: same copy list as C  [logo: source 0.000-1.000 s -> render 0.000-1.000 s (gain 0.85, fade out 0.2 s) | bed: source 0.000-12.000 s -> render 1.000-13.000 s (gain 0.45, muted) | bed: source 0.000-5.000 s -> render 20.000-25.000 s (gain 0.45, fade in 0.5 s, fade out 1 s, muted) | a-strings: source 2.000-10.000 s -> render 44.000-52.000 s (gain 0.6) | e5: source 0.000-3.000 s -> render 2.000-5.000 s (gain 1)]
+PASS 1440x900 reopen the saved file: same mute classes as C
+PASS 1440x900 corrupt garbage.txt: could-not-open message, data-clips unchanged  [ready · 5 lanes · restored your last clips and mutes · ⚠ could not open garbage.txt: no clip lines found (expected lines like "bed: source 0.000-15.047 s -> render 10.300-25.347 s (gain 0.45)")]
+PASS 1440x900 corrupt empty.json: could-not-open message, data-clips unchanged  [ready · 5 lanes · restored your last clips and mutes · ⚠ could not open empty.json: the file is empty]
+PASS 1440x900 corrupt wrongtag.json: could-not-open message, data-clips unchanged  [ready · 5 lanes · restored your last clips and mutes · ⚠ could not open wrongtag.json: not a teaser-lanes arrangement (expected "format": "teaser-lanes-arrangement")]
+PASS 1440x900 corrupt badclip.json: could-not-open message, data-clips unchanged  [ready · 5 lanes · restored your last clips and mutes · ⚠ could not open badclip.json: clip 1: in is not a number]
+PASS 1440x900 ghost.json: opens with 0 clips kept, 1 dropped  [ready · 5 lanes · restored your last clips and mutes · opened ghost.json: 0 clips (1 dropped)]
+PASS 1440x900 ghost.json: data-clips 0
+PASS 1440x900 undo after ghost.json: back to 5 clips
+PASS 1440x900 reload + reopen: status says restored (the opened arrangement is remembered)  [ready · 5 lanes · restored your last clips and mutes]
+PASS 1440x900 restored: data-clips 5, bed muted
+PASS 1440x900 Reset after an opened arrangement: back to 7
+PASS 1440x900 R4: entering state — 7 clips, a-strings muted, bed unmuted, Undo hidden
+PASS 1440x900 R4: M after Reset works
+PASS 1440x900 R4: M after Reset toggles off again
+PASS 1440x900 R4: S after Reset works
+PASS 1440x900 R4: S after Reset toggles off again
+PASS 1440x900 R4: opened syn.txt again — data-clips 5, Undo visible
+PASS 1440x900 R4: S after Open works; S keeps Undo
+PASS 1440x900 R4: S after Open toggles off again
+PASS 1440x900 R4: M after Open works; M clears Undo
+PASS 1440x900 R4: M after Open toggles off again
+PASS 1440x900 R4: Undo visible after re-opening syn.txt
+PASS 1440x900 R4: undo after the second open — status names it, data-clips 5, Undo hidden  [ready · 5 lanes · restored your last clips and mutes · back to the clips before opening syn.txt]
+PASS 1440x900 R4: M after Undo works (bed was muted by syn, click clears it)
+PASS 1440x900 R4: M after Undo toggles back (state back to syn)
+PASS 1440x900 R4: a dropped file of any name opens as an arrangement, the kit stays  [ready · 5 lanes · restored your last clips and mutes · opened notes.md: 5 clips (1 dropped) | lanes 5]
+PASS 1440x900 R4: Undo visible after the drop-routing open (needed by the next check)
+PASS 1440x900 folder without manifest.json: visible error  [⚠ That folder has no manifest.json. Open the kit folder made by prep_kit.py.]
+PASS 1440x900 R4: a stale Undo dies with the kit
+PASS 1440x900 manifest with an unknown track: visible error naming it  [⚠ manifest: clip 8 refers to unknown track ghost]
+PASS 1440x900 kit without the video: visible error  [⚠ Kit is missing video.webm — run prep_kit.py again.]
+PASS 1440x900 ? opens the help panel
+PASS 1440x900 zero console errors and page errors
+
+=== viewport 1440x810 (side layout expected) ===
+PASS 1440x810 empty: Open kit folder button and ? exist
+PASS 1440x810 empty: transport disabled
+PASS 1440x810 loaded: 5 lanes
+PASS 1440x810 loaded: b-drums shows missing: b-drums.wav  [missing: b-drums.wav]
+PASS 1440x810 loaded: readout 0.000 s f0  [0.000 s f0]
+PASS 1440x810 loaded: decoded sample counts  [logo:88200,bed:529200,a-strings:529200,b-drums:,e5:132300]
+PASS 1440x810 loaded: bed data-peak exists and is <= 1.0000 (synthetic 16-bit kit)  [0.7970]
+PASS 1440x810 layout mode
+PASS 1440x810 ArrowRight x3 -> 0.100 s f3  [0.100 s f3]
+PASS 1440x810 f3: logo src 0.100, bed src dash  [src 0.100 | src —]
+PASS 1440x810 go to f60 -> 2.000 s f60  [2.000 s f60]
+PASS 1440x810 f60: bed src 1.000, e5 src 0.000  [src 1.000 | src 0.000]
+PASS 1440x810 Shift+Right = ten frames -> f70  [2.333 s f70]
+PASS 1440x810 Home -> f0
+PASS 1440x810 End -> f1799  [59.967 s f1799]
+PASS 1440x810 layout after load: lane canvases share the ruler width (702 px)  [702,702,702,702,702]
+PASS 1440x810 layout after load: no horizontal scroll  [1440 vs 1440]
+PASS 1440x810 layout after load: no overlap between video, readout, transport, editor, how-to, ruler, lanes
+PASS 1440x810 layout after load: no page scroll (scrollHeight 810 <= innerHeight 810)
+PASS 1440x810 layout after load: every box inside the viewport
+PASS 1440x810 layout after load: video panel width 581 >= 520
+PASS 1440x810 layout after load: video entirely left of every lane canvas
+PASS 1440x810 layout after load: lane height 96 >= 40
+     measured 1440x810: video panel 581x327, lane height 96, lane canvas width 702, how-to full text shown: false
+PASS 1440x810 how-to full text shown iff the viewport is at least 1440x900  [shown: false]
+PASS 1440x810 M on bed -> class muted and aria-pressed
+PASS 1440x810 S on e5 -> only e5 audible  [logo,bed,a-strings,b-drums]
+PASS 1440x810 undo: back to defaults (a-strings and b-drums silent)  [a-strings,b-drums]
+PASS 1440x810 go to 44 -> f1320  [44.000 s f1320]
+PASS 1440x810 + on a-strings: clip added and selected
+PASS 1440x810 editor: out 10 -> end 54.000  [54.000]
+PASS 1440x810 editor: at 44.000, len 10.000
+PASS 1440x810 go to 47.5 -> a-strings src 3.500  [src 3.500]
+PASS 1440x810 unmuted a-strings
+PASS 1440x810 layout with a clip selected: lane canvases share the ruler width (702 px)  [702,702,702,702,702]
+PASS 1440x810 layout with a clip selected: no horizontal scroll  [1440 vs 1440]
+PASS 1440x810 layout with a clip selected: no overlap between video, readout, transport, editor, how-to, ruler, lanes
+PASS 1440x810 layout with a clip selected: no page scroll (scrollHeight 810 <= innerHeight 810)
+PASS 1440x810 layout with a clip selected: every box inside the viewport
+PASS 1440x810 layout with a clip selected: video panel width 581 >= 520
+PASS 1440x810 layout with a clip selected: video entirely left of every lane canvas
+PASS 1440x810 layout with a clip selected: lane height 96 >= 40
+PASS 1440x810 copy list equals the expected 9 lines exactly
+PASS 1440x810 Copy button reports a result  [copied 9 lines]
+PASS 1440x810 Esc closes the copy panel
+PASS 1440x810 before duplicate: a-strings has no overlaps
+PASS 1440x810 Duplicate at playhead -> 9 clips, selected copy at 47.500  [47.500]
+PASS 1440x810 overlap [47.5, 54] on a-strings -> data-overlaps 1
+PASS 1440x810 Delete -> 8 clips, overlaps back to 0
+PASS 1440x810 Delete with nothing selected does nothing
+PASS 1440x810 zoom 2 s: ruler shows frame ticks
+PASS 1440x810 zoom 0.5 s: window [43.75,44.25]  [[43.75,44.25]]
+PASS 1440x810 zoom 0.5 s: frame ticks 46.8 px apart (>= 40)
+PASS 1440x810 click at the middle of frame 1323 in a lane seeks to f1323  [44.100 s f1323]
+PASS 1440x810 zoom back to All
+PASS 1440x810 click on the bed block at 5 s selects it and seeks to about f150 (+-1 px)  [bed 4.933 s f148]
+PASS 1440x810 click on the ruler at 30 s seeks to about f900 (+-1 px)  [30.000 s f900]
+PASS 1440x810 play 700 ms: video advanced 0.71 s (>= 0.5)  [10.017 -> 10.722]
+PASS 1440x810 AudioContext state running  [running]
+     resyncs during that play (reported, not asserted): 0
+PASS 1440x810 after pause the readout moved on  [10.700 s f321]
+PASS 1440x810 play into the end: stops by itself, button says Play again, readout on the last frames  [59.967 s f1799]
+PASS 1440x810 reload + reopen: status says restored  [ready · 5 lanes · restored your last clips and mutes]
+PASS 1440x810 restored: 8 clips and a-strings unmuted
+PASS 1440x810 Reset: back to the manifest's 7 clips, a-strings muted again
+PASS 1440x810 Reset button hidden afterwards
+PASS 1440x810 zero console errors and page errors
+
+=== viewport 1920x1080 (side layout expected) ===
+PASS 1920x1080 empty: Open kit folder button and ? exist
+PASS 1920x1080 empty: transport disabled
+PASS 1920x1080 loaded: 5 lanes
+PASS 1920x1080 loaded: b-drums shows missing: b-drums.wav  [missing: b-drums.wav]
+PASS 1920x1080 loaded: readout 0.000 s f0  [0.000 s f0]
+PASS 1920x1080 loaded: decoded sample counts  [logo:88200,bed:529200,a-strings:529200,b-drums:,e5:132300]
+PASS 1920x1080 loaded: bed data-peak exists and is <= 1.0000 (synthetic 16-bit kit)  [0.7970]
+PASS 1920x1080 layout mode
+PASS 1920x1080 ArrowRight x3 -> 0.100 s f3  [0.100 s f3]
+PASS 1920x1080 f3: logo src 0.100, bed src dash  [src 0.100 | src —]
+PASS 1920x1080 go to f60 -> 2.000 s f60  [2.000 s f60]
+PASS 1920x1080 f60: bed src 1.000, e5 src 0.000  [src 1.000 | src 0.000]
+PASS 1920x1080 Shift+Right = ten frames -> f70  [2.333 s f70]
+PASS 1920x1080 Home -> f0
+PASS 1920x1080 End -> f1799  [59.967 s f1799]
+PASS 1920x1080 layout after load: lane canvases share the ruler width (1027 px)  [1027,1027,1027,1027,1027]
+PASS 1920x1080 layout after load: no horizontal scroll  [1920 vs 1920]
+PASS 1920x1080 layout after load: no overlap between video, readout, transport, editor, how-to, ruler, lanes
+PASS 1920x1080 layout after load: no page scroll (scrollHeight 1080 <= innerHeight 1080)
+PASS 1920x1080 layout after load: every box inside the viewport
+PASS 1920x1080 layout after load: video panel width 736 >= 520
+PASS 1920x1080 layout after load: video entirely left of every lane canvas
+PASS 1920x1080 layout after load: lane height 96 >= 40
+     measured 1920x1080: video panel 736x414, lane height 96, lane canvas width 1027, how-to full text shown: true
+PASS 1920x1080 how-to full text shown iff the viewport is at least 1440x900  [shown: true]
+PASS 1920x1080 M on bed -> class muted and aria-pressed
+PASS 1920x1080 S on e5 -> only e5 audible  [logo,bed,a-strings,b-drums]
+PASS 1920x1080 undo: back to defaults (a-strings and b-drums silent)  [a-strings,b-drums]
+PASS 1920x1080 go to 44 -> f1320  [44.000 s f1320]
+PASS 1920x1080 + on a-strings: clip added and selected
+PASS 1920x1080 editor: out 10 -> end 54.000  [54.000]
+PASS 1920x1080 editor: at 44.000, len 10.000
+PASS 1920x1080 go to 47.5 -> a-strings src 3.500  [src 3.500]
+PASS 1920x1080 unmuted a-strings
+PASS 1920x1080 layout with a clip selected: lane canvases share the ruler width (1027 px)  [1027,1027,1027,1027,1027]
+PASS 1920x1080 layout with a clip selected: no horizontal scroll  [1920 vs 1920]
+PASS 1920x1080 layout with a clip selected: no overlap between video, readout, transport, editor, how-to, ruler, lanes
+PASS 1920x1080 layout with a clip selected: no page scroll (scrollHeight 1080 <= innerHeight 1080)
+PASS 1920x1080 layout with a clip selected: every box inside the viewport
+PASS 1920x1080 layout with a clip selected: video panel width 736 >= 520
+PASS 1920x1080 layout with a clip selected: video entirely left of every lane canvas
+PASS 1920x1080 layout with a clip selected: lane height 96 >= 40
+PASS 1920x1080 copy list equals the expected 9 lines exactly
+PASS 1920x1080 Copy button reports a result  [copied 9 lines]
+PASS 1920x1080 Esc closes the copy panel
+PASS 1920x1080 before duplicate: a-strings has no overlaps
+PASS 1920x1080 Duplicate at playhead -> 9 clips, selected copy at 47.500  [47.500]
+PASS 1920x1080 overlap [47.5, 54] on a-strings -> data-overlaps 1
+PASS 1920x1080 Delete -> 8 clips, overlaps back to 0
+PASS 1920x1080 Delete with nothing selected does nothing
+PASS 1920x1080 zoom 2 s: ruler shows frame ticks
+PASS 1920x1080 zoom 0.5 s: window [43.75,44.25]  [[43.75,44.25]]
+PASS 1920x1080 zoom 0.5 s: frame ticks 68.47 px apart (>= 40)
+PASS 1920x1080 click at the middle of frame 1323 in a lane seeks to f1323  [44.100 s f1323]
+PASS 1920x1080 zoom back to All
+PASS 1920x1080 click on the bed block at 5 s selects it and seeks to about f150 (+-1 px)  [bed 4.933 s f148]
+PASS 1920x1080 click on the ruler at 30 s seeks to about f900 (+-1 px)  [29.967 s f899]
+PASS 1920x1080 play 700 ms: video advanced 0.69 s (>= 0.5)  [10.017 -> 10.710]
+PASS 1920x1080 AudioContext state running  [running]
+     resyncs during that play (reported, not asserted): 0
+PASS 1920x1080 after pause the readout moved on  [10.700 s f321]
+PASS 1920x1080 play into the end: stops by itself, button says Play again, readout on the last frames  [59.967 s f1799]
+PASS 1920x1080 reload + reopen: status says restored  [ready · 5 lanes · restored your last clips and mutes]
+PASS 1920x1080 restored: 8 clips and a-strings unmuted
+PASS 1920x1080 Reset: back to the manifest's 7 clips, a-strings muted again
+PASS 1920x1080 Reset button hidden afterwards
+PASS 1920x1080 zero console errors and page errors
+
+=== viewport 1920x990 (side layout expected) ===
+PASS 1920x990 empty: Open kit folder button and ? exist
+PASS 1920x990 empty: transport disabled
+PASS 1920x990 loaded: 5 lanes
+PASS 1920x990 loaded: b-drums shows missing: b-drums.wav  [missing: b-drums.wav]
+PASS 1920x990 loaded: readout 0.000 s f0  [0.000 s f0]
+PASS 1920x990 loaded: decoded sample counts  [logo:88200,bed:529200,a-strings:529200,b-drums:,e5:132300]
+PASS 1920x990 loaded: bed data-peak exists and is <= 1.0000 (synthetic 16-bit kit)  [0.7970]
+PASS 1920x990 layout mode
+PASS 1920x990 ArrowRight x3 -> 0.100 s f3  [0.100 s f3]
+PASS 1920x990 f3: logo src 0.100, bed src dash  [src 0.100 | src —]
+PASS 1920x990 go to f60 -> 2.000 s f60  [2.000 s f60]
+PASS 1920x990 f60: bed src 1.000, e5 src 0.000  [src 1.000 | src 0.000]
+PASS 1920x990 Shift+Right = ten frames -> f70  [2.333 s f70]
+PASS 1920x990 Home -> f0
+PASS 1920x990 End -> f1799  [59.967 s f1799]
+PASS 1920x990 layout after load: lane canvases share the ruler width (1027 px)  [1027,1027,1027,1027,1027]
+PASS 1920x990 layout after load: no horizontal scroll  [1920 vs 1920]
+PASS 1920x990 layout after load: no overlap between video, readout, transport, editor, how-to, ruler, lanes
+PASS 1920x990 layout after load: no page scroll (scrollHeight 990 <= innerHeight 990)
+PASS 1920x990 layout after load: every box inside the viewport
+PASS 1920x990 layout after load: video panel width 736 >= 520
+PASS 1920x990 layout after load: video entirely left of every lane canvas
+PASS 1920x990 layout after load: lane height 96 >= 40
+     measured 1920x990: video panel 736x414, lane height 96, lane canvas width 1027, how-to full text shown: true
+PASS 1920x990 how-to full text shown iff the viewport is at least 1440x900  [shown: true]
+PASS 1920x990 M on bed -> class muted and aria-pressed
+PASS 1920x990 S on e5 -> only e5 audible  [logo,bed,a-strings,b-drums]
+PASS 1920x990 undo: back to defaults (a-strings and b-drums silent)  [a-strings,b-drums]
+PASS 1920x990 go to 44 -> f1320  [44.000 s f1320]
+PASS 1920x990 + on a-strings: clip added and selected
+PASS 1920x990 editor: out 10 -> end 54.000  [54.000]
+PASS 1920x990 editor: at 44.000, len 10.000
+PASS 1920x990 go to 47.5 -> a-strings src 3.500  [src 3.500]
+PASS 1920x990 unmuted a-strings
+PASS 1920x990 layout with a clip selected: lane canvases share the ruler width (1027 px)  [1027,1027,1027,1027,1027]
+PASS 1920x990 layout with a clip selected: no horizontal scroll  [1920 vs 1920]
+PASS 1920x990 layout with a clip selected: no overlap between video, readout, transport, editor, how-to, ruler, lanes
+PASS 1920x990 layout with a clip selected: no page scroll (scrollHeight 990 <= innerHeight 990)
+PASS 1920x990 layout with a clip selected: every box inside the viewport
+PASS 1920x990 layout with a clip selected: video panel width 736 >= 520
+PASS 1920x990 layout with a clip selected: video entirely left of every lane canvas
+PASS 1920x990 layout with a clip selected: lane height 96 >= 40
+PASS 1920x990 copy list equals the expected 9 lines exactly
+PASS 1920x990 Copy button reports a result  [copied 9 lines]
+PASS 1920x990 Esc closes the copy panel
+PASS 1920x990 before duplicate: a-strings has no overlaps
+PASS 1920x990 Duplicate at playhead -> 9 clips, selected copy at 47.500  [47.500]
+PASS 1920x990 overlap [47.5, 54] on a-strings -> data-overlaps 1
+PASS 1920x990 Delete -> 8 clips, overlaps back to 0
+PASS 1920x990 Delete with nothing selected does nothing
+PASS 1920x990 zoom 2 s: ruler shows frame ticks
+PASS 1920x990 zoom 0.5 s: window [43.75,44.25]  [[43.75,44.25]]
+PASS 1920x990 zoom 0.5 s: frame ticks 68.47 px apart (>= 40)
+PASS 1920x990 click at the middle of frame 1323 in a lane seeks to f1323  [44.100 s f1323]
+PASS 1920x990 zoom back to All
+PASS 1920x990 click on the bed block at 5 s selects it and seeks to about f150 (+-1 px)  [bed 4.933 s f148]
+PASS 1920x990 click on the ruler at 30 s seeks to about f900 (+-1 px)  [29.967 s f899]
+PASS 1920x990 play 700 ms: video advanced 0.69 s (>= 0.5)  [10.017 -> 10.708]
+PASS 1920x990 AudioContext state running  [running]
+     resyncs during that play (reported, not asserted): 0
+PASS 1920x990 after pause the readout moved on  [10.700 s f321]
+PASS 1920x990 play into the end: stops by itself, button says Play again, readout on the last frames  [59.967 s f1799]
+PASS 1920x990 reload + reopen: status says restored  [ready · 5 lanes · restored your last clips and mutes]
+PASS 1920x990 restored: 8 clips and a-strings unmuted
+PASS 1920x990 Reset: back to the manifest's 7 clips, a-strings muted again
+PASS 1920x990 Reset button hidden afterwards
+PASS 1920x990 zero console errors and page errors
+
+=== viewport 1000x800 (stacked expected) ===
+PASS 1000x800 empty: Open kit folder button and ? exist
+PASS 1000x800 empty: transport disabled
+PASS 1000x800 loaded: 5 lanes
+PASS 1000x800 loaded: b-drums shows missing: b-drums.wav  [missing: b-drums.wav]
+PASS 1000x800 loaded: readout 0.000 s f0  [0.000 s f0]
+PASS 1000x800 loaded: decoded sample counts  [logo:88200,bed:529200,a-strings:529200,b-drums:,e5:132300]
+PASS 1000x800 loaded: bed data-peak exists and is <= 1.0000 (synthetic 16-bit kit)  [0.7970]
+PASS 1000x800 layout mode
+PASS 1000x800 ArrowRight x3 -> 0.100 s f3  [0.100 s f3]
+PASS 1000x800 f3: logo src 0.100, bed src dash  [src 0.100 | src —]
+PASS 1000x800 go to f60 -> 2.000 s f60  [2.000 s f60]
+PASS 1000x800 f60: bed src 1.000, e5 src 0.000  [src 1.000 | src 0.000]
+PASS 1000x800 Shift+Right = ten frames -> f70  [2.333 s f70]
+PASS 1000x800 Home -> f0
+PASS 1000x800 End -> f1799  [59.967 s f1799]
+PASS 1000x800 layout after load: lane canvases share the ruler width (868 px)  [868,868,868,868,868]
+PASS 1000x800 layout after load: no horizontal scroll  [1000 vs 1000]
+PASS 1000x800 layout after load: no overlap between video, readout, transport, editor, how-to, ruler, lanes
+PASS 1000x800 layout after load: stacked, video on top (video bottom <= ruler top)
+     measured 1000x800: video panel 976x549, lane height 40, lane canvas width 868, how-to full text shown: false
+PASS 1000x800 how-to full text shown iff the viewport is at least 1440x900  [shown: false]
+PASS 1000x800 M on bed -> class muted and aria-pressed
+PASS 1000x800 S on e5 -> only e5 audible  [logo,bed,a-strings,b-drums]
+PASS 1000x800 undo: back to defaults (a-strings and b-drums silent)  [a-strings,b-drums]
+PASS 1000x800 go to 44 -> f1320  [44.000 s f1320]
+PASS 1000x800 + on a-strings: clip added and selected
+PASS 1000x800 editor: out 10 -> end 54.000  [54.000]
+PASS 1000x800 editor: at 44.000, len 10.000
+PASS 1000x800 go to 47.5 -> a-strings src 3.500  [src 3.500]
+PASS 1000x800 unmuted a-strings
+PASS 1000x800 layout with a clip selected: lane canvases share the ruler width (868 px)  [868,868,868,868,868]
+PASS 1000x800 layout with a clip selected: no horizontal scroll  [1000 vs 1000]
+PASS 1000x800 layout with a clip selected: no overlap between video, readout, transport, editor, how-to, ruler, lanes
+PASS 1000x800 layout with a clip selected: stacked, video on top (video bottom <= ruler top)
+PASS 1000x800 copy list equals the expected 9 lines exactly
+PASS 1000x800 Copy button reports a result  [copied 9 lines]
+PASS 1000x800 Esc closes the copy panel
+PASS 1000x800 before duplicate: a-strings has no overlaps
+PASS 1000x800 Duplicate at playhead -> 9 clips, selected copy at 47.500  [47.500]
+PASS 1000x800 overlap [47.5, 54] on a-strings -> data-overlaps 1
+PASS 1000x800 Delete -> 8 clips, overlaps back to 0
+PASS 1000x800 Delete with nothing selected does nothing
+PASS 1000x800 zoom 2 s: ruler shows frame ticks
+PASS 1000x800 zoom 0.5 s: window [43.75,44.25]  [[43.75,44.25]]
+PASS 1000x800 zoom 0.5 s: frame ticks 57.87 px apart (>= 40)
+PASS 1000x800 click at the middle of frame 1323 in a lane seeks to f1323  [44.100 s f1323]
+PASS 1000x800 zoom back to All
+PASS 1000x800 click on the bed block at 5 s selects it and seeks to about f150 (+-1 px)  [bed 4.967 s f149]
+PASS 1000x800 click on the ruler at 30 s seeks to about f900 (+-1 px)  [30.000 s f900]
+PASS 1000x800 play 700 ms: video advanced 0.70 s (>= 0.5)  [10.017 -> 10.712]
+PASS 1000x800 AudioContext state running  [running]
+     resyncs during that play (reported, not asserted): 0
+PASS 1000x800 after pause the readout moved on  [10.700 s f321]
+PASS 1000x800 play into the end: stops by itself, button says Play again, readout on the last frames  [59.967 s f1799]
+PASS 1000x800 reload + reopen: status says restored  [ready · 5 lanes · restored your last clips and mutes]
+PASS 1000x800 restored: 8 clips and a-strings unmuted
+PASS 1000x800 Reset: back to the manifest's 7 clips, a-strings muted again
+PASS 1000x800 Reset button hidden afterwards
+PASS 1000x800 zero console errors and page errors
+
+=== viewport 1100x800 (open-arrangement, side layout minimum) ===
+PASS 1100x800 open-arrangement: opened syn.txt, data-clips 5
+PASS 1100x800 layout mode is side (1100 is the stated minimum)  [side]
+PASS 1100x800 button labels fully readable (not wrapped)
+PASS 1100x800 ? button still visible
+     measured 1100x800: #kit-info width 181px, text-overflow ellipsis (ellipsized or 0-width is fine per §9)
+PASS 1100x800 status text and Undo button readable
+PASS 1100x800 no overlap (topbar/status included)
+PASS 1100x800 zero console errors and page errors
+
+ALL PASS: 390/390 checks

@@ -128,3 +128,56 @@ Not verified (unchanged): audible output of any kind, real h264 playback, real-t
 | tier | model | tokens | outcome |
 |---|---|---|---|
 | Execute (Ruling 1 follow-up) | Sonnet 5 | not visible to the executor | steps 1-9 done, no new stop: prep OK (float kit), verify (a) 1 LSB / (b) 0 / (c) 0, MIX OK, core 142/142, synthetic e2e 322/322, real-kit e2e 69/69, av-align unchanged, git status only the two folders |
+
+## Open/save arrangement (2026-09-24)
+
+Brief: `BRIEF-open-arrangement.md`, corrected in place by `RULINGS-3.md` (the `kit` argument of `formatArrangementJson`) before this section's work started. Full account, including the STOP-and-ruling that preceded it and the phase-by-phase detail, is in `EXECUTOR-REPORT-open-arrangement.md` (this section is the short version for this file, per §7).
+
+On starting this pass, Phases A-C (core functions, page wiring, converter script and Nathan's `arrangement_v1.json`) were already present on the page and on the PC, correctly implementing the Ruling-3 signature — independently re-verified rather than trusted: unit suite 208/208, every §4.1/§4.2 md5 exact, av-align and `arrangement_v1.txt` byte-identical, all §3 anchors match. This pass did Phases D and E: the browser test additions, the mutation check, and the documentation.
+
+**Commands and counts**
+- Unit: `node teaser-lanes.test.mjs` → `ALL PASS: 208/208 passed` (142 + 66 new; cloud and VM).
+- Synthetic browser: `node tests/synthetic-kit.mjs <dir> && node tests/e2e.mjs <dir> <out>` → `ALL PASS: 365/365 checks` (322 + 43 new: empty/enabled-state of the two buttons, open via file input (status, data-clips, mute classes, no solo, Undo/Reset visible, copy list), Undo and its one-step depth, re-open via a **real synthetic drop event** (dataTransfer.files worked in this Chromium — no fallback needed, logged as such), Save (byte-identical to the §4.1 literal with `created` normalized), re-opening the download, five corrupt-file cases plus `ghost.json` (0 kept, 1 dropped) and its Undo, reload persistence, Reset; a separate 1100x800 context for `arr-1100x800.png` and a no-overlap check with `#topbar`/`#status` added). Zero console/page errors throughout.
+- Real kit: re-staged the 9 wavs + manifest (patched `video.file` to a synthetic 47.6 s / 1428-frame `video.webm` stand-in, ≈ 42.5 MB) → `node tests/e2e-real.mjs <dir> <out>` → `ALL PASS: 81/81 checks` (69 + 12 new: opening the real `.txt` and `.json` fixtures — 13 clips, 0 dropped, no different-video note, the five correct lanes muted, copy-list lines 2-14 equal the fixture's lines 2-14 — then Save and a structural deep-equal of the downloaded JSON against the fixture).
+- Converter (re-confirmed): `node tests/convert-arrangement.mjs ../../teaser/arrangements/arrangement_v1/arrangement_v1.txt kit/manifest.json ../../teaser/arrangements/arrangement_v1/arrangement_v1.json "2026-09-24 21:49" "converted from arrangement_v1.txt (Nathan's first hand-tweaked arrangement, 2026-09-24) by tests/convert-arrangement.mjs"` → output md5 `ddc156dd39e341b3e41937ba50a82fdb`, matching the fixture and the §4.2 literal exactly.
+- Mutation: `node tests/mutants-open.mjs . tests/out/mut` → 10 of 11 killed, `O11` (a leading `[` also routed through the JSON branch) is a stated ACCEPT (equivalent: `parseArrangementJson` rejects any non-object, array included, so the error message is identical either way) — `ANCHOR MISSING: 0`. Full table in `shots/mutants-open-report.txt`.
+
+**md5 table (PC == cloud for every file this pass touched or verified)**
+
+| file | md5 | note |
+|---|---|---|
+| `teaser-lanes.html` | `bfb1b7e1c4966273b7bb2f145a6e64dc` | unchanged this pass (already correct); 1553 lines, 81,583 bytes, < 160 KB |
+| `teaser-lanes.test.mjs` | `46602e5fda69b0332c33dacc67e468a9` | unchanged this pass (already correct); 208/208 |
+| `tests/convert-arrangement.mjs` | (unchanged this pass) | ran and re-verified its output below |
+| `tests/fixtures/arrangement_v1.txt` | `64d40cbf90e5a97b498dc55ea1d61794` | == the brief's target, == the source `.txt` |
+| `tests/fixtures/arrangement_v1.json` | `ddc156dd39e341b3e41937ba50a82fdb` | == the brief's §4.2 target |
+| `tests/fixtures/manifest-real.json` | `e1233d06c9b3449466eefd14e67ce149` | == `kit/manifest.json` |
+| `teaser/arrangements/arrangement_v1/arrangement_v1.txt` | `64d40cbf90e5a97b498dc55ea1d61794` | byte-identical to before this brief |
+| `teaser/arrangements/arrangement_v1/arrangement_v1.json` | `ddc156dd39e341b3e41937ba50a82fdb` | new; converter output == the fixture |
+| `tests/e2e.mjs` | `0fb6a67f21953e87534c97fbd20cafaf` | this pass; landed and matches PC |
+| `tests/e2e-real.mjs` | `86622d7a1b53a841850e8d373f9af3f0` | this pass; landed and matches PC |
+| `tests/mutants-open.mjs` | `cbd84e32478a57433a21893b686ad147` | new this pass; landed and matches PC |
+| `README.md` (tool) | `909aeaa37f677b88c56092c896b5cfb3` | this pass; landed and matches PC |
+| `teaser/arrangements/README.md` | `68438e99f6cf2bd9b6cf15ed8d34a057` | this pass; landed and matches PC |
+| `tools/av-align/README.md` | `0e08fc6c4a3871ff70c55ff23b3b12f7` | unchanged (rule §1.2) |
+| `tools/av-align/av-align.html` | `a0faf5b80c72e418878dfb210a151eaf` | unchanged (rule §1.2) |
+| `tools/av-align/av-align.test.mjs` | `c0b5d4a579a67886ce7ead2eb076b57f` | unchanged (rule §1.2) |
+
+**Screenshots looked at (Read tool), honestly described**
+- `shots/arr-1440x900.png`: top bar shows "Copy list · Open arrangement · Save arrangement · ?" fully readable, none wrapped. Status footer: "... opened syn.txt: 5 clips (1 dropped)" next to "Reset to defaults" and "Undo". Lanes: bed and drums B show an orange **M** (muted), strings A and E5 do not — matches the fixture's mute map. No defects.
+- `shots/arr-1100x800.png` (the side-layout minimum): video still left, lanes right; "Open arrangement"/"Save arrangement" labels are the full text, not wrapped or truncated, and the §9 fallback (shortened "Open arr."/"Save arr." labels) was **not needed** at this width; "?" visible; `#kit-info` ellipsized at 181 px; status line and Undo readable; no overlap (checked with `#topbar`/`#status` added to the box set). No defects.
+- `shots/real-arr-1440x900.png`: 13 clip blocks across the 9 real lanes (logo 1, bed 2, strings A 1, other A 2, piano B 2, drums B 1, bass B 1, other B 2, E5 1 = 13); the five lanes the fixture marks muted (logo, strings A, other A, bass B, other B) show the orange **M**; status line names the just-saved file and "(13 clips)". Existing hatching on the bed/other-A overlap (22.6-25.35 s) is the pre-existing overlap rendering, not a defect. No defects.
+
+**Merge notes for the Ruling-2 executor (§8), final line numbers in the landed `teaser-lanes.html`**
+- HOWTO array: lines 648-658 (9 entries; ours is entry 8, verbatim per §4.5; Ruling-2 rewrites entry 3).
+- `changed()`: line 1079, first statement `S.undo = null;` (Ruling-2 reuses this same clear-point for Delete/Reset).
+- Footer Undo button: `<button id="btn-undo" ...>` at line 194; wired at line 1501 (`$("btn-undo").onclick = undoLast;`); shown/hidden by `renderStatus()`.
+- `renderStatus()`: lines 679-692, with `$("btn-undo").hidden = !S.undo;` at line 691 (next to the existing `btn-reset` line).
+`S.undo = {label, restore}` (declared in the `S` object at line 663, `undo: null`) is exactly the shape Ruling 2 asks for; `undoLast()` (line 1412) and `restoreSerialized()` (line 1387) are ready to be reused for Delete and Reset without a second mechanism.
+
+**What only Nathan can verify**
+Everything already listed in the tool `README.md`'s "Only Nathan can verify" section, plus: dropping a `.json`/`.txt` arrangement file on the page from his own file explorer (the cloud test used a synthetic `DataTransfer`/`File` drop event dispatched in Playwright — it worked without a fallback in this Chromium, but that is not proof of a real OS-level drag-and-drop); that `arrangement_v1.json` opens correctly for him the same way `arrangement_v1.txt` does.
+
+| tier | model | tokens | outcome |
+|---|---|---|---|
+| Execute (open/save arrangement, Phases D-E) | Sonnet 5 | not visible to the executor | Phases A-C found already correct and independently re-verified (208/208, all target md5s exact); Phases D-E done: e2e 365/365, e2e-real 81/81, mutants 10/11 killed + 1 stated ACCEPT (0 anchor missing), docs updated, all files landed PC==cloud, av-align and `arrangement_v1.txt` unchanged, git status confined to the three allowed folders |

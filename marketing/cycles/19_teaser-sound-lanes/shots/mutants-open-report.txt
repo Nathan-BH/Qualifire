@@ -1,0 +1,25 @@
+
+id   | what | killed/SURVIVED
+---|---|---
+O1 | in/out swapped in parseClipLine | killed (unit)
+O2 | fade in part never stored | killed (unit)
+O3 | muted part ignored (lane flag never true) | killed (unit)
+O4 | clips.slice(1) before return in parseArrangementText (off-by-one count) | killed (unit)
+O5 | JSON writer omits fade_out | killed (unit)
+O6 | format-tag check removed (format !== -> false &&) | killed (unit)
+O7 | applyArrangement duration tolerance 0.0015 -> 10 | killed (unit)
+O8 | JSON writer sort removed | killed (unit)
+O9 | applyArrangement's dropped count forced to 0 | killed (unit)
+O10 | arrangementFileName month not zero-padded / off by one (getMonth() without +1) | killed (unit)
+O11 | parseArrangement also treats a leading [ as JSON | killed (unit)
+O12 | M acts on the stale lane object (blocker) | killed (e2e)
+O13 | S acts on the stale lane object (blocker) | killed (e2e)
+O14 | M does not clear Undo | killed (e2e)
+O15 | changed() no longer clears S.undo | killed (e2e)
+O16 | Save writes an empty created stamp | killed (e2e)
+O17 | unloadKit keeps a stale Undo | killed (e2e)
+O18 | drop routes by extension again | killed (e2e)
+O19 | video block without numbers still compared | killed (unit)
+O20 | version message without quotes | killed (unit)
+
+ANCHOR MISSING: 0   SURVIVED (uncaught): 0   total mutants: 20
