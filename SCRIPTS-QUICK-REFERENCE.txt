@@ -1,0 +1,88 @@
+================================================================================
+QUALIFIRE GIT COMMIT SCRIPTS - QUICK REFERENCE
+================================================================================
+
+MASTER SCRIPT (Run this to do everything):
+───────────────────────────────────────────────────────────────────────────────
+powershell -ExecutionPolicy Bypass -File ".\00-run-all-commits.ps1"
+
+INDIVIDUAL SCRIPTS:
+───────────────────────────────────────────────────────────────────────────────
+
+1. CLEANUP GIT LOCKS
+   powershell -ExecutionPolicy Bypass -File ".\01-cleanup-git-locks.ps1"
+   Purpose: Remove stale .git/HEAD.lock and .git/index.lock files
+   Use when: Git operations fail with "Unable to create lock" errors
+
+2. COMMIT CYCLE 22
+   powershell -ExecutionPolicy Bypass -File ".\02-commit-cycle22.ps1"
+   Files: marketing/cycles/22_teaser-lanes-multi-video-kit/
+   Message: Marketing cycle 22: teaser-lanes multi-video kit
+
+3. COMMIT TEASER-FULL
+   powershell -ExecutionPolicy Bypass -File ".\03-commit-teaser-full.ps1"
+   Files: silent studio teaser-full (renders, compositions, snapshots)
+   Message: Silent studio teaser-full: renders, compositions, snapshots
+
+4. COMMIT GLOSSARY
+   powershell -ExecutionPolicy Bypass -File ".\04-commit-glossary.ps1"
+   Files: GLOSSARY.md
+   Message: Glossary: terminology updates
+
+5. VERIFY STATUS
+   powershell -ExecutionPolicy Bypass -File ".\05-verify-status.ps1"
+   Purpose: Show current git status, commits, changes, stash
+   Use when: You want to check the repo state
+
+6. PUSH COMMITS
+   powershell -ExecutionPolicy Bypass -File ".\06-push-commits.ps1"
+   Purpose: Push all commits to origin/virgin
+   Use after: All commits are complete
+
+7. BATCH COMMIT TEMPLATE
+   powershell -ExecutionPolicy Bypass -File ".\07-batch-commit-template.ps1"
+   Purpose: Template for running multiple commits in one script
+   Use when: You want to customize the commit list
+
+RECOMMENDED WORKFLOW:
+───────────────────────────────────────────────────────────────────────────────
+
+Option A - Quick Complete Workflow:
+   1. powershell -ExecutionPolicy Bypass -File ".\00-run-all-commits.ps1"
+   2. powershell -ExecutionPolicy Bypass -File ".\05-verify-status.ps1"
+   3. powershell -ExecutionPolicy Bypass -File ".\06-push-commits.ps1"
+
+Option B - Step by Step:
+   1. powershell -ExecutionPolicy Bypass -File ".\01-cleanup-git-locks.ps1"
+   2. powershell -ExecutionPolicy Bypass -File ".\02-commit-cycle22.ps1"
+   3. powershell -ExecutionPolicy Bypass -File ".\03-commit-teaser-full.ps1"
+   4. powershell -ExecutionPolicy Bypass -File ".\04-commit-glossary.ps1"
+   5. powershell -ExecutionPolicy Bypass -File ".\05-verify-status.ps1"
+   6. powershell -ExecutionPolicy Bypass -File ".\06-push-commits.ps1"
+
+TROUBLESHOOTING:
+───────────────────────────────────────────────────────────────────────────────
+
+Problem: "Cannot be loaded because running scripts is disabled"
+Solution: Use the full command with -ExecutionPolicy Bypass:
+          powershell -ExecutionPolicy Bypass -File ".\script-name.ps1"
+
+Problem: "Git lock file exists"
+Solution: Run 01-cleanup-git-locks.ps1 first
+
+Problem: "Commit failed"
+Solution: Run 05-verify-status.ps1 to check what files are uncommitted
+
+NOTES:
+───────────────────────────────────────────────────────────────────────────────
+- All scripts use full C:\ paths for Windows compatibility
+- Scripts are safe to run multiple times
+- Each script shows colored output for status feedback
+- Attribution and session ID automatically included in commits
+- Scripts work from any directory (navigate there first, or modify paths)
+
+DOCUMENTATION:
+───────────────────────────────────────────────────────────────────────────────
+See POWERSHELL-SCRIPTS-README.md for detailed information about each script.
+
+================================================================================
