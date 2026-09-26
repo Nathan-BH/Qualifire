@@ -37,6 +37,7 @@ import SettingsScreen, { SettingsProvider } from './src/ui/settings';
 import DemoScreen from './src/ui/DemoScreen';
 import { PaddockTheme } from './src/ui/theme';
 import { ThemeProvider, useTheme } from './src/ui/themeContext';
+import { AutoThemeScheduler } from './src/ui/autoThemeScheduler';
 import { initRideHistory } from './src/ui/lastRide';
 import { initFreeRidePersistence } from './src/store/freeRides';
 import { initCatalogStore } from './src/store/catalogStore';
@@ -257,6 +258,7 @@ export default function App() {
       <ThemeProvider>
         <SettingsProvider>
           <Shell />
+          <AutoThemeScheduler />
         </SettingsProvider>
         {booting && <LaunchAnimation onDone={() => setBooting(false)} />}
       </ThemeProvider>

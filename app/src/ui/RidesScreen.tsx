@@ -20,14 +20,12 @@ import { createExpoFsAdapter } from '../storage/expoFsAdapter';
 import { decodeEventsFile } from '../storage/eventsJsonl';
 import { buildRideRows } from './rideHistoryModel';
 import { lapValues } from './colourModel';
-import { useSettings } from './settings';
 import { useTabNav } from './tabNav';
 import { PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
 
 export default function RidesScreen() {
   const { t } = useTheme();
-  const { s } = useSettings();
   const tabNav = useTabNav();
   const styles = useMemo(() => makeStyles(t), [t]);
   const [rides, setRides] = useState<RideMeta[] | null>(null);
@@ -165,7 +163,7 @@ export default function RidesScreen() {
       (rideId) => currentCatalog().ways.find((w) => w.referenceRideId === rideId) ?? null,
       (rideId) => pickLabels.get(rideId) ?? null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rides, resultsTick, s.timing, pickLabels],
+    [rides, resultsTick, pickLabels],
   );
   const sportLabel = currentSports().sports.find((sp) => sp.id === activeSportId())?.label ?? null;
   return (

@@ -31,8 +31,8 @@
  * map's `asset` prop, not from the bundled manifest.
  *
  * virgin-cycle11 (DEMO overhaul, brief A): RUN DEMO RIDE now goes full-screen.
- * The idle screen (below) is a plain chooser — pills, one description line,
- * RUN — and the map/pane only appear once a run starts. The run itself takes
+ * The idle screen (below) is a plain chooser — one caveat line, pills, RUN —
+ * and the map/pane only appear once a run starts. The run itself takes
  * over the whole tab (`onFullscreenChange`, the same mechanism RecordScreen
  * uses) and mirrors RecordScreen's real running column: live-variant map on
  * top, the shared LiveSectorPane, a status line, STOP. The scripted clock
@@ -41,6 +41,7 @@
  * real screen since the ranking reveal. FIRST RIDE's SAVE now continues into
  * the real `GateAdjustCard` on a reference line built from the demo path
  * (brief D); KEEP/SAVE GATES are theatre too, nothing is written.
+ * virgin-cycle14 brief 06 (Nathan #9): mode subtext removed, caveat line reworded.
  *
  * virgin-cycle11 brief B: a third mode, TENTH RIDE (now the default) —
  * SECOND RIDE is an honest ride 2 (one prior lap, purple/yellow only);
@@ -51,6 +52,11 @@
  * after the hold, the real `RouteNamingCard` in its WP-G "new way on this
  * route" variant — FIRST RIDE still mounts the both-endpoints-unknown card
  * straight away. Every SAVE/ADD WAY here is theatre: nothing is written.
+ *
+ * virgin-cycle14 brief 08 (Nathan #11): every mode's ending screen closes with the real
+ * RESULTS-tab scatterplot (`ResultsPlot`) over this mode's synthetic priors plus today's
+ * lap (`demoPlotResults`) — a preview of a screen no phone has real data for yet. Same
+ * component, same tones, same caption; today's dot pre-selected; nothing stored.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BackHandler, Pressable, ScrollView, StyleSheet, Text, Vibration, View } from 'react-native';
@@ -63,6 +69,9 @@ import {
   demoFmtMS,
   demoGateAdjustDraft,
   demoLiveViewModel,
+  demoPlotCaption,
+  demoPlotPosLabel,
+  demoPlotResults,
   demoRunEndS,
   demoSavedLine,
   demoSectorColours,
@@ -75,6 +84,7 @@ import {
   DEMO_ROUTE_START,
   DEMO_SAVED_HOLD_MS,
   DEMO_SPEC_VOCABULARY,
+  DEMO_TODAY_RIDE_ID,
   type DemoGateAdjustDraft,
   type DemoGatesOutcome,
   type DemoMode,
@@ -87,6 +97,7 @@ import { LaunchAnimation } from './launchAnimation';
 import { LiveSectorPane } from './liveView';
 import { REVEAL_HOLD_MS, REVEAL_START_DELAY_MS, type RankingReveal } from './rankingRevealModel.ts';
 import { RouteNamingCard } from './routeNamingCard';
+import ResultsPlot from './resultsPlot';
 import { selfDotsAt, selfLivePosition } from './selfRaceModel.ts';
 import { ALL_YELLOW } from './sectorTrailModel.ts';
 import { useSettings } from './settings';
@@ -149,6 +160,16 @@ export default function DemoScreen({ onFullscreenChange }: {
   const [reveal, setReveal] = useState<RankingReveal | null>(null);
   const [revealDone, setRevealDone] = useState(true);
   const revealHoldRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // virgin-cycle14 brief 08 (Nathan #11): the RESULTS scatterplot on the ending screen.
+  // `endedAtMs` is the one Date.now() enterEnding took — reveal and plot share it, so tower
+  // dates and plot dates agree. Today's dot starts SELECTED (ring + caption without a tap —
+  // a demo-only nicety; the real ResultsDetailScreen starts with nothing selected).
+  const [endedAtMs, setEndedAtMs] = useState<number | null>(null);
+  const [plotSel, setPlotSel] = useState<string | null>(DEMO_TODAY_RIDE_ID);
+  const plotResults = useMemo(
+    () => (endedAtMs === null ? null : demoPlotResults(mode, endedAtMs)),
+    [mode, endedAtMs],
+  );
 
   // The scripted ride: today's fixed lap (demoModel.ts's pinned fixture).
   const script = useMemo(() => buildDemoScript(), []);
@@ -217,9 +238,12 @@ export default function DemoScreen({ onFullscreenChange }: {
   const enterEnding = useCallback(() => {
     clearTimer();
     setRunning(false);
-    const next = buildDemoReveal(mode, Date.now());
+    const now = Date.now();
+    const next = buildDemoReveal(mode, now);
     setReveal(next);
     setRevealDone(next === null);
+    setEndedAtMs(now);            // brief 08: dates the plot (same instant as the reveal)
+    setPlotSel(DEMO_TODAY_RIDE_ID);
     setPhase('ending');
   }, [mode]);
 
@@ -238,6 +262,7 @@ export default function DemoScreen({ onFullscreenChange }: {
     setShowAnim(null);
     setReveal(null);
     setRevealDone(true);
+    setEndedAtMs(null);
     setAdjust(null);
     setPendingNames(null);
     setPhase('idle');
@@ -461,6 +486,29 @@ export default function DemoScreen({ onFullscreenChange }: {
               />
             )
           ) : null}
+          {/* virgin-cycle14 brief 08 (Nathan #11): the RESULTS tab's scatterplot — the real
+              ResultsPlot over this mode's synthetic priors + today's lap (demoPlotResults),
+              exactly what the RESULTS detail would draw for this way after this ride. Shown
+              once the reveal is done (the climb keeps its suspense), after the card (its
+              buttons stay put). Nothing here is read from or written to storage. */}
+          {revealDone && plotResults !== null ? (
+            <View>
+              <Text style={[styles.h2, { marginTop: 8 }]}>
+                {demoPlotCaption(plotResults)} · AS ON THE RESULTS TAB
+              </Text>
+              <Text style={[styles.sub, { marginBottom: 10 }]}>
+                purple = fastest of these · green / yellow = faster / slower than their average
+              </Text>
+              <ResultsPlot
+                results={plotResults}
+                selectedRideId={plotSel}
+                selectedPosLabel={settings.tower ? demoPlotPosLabel(plotResults, plotSel) : ''}
+                onSelect={setPlotSel}
+                onOpenRide={() => { /* demo: there is no ride to open */ }}
+              />
+              <Text style={styles.trackLine}>demo only · nothing saved</Text>
+            </View>
+          ) : null}
         </ScrollView>
         {showAnim === 'rev' && <LaunchAnimation reverse onDone={exitToIdle} />}
       </View>
@@ -471,7 +519,7 @@ export default function DemoScreen({ onFullscreenChange }: {
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
       <Text style={styles.h2}>DEMO RIDE</Text>
-      <Text style={styles.sub}>Nothing is recorded.</Text>
+      <Text style={styles.sub}>Not part of the final app — use only for testing features.</Text>
 
       <View style={styles.pillRow}>
         <Pressable
@@ -493,14 +541,6 @@ export default function DemoScreen({ onFullscreenChange }: {
           <Text style={[styles.pillText, mode === 'tenth' && styles.pillTextSelected]}>TENTH RIDE</Text>
         </Pressable>
       </View>
-
-      <Text style={styles.sub}>
-        {mode === 'first'
-          ? "A stranger's first ride: no route, no gates, a trail growing behind the dot — then the card that names the route."
-          : mode === 'second'
-          ? 'Your second ride of a route: the line, the gates, the sector strip — then how it ranked, and the card.'
-          : 'Your tenth ride: nine earlier rides to beat — the full timing tower climbs after STOP, then the card.'}
-      </Text>
 
       <Pressable style={styles.btn} onPress={start}>
         <Text style={styles.btnText}>RUN DEMO RIDE</Text>

@@ -17,6 +17,9 @@
  * ACTIONS mirrors RecordScreen's (WayNamingCard → GateAdjustCard) through
  * the shared store/wayFromRide.ts bodies; the WP-G duplicate-specs belt
  * check is repeated here as RecordScreen repeats it.
+ *
+ * virgin-cycle14 brief 02 (testuser LBH #2): REPLAY — `ReplayScreen.tsx` mounted in
+ * place of this scroll view while `replaying`.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -33,6 +36,7 @@ import {
   fmt, lapValues, ownLapBarredFromRanking, rankingPoolFor, sectorValues, type UiTier,
 } from './colourModel.ts';
 import { rideDetailFor } from './rideDetailModel.ts';
+import ReplayScreen from './ReplayScreen.tsx';
 import { ALL_YELLOW } from './sectorTrailModel.ts';
 import { currentCatalog, userCatalog } from '../store/catalogStore.ts';
 import { effectiveRideSportId } from '../store/sports.ts';
@@ -130,6 +134,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
 
   const [tick, setTick] = useState(0);
   const [fixes, setFixes] = useState<TrailPoint[] | null>(null);
+  const [replaying, setReplaying] = useState(false); // virgin-cycle14 brief 02
   const [busy, setBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [meta, setMeta] = useState<RideMeta | null>(null);
@@ -195,8 +200,10 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
       barred: (wayId) => ownLapBarredFromRanking(wayId, request.rideId),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [request.rideId, request.startedAtMs, tick, s.timing],
+    [request.rideId, request.startedAtMs, tick],
   );
+
+  const replayWayId = model.wayId ?? model.referenceOf?.id ?? null; // a matched ride, or a way's own reference ride
 
   // virgin-cycle13: only fetched for the card that actually needs it (kind
   // !== 'route' and not a way's own reference — see the render below and
@@ -407,6 +414,13 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
 
   const primaryLabel = request.source === 'post-stop' ? 'RECORD ANOTHER' : request.source === 'routes' ? 'BACK TO ROUTE' : request.source === 'results' ? 'BACK TO RESULTS' : 'BACK TO RIDES';
 
+  if (replaying && replayWayId !== null) {
+    return (
+      <ReplayScreen rideId={request.rideId} wayId={replayWayId} startedAtMs={request.startedAtMs}
+        detail={model} onClose={() => setReplaying(false)} />
+    );
+  }
+
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
       <View style={styles.topBar}>
@@ -552,6 +566,11 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
       <View style={{ marginTop: 16 }}>
         <Text style={[st.h2, { color: t.textDim }]}>ACTIONS</Text>
         <View style={styles.pillRow}>
+          {replayWayId !== null ? (
+            <Pressable style={styles.exportBtn} onPress={() => setReplaying(true)}>
+              <Text style={styles.exportText}>Replay</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             style={[styles.exportBtn, exporting && styles.busy]}
             disabled={exporting || !meta}

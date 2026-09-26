@@ -59,7 +59,7 @@ export default function GateAdjustScreen({ request }: { request: GateAdjustReque
       : `Its ${n} past result${n === 1 ? ' is' : 's are'} discarded and re-timed from the recordings against the new gates — old times and ranks do not survive.`;
     Alert.alert(
       `Move the gates of "${wayLabelIn(currentCatalog(), request.wayId)}"?`,
-      `This way's history will be reset and past ghosts will be lost.\n\n${ghosts} The reference line and ride recordings are kept.`,
+      `This way's history will be reset and past ghosts will be lost.\n\n${ghosts} The reference ride and all ride recordings are kept.`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Save & reset', style: 'destructive', onPress: () => void onEditGates(chainageM) },
@@ -102,7 +102,7 @@ export default function GateAdjustScreen({ request }: { request: GateAdjustReque
       </View>
       {draft === null ? (
         <Text style={{ color: t.textDim, fontSize: 13 }}>
-          This way's gates cannot be edited — it has no reference line or gate set on file.
+          This way's gates cannot be edited — it has no reference ride or gate set on file.
         </Text>
       ) : (
         <GateAdjustCard

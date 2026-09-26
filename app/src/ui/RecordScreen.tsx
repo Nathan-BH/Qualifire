@@ -888,7 +888,7 @@ export default function RecordScreen({
         tierLineColour,
       )
       : ALL_YELLOW),
-    [live.sectors, live.track, settings.sectorColours, settings.timing],
+    [live.sectors, live.track, settings.sectorColours],
   );
 
   // virgin-cycle6 (self racing), Task 5. Loading: fire-and-forget, same
@@ -914,10 +914,7 @@ export default function RecordScreen({
       if (!cancelled) setSelfTracks(tracks);
     });
     return () => { cancelled = true; };
-    // settings.timing: same reason sectorColours above depends on it — a
-    // self's lapS (which one is purple) is scoredS under the CURRENT mode
-    // (R7); the loader's cache re-reads lapS, so this re-run is cheap.
-  }, [live.track, live.mode, settings.selfDots, settings.timing]);
+  }, [live.track, live.mode, settings.selfDots]);
 
   // Tick: 250 ms while running (not 10 Hz — the rider dot itself only moves
   // per GPS fix; four frames a second is smooth enough for a 5 px dot and
@@ -1491,7 +1488,8 @@ export default function RecordScreen({
           exist the button still presses through to SETTINGS, but Nathan
           2026-09-24 wants it reading as the normal RECORD button (not a
           distinct "GO TO SETTINGS" label) — only the subtext below it flags
-          the missing sport. */}
+          the missing sport. virgin-cycle14 brief 07 (Nathan #10): the caption
+          under RECORD is the slogan now, not the arming hint. */}
       <Pressable
         style={[styles.bigBtn, styles.startYellow, busy && styles.busy]}
         disabled={busy}
@@ -1510,7 +1508,7 @@ export default function RecordScreen({
                 parent Text, same colour the RECORD label itself uses. */}
             <Text style={[styles.bigBtnText, styles.startText]}>{'●'} RECORD</Text>
             <Text style={[styles.bigBtnSub, styles.startSub]}>
-              arms the ride · nothing starts yet
+              same ride · new meaning
             </Text>
           </>
         )}
