@@ -2,6 +2,8 @@
 
 ## Blocker
 
+v1 superseded by v2 below; v1 index.html archived in v1-merged-timelines/.
+
 Nothing has been rendered, previewed, linted, or visually checked yet. Every step below
 needs npm/a browser, which only exists on your PC (neither cloud sandbox nor the
 device_bash VM can reach the npm registry).
@@ -83,8 +85,61 @@ legacy `teaser/index.html`) or stays a permanent alternative alongside it — `s
 still needs updating either way once you've decided. Not touched in this cycle on purpose,
 so the two can be compared side by side first.
 
+*lets keep It alongside it for now
+
 ## Leave feedback
 
 Once you've previewed/rendered, feedback on `teaser-full` goes wherever feels natural —
 this cycle's folder, or a `rounds/v1/FEEDBACK.md` inside `teaser-full/` itself if it looks
 like it's becoming the permanent version.
+
+*definitely not in this cycle, better to have it as rounds
+
+## v2 (2026-09-26) — root + sub-compositions
+
+v2 replaces the v1 manual-merge `teaser-full/index.html` with a thin root document (empty
+`data-composition-src` slots) + five new `compositions/*.html` sub-composition files. See
+`BRIEF-teaser-full-v2.md` for the full recipe and `EXECUTOR-REPORT-v2.md` for what was
+built and verified (257/257 static checks passed; the five original scene files are
+byte-identical before/after). The commands below are unchanged in shape from the v1 section
+above — same lint/check/snapshot/render calls, now against the new file layout.
+
+```powershell
+cd "C:\Users\natha\Claude personal projects\Qualifire\marketing\silent-studio\teaser-full"
+npx.cmd hyperframes lint
+```
+
+```powershell
+cd "C:\Users\natha\Claude personal projects\Qualifire\marketing\silent-studio\teaser-full"
+npx.cmd hyperframes check
+```
+
+```powershell
+cd "C:\Users\natha\Claude personal projects\Qualifire\marketing\silent-studio\teaser-full"
+npx.cmd hyperframes snapshot --at 3.9,7.9,12.5,26.01,30.0,35.7,44.5
+```
+
+```powershell
+cd "C:\Users\natha\Claude personal projects\Qualifire\marketing\silent-studio"
+powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name teaser-full -Render
+```
+
+```powershell
+cd "C:\Users\natha\Claude personal projects\Qualifire\marketing\silent-studio"
+powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name teaser-full -Theme day -Render
+```
+
+What the results should show:
+- lint: the 5 `timeline_id_mismatch`, 4 `nested_structure_needs_subcomposition`,
+  `duplicate_media_id` and `duplicate_media_discovery_risk` findings must be gone. Two
+  pre-existing findings may remain and are not this cycle's to fix: `gsap_repeated_fromto_without_baseline`
+  on `#trow-today` (ranking's original) and `svg_measure_before_path_d` on `#route-core`
+  (the three map scenes' originals). Anything else new is for chat to triage.
+- snapshots: 3.9 s = opening wordmark on; **7.9 s = start-ride's THIN route (7/4 px), no
+  gate ticks, START button gone**; 12.5 s = rider mid-ride at 2x camera; 26.01 s =
+  gates-saving gate 1 just crossed, sector 1 green; 30.0 s = caption B; **35.7 s = ranking's
+  "Today" row climbing in WHITE, not purple**; 44.5 s = closing wordmark.
+- render: ffprobe duration 47.300000 (1419 frames @ 30 fps).
+- theme tokens: if any snapshot shows a black/transparent stage where `#0A0A0A` is expected,
+  or the day render is not light, the root-only token decision did not reach the mounted
+  content — that is a STOP-and-report for chat, not something to patch ad hoc.
