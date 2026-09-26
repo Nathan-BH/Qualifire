@@ -375,8 +375,11 @@ with a longer timeout, then report — do not substitute a syntax-only check wit
    wins again.
 5. Start recording, cross a boundary (or set one a minute ahead), confirm no switch until
    STOP; the switch lands right after.
-6. Type `9:5` → snaps to `09:05`; type `25:00` → snaps back to the previous value;
-   set both equal → the "paused" hint shows and nothing switches.
+6. Type `9:5` → the field snaps back to the previous value (minutes must be two digits,
+   e.g. `09:05`); type `25:00` → also snaps back; set both equal → the "paused" hint
+   shows and nothing switches. [Corrected 2026-09-26 post-Inspect: the brief's own spec
+   requires two-digit minutes, so `9:5` is invalid input, not a valid `09:05` — the
+   landed code follows the spec; this checklist line was wrong.]
 7. Background the app across a boundary, reopen: the theme is right on return.
 
 ## Out of scope

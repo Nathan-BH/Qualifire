@@ -28,6 +28,11 @@ replaced. Vocabulary is post-WP-3: a route is the from→to path, a way is one v
   "too much colour" feedback; sector-strip redesign (four boxes -> thin F1-style bars,
   Nathan's own mockup) fully briefed, ready to execute —
   `cycles/virgin-cycle9/README.md`, `BRIEF-sector-strip-bars.md`, `QUESTIONSFORNATHAN.md`.
+- virgin-cycle14 (2026-09-26): 8 tester-feedback briefs, all landed — auto day/night theme,
+  post-ride REPLAY screen, SETTINGS reorder + renames, Luck-factor row removed, map credits
+  folded into an "i" button, DEMO tab text cleanup + RESULTS scatterplot, RECORD button
+  slogan. 638 -> 676 tests, `tsc` clean, one fresh Opus Inspect pass, no blocking defects —
+  `cycles/virgin-cycle14/README.md`.
 
 ## The virgin-prototype path, in order
 
@@ -124,6 +129,22 @@ replaced. Vocabulary is post-WP-3: a route is the from→to path, a way is one v
    **Open (Nathan, item 13):** FIRST RIDE's naming card only ever shows the both-endpoints-unknown
    variant — say if you also want the start-known / end-known / loop variants reachable from
    the demo, and which script would drive each one.
+8. **virgin-cycle14 — on-device pass (phone only), 8 features at once.** Nothing in this
+   cycle has been seen on a phone yet. Per-feature checklists are each brief's own
+   "On-device checklist" section (`cycles/virgin-cycle14/0N-*.md`); in short: the auto
+   day/night schedule across a real clock boundary (01); the REPLAY screen end-to-end,
+   especially on a small phone at 10x/25x — the on-device pass should also judge whether
+   RESTART (a second full-width button, not the small pill the brief described) and the
+   `10x` label (ASCII, not `×`) are fine as landed or worth a follow-up chore (02); the
+   SETTINGS reorder/rename (03); the removed Luck-factor row + Reset app / reference rides
+   copy (04); the map "i" button on every map surface, both themes (05); DEMO's new caveat
+   line (06); RECORD's new slogan (07); the DEMO scatterplot in all three modes (08).
+   **Open (Nathan):** three alert strings still say "reference line" on purpose
+   (`RideDetailScreen.tsx`, `catalogDeleteActions.ts` x2) because "reference ride" would
+   read wrong there — say if you want different wording, and what. **Open (Nathan):**
+   replay's "no replay available" message names one specific cause (never crossed START)
+   but also fires for a couple of others (missing ride file, unknown way) — worth a
+   follow-up chore to disambiguate, or fine as a generic message?
 
 ## Distribution (2026-09-09 pivot — see `deployment/`)
 

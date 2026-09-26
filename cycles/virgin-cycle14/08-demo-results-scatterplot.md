@@ -500,7 +500,9 @@ substitute a syntax-only check without saying so.
    card and the saved line. SKIP on the card leaves as before.
 6. SETTINGS → rankings switch off (the `tower` toggle): the caption loses its `P… of …`
    segment; dots unchanged. Back on: segment returns.
-7. Luck factor (timing mode) either way: identical plot (synthetic laps have rawS = movingS).
+7. [Corrected 2026-09-26: brief 04 removed the Luck factor toggle from SETTINGS in this
+   same cycle, so there is no longer a switch to test here.] Timing is raw-only now;
+   the plot is unaffected either way since synthetic laps have rawS = movingS.
 8. Small phone: nothing overlaps; the plot is reached by scrolling; the STOP screen and the
    idle chooser are unchanged. Both themes: frame, dots, labels readable on the race
    background (the frame is the card colour, as on the RESULTS tab).

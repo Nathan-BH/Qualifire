@@ -62,9 +62,10 @@ day (below).
   `activity-index.csv` and the Python side live on `main` only), `app/src/live/`
   (full-catalog pick-bias engine; candidates are ways), `app/src/store/` (sports + catalog +
   results + timing, empty-seed-capable — see below), `app/src/ui/` (six tabs:
-  RECORD / RIDES / ROUTES / RESULTS / SETTINGS / DEMO). `app/tests/`: **634 tests, 631 pass,
-  0 fail, 3 skip**. `tsc --noEmit`: clean, exit 0. Both verified 2026-09-19 (virgin-cycle11,
-  DEMO tab overhaul briefs A + B + C + D).
+  RECORD / RIDES / ROUTES / RESULTS / SETTINGS / DEMO). `app/tests/`: **676 tests, 673 pass,
+  0 fail, 3 skip**. `tsc --noEmit`: clean, exit 0. Last verified 2026-09-26 (virgin-cycle14,
+  all 8 briefs landed; previously 634/631/0/3 on 2026-09-19, virgin-cycle11 DEMO tab overhaul
+  briefs A + B + C + D).
 - **The empty-seed install path is built.** `store/seed.ts` + `store/catalogStore.ts`: the
   runtime catalog is the shipped seed merged read-side with an on-phone
   `catalog.user.json` (never copied to disk, so a seed edit still reaches every install).
@@ -180,6 +181,21 @@ day (below).
   eyeballed without riding — the real-ride check still stands. **The tower shows the whole
   pool** (`TOWER_MAX_VISIBLE = WINDOW_N`, `towerModel.ts`; Nathan 2026-09-19) — a real board
   is never clipped.
+- **virgin-cycle14 landed (2026-09-26, 8 briefs from tester feedback); nothing yet seen on a
+  phone.** Auto day/night theme on a clock schedule (SETTINGS -> APPEARANCE, `autoTheme.ts` +
+  `autoThemeScheduler.tsx`); post-ride REPLAY of any matched ride (`ReplayScreen.tsx`,
+  `replayModel.ts`, reachable from ride detail, default 10x, PAUSE/RESTART/BACK); SETTINGS
+  reorder (SPORTS now 2nd, right under APPEARANCE) + "ON THE BIKE" renamed "WHILE RECORDING";
+  the Luck-factor (raw/moving timing) row removed from SETTINGS (mechanism stays in code,
+  raw-only, nothing sets it any more) + "Reset to virgin" renamed "Reset app" +
+  "reference lines" renamed "reference rides" in most but not all user copy (three alert
+  strings still say "reference line" on purpose, per Inspect); every map's credit strip
+  replaced by a small round "i" button opening an in-frame card (`mapCreditModel.ts`); DEMO
+  tab's idle screen dropped its per-mode subtext and reworded the "nothing is recorded"
+  caveat; RECORD button's idle subtext is now "same ride · new meaning"; every DEMO ending
+  screen now shows the real RESULTS scatterplot fed synthetic laps (1/2/9 dots for
+  FIRST/SECOND/TENTH). Full record, execution order, and the on-device checklist for all 8:
+  `cycles/virgin-cycle14/README.md`.
 
 ## Open items
 

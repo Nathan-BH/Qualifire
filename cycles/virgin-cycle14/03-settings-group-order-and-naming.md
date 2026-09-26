@@ -129,7 +129,7 @@ longer timeout, then report — never substitute a syntax-only check silently.
 
 ## On-device checklist (Nathan, after OTA — not the executor)
 
-1. Fresh install (or SETTINGS → DATA → Reset to virgin, then relaunch): open SETTINGS. The
+1. Fresh install (or SETTINGS → DATA → Reset app, then relaunch): open SETTINGS. The
    SPORTS card with "Add at least one sport to record" and the add-sport input sits directly
    under APPEARANCE, on screen without scrolling.
 2. With 2+ sports: Active sport Seg and "Sport picker on RECORD" still work from the new spot.

@@ -128,7 +128,7 @@ substitute a syntax-only check.
 
 1. RECORD tab, a sport set up, idle: yellow button reads `● RECORD` over `same ride · new
    meaning`, one line, centred, the dot rendering as a dot.
-2. Zero sports (or after Reset to virgin): button still reads `● RECORD` / `no sport selected`.
+2. Zero sports (or after Reset app): button still reads `● RECORD` / `no sport selected`.
 3. Press RECORD: launch mark, then `START` / `the clock runs from here` — unchanged.
 4. Both themes: caption is the same dim-on-yellow as before.
 
