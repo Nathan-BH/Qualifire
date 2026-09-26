@@ -44,8 +44,9 @@ Total 47.3 s.
 Everything else — every GSAP tween, ease, value, and helper function — is byte-identical to
 the five original scene files.
 
-**Not yet rendered** — see cycle 21's `OPEN-ITEMS.md` for lint/snapshot/render commands and
-what they should show. v1 (the wrong-mechanism manual merge this replaced) is archived at
+**Rendered 2026-09-26** — round v1 lives in `rounds/v1/` (night render, 47.3 s / 1419 frames);
+feedback goes in `rounds/v1/FEEDBACK.md`. Cycle 21's `OPEN-ITEMS.md` still holds the
+lint/snapshot/render commands. v1 (the wrong-mechanism manual merge this replaced) is archived at
 `marketing/cycles/21_teaser-single-render-unification/v1-merged-timelines/`, not deleted.
 
 Full build recipe: `marketing/cycles/21_teaser-single-render-unification/BRIEF-teaser-full-v2.md`.

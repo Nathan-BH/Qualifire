@@ -1,0 +1,317 @@
+{
+  "kit": "teaser-lanes",
+  "version": 1,
+  "made": "2026-09-24T19:04:49Z",
+  "made_by": "prep_kit.py",
+  "video": {
+    "file": "teaser_v9-proxy.mp4",
+    "name": "teaser_v9.mp4",
+    "fps": 30,
+    "duration_s": 47.6,
+    "frames": 1428,
+    "source": "marketing/silent-studio/all-renders/teaser_v9.mp4",
+    "source_md5": "07f9c5b495519c97cdec3987decc027f",
+    "proxy": "re-encoded by prep_kit.py for frame stepping: libx264 crf 20, keyframe every 10 frames, same 1920x1080 30 fps and the same 1428 frame timestamps; for looking only, never mix from it",
+    "keyframes": 143
+  },
+  "groups": [
+    {
+      "id": "open",
+      "label": "Opening"
+    },
+    {
+      "id": "bed",
+      "label": "Bed, original mix"
+    },
+    {
+      "id": "A",
+      "label": "Bed split A (strings model): strings + other = the original"
+    },
+    {
+      "id": "B",
+      "label": "Bed split B (6-stem model): piano + drums + bass + other = the original"
+    },
+    {
+      "id": "pulse",
+      "label": "Gate pulses (E5), rendered from the Salamander samples, gain and fade baked in"
+    }
+  ],
+  "tracks": [
+    {
+      "id": "logo",
+      "label": "logo",
+      "group": "open",
+      "file": "logo.wav",
+      "file_offset_s": 0,
+      "source_len_s": 8.4376,
+      "muted": false,
+      "source": "marketing/audio-studio/piano/projects/tunetank/sources/tunetank-piano-logo-484286.mp3",
+      "source_md5": "8e4f098354fafa7e8b28e3ff9de7dd9b",
+      "samples": 372096,
+      "peak": 0.9997
+    },
+    {
+      "id": "bed",
+      "label": "bed",
+      "group": "bed",
+      "file": "bed.wav",
+      "file_offset_s": 0,
+      "source_len_s": 15.0465,
+      "muted": false,
+      "source": "marketing/audio-studio/stemsplitter/tunetank-emotional-classical/sources/original.mp3",
+      "source_md5": "a5ea27ca9bd0742beb78bf61bc0ae5fa",
+      "samples": 663552,
+      "peak": 1.0435
+    },
+    {
+      "id": "a-strings",
+      "label": "strings A",
+      "group": "A",
+      "file": "a-strings.wav",
+      "file_offset_s": 0.0,
+      "source_len_s": 15.0465,
+      "muted": true,
+      "source": "marketing/audio-studio/stemsplitter/tunetank-emotional-classical/sources/strings-model_strings.mp3",
+      "source_md5": "bccc4bec083ad2efcba297af948ef049",
+      "samples": 663552,
+      "peak": 0.8648
+    },
+    {
+      "id": "a-other",
+      "label": "other A",
+      "group": "A",
+      "file": "a-other.wav",
+      "file_offset_s": 0.0,
+      "source_len_s": 15.0465,
+      "muted": true,
+      "source": "marketing/audio-studio/stemsplitter/tunetank-emotional-classical/sources/strings-model_other.mp3",
+      "source_md5": "6053334755d323b6914dca84ca02e47f",
+      "samples": 663552,
+      "peak": 1.1309
+    },
+    {
+      "id": "b-piano",
+      "label": "piano B",
+      "group": "B",
+      "file": "b-piano.wav",
+      "file_offset_s": 0.0,
+      "source_len_s": 15.0465,
+      "muted": true,
+      "source": "marketing/audio-studio/stemsplitter/tunetank-emotional-classical/sources/6stem_piano.mp3",
+      "source_md5": "9eabc826512c17af35be031692ac2c09",
+      "samples": 663552,
+      "peak": 0.9046
+    },
+    {
+      "id": "b-drums",
+      "label": "drums B",
+      "group": "B",
+      "file": "b-drums.wav",
+      "file_offset_s": 0.0,
+      "source_len_s": 15.0465,
+      "muted": true,
+      "source": "marketing/audio-studio/stemsplitter/tunetank-emotional-classical/sources/6stem_drums.mp3",
+      "source_md5": "a70feb799bde8d5036dbd1ae675d0c0b",
+      "samples": 663552,
+      "peak": 0.9119
+    },
+    {
+      "id": "b-bass",
+      "label": "bass B",
+      "group": "B",
+      "file": "b-bass.wav",
+      "file_offset_s": 0.0,
+      "source_len_s": 15.0465,
+      "muted": true,
+      "source": "marketing/audio-studio/stemsplitter/tunetank-emotional-classical/sources/6stem_bass.mp3",
+      "source_md5": "429385f689136f84467330bbee179655",
+      "samples": 663552,
+      "peak": 0.2241
+    },
+    {
+      "id": "b-other",
+      "label": "other B",
+      "group": "B",
+      "file": "b-other.wav",
+      "file_offset_s": 0.0,
+      "source_len_s": 15.0465,
+      "muted": true,
+      "source": "marketing/audio-studio/stemsplitter/tunetank-emotional-classical/sources/6stem_other.mp3",
+      "source_md5": "206628054a027d31204f030c6a6f5da6",
+      "samples": 663552,
+      "peak": 1.0384
+    },
+    {
+      "id": "e5",
+      "label": "E5 pulses",
+      "group": "pulse",
+      "file": "e5.wav",
+      "file_offset_s": 0,
+      "source_len_s": 8.5,
+      "muted": false,
+      "source": "rendered by prep_kit.py from ride_master.py/ride_tunetank.py",
+      "source_md5": "",
+      "samples": 374850,
+      "peak": 0.5025
+    }
+  ],
+  "clips": [
+    {
+      "track": "logo",
+      "in": 0,
+      "out": 6.5,
+      "at": 0,
+      "gain": 0.85,
+      "fade_in": 0,
+      "fade_out": 0.5
+    },
+    {
+      "track": "bed",
+      "in": 0,
+      "out": 15.0465,
+      "at": 10.3,
+      "gain": 0.45,
+      "fade_in": 0,
+      "fade_out": 0
+    },
+    {
+      "track": "bed",
+      "in": 0,
+      "out": 9.76,
+      "at": 23.04,
+      "gain": 0.45,
+      "fade_in": 0,
+      "fade_out": 1.0
+    },
+    {
+      "track": "a-strings",
+      "in": 0,
+      "out": 15.0465,
+      "at": 10.3,
+      "gain": 0.45,
+      "fade_in": 0,
+      "fade_out": 0
+    },
+    {
+      "track": "a-strings",
+      "in": 0,
+      "out": 9.76,
+      "at": 23.04,
+      "gain": 0.45,
+      "fade_in": 0,
+      "fade_out": 1.0
+    },
+    {
+      "track": "a-other",
+      "in": 0,
+      "out": 15.0465,
+      "at": 10.3,
+      "gain": 0.45,
+      "fade_in": 0,
+      "fade_out": 0
+    },
+    {
+      "track": "a-other",
+      "in": 0,
+      "out": 9.76,
+      "at": 23.04,
+      "gain": 0.45,
+      "fade_in": 0,
+      "fade_out": 1.0
+    },
+    {
+      "track": "b-piano",
+      "in": 0,
+      "out": 15.0465,
+      "at": 10.3,
+      "gain": 0.45,
+      "fade_in": 0,
+      "fade_out": 0
+    },
+    {
+      "track": "b-piano",
+      "in": 0,
+      "out": 9.76,
+      "at": 23.04,
+      "gain": 0.45,
+      "fade_in": 0,
+      "fade_out": 1.0
+    },
+    {
+      "track": "b-drums",
+      "in": 0,
+      "out": 15.0465,
+      "at": 10.3,
+      "gain": 0.45,
+      "fade_in": 0,
+      "fade_out": 0
+    },
+    {
+      "track": "b-drums",
+      "in": 0,
+      "out": 9.76,
+      "at": 23.04,
+      "gain": 0.45,
+      "fade_in": 0,
+      "fade_out": 1.0
+    },
+    {
+      "track": "b-bass",
+      "in": 0,
+      "out": 15.0465,
+      "at": 10.3,
+      "gain": 0.45,
+      "fade_in": 0,
+      "fade_out": 0
+    },
+    {
+      "track": "b-bass",
+      "in": 0,
+      "out": 9.76,
+      "at": 23.04,
+      "gain": 0.45,
+      "fade_in": 0,
+      "fade_out": 1.0
+    },
+    {
+      "track": "b-other",
+      "in": 0,
+      "out": 15.0465,
+      "at": 10.3,
+      "gain": 0.45,
+      "fade_in": 0,
+      "fade_out": 0
+    },
+    {
+      "track": "b-other",
+      "in": 0,
+      "out": 9.76,
+      "at": 23.04,
+      "gain": 0.45,
+      "fade_in": 0,
+      "fade_out": 1.0
+    },
+    {
+      "track": "e5",
+      "in": 0,
+      "out": 8.5,
+      "at": 24.3,
+      "gain": 1.0,
+      "fade_in": 0,
+      "fade_out": 0
+    }
+  ],
+  "notes": [
+    "Left out on purpose: 6stem_instrum.mp3 (= the whole mix again), 6stem_guitar.mp3 and 6stem_vocals.mp3 (empty, peak 0.000).",
+    "Lanes A and B are two splits of the same bed: unmute one split OR the bed, not both.",
+    "e5.wav: file t=0 is the START pulse (ride 17.80 s = teaser 24.30 s); pulses at 0.000 / 2.010 / 3.850 / 5.710 / 7.580 s; GAIN_VOICE_E5 x 1.5 and the 0.5 s fade to 8.5 s are baked in.",
+    "Teaser clock = ride clock + 6.5 s. Bed clip 2 ends at 32.8 = 23.04 + 9.76 with the 1.0 s fade of ride_tunetank.py; bed clip 1 keeps the file's own tail (ends 25.3465).",
+    "Kit WAVs are 32-bit float: the mp3 decode puts a few hundred samples above 0 dBFS and the build scripts mix them unclipped, so the tool must too (Ruling 1, 2026-09-24).",
+    "The kit video is a short-GOP proxy of teaser_v9.mp4 (Ruling 2, 2026-09-24); the original stays in silent-studio/all-renders."
+  ],
+  "how_made": {
+    "decode": "ride_tunetank.decode_stereo (ffmpeg -i SRC -ac 2 -ar 44100 -f f32le -), written as 32-bit float WAV (WAVE_FORMAT_IEEE_FLOAT, tag 3) by prep_kit.py",
+    "wav": "stereo, 44100 Hz, float32; samples above 1.0 preserved (bed 1.0435, other A 1.1309, other B 1.0384)",
+    "e5": "ride_tunetank.py:114-121 chain, sliced from sample 784980"
+  }
+}

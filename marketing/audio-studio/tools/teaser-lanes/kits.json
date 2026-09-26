@@ -1,0 +1,9 @@
+{
+  "format": "teaser-lanes-kits",
+  "version": 1,
+  "default": "kit-teaser-full",
+  "kits": [
+    { "dir": "kit-teaser-full", "label": "teaser-full v1 · 47.3 s (default)" },
+    { "dir": "kit",             "label": "teaser v9 · 47.6 s (old concat teaser)" }
+  ]
+}

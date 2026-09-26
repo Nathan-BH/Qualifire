@@ -123,6 +123,7 @@ body[data-layout="stacked"] #status { position: sticky; bottom: 0; }
 <header id="topbar">
   <h1>Teaser sound lanes</h1>
   <button id="btn-open-top" type="button">Open kit folder</button>
+  <select id="kit-pick" hidden title="Kit to load (served mode)"></select>
   <span id="kit-info" class="muted"></span>
   <span class="grow"></span>
   <button id="btn-copy" type="button" disabled>Copy list</button>
@@ -138,7 +139,8 @@ body[data-layout="stacked"] #status { position: sticky; bottom: 0; }
       <div id="empty-card">
         <button id="btn-open" class="big primary" type="button">Open kit folder</button>
         <p>or drop the folder here</p>
-        <p class="muted">The kit is <b>marketing/audio-studio/tools/teaser-lanes/kit</b> (made by prep_kit.py).</p>
+        <p class="muted">Default kit: <b>kit-teaser-full/</b> (teaser-full v1, 47.3 s). Old teaser: <b>kit/</b> (teaser v9, 47.6 s). Both made by prep_kit.py.</p>
+        <p class="muted" id="serve-hint">Opened by double-click: choose the kit folder above. Started with serve.ps1 (localhost:8765): the default kit loads by itself and the header menu switches kits.</p>
       </div>
     </div>
     <div id="readout"><span id="rd-time">0.000 s</span> <span id="rd-frame">f0</span></div>
@@ -495,6 +497,29 @@ const LanesCore = (() => {
     return best;
   }
 
+  // kits.json (cycle 22): which kit folders the served page may auto-load. dir = one folder name, no slashes.
+  function parseKitsList(objOrText) {
+    let m = objOrText;
+    if (typeof m === "string") { try { m = JSON.parse(m); } catch (e) { throw new Error("kits.json: not valid JSON (" + e.message + ")"); } }
+    if (!m || typeof m !== "object" || m.format !== "teaser-lanes-kits" || m.version !== 1) throw new Error("kits.json: format must be teaser-lanes-kits version 1");
+    if (!Array.isArray(m.kits) || !m.kits.length) throw new Error("kits.json: kits missing");
+    const dirs = new Set(), kits = [];
+    for (const k of m.kits) {
+      if (!k || typeof k.dir !== "string" || !/^[A-Za-z0-9._-]+$/.test(k.dir) || k.dir === "." || k.dir === "..") throw new Error("kits.json: kit dir " + JSON.stringify(k && k.dir) + " must be one folder name");
+      if (dirs.has(k.dir)) throw new Error("kits.json: duplicate kit dir " + k.dir);
+      dirs.add(k.dir);
+      kits.push({ dir: k.dir, label: typeof k.label === "string" && k.label ? k.label : k.dir });
+    }
+    if (typeof m.default !== "string" || !dirs.has(m.default)) throw new Error("kits.json: default must be one of the kit dirs");
+    return { default: m.default, kits };
+  }
+  // The files a served kit needs: the video, then each track's file, in manifest order, no duplicates.
+  function kitFiles(manifest) {
+    const out = [], seen = new Set();
+    for (const f of [manifest.video.file].concat(manifest.tracks.map(t => t.file))) { if (!seen.has(f)) { seen.add(f); out.push(f); } }
+    return out;
+  }
+
   // ---- open / save an arrangement file (open-arrangement brief, 2026-09-24; kit argument per Ruling 3, 2026-09-25) ----
   const ARRANGEMENT_FORMAT = "teaser-lanes-arrangement"; // version 1
   const CLIP_LINE_RE = /^\s*([a-z0-9-]+):\s*source\s+(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*s\s*->\s*render\s+(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*s\s*\((.*)\)\s*$/;
@@ -632,7 +657,7 @@ const LanesCore = (() => {
   return { clamp, frameOf, timeOfFrame, shownFrameOf, seekTimeOfFrame, roundTenthMs, nudge, nudgeFrames, peakBins,
     fmtSeconds, fmtFrame, fmtNum, parseTimeEntry, clipLen, clipEnd, sourceTimeAt, fileTimeOfSource, clipsUnder, laneReadout, laneReadouts, gainAt, frameSlice, startParams,
     audible, validateClip, overlaps, formatClipList, parseManifest, nextClipId, buildState, stateKey, serializeState, restoreState,
-    laneHeight, layoutMode, leftWidth, windowFor, xOfTime, timeOfX, kitRootOf,
+    laneHeight, layoutMode, leftWidth, windowFor, xOfTime, timeOfX, kitRootOf, parseKitsList, kitFiles,
     parseClipLine, parseArrangementText, parseArrangementJson, parseArrangement, applyArrangement, formatArrangementJson, arrangementFileName, arrangementStamp, ARRANGEMENT_FORMAT };
 })();
 if (typeof module !== "undefined" && module.exports) module.exports = LanesCore;
@@ -646,7 +671,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = LanesCore;
   const SR = 44100;
   const COLORS = { open: "#9aa3b2", bed: "#5b9bff", A: "#2dd4bf", B: "#a78bfa", pulse: "#fbbf24" };
   const HOWTO = [
-    "Open the kit folder (tools/teaser-lanes/kit, made by prep_kit.py). Everything loads at once.",
+    "Open a kit folder: kit-teaser-full (teaser-full v1, the default) or kit (teaser v9), both made by prep_kit.py. With serve.ps1 the default loads by itself; the header menu switches kits.",
     "Space plays and pauses. Left/Right step one frame (Shift: ten). Home/End: first/last frame. Type a time (or f + frame) in the box and press Enter.",
     "Each lane on the right is one sound. M mutes it, S solos it. Two clocks: the render clock (under the video) and each lane's own source clock (src, in its header).",
     "A shaded block is a clip: \"play source in-out of this sound from render start\". Click a block to edit its numbers below; Enter applies.",
@@ -1352,6 +1377,57 @@ if (typeof module !== "undefined" && module.exports) module.exports = LanesCore;
     return fromInput(dt.files);
   }
 
+  // ---------- served mode (cycle 22): auto-load the default kit and offer a kit menu when the page is served over http ----------
+  const SERVED = location.protocol === "http:" || location.protocol === "https:";
+  async function fetchKitEntries(dir, onProgress) {
+    // Only manifest.json is hard-required. A 404 on any other kit file leaves that file out of `entries`, so openKit
+    // treats it exactly like a picked folder that lacks the file (video -> its "Kit is missing" error, track -> lane status "missing").
+    const get = async (name, optional) => {
+      const r = await fetch(dir + "/" + name, { cache: "no-store" });
+      if (r.ok) return r;
+      if (optional && r.status === 404) return null;
+      throw new Error(dir + "/" + name + ": " + r.status);
+    };
+    const manifestText = await (await get("manifest.json", false)).text();
+    const manifest = C.parseManifest(manifestText);
+    const files = C.kitFiles(manifest), entries = [{ file: new File([manifestText], "manifest.json"), path: dir + "/manifest.json" }];
+    let k = 0;
+    for (const name of files) {
+      onProgress(++k, files.length, name);
+      const r = await get(name, true);
+      if (!r) continue;
+      const blob = await r.blob();
+      entries.push({ file: new File([blob], name), path: dir + "/" + name });
+    }
+    return entries;
+  }
+  async function loadServedKit(dir) {
+    unloadKit();
+    S.base = "fetching " + dir + "/"; renderStatus();
+    let entries;
+    try { entries = await fetchKitEntries(dir, (i, n, name) => { S.base = "fetching " + i + " / " + n + " · " + dir + "/" + name; setProgress(i / (n + 1)); renderStatus(); }); }
+    catch (e) { setProgress(0); S.base = ""; say("could not fetch " + dir + "/: " + e.message, "err"); return; }
+    setProgress(0);
+    await openKit(entries);
+  }
+  async function initServed() {
+    if (!SERVED) return;
+    let list;
+    try { list = C.parseKitsList(await (await fetch("kits.json", { cache: "no-store" })).text()); }
+    catch (e) { say("kits.json: " + e.message, "err"); return; }   // served without a kits.json: behave like file://
+    const sel = $("kit-pick");
+    sel.textContent = "";
+    for (const k of list.kits) { const o = document.createElement("option"); o.value = k.dir; o.textContent = k.label; sel.appendChild(o); }
+    sel.value = list.default;
+    sel.hidden = false;
+    sel.onchange = () => { store.set("teaser-lanes:kit-pick", sel.value); loadServedKit(sel.value); };
+    const remembered = store.get("teaser-lanes:kit-pick");
+    const pick = remembered && list.kits.some(k => k.dir === remembered) ? remembered : list.default;
+    sel.value = pick;
+    document.body.dataset.served = "1";
+    await loadServedKit(pick);
+  }
+
   // ---------- open / save an arrangement (open-arrangement brief, 2026-09-24) ----------
   async function openArrangementFile(file) {
     if (!S.loaded) { say("open the kit folder first, then the arrangement", "err"); return; }
@@ -1545,6 +1621,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = LanesCore;
     wire();
     applyLayout();
     renderStatus();
+    initServed();
   }
   init();
 })();

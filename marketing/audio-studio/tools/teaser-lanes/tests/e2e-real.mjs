@@ -1,5 +1,6 @@
 // e2e-real.mjs <realKitCopyDir> [outDir] — reduced browser run against a COPY of the real kit (9 wavs + manifest) in which the
-// h264 teaser_v9.mp4 is replaced by a synthetic 47.6 s / 1428-frame webm and manifest.video.file is patched to it (the cloud Chromium has no h264).
+// h264 video is replaced by a synthetic webm matching the kit's manifest (47.6 s / 1428 frames for kit, 47.3 s / 1419 frames
+// for kit-teaser-full) and manifest.video.file is patched to it (the cloud Chromium has no h264).
 // It checks the 9-lane layout, that the browser decodes every wav to exactly the manifest's sample count, the two clocks on the default
 // state and the default copy list. Cloud container only. Writes <outDir>/real-*.png and <outDir>/real-report.txt.
 import { chromium } from "/usr/local/lib/node_modules_global/playwright/index.mjs";
@@ -15,6 +16,15 @@ mkdirSync(out, { recursive: true });
 const pageUrl = pathToFileURL(join(here, "..", "teaser-lanes.html")).href;
 const manifest = JSON.parse(readFileSync(join(kit, "manifest.json"), "utf8"));
 
+const TABLE = {
+  "teaser-lanes": { dur: "47.600", durNum: 47.6, logo: "0.000-6.500 s -> render 0.000-6.500 s", bed1: "10.300-25.347", bed2: "23.040-32.800", e5: "24.300-32.800",
+                    goFrame: "f729", goRead: "24.300 s f729", win05: "[24.05,24.55]", playFrom: "24", fixtures: true },
+  "teaser-full":  { dur: "47.300", durNum: 47.3, logo: "0.000-6.200 s -> render 0.000-6.200 s", bed1: "10.000-25.047", bed2: "22.740-32.500", e5: "24.000-32.500",
+                    goFrame: "f720", goRead: "24.000 s f720", win05: "[23.75,24.25]", playFrom: "24", fixtures: false }
+};
+const EXP = TABLE[manifest.kit];
+if (!EXP) { console.error("e2e-real.mjs: unknown manifest.kit " + JSON.stringify(manifest.kit) + " (not in TABLE: " + Object.keys(TABLE).join(", ") + ")"); process.exit(2); }
+
 const lines = [];
 let nChecks = 0, nFail = 0;
 const log = s => { lines.push(s); console.log(s); };
@@ -25,15 +35,15 @@ const settle = page => page.evaluate(() => new Promise(r => requestAnimationFram
 // default copy list written out from the brief's step-8 table (not computed by the tool)
 const stems = ["bed", "a-strings", "a-other", "b-piano", "b-drums", "b-bass", "b-other"];
 const expected = [
-  "teaser-lanes · " + manifest.video.file + " · 30 fps · 47.600 s · times in seconds; source = that sound's own clock, render = the video's",
-  "logo: source 0.000-6.500 s -> render 0.000-6.500 s (gain 0.85, fade out 0.5 s)"
+  "teaser-lanes · " + manifest.video.file + " · 30 fps · " + EXP.dur + " s · times in seconds; source = that sound's own clock, render = the video's",
+  "logo: source " + EXP.logo + " (gain 0.85, fade out 0.5 s)"
 ];
 for (const id of stems) {
   const mu = id === "bed" ? "" : ", muted";
-  expected.push(id + ": source 0.000-15.047 s -> render 10.300-25.347 s (gain 0.45" + mu + ")");
-  expected.push(id + ": source 0.000-9.760 s -> render 23.040-32.800 s (gain 0.45, fade out 1 s" + mu + ")");
+  expected.push(id + ": source 0.000-15.047 s -> render " + EXP.bed1 + " s (gain 0.45" + mu + ")");
+  expected.push(id + ": source 0.000-9.760 s -> render " + EXP.bed2 + " s (gain 0.45, fade out 1 s" + mu + ")");
 }
-expected.push("e5: source 0.000-8.500 s -> render 24.300-32.800 s (gain 1)");
+expected.push("e5: source 0.000-8.500 s -> render " + EXP.e5 + " s (gain 1)");
 const EXPECTED_LIST = expected.join("\n");
 
 const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium-1194/chrome-linux/chrome", args: ["--autoplay-policy=no-user-gesture-required"] });
@@ -82,14 +92,14 @@ for (const [W, H] of [[1440, 810], [1440, 900], [1920, 990], [1920, 1080]]) {
   check(tag + " lane canvases share the ruler width (" + cw[0] + ")", cw.every(w => w === cw[0]), cw.join(","));
 
   // default state: two clocks
-  await page.fill("#go-to", "f729"); await page.press("#go-to", "Enter");
+  await page.fill("#go-to", EXP.goFrame); await page.press("#go-to", "Enter");
   const src = async id => norm(await page.textContent(`.lane[data-lane="${id}"] .lane-src`));
-  check(tag + " f729 = 24.300 s: readout", norm(await page.textContent("#readout")) === "24.300 s f729", norm(await page.textContent("#readout")));
-  check(tag + " f729: bed src 14.000 | 1.260 (instance 1 tail, instance 2 = the ATTACK), e5 src 0.000 (the start pulse), logo none", (await src("bed")) === "src 14.000 | 1.260" && (await src("e5")) === "src 0.000" && (await src("logo")) === "src —", (await src("bed")) + " | " + (await src("e5")) + " | " + (await src("logo")));
-  check(tag + " f729: every stem shows src 14.000 | 1.260", (await Promise.all(["a-strings", "a-other", "b-piano", "b-drums", "b-bass", "b-other"].map(src))).every(s => s === "src 14.000 | 1.260"));
+  check(tag + " " + EXP.goFrame + " = " + EXP.goRead + ": readout", norm(await page.textContent("#readout")) === EXP.goRead, norm(await page.textContent("#readout")));
+  check(tag + " " + EXP.goFrame + ": bed src 14.000 | 1.260 (instance 1 tail, instance 2 = the ATTACK), e5 src 0.000 (the start pulse), logo none", (await src("bed")) === "src 14.000 | 1.260" && (await src("e5")) === "src 0.000" && (await src("logo")) === "src —", (await src("bed")) + " | " + (await src("e5")) + " | " + (await src("logo")));
+  check(tag + " " + EXP.goFrame + ": every stem shows src 14.000 | 1.260", (await Promise.all(["a-strings", "a-other", "b-piano", "b-drums", "b-bass", "b-other"].map(src))).every(s => s === "src 14.000 | 1.260"));
   await page.fill("#go-to", "0"); await page.press("#go-to", "Enter");
   check(tag + " f0: logo src 0.000", (await src("logo")) === "src 0.000");
-  await page.fill("#go-to", "f729"); await page.press("#go-to", "Enter");
+  await page.fill("#go-to", EXP.goFrame); await page.press("#go-to", "Enter");
 
   await page.click("#btn-copy");
   const txt = await page.inputValue("#clip-list");
@@ -108,7 +118,10 @@ for (const [W, H] of [[1440, 810], [1440, 900], [1920, 990], [1920, 1080]]) {
 
   await page.screenshot({ path: join(out, "real-main-" + tag + ".png") });
 
-  if (tag === "1440x900") {
+  if (tag === "1440x900" && !EXP.fixtures) {
+    log("     (arrangement fixture checks skipped: fixtures are teaser_v9 arrangements)");
+  }
+  if (tag === "1440x900" && EXP.fixtures) {
     // ---- open/save arrangement (open-arrangement brief, 2026-09-24) ----
     const fixturesDir = join(here, "fixtures");
     const stripCut = s => s.replace(/, cut by the video end at [0-9.]+ s/g, "");
@@ -151,7 +164,7 @@ for (const [W, H] of [[1440, 810], [1440, 900], [1920, 990], [1920, 1080]]) {
     const savedObj = JSON.parse(readFileSync(await dl.path(), "utf8"));
     check(tag + " save: clips deep-equal the fixture's clips", JSON.stringify(savedObj.clips) === JSON.stringify(arrJsonObj.clips));
     check(tag + " save: muted deep-equals the fixture's muted", JSON.stringify(savedObj.muted) === JSON.stringify(arrJsonObj.muted));
-    check(tag + " save: video.duration_s 47.6", savedObj.video.duration_s === 47.6, String(savedObj.video.duration_s));
+    check(tag + " save: video.duration_s " + EXP.durNum, savedObj.video.duration_s === EXP.durNum, String(savedObj.video.duration_s));
     check(tag + " save: format tag right", savedObj.format === "teaser-lanes-arrangement" && savedObj.version === 1);
 
     await page.screenshot({ path: join(out, "real-arr-1440x900.png") });
@@ -161,10 +174,10 @@ for (const [W, H] of [[1440, 810], [1440, 900], [1920, 990], [1920, 1080]]) {
     await page.keyboard.press("4"); await settle(page);
     await page.screenshot({ path: join(out, "real-zoom05-" + tag + ".png") });
     const win = await page.getAttribute("#ruler", "data-window");
-    check(tag + " zoom 0.5 s at f729 window [24.05,24.55]", win === "[24.05,24.55]", win);
+    check(tag + " zoom 0.5 s at " + EXP.goFrame + " window " + EXP.win05, win === EXP.win05, win);
     await page.keyboard.press("1");
     // real-time play across the ride start
-    await page.fill("#go-to", "24"); await page.press("#go-to", "Enter");
+    await page.fill("#go-to", EXP.playFrom); await page.press("#go-to", "Enter");
     const a = await page.evaluate(() => document.getElementById("video").currentTime);
     await page.keyboard.press("Space"); await page.waitForTimeout(1500); await page.keyboard.press("Space");
     const b = await page.evaluate(() => document.getElementById("video").currentTime);

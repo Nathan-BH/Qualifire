@@ -549,5 +549,29 @@ let realManifest, realStateFromTxt;
   ok("html: HOWTO entry 8 starts with Lanes A (", /^\s*"Lanes A \(/.test(howtoLines[7] || ""), howtoLines[7]);
 }
 
+// ============================================================
+// 20. served mode (cycle 22): kits.json parsing and the served kit file list
+// ============================================================
+{
+  const good = { format: "teaser-lanes-kits", version: 1, default: "kit-teaser-full", kits: [{ dir: "kit-teaser-full", label: "full" }, { dir: "kit" }] };
+  const r = C.parseKitsList(JSON.stringify(good));
+  ok("parseKitsList: default and two kits, label falls back to dir", r.default === "kit-teaser-full" && r.kits.length === 2 && r.kits[1].label === "kit" && r.kits[0].label === "full");
+  throwsWith("parseKitsList: bad json", () => C.parseKitsList("{"), "not valid JSON");
+  throwsWith("parseKitsList: wrong format", () => C.parseKitsList({ format: "x", version: 1, default: "kit", kits: [{ dir: "kit" }] }), "format must be");
+  throwsWith("parseKitsList: default not listed", () => C.parseKitsList({ format: "teaser-lanes-kits", version: 1, default: "nope", kits: [{ dir: "kit" }] }), "default must be one of");
+  throwsWith("parseKitsList: dir with a slash", () => C.parseKitsList({ format: "teaser-lanes-kits", version: 1, default: "a/b", kits: [{ dir: "a/b" }] }), "one folder name");
+  throwsWith("parseKitsList: dir ..", () => C.parseKitsList({ format: "teaser-lanes-kits", version: 1, default: "..", kits: [{ dir: ".." }] }), "one folder name");
+  throwsWith("parseKitsList: duplicate dir", () => C.parseKitsList({ format: "teaser-lanes-kits", version: 1, default: "kit", kits: [{ dir: "kit" }, { dir: "kit" }] }), "duplicate kit dir");
+  throwsWith("parseKitsList: empty kits", () => C.parseKitsList({ format: "teaser-lanes-kits", version: 1, default: "kit", kits: [] }), "kits missing");
+  const realM = C.parseManifest(fxManifestText);
+  eq("kitFiles(real manifest): video first, then the 9 wavs in track order", C.kitFiles(realM), ["teaser_v9-proxy.mp4", "logo.wav", "bed.wav", "a-strings.wav", "a-other.wav", "b-piano.wav", "b-drums.wav", "b-bass.wav", "b-other.wav", "e5.wav"]);
+  eq("kitFiles: duplicates collapse", C.kitFiles({ video: { file: "v.mp4" }, tracks: [{ file: "a.wav" }, { file: "a.wav" }, { file: "v.mp4" }] }), ["v.mp4", "a.wav"]);
+  const kitsJson = JSON.parse(readFileSync(join(here, "kits.json"), "utf8"));
+  const kl = C.parseKitsList(kitsJson);
+  ok("kits.json in the tool folder parses and defaults to kit-teaser-full", kl.default === "kit-teaser-full" && kl.kits.map(k => k.dir).join(",") === "kit-teaser-full,kit");
+  ok("html: kit-pick exactly once", (html.match(/id="kit-pick"/g) || []).length === 1);
+  ok("html: HOWTO entry 1 names both kits", /^\s*"Open a kit folder: kit-teaser-full/.test((html.match(/const HOWTO = \[([\s\S]*?)\];/)[1].split("\n").filter(l => /^\s{4}"/.test(l)))[0]));
+}
+
 console.log(fails ? fails + " FAILED of " + n : "ALL PASS: " + n + "/" + n + " passed");
 process.exit(fails ? 1 : 0);

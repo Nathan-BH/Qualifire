@@ -1,13 +1,13 @@
 {
   "format": "teaser-lanes-arrangement",
   "version": 1,
-  "kit": "teaser-lanes",
+  "kit": "teaser-full",
   "video": {
-    "file": "teaser_v9-proxy.mp4",
-    "name": "teaser_v9.mp4",
+    "file": "teaser-full_v1-proxy.mp4",
+    "name": "teaser-full_v1.mp4",
     "fps": 30,
-    "duration_s": 47.6,
-    "frames": 1428
+    "duration_s": 47.3,
+    "frames": 1419
   },
   "created": "2026-09-25",
   "note": "Option B for the Rides section: piano never stops -- looped on a 12.26s trim (see FEEDBACK-v1.md's loop-length math: last real onset 11.05s + ~2.45s step = 13.50s theoretical next note; loop length = 13.50 - 1.24 attack = 12.26s) across the whole rides window in 3 back-to-back segments (0-12.26, 12.26-24.52, 24.52-35.00, the last one a partial loop so it lands exactly on the 35s ranking restart) -- with isolated strings/drums/bass entering at ride-start instead of 'bed'. Small 0.15s fades at each loop seam to soften the cut (a real crossfade would need overlapping clips -- nudge this yourself in-tool if it still clicks). Strings gain lowered per your note; drums/bass left at piano's level. First-pass starting point, not fully polished automation. Ranking/closing restart (piano solo again at 35s) is identical to option A so the two are comparable end to end. Open in teaser-lanes.html via 'Open arrangement'. Shifted -0.3s (2026-09-25): brandmark/opening's post-tagline hold was cut 0.6s->0.3s, so every later scene starts 0.3s sooner -- every clip time above that was locked to a specific visual moment (ride-start's camera push-in, the ranking restart, the gate-pulse chimes) moved with it. Needs the video actually re-rendered and this kit's prep_kit.py re-run before these numbers are real in the tool -- see FEEDBACK-v1.md.",

@@ -1,5 +1,5 @@
 // mutants-open.mjs <toolDir> <outDir> <synKitDir> [ids] — mutation check for the open/save arrangement feature (node, no deps).
-// For each mutant: copies teaser-lanes.html, teaser-lanes.test.mjs and tests/fixtures/ into <outDir>/oNN/,
+// For each mutant: copies teaser-lanes.html, teaser-lanes.test.mjs, kits.json and tests/fixtures/ into <outDir>/oNN/,
 // applies one exact find -> replace on the html copy (must match exactly once, else "ANCHOR MISSING oNN"),
 // runs `node teaser-lanes.test.mjs` there. If the unit suite still passes, copies tests/e2e.mjs into
 // <outDir>/oNN/tests/ and runs `node tests/e2e.mjs <synKitDir> <outDir>/oNN/e2e` with cwd <outDir>/oNN;
@@ -96,6 +96,7 @@ for (const m of MUTANTS) {
   const mutatedHtml = html.split(m.find).join(m.replace);
   writeFileSync(join(dir, "teaser-lanes.html"), mutatedHtml);
   cpSync(join(toolDir, "teaser-lanes.test.mjs"), join(dir, "teaser-lanes.test.mjs"));
+  cpSync(join(toolDir, "kits.json"), join(dir, "kits.json")); // teaser-lanes.test.mjs section 20 reads it (cycle 22 inspect: without it every mutant "died" on ENOENT)
   cpSync(join(toolDir, "tests", "fixtures"), join(dir, "tests", "fixtures"), { recursive: true });
   let unitPassed;
   try { execFileSync("node", ["teaser-lanes.test.mjs"], { cwd: dir, stdio: "pipe" }); unitPassed = true; }

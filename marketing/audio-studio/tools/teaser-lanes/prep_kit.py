@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 """
-prep_kit.py -- builds tools/teaser-lanes/kit/ for teaser-lanes.html (cycle 19).
+prep_kit.py -- builds tools/teaser-lanes/kit/ (or kit-teaser-full/) for teaser-lanes.html (cycle 19; multi-video, cycle 22).
 
-Re-encodes the silent teaser into a short-keyframe proxy (kit/teaser_v9-proxy.mp4: libx264 crf 20, a keyframe
-every 10 frames, same 1920x1080 / 30 fps / 1428 frame timestamps) so frame stepping is instant, decodes the
-sound sources to 32-bit float 44.1 kHz stereo WAV with the same ffmpeg decode the build scripts use, renders the five
-E5 gate pulses into their own file exactly as ride_tunetank.py does, checks that the
-kit reproduces ride_master_v2.wav, checks the stems' alignment against the original,
-and writes kit/manifest.json (the default clips = today's teaser sound) and
-kit/prep-report.txt.
+Re-encodes the chosen source video into a short-keyframe proxy (libx264 crf 20, a keyframe every GOP
+frames, same 1920x1080 / 30 fps / same frame timestamps as the source) so frame stepping is instant,
+decodes the sound sources to 32-bit float 44.1 kHz stereo WAV with the same ffmpeg decode the build
+scripts use, renders the five E5 gate pulses into their own file exactly as ride_tunetank.py does,
+checks that the kit reproduces ride_master_v2.wav, checks the stems' alignment against the original,
+and writes <kit_dir>/manifest.json (the default clips = the shipped ride soundtrack chain, re-anchored
+to the chosen video's own scene offset) and <kit_dir>/prep-report.txt.
 
 Needs python3, numpy and ffmpeg/ffprobe on PATH (same as ride/ride_tunetank.py).
-Run:  cd marketing/audio-studio/tools/teaser-lanes && python3 prep_kit.py
-Nothing outside kit/ is written. Files in kit/ are overwritten by name, never removed.
+Run:  cd marketing/audio-studio/tools/teaser-lanes && python3 prep_kit.py [teaser_v9|teaser-full_v1]
+      (default teaser-full_v1; see VIDEOS below for the full table)
+Nothing outside the chosen kit folder is written. Files in it are overwritten by name, never removed.
 """
 import datetime
 import hashlib
@@ -34,12 +35,38 @@ sys.path.insert(0, AS)
 sys.path.insert(0, os.path.join(AS, "piano", "projects", "interstellar"))
 sys.path.insert(0, os.path.join(AS, "ride"))
 
-KIT = os.path.join(HERE, "kit")
-REPORT = os.path.join(KIT, "prep-report.txt")
 SR = 44100
-VIDEO_MD5 = "07f9c5b495519c97cdec3987decc027f"
 BED_MD5 = "a5ea27ca9bd0742beb78bf61bc0ae5fa"
-PROXY_NAME = "teaser_v9-proxy.mp4"
+
+FPS = 30
+GOP = 10                                  # keyframe every GOP frames (the -g / -keyint_min value below)
+# One entry per source video the kit can be built from. Everything the checks and the manifest need
+# about the video is derived from `frames` + the constants above; nothing video-specific is hardcoded
+# elsewhere in this file. `ride_offset_s` = the teaser time at which start-ride begins = what the
+# ride clock (ride_tunetank.py / ride_master.py) is shifted by; `opening_len_s` = the opening's length.
+VIDEOS = {
+    "teaser_v9": dict(
+        kit_dir="kit", kit_id="teaser-lanes",
+        source="marketing/silent-studio/all-renders/teaser_v9.mp4",
+        md5="07f9c5b495519c97cdec3987decc027f",
+        frames=1428, proxy="teaser_v9-proxy.mp4",
+        ride_offset_s=6.5, opening_len_s=6.5,
+        extra_notes=[],
+    ),
+    "teaser-full_v1": dict(
+        kit_dir="kit-teaser-full", kit_id="teaser-full",
+        source="marketing/silent-studio/all-renders/teaser-full_v1.mp4",
+        md5="3db40a137a9d879220879594af053d3f",
+        frames=1419, proxy="teaser-full_v1-proxy.mp4",
+        ride_offset_s=6.2, opening_len_s=6.2,
+        extra_notes=[
+            "PROVISIONAL default (cycle 22, 2026-09-26): these clips are the shipped ride soundtrack chain re-anchored to teaser-full's scene offset (start-ride at 6.2 s instead of 6.5 s). They are a neutral starting point, NOT the rides A/B pick from cycle 20 (rides-options/option-A-piano-then-bed.json vs option-B-piano-plus-stems.json), which is still open. Both option files were re-stamped for this video (cycle 22): they open on this kit with no 'made for a different video' note; their clip timings (already re-cascaded -0.3 s for the new render) are unchanged.",
+            "The opening's own soundtrack (brandmark/opening/soundv3, 6.5 s) has not been re-cut for the 6.2 s opening; the logo clip here simply ends at 6.2 s with the same 0.5 s fade.",
+        ],
+    ),
+}
+DEFAULT_VIDEO = "teaser-full_v1"
+KIT = REPORT = None  # module globals, set in main() from VIDEOS[video_key]["kit_dir"]
 
 
 class Stop(Exception):
@@ -148,26 +175,30 @@ def _frame_times(path):
     return np.array(out)
 
 
-def proxy_check(src, dst):
+def proxy_check(src, dst, V):
     """Every check of Ruling 2.3a on the proxy; raises Stop on the first failure; returns the numbers."""
+    n = V["frames"]
+    dur = n / FPS
     st = _probe_json(["-select_streams", "v:0", "-count_frames", "-show_entries",
                       "stream=codec_name,width,height,r_frame_rate,nb_frames,nb_read_frames,duration"], dst)["streams"][0]
     if st.get("codec_name") != "h264" or st.get("width") != 1920 or st.get("height") != 1080 or st.get("r_frame_rate") != "30/1":
         raise Stop("proxy stream fields differ from h264 1920x1080 30/1: %r" % st)
-    if str(st.get("nb_frames")) != "1428" or str(st.get("nb_read_frames")) != "1428" or abs(float(st["duration"]) - 47.6) > 0.001:
-        raise Stop("proxy frames/duration differ from 1428 / 47.600: %r" % st)
+    if str(st.get("nb_frames")) != str(n) or str(st.get("nb_read_frames")) != str(n) or abs(float(st["duration"]) - dur) > 0.001:
+        raise Stop("proxy frames/duration differ from %d / %.3f: %r" % (n, dur, st))
     ta, tb = _frame_times(src), _frame_times(dst)
-    if len(ta) != 1428 or len(tb) != 1428:
-        raise Stop("frame timestamp counts: source %d, proxy %d, expected 1428" % (len(ta), len(tb)))
+    if len(ta) != n or len(tb) != n:
+        raise Stop("frame timestamp counts: source %d, proxy %d, expected %d" % (len(ta), len(tb), n))
     maxdiff = float(np.abs(ta - tb).max())
     if maxdiff > 1e-5:
         raise Stop("proxy timestamps differ from the source by up to %.6f s" % maxdiff)
-    if abs(tb[0]) > 1e-6 or abs(tb[-1] - 47.566667) > 1e-5:
-        raise Stop("proxy first/last timestamps %.6f / %.6f, expected 0.000000 / 47.566667" % (tb[0], tb[-1]))
+    last = (n - 1) / FPS
+    if abs(tb[0]) > 1e-6 or abs(tb[-1] - last) > 1e-5:
+        raise Stop("proxy first/last timestamps %.6f / %.6f, expected 0.000000 / %.6f" % (tb[0], tb[-1], last))
     pk = _probe_json(["-select_streams", "v:0", "-show_entries", "packet=flags"], dst)["packets"]
     nk = sum(1 for p in pk if "K" in p.get("flags", ""))
-    if nk != 143:
-        raise Stop("proxy has %d keyframes, expected 143" % nk)
+    nkeys = -(-n // GOP)
+    if nk != nkeys:
+        raise Stop("proxy has %d keyframes, expected %d" % (nk, nkeys))
     size = os.path.getsize(dst)
     if size >= 40 * 1000 * 1000:
         raise Stop("proxy is %d bytes, limit 40 MB" % size)
@@ -175,13 +206,18 @@ def proxy_check(src, dst):
                 height=st["height"], rfr=st["r_frame_rate"], nb=st["nb_frames"], dur=st["duration"])
 
 
-def main():
+def main(video_key):
+    global KIT, REPORT
+    V = VIDEOS[video_key]
+    KIT = os.path.join(HERE, V["kit_dir"])
+    REPORT = os.path.join(KIT, "prep-report.txt")
     os.makedirs(KIT, exist_ok=True)
     with open(REPORT, "w", encoding="utf-8", newline="\n") as f:
         f.write("")
     say("prep_kit.py  " + datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))
     say("repo root   " + REPO)
     say("audio-studio " + AS)
+    say("video       %s -> %s/  (%s, %d frames, %.3f s)" % (video_key, V["kit_dir"], V["source"], V["frames"], V["frames"] / FPS))
 
     # ---- imports of the build chain (ride_tunetank.py is loaded, not run) ----
     import salamander_render as sr_
@@ -198,12 +234,15 @@ def main():
     # ---- 3. video: short-GOP proxy ----
     say("")
     say("== step 3: video (short-GOP proxy) ==")
-    vsrc = os.path.join(REPO, "marketing", "silent-studio", "all-renders", "teaser_v9.mp4")
-    vdst = os.path.join(KIT, PROXY_NAME)
+    vsrc = os.path.join(REPO, *V["source"].split("/"))
+    vdst = os.path.join(KIT, V["proxy"])
     m_src = md5_of(vsrc)
-    say("md5 source %s expected %s" % (m_src, VIDEO_MD5))
-    if m_src != VIDEO_MD5:
+    say("md5 source %s expected %s" % (m_src, V["md5"]))
+    if m_src != V["md5"]:
         raise Stop("video md5 mismatch: %s" % m_src)
+    src_probe = _probe_json(["-select_streams", "v:0", "-show_entries", "stream=nb_frames"], vsrc)["streams"][0]
+    if str(src_probe.get("nb_frames")) != str(V["frames"]):
+        raise Stop("source has %s frames, table says %d" % (src_probe.get("nb_frames"), V["frames"]))
     old_man = None
     try:
         with open(os.path.join(KIT, "manifest.json"), encoding="utf-8") as f:
@@ -211,9 +250,9 @@ def main():
     except Exception:
         old_man = None
     kept = False
-    if os.path.isfile(vdst) and old_man and old_man.get("video", {}).get("source_md5") == VIDEO_MD5:
+    if os.path.isfile(vdst) and old_man and old_man.get("video", {}).get("source_md5") == V["md5"]:
         try:
-            pinfo = proxy_check(vsrc, vdst)
+            pinfo = proxy_check(vsrc, vdst, V)
             kept = True
             say("proxy kept (checks pass)")
         except Stop as e:
@@ -222,14 +261,14 @@ def main():
         tmp = vdst + ".tmp.mp4"
         t0 = datetime.datetime.now()
         subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", vsrc, "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-                        "-g", "10", "-keyint_min", "10", "-sc_threshold", "0", "-bf", "0", "-pix_fmt", "yuv420p",
+                        "-g", str(GOP), "-keyint_min", str(GOP), "-sc_threshold", "0", "-bf", "0", "-pix_fmt", "yuv420p",
                         "-movflags", "+faststart", "-video_track_timescale", "30000", tmp], check=True)
         os.replace(tmp, vdst)
         secs = (datetime.datetime.now() - t0).total_seconds()
         say("proxy encoded in %.0f s" % secs)
-        pinfo = proxy_check(vsrc, vdst)
-    say("proxy: %d frames, %d keyframes (every 10), timestamps identical to the source (max diff %.6f s), %.1f MB" % (
-        pinfo["frames"], pinfo["keyframes"], pinfo["maxdiff"], pinfo["bytes"] / 1e6))
+        pinfo = proxy_check(vsrc, vdst, V)
+    say("proxy: %d frames, %d keyframes (every %d), timestamps identical to the source (max diff %.6f s), %.1f MB" % (
+        pinfo["frames"], pinfo["keyframes"], GOP, pinfo["maxdiff"], pinfo["bytes"] / 1e6))
     say("ffprobe: codec_name=%s, width=%s, height=%s, r_frame_rate=%s, nb_frames=%s, duration=%s" % (
         pinfo["codec"], pinfo["width"], pinfo["height"], pinfo["rfr"], pinfo["nb"], pinfo["dur"]))
     video_info = pinfo
@@ -383,28 +422,38 @@ def main():
                    "source_len_s": info["e5"]["source_len_s"], "muted": False,
                    "source": "rendered by prep_kit.py from ride_master.py/ride_tunetank.py", "source_md5": "",
                    "samples": info["e5"]["samples"], "peak": round(float(np.abs(info["e5"]["pcm"]).max()), 4)})
+    off, olen, n = V["ride_offset_s"], V["opening_len_s"], V["frames"]
+    dur = round(n / FPS, 3)
+    t_bed1, t_bed2, t_e5 = round(T1 + off, 4), round(T2 + off, 4), round(rt.RIDE_T0_ABS + off, 4)
+    bed2_out = round(MASTER_DUR - T2, 4)          # 9.76
+    e5_out = round(MASTER_DUR - rt.RIDE_T0_ABS, 4)  # 8.5
+
+    def fmtn(x):
+        return ("%.4f" % x).rstrip("0").rstrip(".")
+
     bed_len = info["bed"]["source_len_s"]
-    clips = [{"track": "logo", "in": 0, "out": 6.5, "at": 0, "gain": 0.85, "fade_in": 0, "fade_out": 0.5}]
+    clips = [{"track": "logo", "in": 0, "out": olen, "at": 0, "gain": 0.85, "fade_in": 0, "fade_out": 0.5}]
     for tid in ("bed", "a-strings", "a-other", "b-piano", "b-drums", "b-bass", "b-other"):
-        clips.append({"track": tid, "in": 0, "out": bed_len, "at": 10.3, "gain": 0.45, "fade_in": 0, "fade_out": 0})
-        clips.append({"track": tid, "in": 0, "out": 9.76, "at": 23.04, "gain": 0.45, "fade_in": 0, "fade_out": 1.0})
-    clips.append({"track": "e5", "in": 0, "out": 8.5, "at": 24.3, "gain": 1.0, "fade_in": 0, "fade_out": 0})
+        clips.append({"track": tid, "in": 0, "out": bed_len, "at": t_bed1, "gain": 0.45, "fade_in": 0, "fade_out": 0})
+        clips.append({"track": tid, "in": 0, "out": bed2_out, "at": t_bed2, "gain": 0.45, "fade_in": 0, "fade_out": 1.0})
+    clips.append({"track": "e5", "in": 0, "out": e5_out, "at": t_e5, "gain": 1.0, "fade_in": 0, "fade_out": 0})
     manifest = {
-        "kit": "teaser-lanes", "version": 1,
-        "made": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"), "made_by": "prep_kit.py",
-        "video": {"file": PROXY_NAME, "name": "teaser_v9.mp4", "fps": 30, "duration_s": 47.6, "frames": 1428,
-                  "source": "marketing/silent-studio/all-renders/teaser_v9.mp4", "source_md5": VIDEO_MD5,
-                  "proxy": "re-encoded by prep_kit.py for frame stepping: libx264 crf 20, keyframe every 10 frames, same 1920x1080 30 fps and the same 1428 frame timestamps; for looking only, never mix from it",
+        "kit": V["kit_id"], "version": 1,
+        "made": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"), "made_by": "prep_kit.py", "video_key": video_key,
+        "video": {"file": V["proxy"], "name": os.path.basename(V["source"]), "fps": FPS, "duration_s": dur, "frames": n,
+                  "source": V["source"], "source_md5": V["md5"],
+                  "proxy": "re-encoded by prep_kit.py for frame stepping: libx264 crf 20, keyframe every %d frames, same 1920x1080 %d fps and the same %d frame timestamps; for looking only, never mix from it" % (GOP, FPS, n),
                   "keyframes": video_info["keyframes"]},
         "groups": groups, "tracks": tracks, "clips": clips,
         "notes": [
             "Left out on purpose: 6stem_instrum.mp3 (= the whole mix again), 6stem_guitar.mp3 and 6stem_vocals.mp3 (empty, peak 0.000).",
             "Lanes A and B are two splits of the same bed: unmute one split OR the bed, not both.",
-            "e5.wav: file t=0 is the START pulse (ride 17.80 s = teaser 24.30 s); pulses at 0.000 / 2.010 / 3.850 / 5.710 / 7.580 s; GAIN_VOICE_E5 x 1.5 and the 0.5 s fade to 8.5 s are baked in.",
-            "Teaser clock = ride clock + 6.5 s. Bed clip 2 ends at 32.8 = 23.04 + 9.76 with the 1.0 s fade of ride_tunetank.py; bed clip 1 keeps the file's own tail (ends 25.3465).",
+            "e5.wav: file t=0 is the START pulse (ride %.2f s = teaser %.2f s); pulses at 0.000 / 2.010 / 3.850 / 5.710 / 7.580 s; GAIN_VOICE_E5 x 1.5 and the 0.5 s fade to 8.5 s are baked in." % (rt.RIDE_T0_ABS, t_e5),
+            "Teaser clock = ride clock + %s s. Bed clip 2 ends at %s = %s + %s with the 1.0 s fade of ride_tunetank.py; bed clip 1 keeps the file's own tail (ends %s)." % (
+                fmtn(off), fmtn(t_bed2 + bed2_out), fmtn(t_bed2), fmtn(bed2_out), fmtn(t_bed1 + bed_len)),
             "Kit WAVs are 32-bit float: the mp3 decode puts a few hundred samples above 0 dBFS and the build scripts mix them unclipped, so the tool must too (Ruling 1, 2026-09-24).",
-            "The kit video is a short-GOP proxy of teaser_v9.mp4 (Ruling 2, 2026-09-24); the original stays in silent-studio/all-renders.",
-        ],
+            "The kit video is a short-GOP proxy of %s (Ruling 2, 2026-09-24); the original stays in silent-studio/all-renders." % os.path.basename(V["source"]),
+        ] + V["extra_notes"],
         "how_made": {"decode": "ride_tunetank.decode_stereo (ffmpeg -i SRC -ac 2 -ar 44100 -f f32le -), written as 32-bit float WAV (WAVE_FORMAT_IEEE_FLOAT, tag 3) by prep_kit.py",
                      "wav": "stereo, 44100 Hz, float32; samples above 1.0 preserved (bed %.4f, other A %.4f, other B %.4f)" % tuple(float(np.abs(info[t]["pcm"]).max()) for t in ("bed", "a-other", "b-other")),
                      "e5": "ride_tunetank.py:114-121 chain, sliced from sample 784980"},
@@ -418,8 +467,16 @@ def main():
 
 
 if __name__ == "__main__":
+    USAGE = "usage: python3 prep_kit.py [teaser_v9|teaser-full_v1] (default teaser-full_v1)"
+    if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
+        print(USAGE)
+        sys.exit(0)
+    key = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_VIDEO
+    if key not in VIDEOS:
+        print(USAGE)
+        sys.exit(2)
     try:
-        main()
+        main(key)
     except Stop as e:
         say("")
         say("PREP STOP: %s" % e)

@@ -11,4 +11,8 @@ Not in scope: picking between rides-options A vs B (still Nathan's open call fro
 cycle 20 OPEN-ITEMS #3) -- any default arrangement this cycle produces is a provisional
 placeholder, not a resolution of that choice.
 
-Status: Plan tier dispatched. See BRIEF when it lands.
+Status: brief v1 fully executed and verified. The executor stopped on 2 real brief-internal contradictions while
+implementing §5.3/§5.4/§7.3; a fresh-context Fable ruling (RULING-v1.md) resolved both, the executor applied them
+and wrote `tests/e2e-served.mjs`, and the full §8 checklist now passes end to end (231/231, 390/390, 20/20 mutants,
+18/18 served, 86/86 and 69/69 real-kit). Nothing left NOT RUN except the Windows-only `serve.ps1` and the
+"Only Nathan can verify" items. See EXECUTOR-REPORT-v1.md, OPEN-ITEMS.md and RULING-v1.md.
