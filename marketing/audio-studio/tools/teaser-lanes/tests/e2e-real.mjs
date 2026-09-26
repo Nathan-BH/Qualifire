@@ -1,6 +1,6 @@
 // e2e-real.mjs <realKitCopyDir> [outDir] — reduced browser run against a COPY of the real kit (9 wavs + manifest) in which the
 // h264 video is replaced by a synthetic webm matching the kit's manifest (47.6 s / 1428 frames for kit, 47.3 s / 1419 frames
-// for kit-teaser-full) and manifest.video.file is patched to it (the cloud Chromium has no h264).
+// for kitv2) and manifest.video.file is patched to it (the cloud Chromium has no h264).
 // It checks the 9-lane layout, that the browser decodes every wav to exactly the manifest's sample count, the two clocks on the default
 // state and the default copy list. Cloud container only. Writes <outDir>/real-*.png and <outDir>/real-report.txt.
 import { chromium } from "/usr/local/lib/node_modules_global/playwright/index.mjs";

@@ -6,11 +6,11 @@
     "file": "teaser-full_v1-proxy.mp4",
     "name": "teaser-full_v1.mp4",
     "fps": 30,
-    "duration_s": 47.3,
-    "frames": 1419
+    "duration_s": 46.5,
+    "frames": 1395
   },
   "created": "2026-09-25",
-  "note": "Option A for the Rides section, corrected 2026-09-25 (stem family fix), rebalanced 2026-09-25 (piano weight): reconstructs the full sound from the B-split stems only (b-piano + b-drums + b-bass + b-other) rather than the monolithic 'bed' file -- same content as bed (the four B stems sum back to it almost exactly, see prep-report.txt), but with per-instrument gain and mute/solo in the tool. Piano stays at 0.45 (the reference level used everywhere else in this arrangement); drums/bass/other are lowered to 0.30 so piano reads as the backbone rather than sitting flat with everything else -- same logic as IDEA-v1.md's 'strings a bit quieter so they don't overbear the piano' applied to all three non-piano B-stems. Starting point only -- tune each independently in the tool. All four B stems share the same clip timing (10.3s and 22.6s, mirroring arrangement_v1.json's original bed clip shape) so they stay mutually in sync. This is the 'other' bucket A/B test case -- it includes b-other, option B doesn't. Ranking/closing restart (piano solo at 35s) is identical to option B. Open in teaser-lanes.html via 'Open arrangement'. Shifted -0.3s (2026-09-25): brandmark/opening's post-tagline hold was cut 0.6s->0.3s, so every later scene starts 0.3s sooner -- every clip time above that was locked to a specific visual moment (ride-start's camera push-in, the ranking restart, the gate-pulse chimes) moved with it. Needs the video actually re-rendered and this kit's prep_kit.py re-run before these numbers are real in the tool -- see FEEDBACK-v1.md.",
+  "note": "Option A for the Rides section, corrected 2026-09-25 (stem family fix), rebalanced 2026-09-25 (piano weight): reconstructs the full sound from the B-split stems only (b-piano + b-drums + b-bass + b-other) rather than the monolithic 'bed' file -- same content as bed (the four B stems sum back to it almost exactly, see prep-report.txt), but with per-instrument gain and mute/solo in the tool. Piano stays at 0.45 (the reference level used everywhere else in this arrangement); drums/bass/other are lowered to 0.30 so piano reads as the backbone rather than sitting flat with everything else -- same logic as IDEA-v1.md's 'strings a bit quieter so they don't overbear the piano' applied to all three non-piano B-stems. Starting point only -- tune each independently in the tool. All four B stems share the same clip timing (10.3s and 22.6s, mirroring arrangement_v1.json's original bed clip shape) so they stay mutually in sync. This is the 'other' bucket A/B test case -- it includes b-other, option B doesn't. Ranking/closing restart (piano solo at 35s) is identical to option B. Open in teaser-lanes.html via 'Open arrangement'. Shifted -0.3s (2026-09-25): brandmark/opening's post-tagline hold was cut 0.6s->0.3s, so every later scene starts 0.3s sooner -- every clip time above that was locked to a specific visual moment (ride-start's camera push-in, the ranking restart, the gate-pulse chimes) moved with it. Needs the video actually re-rendered and this kit's prep_kit.py re-run before these numbers are real in the tool -- see FEEDBACK-v1.md. Shifted a further -0.8s (2026-09-26): start-ride's own blank lead-in was cut 1.0s->0.2s (piano-note sync fix -- click now lands exactly on the 4th piano note, 8.60s) which shrinks that scene's own duration by 0.8s and cascades into everything after it. Needs the video actually re-rendered and kitv3 built (prep_kit.py) before these numbers are real in the tool -- see teaser-lanes/README.md and start-ride/index.html's own comment.",
   "muted": {
     "logo": true,
     "bed": true,
@@ -35,7 +35,7 @@
     {
       "track": "b-piano",
       "in": 0,
-      "out": 10.2,
+      "out": 9.4,
       "at": 0,
       "gain": 0.45,
       "fade_in": 0,
@@ -45,7 +45,7 @@
       "track": "b-piano",
       "in": 0,
       "out": 15.0465,
-      "at": 10.0,
+      "at": 9.2,
       "gain": 0.45,
       "fade_in": 0,
       "fade_out": 0
@@ -54,7 +54,7 @@
       "track": "b-piano",
       "in": 0,
       "out": 9.76,
-      "at": 22.3,
+      "at": 21.5,
       "gain": 0.45,
       "fade_in": 2.5,
       "fade_out": 1
@@ -63,7 +63,7 @@
       "track": "b-drums",
       "in": 0,
       "out": 15.0465,
-      "at": 10.0,
+      "at": 9.2,
       "gain": 0.3,
       "fade_in": 0,
       "fade_out": 0
@@ -72,7 +72,7 @@
       "track": "b-drums",
       "in": 0,
       "out": 9.76,
-      "at": 22.3,
+      "at": 21.5,
       "gain": 0.3,
       "fade_in": 2.5,
       "fade_out": 1
@@ -81,7 +81,7 @@
       "track": "b-bass",
       "in": 0,
       "out": 15.0465,
-      "at": 10.0,
+      "at": 9.2,
       "gain": 0.3,
       "fade_in": 0,
       "fade_out": 0
@@ -90,7 +90,7 @@
       "track": "b-bass",
       "in": 0,
       "out": 9.76,
-      "at": 22.3,
+      "at": 21.5,
       "gain": 0.3,
       "fade_in": 2.5,
       "fade_out": 1
@@ -99,7 +99,7 @@
       "track": "b-other",
       "in": 0,
       "out": 15.0465,
-      "at": 10.0,
+      "at": 9.2,
       "gain": 0.3,
       "fade_in": 0,
       "fade_out": 0
@@ -108,7 +108,7 @@
       "track": "b-other",
       "in": 0,
       "out": 9.76,
-      "at": 22.3,
+      "at": 21.5,
       "gain": 0.3,
       "fade_in": 2.5,
       "fade_out": 1
@@ -117,7 +117,7 @@
       "track": "b-piano",
       "in": 0,
       "out": 15,
-      "at": 34.7,
+      "at": 33.9,
       "gain": 0.45,
       "fade_in": 0,
       "fade_out": 0
@@ -126,7 +126,7 @@
       "track": "e5",
       "in": 0,
       "out": 8.5,
-      "at": 24.0,
+      "at": 23.2,
       "gain": 1.0,
       "fade_in": 0,
       "fade_out": 0

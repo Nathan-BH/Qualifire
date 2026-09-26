@@ -27,6 +27,7 @@ In `../../tools/teaser-lanes/teaser-lanes.html`, open the kit, then press **Open
 | `arrangement_v1/arrangement_v1.json` | 2026-09-24 | The same arrangement as a file the tool opens (Open arrangement); made from the .txt by `tools/teaser-lanes/tests/convert-arrangement.mjs`, nothing edited. |
 | `arrangement_v1/IDEA-v1.md` | 2026-09-24 | Nathan's intent in his own words (to fill in). |
 | `arrangement_v1/FEEDBACK-v1.md` | not written yet | Claude's feedback, written after IDEA-v1.md is filled in. |
+| `arrangement_v2/arrangement_v2.json` | 2026-09-26 | Synthesized in chat from IDEA-v1/FEEDBACK-v1's piano-spine plan + Nathan's direct A-vs-B listening call (option A's fuller drums/bass/other over option B's isolated strings) + a bug fix (option A had a real silence gap ~31.3-33.9s; this uses a continuous piano loop through that stretch instead). Ships as **kitv3's actual default** (not just an Open-arrangement file) via `prep_kit.py`'s new `default_arrangement` override -- see the JSON's own `note` field for full characteristics. |
 
 ## Notes on v1 (folder `arrangement_v1/`)
 

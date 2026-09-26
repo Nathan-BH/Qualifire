@@ -139,7 +139,7 @@ body[data-layout="stacked"] #status { position: sticky; bottom: 0; }
       <div id="empty-card">
         <button id="btn-open" class="big primary" type="button">Open kit folder</button>
         <p>or drop the folder here</p>
-        <p class="muted">Default kit: <b>kit-teaser-full/</b> (teaser-full v1, 47.3 s). Old teaser: <b>kit/</b> (teaser v9, 47.6 s). Both made by prep_kit.py.</p>
+        <p class="muted">Default kit: <b>kitv2/</b> (teaser-full v1, 47.3 s). Old teaser: <b>kitv1/</b> (teaser v9, 47.6 s). Both made by prep_kit.py.</p>
         <p class="muted" id="serve-hint">Opened by double-click: choose the kit folder above. Started with serve.ps1 (localhost:8765): the default kit loads by itself and the header menu switches kits.</p>
       </div>
     </div>
@@ -671,7 +671,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = LanesCore;
   const SR = 44100;
   const COLORS = { open: "#9aa3b2", bed: "#5b9bff", A: "#2dd4bf", B: "#a78bfa", pulse: "#fbbf24" };
   const HOWTO = [
-    "Open a kit folder: kit-teaser-full (teaser-full v1, the default) or kit (teaser v9), both made by prep_kit.py. With serve.ps1 the default loads by itself; the header menu switches kits.",
+    "Open a kit folder: kitv2 (teaser-full v1, the default) or kitv1 (teaser v9), both made by prep_kit.py. With serve.ps1 the default loads by itself; the header menu switches kits.",
     "Space plays and pauses. Left/Right step one frame (Shift: ten). Home/End: first/last frame. Type a time (or f + frame) in the box and press Enter.",
     "Each lane on the right is one sound. M mutes it, S solos it. Two clocks: the render clock (under the video) and each lane's own source clock (src, in its header).",
     "A shaded block is a clip: \"play source in-out of this sound from render start\". Click a block to edit its numbers below; Enter applies.",

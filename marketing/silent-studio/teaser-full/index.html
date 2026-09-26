@@ -36,16 +36,20 @@
 
 <!-- teaser-full v2 (2026-09-26): one real HyperFrames render of the whole teaser. Each scene is a
      sub-composition in compositions/ mounted here via data-composition-src; data-start is root-absolute.
-     Scene lengths: opening 6.2, start-ride 14.0, gates-saving 12.3, ranking 10.8, closing 4.0 = 47.3 s.
+     Scene lengths: opening 6.2, start-ride 13.2, gates-saving 12.3, ranking 10.8, closing 4.0 = 46.5 s.
      The root registers ONLY an empty paused timeline — HyperFrames seeks each child timeline itself.
      v1 (manual master.add() merge, lint-rejected) is archived in
-     ../../cycles/21_teaser-single-render-unification/v1-merged-timelines/. -->
-<div data-hf-id="hf-v7l9" id="stage" data-composition-id="teaser" data-start="0" data-duration="47.3" data-width="1920" data-height="1080">
+     ../../cycles/21_teaser-single-render-unification/v1-merged-timelines/.
+     Piano-note sync fix (2026-09-26): start-ride's blank lead-in cut 1.0s->0.2s (cycle 20
+     OPEN-ITEMS.md #2 / cycle 21's "open decision (a)", Nathan's call) shrinks start-ride 14.0->13.2,
+     cascading -0.8s into every later scene's start below and the total duration (47.3->46.5). Needs
+     re-render + kitv3 rebuild before this is real in the tool -- see teaser-lanes/README.md. -->
+<div data-hf-id="hf-v7l9" id="stage" data-composition-id="teaser" data-start="0" data-duration="46.5" data-width="1920" data-height="1080">
   <div data-hf-id="hf-z1m1" id="opening-slot" class="clip" data-composition-id="opening" data-composition-src="compositions/opening.html" data-start="0" data-duration="6.2" data-track-index="0"></div>
-  <div data-hf-id="hf-7prv" id="startride-slot" class="clip" data-composition-id="startride" data-composition-src="compositions/startride.html" data-start="6.2" data-duration="14.0" data-track-index="1"></div>
-  <div data-hf-id="hf-gkth" id="gatessaving-slot" class="clip" data-composition-id="gatessaving" data-composition-src="compositions/gatessaving.html" data-start="20.2" data-duration="12.3" data-track-index="2"></div>
-  <div data-hf-id="hf-vrnl" id="ranking-slot" class="clip" data-composition-id="ranking" data-composition-src="compositions/ranking.html" data-start="32.5" data-duration="10.8" data-track-index="3"></div>
-  <div data-hf-id="hf-mitg" id="closing-slot" class="clip" data-composition-id="closing" data-composition-src="compositions/closing.html" data-start="43.3" data-duration="4.0" data-track-index="4"></div>
+  <div data-hf-id="hf-7prv" id="startride-slot" class="clip" data-composition-id="startride" data-composition-src="compositions/startride.html" data-start="6.2" data-duration="13.2" data-track-index="1"></div>
+  <div data-hf-id="hf-gkth" id="gatessaving-slot" class="clip" data-composition-id="gatessaving" data-composition-src="compositions/gatessaving.html" data-start="19.4" data-duration="12.3" data-track-index="2"></div>
+  <div data-hf-id="hf-vrnl" id="ranking-slot" class="clip" data-composition-id="ranking" data-composition-src="compositions/ranking.html" data-start="31.7" data-duration="10.8" data-track-index="3"></div>
+  <div data-hf-id="hf-mitg" id="closing-slot" class="clip" data-composition-id="closing" data-composition-src="compositions/closing.html" data-start="42.5" data-duration="4.0" data-track-index="4"></div>
 </div>
 
 <script>

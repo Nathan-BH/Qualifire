@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-prep_kit.py -- builds tools/teaser-lanes/kit/ (or kit-teaser-full/) for teaser-lanes.html (cycle 19; multi-video, cycle 22).
+prep_kit.py -- builds tools/teaser-lanes/kitv1/, kitv2/ (or a future kitv3/) for teaser-lanes.html (cycle 19; multi-video, cycle 22).
 
 Re-encodes the chosen source video into a short-keyframe proxy (libx264 crf 20, a keyframe every GOP
 frames, same 1920x1080 / 30 fps / same frame timestamps as the source) so frame stepping is instant,
@@ -46,7 +46,7 @@ GOP = 10                                  # keyframe every GOP frames (the -g / 
 # ride clock (ride_tunetank.py / ride_master.py) is shifted by; `opening_len_s` = the opening's length.
 VIDEOS = {
     "teaser_v9": dict(
-        kit_dir="kit", kit_id="teaser-lanes",
+        kit_dir="kitv1", kit_id="teaser-lanes",
         source="marketing/silent-studio/all-renders/teaser_v9.mp4",
         md5="07f9c5b495519c97cdec3987decc027f",
         frames=1428, proxy="teaser_v9-proxy.mp4",
@@ -54,7 +54,7 @@ VIDEOS = {
         extra_notes=[],
     ),
     "teaser-full_v1": dict(
-        kit_dir="kit-teaser-full", kit_id="teaser-full",
+        kit_dir="kitv2", kit_id="teaser-full",
         source="marketing/silent-studio/all-renders/teaser-full_v1.mp4",
         md5="3db40a137a9d879220879594af053d3f",
         frames=1419, proxy="teaser-full_v1-proxy.mp4",
@@ -63,6 +63,18 @@ VIDEOS = {
             "PROVISIONAL default (cycle 22, 2026-09-26): these clips are the shipped ride soundtrack chain re-anchored to teaser-full's scene offset (start-ride at 6.2 s instead of 6.5 s). They are a neutral starting point, NOT the rides A/B pick from cycle 20 (rides-options/option-A-piano-then-bed.json vs option-B-piano-plus-stems.json), which is still open. Both option files were re-stamped for this video (cycle 22): they open on this kit with no 'made for a different video' note; their clip timings (already re-cascaded -0.3 s for the new render) are unchanged.",
             "The opening's own soundtrack (brandmark/opening/soundv3, 6.5 s) has not been re-cut for the 6.2 s opening; the logo clip here simply ends at 6.2 s with the same 0.5 s fade.",
         ],
+    ),
+    "teaser-full_v2": dict(
+        kit_dir="kitv3", kit_id="teaser-full-v2",
+        source="marketing/silent-studio/all-renders/teaser-full_v2.mp4",
+        md5="a454b2a525a41cd9495221d6cfce3d8b",
+        frames=1395, proxy="teaser-full_v2-proxy.mp4",
+        ride_offset_s=6.2, opening_len_s=6.2,
+        extra_notes=[
+            "Cycle 23 (2026-09-26): start-ride's blank lead-in cut 1.0s->0.2s so the button/click land on the piano's own note onsets (button-appear 6.6s, click 8.6s -- exactly the 4th onset per FEEDBACK-v1.md's chroma analysis). Everything from start-ride onward is 0.8s earlier than teaser-full_v1's kit (kitv2): gates-saving/ranking/closing all start 0.8s sooner, total duration 47.3->46.5s. The two rides-options files (audio-studio/teaser/arrangements/arrangement_v1/rides-options/) were already re-cascaded for this video and are ready to open on this kit.",
+            "Default clips/mutes (2026-09-26): shipped from audio-studio/teaser/arrangements/arrangement_v2/arrangement_v2.json (see default_arrangement below), not the generic ride-soundtrack placeholder every other kit uses -- see that file's own note for the full characteristics and provenance.",
+        ],
+        default_arrangement="marketing/audio-studio/teaser/arrangements/arrangement_v2/arrangement_v2.json",
     ),
 }
 DEFAULT_VIDEO = "teaser-full_v1"
@@ -437,6 +449,20 @@ def main(video_key):
         clips.append({"track": tid, "in": 0, "out": bed_len, "at": t_bed1, "gain": 0.45, "fade_in": 0, "fade_out": 0})
         clips.append({"track": tid, "in": 0, "out": bed2_out, "at": t_bed2, "gain": 0.45, "fade_in": 0, "fade_out": 1.0})
     clips.append({"track": "e5", "in": 0, "out": e5_out, "at": t_e5, "gain": 1.0, "fade_in": 0, "fade_out": 0})
+
+    default_arr_note = None
+    if V.get("default_arrangement"):
+        arr_path = os.path.join(REPO, V["default_arrangement"])
+        with open(arr_path, encoding="utf-8") as f:
+            arr = json.load(f)
+        clips = arr["clips"]
+        for tr in tracks:
+            if tr["id"] in arr["muted"]:
+                tr["muted"] = arr["muted"][tr["id"]]
+        say("default arrangement: %s overrides the generic placeholder (%d clips, muted %s)" % (
+            rel_to_repo(arr_path), len(clips), arr["muted"]))
+        default_arr_note = "Default clips/mutes above are %s, not the generic ride-soundtrack placeholder other kits use -- see that file's own note." % rel_to_repo(arr_path)
+
     manifest = {
         "kit": V["kit_id"], "version": 1,
         "made": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"), "made_by": "prep_kit.py", "video_key": video_key,
@@ -453,7 +479,7 @@ def main(video_key):
                 fmtn(off), fmtn(t_bed2 + bed2_out), fmtn(t_bed2), fmtn(bed2_out), fmtn(t_bed1 + bed_len)),
             "Kit WAVs are 32-bit float: the mp3 decode puts a few hundred samples above 0 dBFS and the build scripts mix them unclipped, so the tool must too (Ruling 1, 2026-09-24).",
             "The kit video is a short-GOP proxy of %s (Ruling 2, 2026-09-24); the original stays in silent-studio/all-renders." % os.path.basename(V["source"]),
-        ] + V["extra_notes"],
+        ] + V["extra_notes"] + ([default_arr_note] if default_arr_note else []),
         "how_made": {"decode": "ride_tunetank.decode_stereo (ffmpeg -i SRC -ac 2 -ar 44100 -f f32le -), written as 32-bit float WAV (WAVE_FORMAT_IEEE_FLOAT, tag 3) by prep_kit.py",
                      "wav": "stereo, 44100 Hz, float32; samples above 1.0 preserved (bed %.4f, other A %.4f, other B %.4f)" % tuple(float(np.abs(info[t]["pcm"]).max()) for t in ("bed", "a-other", "b-other")),
                      "e5": "ride_tunetank.py:114-121 chain, sliced from sample 784980"},

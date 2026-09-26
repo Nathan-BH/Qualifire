@@ -1,5 +1,5 @@
 <template>
-  <div data-hf-id="hf-r5ql" id="startride" data-composition-id="startride" data-start="0" data-duration="14.0" data-width="1920" data-height="1080" style="position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg);">
+  <div id="startride" data-composition-id="startride" data-start="0" data-duration="13.2" data-width="1920" data-height="1080" style="position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg);">
     <style>
       #startride #startride-scene * { box-sizing: border-box; }
 
@@ -78,44 +78,44 @@
       #startride #startride-scene #rider { stroke: var(--rider-stroke); }
     </style>
 
-    <div data-hf-id="hf-vdz9" id="startride-scene" class="clip full" data-start="0" data-duration="14.0" data-track-index="0">
+    <div id="startride-scene" class="clip full" data-start="0" data-duration="13.2" data-track-index="0">
 
       <!-- Map layer: basemap PNG (captured once via ../_map/map-capture.html) + route/gates/rider as SVG.
            Casing+core convention and colours are the app's (see product code, RecordScreen / way map). -->
-      <div data-hf-id="hf-6mhp" id="map" class="clip full" data-start="0" data-duration="14.0" data-track-index="1">
-        <div data-hf-id="hf-lm34" class="inner">
-          <div data-hf-id="hf-ftaq" id="cam">
-            <img data-hf-id="hf-se2r" id="startride-basemap" src="map.png" alt="" onerror="this.style.display='none'">
-            <div data-hf-id="hf-5tue" id="tint"></div>
-            <svg data-hf-id="hf-clm9" id="mapsvg" class="full-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
-              <path data-hf-id="hf-nvjv" id="route-casing" fill="none" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" />
-              <path data-hf-id="hf-7abz" id="route-core" fill="none" stroke="#F5C542" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
-              <path data-hf-id="hf-py1b" class="sector" id="sec1" fill="none" stroke="#00D000" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
-              <path data-hf-id="hf-si8b" class="sector" id="sec2" fill="none" stroke="#F5C542" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
-              <path data-hf-id="hf-a4wj" class="sector" id="sec3" fill="none" stroke="#9000C8" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
-              <path data-hf-id="hf-228w" class="sector" id="sec4" fill="none" stroke="#00D000" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
-              <g data-hf-id="hf-f0p9" class="gate" id="gate1" opacity="0"><line data-hf-id="hf-07c7" class="gc" stroke-width="8" stroke-linecap="round" /><line data-hf-id="hf-qy5d" class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
-              <g data-hf-id="hf-4pe2" class="gate" id="gate2" opacity="0"><line data-hf-id="hf-g1jb" class="gc" stroke-width="8" stroke-linecap="round" /><line data-hf-id="hf-sa5x" class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
-              <g data-hf-id="hf-eh3b" class="gate" id="gate3" opacity="0"><line data-hf-id="hf-fn8a" class="gc" stroke-width="8" stroke-linecap="round" /><line data-hf-id="hf-th30" class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
-              <circle data-hf-id="hf-2ho0" id="ring-start" r="13" stroke-width="4" opacity="0" />
-              <circle data-hf-id="hf-l2n3" id="ring-end" r="13" stroke-width="4" opacity="0" />
-              <circle data-hf-id="hf-2ndi" id="rider" r="7" fill="#2F7DE1" stroke-width="2" opacity="0" />
+      <div id="map" class="clip full" data-start="0" data-duration="13.2" data-track-index="1">
+        <div class="inner">
+          <div id="cam">
+            <img id="startride-basemap" src="map.png" alt="" onerror="this.style.display='none'">
+            <div id="tint"></div>
+            <svg id="mapsvg" class="full-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+              <path id="route-casing" fill="none" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" />
+              <path id="route-core" fill="none" stroke="#F5C542" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+              <path class="sector" id="sec1" fill="none" stroke="#00D000" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+              <path class="sector" id="sec2" fill="none" stroke="#F5C542" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+              <path class="sector" id="sec3" fill="none" stroke="#9000C8" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+              <path class="sector" id="sec4" fill="none" stroke="#00D000" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+              <g class="gate" id="gate1" opacity="0"><line class="gc" stroke-width="8" stroke-linecap="round" /><line class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
+              <g class="gate" id="gate2" opacity="0"><line class="gc" stroke-width="8" stroke-linecap="round" /><line class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
+              <g class="gate" id="gate3" opacity="0"><line class="gc" stroke-width="8" stroke-linecap="round" /><line class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
+              <circle id="ring-start" r="13" stroke-width="4" opacity="0" />
+              <circle id="ring-end" r="13" stroke-width="4" opacity="0" />
+              <circle id="rider" r="7" fill="#2F7DE1" stroke-width="2" opacity="0" />
             </svg>
           </div>
-          <div data-hf-id="hf-6pf9" id="dim"></div>
-          <p data-hf-id="hf-fkgz" id="attrib">© OpenStreetMap contributors · OpenFreeMap</p>
+          <div id="dim"></div>
+          <p id="attrib">© OpenStreetMap contributors · OpenFreeMap</p>
         </div>
       </div>
 
-      <div data-hf-id="hf-rou4" id="ui" class="clip full" data-start="0" data-duration="14.0" data-track-index="2">
-        <div data-hf-id="hf-bug8" class="inner">
-          <div data-hf-id="hf-lzxk" id="start-btn"><p data-hf-id="hf-ppnx" class="label">START</p></div>
-          <svg data-hf-id="hf-eoi7" id="cursor" viewBox="0 0 28 42" xmlns="http://www.w3.org/2000/svg"><polygon data-hf-id="hf-f34z" points="1,1 1,35 9.5,27 15.5,41 21,38.5 15,25 26,25" fill="#FFFFFF" stroke="#17171b" stroke-width="2" stroke-linejoin="round" /></svg>
-          <p data-hf-id="hf-5s91" class="caption" id="cap1">Ride your normal route.</p>
+      <div id="ui" class="clip full" data-start="0" data-duration="13.2" data-track-index="2">
+        <div class="inner">
+          <div id="start-btn"><p class="label">START</p></div>
+          <svg id="cursor" viewBox="0 0 28 42" xmlns="http://www.w3.org/2000/svg"><polygon points="1,1 1,35 9.5,27 15.5,41 21,38.5 15,25 26,25" fill="#FFFFFF" stroke="#17171b" stroke-width="2" stroke-linejoin="round"/></svg>
+          <p class="caption" id="cap1">Ride your normal route.</p>
         </div>
       </div>
 
-      <div data-hf-id="hf-9vqe" id="blackout"></div>
+      <div id="blackout"></div>
 
     </div>
 
@@ -251,12 +251,21 @@
     tl.to('#cap1', { opacity: 0, duration: 0.4 }, 12.6);
     tl.set('#cap1', { opacity: 0 }, 13.0);
 
-    // 1.0s blank lead-in: shift every beat above by +1.0s in one move (all camera/rider motion is
-    // driven by these tween start times, not by absolute-clock reads, so a single shiftChildren is
-    // exact), then add the blackout hold/reveal as new tweens positioned AFTER the shift so they land
-    // at their own literal times (0.0-0.4 hold, 0.4-1.0 reveal) instead of being shifted again.
-    tl.shiftChildren(1.0, true);
-    tl.to('#blackout', { opacity: 0, duration: 0.6, ease: 'power1.inOut' }, 0.4);
+    // 0.2s blank lead-in (was 1.0s -- shortened 2026-09-26, Nathan's call from cycle 20
+    // OPEN-ITEMS.md #2 / cycle 21 README's "open decision (a)": with the teaser now a single
+    // real render, no concat-seam requires a full second of lead-in, and the button/click were
+    // landing 1.0-1.25s after the piano's own note onsets (6.15s / 8.60s per FEEDBACK-v1.md's
+    // chroma analysis) instead of on them. 0.2s keeps a soft (not hard-cut) reveal while getting
+    // the click to land exactly on the 4th piano note: button-appear 7.4s->6.6s, click 9.4s->8.6s.
+    // Shortens this scene's own total duration by 0.8s (14.0->13.2) -- cascaded into
+    // teaser-full/index.html's downstream slot starts and the rides-options arrangement JSONs.
+    // Shift every beat above by +0.2s in one move (all camera/rider motion is driven by these
+    // tween start times, not by absolute-clock reads, so a single shiftChildren is exact), then
+    // add the blackout hold/reveal as new tweens positioned AFTER the shift so they land at their
+    // own literal times (0.0-0.08 hold, 0.08-0.2 reveal, same 0.4:0.6 ratio as before) instead of
+    // being shifted again.
+    tl.shiftChildren(0.2, true);
+    tl.to('#blackout', { opacity: 0, duration: 0.12, ease: 'power1.inOut' }, 0.08);
 
     window.__timelines = window.__timelines || {};
     window.__timelines.startride = tl;

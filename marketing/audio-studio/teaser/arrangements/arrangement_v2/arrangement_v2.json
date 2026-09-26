@@ -1,0 +1,135 @@
+{
+  "format": "teaser-lanes-arrangement",
+  "version": 1,
+  "kit": "teaser-full-v2",
+  "video": {
+    "file": "teaser-full_v2-proxy.mp4",
+    "name": "teaser-full_v2.mp4",
+    "fps": 30,
+    "duration_s": 46.5,
+    "frames": 1395
+  },
+  "created": "2026-09-26",
+  "note": "Default arrangement for kitv3. Revised 2026-09-26 (Nathan flagged the 16-21.5s drums/bass/other silence as unrequested): the original version of this file additionally implemented IDEA-v1.md rides-section point 3's 'breathing room' dip (piano alone ~15.5-21.5s) -- both rides-options READMEs had explicitly left that as 'yours to dial in by ear', i.e. deliberately unbuilt, so adding it here was an unrequested design call, not something Nathan asked for; removed. Kept from the original synthesis (both grounded in things Nathan actually said): (1) IDEA-v1.md/FEEDBACK-v1.md's piano-spine plan -- continuous b-piano loop (12.26s segments) from render start through the ranking restart at 33.9s, never truly stopping, same loop math as option-B-piano-plus-stems.json; (2) Nathan's direct A-vs-B listening call (2026-09-26) that option A's fuller b-drums+b-bass+b-other companions sound better than option B's isolated a-strings, so this uses A's stem set (gain 0.3, piano stays 0.45) and mutes a-strings; (3) e5 gate-chime gain at 0.3 per Nathan's earlier 'too loud' note. Also fixes the real gap this file still had: b-drums/b-bass/b-other previously stopped at 31.26s (same silent-until-33.9s window as the bug identified in option-A-piano-then-bed.json), leaving piano alone for ~2.6s before the ranking restart -- their second segment now runs through to 33.9s (matching option-B-piano-plus-stems.json's exact 9.2/21.5 clip-timing shape) so the full stem mix carries continuously right up to the piano's own transition, no thin patch beforehand.",
+  "muted": {
+    "logo": true,
+    "bed": true,
+    "a-strings": true,
+    "a-other": true,
+    "b-piano": false,
+    "b-drums": false,
+    "b-bass": false,
+    "b-other": false,
+    "e5": false
+  },
+  "clips": [
+    {
+      "track": "logo",
+      "in": 0,
+      "out": 6.2,
+      "at": 0,
+      "gain": 0.85,
+      "fade_in": 0,
+      "fade_out": 0.5
+    },
+    {
+      "track": "b-piano",
+      "in": 0,
+      "out": 12.26,
+      "at": 0,
+      "gain": 0.45,
+      "fade_in": 0,
+      "fade_out": 0.15
+    },
+    {
+      "track": "b-piano",
+      "in": 0,
+      "out": 12.26,
+      "at": 12.26,
+      "gain": 0.45,
+      "fade_in": 0.15,
+      "fade_out": 0.15
+    },
+    {
+      "track": "b-piano",
+      "in": 0,
+      "out": 9.38,
+      "at": 24.52,
+      "gain": 0.45,
+      "fade_in": 0.15,
+      "fade_out": 0
+    },
+    {
+      "track": "b-piano",
+      "in": 0,
+      "out": 15,
+      "at": 33.9,
+      "gain": 0.45,
+      "fade_in": 0,
+      "fade_out": 0
+    },
+    {
+      "track": "b-drums",
+      "in": 0,
+      "out": 12.3,
+      "at": 9.2,
+      "gain": 0.3,
+      "fade_in": 0,
+      "fade_out": 0
+    },
+    {
+      "track": "b-drums",
+      "in": 0,
+      "out": 12.4,
+      "at": 21.5,
+      "gain": 0.3,
+      "fade_in": 2.5,
+      "fade_out": 1
+    },
+    {
+      "track": "b-bass",
+      "in": 0,
+      "out": 12.3,
+      "at": 9.2,
+      "gain": 0.3,
+      "fade_in": 0,
+      "fade_out": 0
+    },
+    {
+      "track": "b-bass",
+      "in": 0,
+      "out": 12.4,
+      "at": 21.5,
+      "gain": 0.3,
+      "fade_in": 2.5,
+      "fade_out": 1
+    },
+    {
+      "track": "b-other",
+      "in": 0,
+      "out": 12.3,
+      "at": 9.2,
+      "gain": 0.3,
+      "fade_in": 0,
+      "fade_out": 0
+    },
+    {
+      "track": "b-other",
+      "in": 0,
+      "out": 12.4,
+      "at": 21.5,
+      "gain": 0.3,
+      "fade_in": 2.5,
+      "fade_out": 1
+    },
+    {
+      "track": "e5",
+      "in": 0,
+      "out": 8.5,
+      "at": 23.2,
+      "gain": 0.3,
+      "fade_in": 2,
+      "fade_out": 0
+    }
+  ]
+}

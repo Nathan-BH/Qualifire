@@ -1,9 +1,10 @@
 {
   "format": "teaser-lanes-kits",
   "version": 1,
-  "default": "kit-teaser-full",
+  "default": "kitv3",
   "kits": [
-    { "dir": "kit-teaser-full", "label": "teaser-full v1 · 47.3 s (default)" },
-    { "dir": "kit",             "label": "teaser v9 · 47.6 s (old concat teaser)" }
+    { "dir": "kitv3", "label": "kitv3 -- teaser-full v2 · 46.5 s (piano-synced, default)" },
+    { "dir": "kitv2", "label": "kitv2 -- teaser-full v1 · 47.3 s" },
+    { "dir": "kitv1", "label": "kitv1 -- teaser v9 · 47.6 s (old concat teaser)" }
   ]
 }

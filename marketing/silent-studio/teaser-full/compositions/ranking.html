@@ -1,5 +1,5 @@
 <template>
-  <div data-hf-id="hf-g77d" id="ranking" data-composition-id="ranking" data-start="0" data-duration="10.8" data-width="1920" data-height="1080" style="position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg);">
+  <div id="ranking" data-composition-id="ranking" data-start="0" data-duration="10.8" data-width="1920" data-height="1080" style="position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg);">
     <style>
       #ranking #ranking-scene * { box-sizing: border-box; }
 
@@ -84,62 +84,62 @@
       #ranking #ranking-scene #rider { stroke: var(--rider-stroke); }
     </style>
 
-    <div data-hf-id="hf-exzh" id="ranking-scene" class="clip full" data-start="0" data-duration="10.8" data-track-index="0">
+    <div id="ranking-scene" class="clip full" data-start="0" data-duration="10.8" data-track-index="0">
 
       <!-- Map layer: basemap PNG (captured once via ../_map/map-capture.html) + route/gates/rider as SVG.
            Casing+core convention and colours are the app's (see product code, RecordScreen / way map). -->
-      <div data-hf-id="hf-7opt" id="map" class="clip full" data-start="0" data-duration="10.8" data-track-index="1">
-        <div data-hf-id="hf-lm34" class="inner">
-          <img data-hf-id="hf-gk47" id="ranking-basemap" src="map.png" alt="" onerror="this.style.display='none'">
-          <svg data-hf-id="hf-clm9" id="mapsvg" class="full-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
-            <path data-hf-id="hf-8arj" id="route-casing" fill="none" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
-            <path data-hf-id="hf-ze3x" id="route-core" fill="none" stroke="#F5C542" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" />
-            <path data-hf-id="hf-njco" class="sector" id="sec1" fill="none" stroke="#00D000" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
-            <path data-hf-id="hf-wgcc" class="sector" id="sec2" fill="none" stroke="#F5C542" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
-            <path data-hf-id="hf-v7tg" class="sector" id="sec3" fill="none" stroke="#9000C8" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
-            <path data-hf-id="hf-pjqf" class="sector" id="sec4" fill="none" stroke="#00D000" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
-            <g data-hf-id="hf-f0p9" class="gate" id="gate1" opacity="0"><line data-hf-id="hf-07c7" class="gc" stroke-width="8" stroke-linecap="round" /><line data-hf-id="hf-z04u" class="gk" style="stroke: var(--ink)" stroke-width="4" stroke-linecap="round" opacity="1" /></g>
-            <g data-hf-id="hf-4pe2" class="gate" id="gate2" opacity="0"><line data-hf-id="hf-g1jb" class="gc" stroke-width="8" stroke-linecap="round" /><line data-hf-id="hf-26ia" class="gk" style="stroke: var(--ink)" stroke-width="4" stroke-linecap="round" opacity="1" /></g>
-            <g data-hf-id="hf-eh3b" class="gate" id="gate3" opacity="0"><line data-hf-id="hf-fn8a" class="gc" stroke-width="8" stroke-linecap="round" /><line data-hf-id="hf-2ktb" class="gk" style="stroke: var(--ink)" stroke-width="4" stroke-linecap="round" opacity="1" /></g>
-            <circle data-hf-id="hf-2ho0" id="ring-start" r="13" stroke-width="4" opacity="0" />
-            <circle data-hf-id="hf-l2n3" id="ring-end" r="13" stroke-width="4" opacity="0" />
-            <circle data-hf-id="hf-vjca" id="rider" r="11" fill="#2F7DE1" stroke-width="3" opacity="0" />
+      <div id="map" class="clip full" data-start="0" data-duration="10.8" data-track-index="1">
+        <div class="inner">
+          <img id="ranking-basemap" src="map.png" alt="" onerror="this.style.display='none'">
+          <svg id="mapsvg" class="full-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+            <path id="route-casing" fill="none" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+            <path id="route-core"   fill="none" stroke="#F5C542" stroke-width="6"  stroke-linejoin="round" stroke-linecap="round" />
+            <path class="sector" id="sec1" fill="none" stroke="#00D000" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+            <path class="sector" id="sec2" fill="none" stroke="#F5C542" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+            <path class="sector" id="sec3" fill="none" stroke="#9000C8" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+            <path class="sector" id="sec4" fill="none" stroke="#00D000" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+            <g class="gate" id="gate1" opacity="0"><line class="gc" stroke-width="8" stroke-linecap="round" /><line class="gk" style="stroke: var(--ink)" stroke-width="4" stroke-linecap="round" opacity="1" /></g>
+            <g class="gate" id="gate2" opacity="0"><line class="gc" stroke-width="8" stroke-linecap="round" /><line class="gk" style="stroke: var(--ink)" stroke-width="4" stroke-linecap="round" opacity="1" /></g>
+            <g class="gate" id="gate3" opacity="0"><line class="gc" stroke-width="8" stroke-linecap="round" /><line class="gk" style="stroke: var(--ink)" stroke-width="4" stroke-linecap="round" opacity="1" /></g>
+            <circle id="ring-start" r="13" stroke-width="4" opacity="0" />
+            <circle id="ring-end"   r="13" stroke-width="4" opacity="0" />
+            <circle id="rider" r="11" fill="#2F7DE1" stroke-width="3" opacity="0" />
           </svg>
-          <div data-hf-id="hf-7iqb" id="scrim-bottom"></div>
-          <div data-hf-id="hf-6pf9" id="dim"></div>
-          <p data-hf-id="hf-fkgz" id="attrib">© OpenStreetMap contributors · OpenFreeMap</p>
+          <div id="scrim-bottom"></div>
+          <div id="dim"></div>
+          <p id="attrib">© OpenStreetMap contributors · OpenFreeMap</p>
         </div>
       </div>
 
-      <div data-hf-id="hf-399k" id="ui" class="clip full" data-start="0" data-duration="10.8" data-track-index="2">
-        <div data-hf-id="hf-bug8" class="inner">
-          <div data-hf-id="hf-tl4f" id="tower" class="card">
-            <div data-hf-id="hf-tyyu" class="hdr"><span data-hf-id="hf-rrx9" class="lbl">Last ten rides</span><span data-hf-id="hf-n3o0" class="lbl">this route</span></div>
-            <div data-hf-id="hf-hnc7" class="rows">
-              <div data-hf-id="hf-jgoe" class="tnum" style="top:0px">1</div>
-              <div data-hf-id="hf-e3vr" class="tnum" style="top:60px">2</div>
-              <div data-hf-id="hf-7jst" class="tnum" style="top:120px">3</div>
-              <div data-hf-id="hf-t9be" class="tnum" style="top:180px">4</div>
-              <div data-hf-id="hf-dx88" class="tnum" style="top:240px">5</div>
-              <div data-hf-id="hf-sqai" class="tnum" style="top:300px">6</div>
-              <div data-hf-id="hf-l7dz" class="tnum" style="top:360px">7</div>
-              <div data-hf-id="hf-gfj3" class="tnum" style="top:420px">8</div>
-              <div data-hf-id="hf-nl7m" class="tnum" style="top:480px">9</div>
-              <div data-hf-id="hf-zscr" class="tnum" style="top:540px">10</div>
-              <div data-hf-id="hf-xi0f" class="trow" id="trow-1" style="top:0px"><span data-hf-id="hf-2hjr" class="who">Mon</span><span data-hf-id="hf-0dss" class="time num">17:02.8</span></div>
-              <div data-hf-id="hf-33fy" class="trow" id="trow-2" style="top:60px"><span data-hf-id="hf-xyp5" class="who">Sat</span><span data-hf-id="hf-unkg" class="time num">17:15.0</span></div>
-              <div data-hf-id="hf-k6ma" class="trow" id="trow-3" style="top:120px"><span data-hf-id="hf-wr68" class="who">3 Sep</span><span data-hf-id="hf-yb7a" class="time num">17:24.6</span></div>
-              <div data-hf-id="hf-zamj" class="trow" id="trow-4" style="top:180px"><span data-hf-id="hf-2410" class="who">31 Aug</span><span data-hf-id="hf-nn0c" class="time num">17:31.2</span></div>
-              <div data-hf-id="hf-ntwd" class="trow" id="trow-5" style="top:240px"><span data-hf-id="hf-dcvp" class="who">29 Aug</span><span data-hf-id="hf-pvy9" class="time num">17:48.9</span></div>
-              <div data-hf-id="hf-4o0b" class="trow" id="trow-6" style="top:300px"><span data-hf-id="hf-dgl4" class="who">26 Aug</span><span data-hf-id="hf-b2y8" class="time num">17:55.4</span></div>
-              <div data-hf-id="hf-4p34" class="trow" id="trow-7" style="top:360px"><span data-hf-id="hf-gnwa" class="who">24 Aug</span><span data-hf-id="hf-vc97" class="time num">18:07.1</span></div>
-              <div data-hf-id="hf-efro" class="trow" id="trow-8" style="top:420px"><span data-hf-id="hf-eg19" class="who">21 Aug</span><span data-hf-id="hf-gj4j" class="time num">18:20.8</span></div>
-              <div data-hf-id="hf-xpz7" class="trow" id="trow-9" style="top:480px"><span data-hf-id="hf-inyy" class="who">19 Aug</span><span data-hf-id="hf-od2s" class="time num">18:33.5</span></div>
-              <div data-hf-id="hf-0rxa" class="trow" id="trow-10" style="top:540px"><span data-hf-id="hf-kbb3" class="who">12 Aug</span><span data-hf-id="hf-24eq" class="time num">18:48.1</span></div>
-              <div data-hf-id="hf-p9o4" class="trow today" id="trow-today" style="top:600px"><span data-hf-id="hf-kwcg" class="who">Today</span><span data-hf-id="hf-672l" class="time num">17:08.9</span></div>
+      <div id="ui" class="clip full" data-start="0" data-duration="10.8" data-track-index="2">
+        <div class="inner">
+          <div id="tower" class="card">
+            <div class="hdr"><span class="lbl">Last ten rides</span><span class="lbl">this route</span></div>
+            <div class="rows">
+              <div class="tnum" style="top:0px">1</div>
+              <div class="tnum" style="top:60px">2</div>
+              <div class="tnum" style="top:120px">3</div>
+              <div class="tnum" style="top:180px">4</div>
+              <div class="tnum" style="top:240px">5</div>
+              <div class="tnum" style="top:300px">6</div>
+              <div class="tnum" style="top:360px">7</div>
+              <div class="tnum" style="top:420px">8</div>
+              <div class="tnum" style="top:480px">9</div>
+              <div class="tnum" style="top:540px">10</div>
+              <div class="trow" id="trow-1" style="top:0px"><span class="who">Mon</span><span class="time num">17:02.8</span></div>
+              <div class="trow" id="trow-2" style="top:60px"><span class="who">Sat</span><span class="time num">17:15.0</span></div>
+              <div class="trow" id="trow-3" style="top:120px"><span class="who">3 Sep</span><span class="time num">17:24.6</span></div>
+              <div class="trow" id="trow-4" style="top:180px"><span class="who">31 Aug</span><span class="time num">17:31.2</span></div>
+              <div class="trow" id="trow-5" style="top:240px"><span class="who">29 Aug</span><span class="time num">17:48.9</span></div>
+              <div class="trow" id="trow-6" style="top:300px"><span class="who">26 Aug</span><span class="time num">17:55.4</span></div>
+              <div class="trow" id="trow-7" style="top:360px"><span class="who">24 Aug</span><span class="time num">18:07.1</span></div>
+              <div class="trow" id="trow-8" style="top:420px"><span class="who">21 Aug</span><span class="time num">18:20.8</span></div>
+              <div class="trow" id="trow-9" style="top:480px"><span class="who">19 Aug</span><span class="time num">18:33.5</span></div>
+              <div class="trow" id="trow-10" style="top:540px"><span class="who">12 Aug</span><span class="time num">18:48.1</span></div>
+              <div class="trow today" id="trow-today" style="top:600px"><span class="who">Today</span><span class="time num">17:08.9</span></div>
             </div>
           </div>
-          <p data-hf-id="hf-mc4p" class="caption" id="capB">Compare against <span data-hf-id="hf-gz2p" class="em-b">your</span><span data-hf-id="hf-kslw" class="em-i">selfs</span></p>
+          <p class="caption" id="capB">Compare against <span class="em-b">your</span><span class="em-i">selfs</span></p>
         </div>
       </div>
 

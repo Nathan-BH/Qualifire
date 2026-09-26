@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-verify_default_mix.py -- offline mix of kit/manifest.json's default (audible) clips, compared with the shipped soundtracks.
+verify_default_mix.py -- offline mix of kitv1/manifest.json's default (audible) clips, compared with the shipped soundtracks.
 
 Uses exactly the tool's semantics: a clip plays source [in, out) of its track (plus the track's file_offset_s) starting at render time `at`,
 times gain, times a linear fade in/out sampled per sample (gainAt), summed. Only tracks whose manifest `muted` is false are mixed.
@@ -21,7 +21,7 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 AS = os.path.normpath(os.path.join(HERE, "..", ".."))
-KIT = os.path.join(HERE, "kit")
+KIT = os.path.join(HERE, "kitv1")
 SR = 44100
 TOL_MAX, TOL_RMS = 4, 1.5
 
