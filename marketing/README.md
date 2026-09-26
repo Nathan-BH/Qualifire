@@ -1,5 +1,8 @@
 # Qualifire marketing — status
 
+> 2026-09-26 (marketing cycle 24): the layout and status table below are historical. Current
+layout: silent-studio/structure.md and audio-studio/structure.md.
+
 *(2026-09-09, updated after round-v1 feedback docs landed)*
 
 ## Right now

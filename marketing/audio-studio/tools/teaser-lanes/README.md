@@ -23,7 +23,8 @@ piano-note-synced re-render -- will be `kitv3`, whatever the underlying video en
    Example: strings A source 0-10 at render 44 -> `+` at 44, set `out` 10 -> `a-strings: source 0.000-10.000 s -> render 44.000-54.000 s (gain 1)`.
 6. **Copy list** gives one line per clip; paste it into chat. Clips and mutes are remembered in this browser; **Reset to defaults** restores today's teaser sound. Nothing is written to disk except the file **Save arrangement** downloads (step 8).
 7. Zoom keys 1-4 = All / 10 s / 2 s / 0.5 s (0.5 s shows every frame). Lanes A and B are two splits of the same bed: unmute one split OR the bed, not both.
-8. **Save arrangement** downloads your clips and mutes as a small .json file; keep it in `teaser/arrangements/<version>/`. **Open arrangement** (or dropping the file on the page) opens such a file, or a pasted clip list saved as .txt, and replaces what is on the lanes; **Undo** in the status line brings the previous clips back.
+8. **Save arrangement** downloads your clips and mutes as a small .json file; keep it in `audio-studio/teaser/arrangements/<version>/` (a 2026-09-26 cycle-24 move to `teaser-full/arrangements/`
+   was planned but is currently blocked by a Windows permission error — see cycle 24's OPEN-ITEMS.md). **Open arrangement** (or dropping the file on the page) opens such a file, or a pasted clip list saved as .txt, and replaces what is on the lanes; **Undo** in the status line brings the previous clips back.
 
 Below 1100 px wide the page stacks (video on top) and scrolls. It will not: edit or export audio, drag clips (numbers only), work in Firefox.
 

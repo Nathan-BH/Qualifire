@@ -35,6 +35,8 @@ has to hop between FEEDBACK.md files to find the next command. Structure it like
    is a Claude follow-up (retiming `audio-studio/teaser/soundvN`), not a script for
    Nathan to run, so say so explicitly rather than handing him an ffmpeg command for
    it.
+   (2026-09-26, cycle 24: teaser/ is archived; the teaser is now the single render
+   silent-studio/teaser-full/, so this step no longer applies.)
 5. A **"leave feedback"** reminder pointing at each round's `FEEDBACK.md`.
 
 Below the render steps, keep whatever sections apply: defects the inspector caught

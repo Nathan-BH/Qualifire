@@ -3,17 +3,19 @@ import os, re, sys
 
 ROOT = os.path.expanduser('~/mnt/Qualifire')
 SS = os.path.join(ROOT, 'marketing', 'silent-studio')
-TF = os.path.join(SS, 'teaser-full')
+TF = '/sessions/rcw-011avzqqrekbqm1od9tdye4k/mnt/Qualifire/marketing/cycles/24_studio-folders-restructure/verify/build-after'
+# Moved 2026-09-26 (marketing cycle 24) from cycles/21_teaser-single-render-unification/build_teaser_v2.py;
+# scene sources now live in silent-studio/scenes/<scene>/. Claude-side tool (ROOT is the ~/mnt VM path).
 
 # Updated 2026-09-26: start-ride's blank lead-in shortened 1.0s->0.2s (piano-note sync fix,
-# see start-ride/index.html's own comment) shrinks its duration 14.0->13.2, cascading -0.8s
+# see scenes/start-ride/index.html's own comment) shrinks its duration 14.0->13.2, cascading -0.8s
 # into every later scene's start (gatessaving/ranking/closing) and the master's total duration.
 SCENES = [
-    ('opening',     'brandmark/opening/index.html', '0',    '6.2',  0, 0, False),
-    ('startride',   'start-ride/index.html',        '6.2',  '13.2', 1, 5, True),
-    ('gatessaving', 'gates-saving/index.html',      '19.4', '12.3', 2, 5, True),
-    ('ranking',     'ranking/index.html',           '31.7', '10.8', 3, 5, True),
-    ('closing',     'brandmark/closing/index.html', '42.5', '4.0',  4, 0, False),
+    ('opening',     'scenes/opening/index.html', '0',    '6.2',  0, 0, False),
+    ('startride',   'scenes/start-ride/index.html',        '6.2',  '13.2', 1, 5, True),
+    ('gatessaving', 'scenes/gates-saving/index.html',      '19.4', '12.3', 2, 5, True),
+    ('ranking',     'scenes/ranking/index.html',           '31.7', '10.8', 3, 5, True),
+    ('closing',     'scenes/closing/index.html', '42.5', '4.0',  4, 0, False),
 ]
 
 def read(p):

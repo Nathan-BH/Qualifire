@@ -14,8 +14,8 @@
 
 .PARAMETER Name
     Which composition folder under marketing\silent-studio\ to preview or
-    render (e.g. gates-saving, colours, brandmark\opening). Defaults to
-    'teaser' for backward compatibility.
+    render (e.g. teaser-full, scenes\start-ride). Defaults to
+    'teaser-full' (changed 2026-09-26, marketing cycle 24: the old 'teaser' concat folder is archived).
 
 .PARAMETER Render
     Render the composition to MP4 instead of opening the live preview.
@@ -29,16 +29,14 @@
 .EXAMPLE
     .\render.ps1
     .\render.ps1 -Render
-    .\render.ps1 -Name gates-saving
-    .\render.ps1 -Name gates-saving -Render
-    .\render.ps1 -Name colours -Render
-    .\render.ps1 -Name brandmark\opening -Render
-    .\render.ps1 -Name gates-saving -Theme day -Render
+    .\render.ps1 -Name scenes\start-ride
+    .\render.ps1 -Name scenes\gates-saving -Theme day
+    .\render.ps1 -Name teaser-full -Theme day -Render
 #>
 
 [CmdletBinding()]
 param(
-    [string]$Name = 'teaser',
+    [string]$Name = 'teaser-full',
     [switch]$Render,
     [ValidateSet('night', 'day')][string]$Theme = 'night'
 )

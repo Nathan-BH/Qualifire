@@ -1,0 +1,72 @@
+<template>
+  <div id="closing" data-composition-id="closing" data-start="0" data-duration="4.0" data-width="1920" data-height="1080" style="position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg);">
+    <style>
+      #closing #closing-scene * { box-sizing: border-box; }
+
+      #closing #closing-scene {
+        position: absolute; top: 0; left: 0;
+        width: 1920px;
+        height: 1080px;
+        background: var(--bg);
+        overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        color: var(--ink);
+      }
+
+      #closing #closing-scene .clip { position: absolute; }
+      #closing #closing-scene .clip.full { top: 0; left: 0; width: 1920px; height: 1080px; }
+
+      #closing #closing-scene #close .inner { opacity: 1; }
+
+      /* wordmark + tagline, centred -- copied verbatim from ../opening/ (cycle 9: closing = opening's second part, no mark) */
+      #closing #closing-scene #wordmark { position: absolute; top: 50%; left: 0; width: 1920px; text-align: center; transform: translateY(-40px); }
+      #closing #closing-scene #wordmark .word    { font-size: 96px; font-weight: 800; letter-spacing: 22px; color: var(--ink); margin: 0 0 22px 0; opacity: 0; }
+      #closing #closing-scene #wordmark .tagline { font-size: 34px; font-weight: 500; letter-spacing: 1px;  color: var(--ink-dim); margin: 0; opacity: 0; }
+    </style>
+
+    <div id="closing-scene" class="clip full" data-start="0" data-duration="4.0" data-track-index="0">
+
+      <!-- Closing (4.0s, v4): opening's second part re-used as the outro, per Nathan (cycle 9): "not the logo drawing,
+           but only the qualifier text + the slogan beneath it". No mark. A beat of black, the off-white QUALIFIRE
+           wordmark fades in, then the tagline (opening's beat-3 tweens, 2.95/3.35 there -> 0.15/0.55 here), a longer
+           hold than opening's (this is the end of the video), then opening's 0.8s fade to black, hard-killed at the
+           clip end. Duration stays 4.0s so the teaser cut sheet and closing's soundtrack keep their timings.
+           History: v1 = ffmpeg cut of the old teaser's ending (10.5-11.2s); v2 = first standalone composition
+           (finished mark + yellow wordmark + tagline, staggered); v3 = the same reveal tightened to ~0.75s. -->
+      <div id="close" class="clip full" data-start="0" data-duration="4.0" data-track-index="1">
+        <div class="inner">
+          <div id="wordmark">
+            <p class="word">QUALIFIRE</p>
+            <p class="tagline">Same road. New meaning.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+(function () {
+  var R = (document.currentScript && document.currentScript.closest('#closing-scene')) || document.querySelector('#closing-scene');
+  if (!R || !window.gsap) return;
+  function byId(id) { return R.querySelector('#' + id); }
+  gsap.context(function () {
+    var tl = gsap.timeline({ paused: true });
+
+    // 0.00-0.15: black -- a breath after the hard cut from ranking's last frame (opening has the same empty
+    // frame before its wordmark, 2.60-2.95).
+
+    // Beat 1 (0.15-1.25): wordmark in, then tagline -- ../opening/'s beat 3 verbatim, shifted by -2.80s.
+    tl.fromTo('#wordmark .word',    { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.80, ease: 'power2.out' }, 0.15);
+    tl.fromTo('#wordmark .tagline', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.70, ease: 'power2.out' }, 0.55);
+
+    // Beat 2 (1.25-3.20): hold -- no tween. Beat 3 (3.20-4.00): opening's 0.8s fade to black, hard-killed at the clip end.
+    tl.to('#close .inner', { opacity: 0, duration: 0.80, ease: 'power1.inOut' }, 3.20);
+    tl.set('#close .inner', { opacity: 0 }, 4.00);
+
+    window.__timelines = window.__timelines || {};
+    window.__timelines.closing = tl;
+  }, R);
+})();
+    </script>
+  </div>
+</template>

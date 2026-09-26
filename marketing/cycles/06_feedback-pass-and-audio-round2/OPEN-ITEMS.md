@@ -1,3 +1,6 @@
+> 2026-09-26: some paths below moved in the studio-folders restructure — see
+../24_studio-folders-restructure/README.md, section "Path map".
+
 # Cycle 06 — open items
 
 ## Status: everything rendered, muxed, and assembled — nothing left blocking

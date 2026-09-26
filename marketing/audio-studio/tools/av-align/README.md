@@ -1,5 +1,9 @@
 # av-align — offline audio-to-video alignment tool (cycle 16, item C)
 
+> 2026-09-26 (marketing cycle 24): the per-scene renders this tool's table points at moved — silent ones to
+marketing/archive/pre-teaser-full-studios/silent-studio/all-renders/, sounded ones and per-scene soundvN
+folders to marketing/archive/pre-teaser-full-studios/audio-studio/. audio-studio/ride/ did not move.
+
 One HTML file you double-click on Windows. No server, no install, no network. You pick a video
 (mp4) and an audio file (wav or mp3) from your disk, step the video frame by frame with the exact
 time and frame number shown, see the audio waveform on the video's timeline, nudge the audio

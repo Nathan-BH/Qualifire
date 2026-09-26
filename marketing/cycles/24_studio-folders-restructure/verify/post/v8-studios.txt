@@ -1,0 +1,135 @@
+marketing/silent-studio/build_teaser_full.py:7:# Moved 2026-09-26 (marketing cycle 24) from cycles/21_teaser-single-render-unification/build_teaser_v2.py;
+marketing/silent-studio/build_teaser_full.py:11:# see scenes/start-ride/index.html's own comment) shrinks its duration 14.0->13.2, cascading -0.8s
+marketing/silent-studio/build_teaser_full.py:12:# into every later scene's start (gatessaving/ranking/closing) and the master's total duration.
+marketing/silent-studio/build_teaser_full.py:15:    ('startride',   'scenes/start-ride/index.html',        '6.2',  '13.2', 1, 5, True),
+marketing/silent-studio/build_teaser_full.py:16:    ('gatessaving', 'scenes/gates-saving/index.html',      '19.4', '12.3', 2, 5, True),
+marketing/silent-studio/build_teaser_full.py:17:    ('ranking',     'scenes/ranking/index.html',           '31.7', '10.8', 3, 5, True),
+marketing/silent-studio/scenes/closing/README.md:1:# brandmark/closing — lockup variant: wordmark + tagline (opening's second part)
+marketing/silent-studio/scenes/closing/README.md:5:marketing/archive/pre-teaser-full-studios/silent-studio/brandmark/closing/. Edits here reach the teaser only via
+marketing/silent-studio/scenes/closing/README.md:9:survey of variants). This is the teaser's closing (position 6 of ../../teaser/).
+marketing/silent-studio/scenes/closing/README.md:14:Render with `.\render.ps1 -Name brandmark\closing -Render` from
+marketing/silent-studio/scenes/closing/README.md:20:../../teaser/README.md. v2 replaces it with a real composition, closing out
+marketing/silent-studio/scenes/gates-saving/README.md:5:marketing/archive/pre-teaser-full-studios/silent-studio/gates-saving/. Edits here reach the teaser only via
+marketing/silent-studio/scenes/gates-saving/README.md:8:One of the three product scenes of the app preview; position 3 of ../teaser/.
+marketing/silent-studio/scenes/gates-saving/README.md:14:marketing/silent-studio/. v1 was a cut of tour's render — in/out points in ../teaser/README.md.
+marketing/silent-studio/scenes/opening/index.html:60:       hard kill. Split out 2026-09-10 from ../../teaser/index.html (0-5.0s of the old 11.2s brand teaser);
+marketing/silent-studio/scenes/opening/index.html:99:    // see marketing/audio-studio/teaser/arrangements/arrangement_v1/FEEDBACK-v1.md.
+marketing/silent-studio/scenes/opening/README.md:1:# brandmark/opening — lockup variant: draw-in, then wordmark + tagline cross-fade
+marketing/silent-studio/scenes/opening/README.md:5:marketing/archive/pre-teaser-full-studios/silent-studio/brandmark/opening/. Edits here reach the teaser only via
+marketing/silent-studio/scenes/opening/README.md:9:survey of variants). This is the teaser's opening (position 1 of ../../teaser/).
+marketing/silent-studio/scenes/opening/README.md:17:../../teaser/index.html 0–5.0s). Render with
+marketing/silent-studio/scenes/opening/README.md:18:`.\render.ps1 -Name brandmark\opening -Render` from marketing/silent-studio/.
+marketing/silent-studio/scenes/ranking/README.md:5:marketing/archive/pre-teaser-full-studios/silent-studio/ranking/. Edits here reach the teaser only via
+marketing/silent-studio/scenes/ranking/README.md:8:One of the three product scenes of the app preview; position 4 of ../teaser/.
+marketing/silent-studio/scenes/ranking/README.md:14:marketing/silent-studio/. v1 was a cut of tour's render — in/out points in ../teaser/README.md.
+marketing/silent-studio/scenes/start-ride/README.md:5:marketing/archive/pre-teaser-full-studios/silent-studio/start-ride/. Edits here reach the teaser only via
+marketing/silent-studio/scenes/start-ride/README.md:8:One of the three product scenes of the app preview; position 2 of ../teaser/.
+marketing/silent-studio/scenes/start-ride/README.md:14:marketing/silent-studio/. v1 was a cut of tour's render — in/out points in ../teaser/README.md.
+marketing/silent-studio/structure.md:18:    opening/  start-ride/  gates-saving/  ranking/  closing/     (index.html, theme.js, README.md, map*.png)
+marketing/silent-studio/STUDIO-GUIDE.md:4:scenes/<scene>/ and the old per-part folders (incl. the concat teaser/) are archived — see structure.md.
+marketing/silent-studio/teaser-full/.hyperframes/preview/e7a1f409314e649b875719c752e3f9f4.html:544:           hard kill. Split out 2026-09-10 from ../../teaser/index.html (0-5.0s of the old 11.2s brand teaser);
+marketing/silent-studio/teaser-full/compositions/opening.html:39:           hard kill. Split out 2026-09-10 from ../../teaser/index.html (0-5.0s of the old 11.2s brand teaser);
+marketing/silent-studio/teaser-full/compositions/opening.html:84:    // see marketing/audio-studio/teaser/arrangements/arrangement_v1/FEEDBACK-v1.md.
+marketing/silent-studio/teaser-full/README.md:25:| 1 | `opening` | brandmark/opening | 0 | 6.2 | 0 |
+marketing/silent-studio/teaser-full/README.md:29:| 5 | `closing` | brandmark/closing | 43.3 | 4.0 | 4 |
+marketing/silent-studio/_map/README.md:5:canvas as `map.png` (3840×2160). `scenes/start-ride/`, `scenes/gates-saving/` and `scenes/ranking/` (moved there 2026-09-26, cycle 24) each need a copy of that
+marketing/audio-studio/APPROACH.md:46:Originally built up inline in `gates-saving/soundtrack.py`; extracted into
+marketing/audio-studio/APPROACH.md:49:`sys.path.insert(0, "..")` (or `"../.."` for `brandmark/opening`/`closing`,
+marketing/audio-studio/APPROACH.md:51:redefining tones per scene. `gates-saving/soundtrack.py` itself still has
+marketing/audio-studio/APPROACH.md:101:  gates-saving next. See `start-ride/README.md`.
+marketing/audio-studio/APPROACH.md:105:  reveals, not a continuous shift. See `colours/README.md`.
+marketing/audio-studio/APPROACH.md:108:  itself is mostly static except for that one moment. See `ranking/README.md`.
+marketing/audio-studio/APPROACH.md:111:  unstructured "hit." See `brandmark/README.md`.
+marketing/audio-studio/APPROACH.md:114:  sonic world; see `teaser/README.md` and `teaser/soundv1/FEEDBACK.md` for the
+marketing/audio-studio/APPROACH.md:131:(`AUDIO-BRIEF.template.md`, `FEEDBACK.template.md`) at this folder's root.
+marketing/audio-studio/APPROACH.md:156:- `gates-saving/soundtrack.py` still has its own inline copy of the toolkit
+marketing/audio-studio/piano/named-keys.html:216:// gates-saving/soundv8: bass_only.wav + melody_only.wav (both voices, same as
+marketing/audio-studio/piano/named-keys.html:222:// start-ride/soundv7: bass_only.wav + voice_a.wav (the melody's "moving" line
+marketing/audio-studio/piano/piano-cycles/01-ruler-and-track-picker/NOTES.md:29:| `gates_saving` | Gates & Saving mix (soundv8) | 10 | `gates-saving/soundv8/soundtrack_v8.wav` — bass+melody, but only the theme's first ~7.3s is ever audible (video windows it to 4.4-11.7s of a 12.3s clip) |
+marketing/audio-studio/piano/piano-cycles/01-ruler-and-track-picker/NOTES.md:30:| `start_ride` | Start Ride mix (soundv7) | 8 | `start-ride/soundv7/start-ride_v4_with_sound_v7.mp4` — bass + the melody's "moving" voice only (voice_a, E5 pulse excluded), theme's first ~8.5s (video windows it to 5.3-13.8s of a 14.0s clip) |
+marketing/audio-studio/piano/projects/interstellar/fluid_soundtrack.py:19:Then the scene mixes (start-ride/soundv7, gates-saving/soundv7) are built from these
+marketing/audio-studio/piano/projects/interstellar/NOTES.md:84:- `silent-studio/all-renders/start-ride_v4.mp4` — **14.0 s**. The clean phrase (through
+marketing/audio-studio/piano/projects/interstellar/NOTES.md:87:- `silent-studio/all-renders/gates-saving_v6.mp4` — **12.3 s**. 6 of the 8 E5 pulses land
+marketing/audio-studio/piano/projects/interstellar/NOTES.md:165:  same date). `start-ride/soundv7` and `gates-saving/soundv7` are the same mixes as
+marketing/audio-studio/piano/projects/interstellar/NOTES.md:190:(silent-studio/gates-saving/index.html's new RIDE_WARP, pacing the rider so the 3 real
+marketing/audio-studio/piano/projects/interstellar/NOTES.md:192:`../../gates-saving/soundv8/FEEDBACK.md`.
+marketing/audio-studio/piano/projects/interstellar/NOTES.md:252:Nathan asked whether `start-ride/soundv7` and `gates-saving/soundv8` already used the
+marketing/audio-studio/ride/check_tunetank.py:13:print("frames master/start-ride/gates-saving:", len(m), len(a), len(b), "(expect 1159830 617400 542430)")
+marketing/audio-studio/ride/README.md:8:(`../../silent-studio/teaser/rounds/v8/concat.txt`), so the audio should
+marketing/audio-studio/ride/README.md:27:**Why the parts are sideways links, not nested.** `brandmark/`'s two sub-scenes
+marketing/audio-studio/ride/README.md:29:of that family. `start-ride/` and `gates-saving/` are different: each already has 7–8
+marketing/audio-studio/ride/README.md:38:| [start-ride/](../start-ride/README.md) | soundv9 = slice 0–14.0s of the soundv2 master (soundv8 = the same slice of soundv1, kept) | [`../start-ride/soundv9/FEEDBACK.md`](../start-ride/soundv9/FEEDBACK.md) |
+marketing/audio-studio/ride/README.md:39:| [gates-saving/](../gates-saving/README.md) | soundv11 = soundv10's slice (14.0–26.3s of the soundv2 master) re-muxed onto gates-saving_v9 (cycle 17); soundv10 / soundv9 kept | [`../gates-saving/soundv11/FEEDBACK.md`](../gates-saving/soundv11/FEEDBACK.md) |
+marketing/audio-studio/ride/README.md:50:(`../start-ride/soundv8/soundtrack_v8.wav`, `../gates-saving/soundv9/soundtrack_v9.wav`)
+marketing/audio-studio/ride/README.md:59:the two per-scene slices (`../start-ride/soundv9/soundtrack_v9.wav`,
+marketing/audio-studio/ride/README.md:60:`../gates-saving/soundv10/soundtrack_v10.wav`) from Nathan's stock track
+marketing/audio-studio/ride/ride_master.py:26:    ../start-ride/soundv8/soundtrack_v8.wav           (slice [0, 14.0s))
+marketing/audio-studio/ride/ride_master.py:27:    ../gates-saving/soundv9/soundtrack_v9.wav         (slice [14.0s, 26.3s))
+marketing/audio-studio/ride/ride_master.py:171:    print("wrote slice start-ride/soundv8/soundtrack_v8.wav", len(slice_sr), "samples")
+marketing/audio-studio/ride/ride_master.py:172:    print("wrote slice gates-saving/soundv9/soundtrack_v9.wav", len(slice_gs), "samples")
+marketing/audio-studio/ride/ride_tunetank.py:32:    ../start-ride/soundv9/soundtrack_v9.wav           (slice [0, 14.0s))
+marketing/audio-studio/ride/ride_tunetank.py:33:    ../gates-saving/soundv10/soundtrack_v10.wav       (slice [14.0s, 26.3s))
+marketing/audio-studio/ride/ride_tunetank.py:152:    print("wrote slice start-ride/soundv9/soundtrack_v9.wav", n_sr, "frames")
+marketing/audio-studio/ride/ride_tunetank.py:153:    print("wrote slice gates-saving/soundv10/soundtrack_v10.wav", len(master) - n_sr, "frames")
+marketing/audio-studio/ride/soundv1/FEEDBACK.md:20:per-scene slices, mirroring `brandmark/`), Q3 = A (start-ride keeps its approved soundv7
+marketing/audio-studio/ride/soundv1/FEEDBACK.md:34:from the landed `gates-saving/index.html` (cross-checked, 0ms drift).
+marketing/audio-studio/ride/soundv1/FEEDBACK.md:52:- **Slice parity:** `../start-ride/soundv8/soundtrack_v8.wav` is 617,400 samples and
+marketing/audio-studio/ride/soundv1/FEEDBACK.md:89:`ride/`'s two parts (`start-ride/`, `gates-saving/`) are linked *sideways* from this
+marketing/audio-studio/ride/soundv2/concat.txt:1:file '../../../silent-studio/all-renders/start-ride_v4.mp4'
+marketing/audio-studio/ride/soundv2/concat.txt:2:file '../../../silent-studio/gates-saving/rounds/v8/gates-saving_v8.mp4'
+marketing/audio-studio/ride/soundv2/FEEDBACK.md:46:wrote slice start-ride/soundv9/soundtrack_v9.wav 617400 frames
+marketing/audio-studio/ride/soundv2/FEEDBACK.md:47:wrote slice gates-saving/soundv10/soundtrack_v10.wav 542430 frames
+marketing/audio-studio/ride/soundv2/FEEDBACK.md:55:frames master/start-ride/gates-saving: 1159830 617400 542430 (expect 1159830 617400 542430)
+marketing/audio-studio/ride/soundv2/FEEDBACK.md:85:start-ride/soundv9/start-ride_v4_with_sound_v9.mp4: 14.000000 | aac,2
+marketing/audio-studio/ride/soundv2/FEEDBACK.md:86:gates-saving/soundv10/gates-saving_v8_with_sound_v10.mp4: 12.300000 | aac,2
+marketing/audio-studio/ride/soundv3/FEEDBACK.md:3:**Render file:** `ride_v1_with_sound_v3.mp4` — `../../../silent-studio/all-renders/ride_v1.mp4`
+marketing/audio-studio/ride/soundv3/FEEDBACK.md:24:- Video packets md5 equal to `silent-studio/all-renders/ride_v1.mp4`: `9196647a2f9cd8b79dacaa3cca723d67`.
+marketing/audio-studio/structure.md:21:`teaser-full/arrangements/arrangement_vN/` (moved from `teaser/arrangements/` 2026-09-26). A built
+marketing/audio-studio/synth.py:4:Extracted from gates-saving/soundtrack.py so every scene draws on the same
+marketing/audio-studio/synth.py:11:for a scene that's nested one level deeper, like brandmark/opening/).
+marketing/audio-studio/synth.py:288:# The "Qualifire" brand chime: used in brandmark/opening and brandmark/closing,
+marketing/audio-studio/synth.py:300:# whole reveal). Shared by brandmark/opening (soundv2) and brandmark/closing
+marketing/audio-studio/teaser/arrangements/arrangement_v1/FEEDBACK-v1.md:10:value independently), `silent-studio/teaser/rounds/v9/concat.txt` + `FEEDBACK.md` (scene
+marketing/audio-studio/teaser/arrangements/arrangement_v1/FEEDBACK-v1.md:76:(the canonical opening is `brandmark/opening`, separate from the retired `teaser/parts/
+marketing/audio-studio/teaser/arrangements/arrangement_v1/FEEDBACK-v1.md:159:`silent-studio/teaser/rounds/v9/concat.txt`'s section timing), and it's also where the
+marketing/audio-studio/teaser/arrangements/arrangement_v1/FEEDBACK-v1.md:286:  click to 3.800 / 6.300 / 8.700 s in the actual composition (`brandmark/opening` /
+marketing/audio-studio/teaser/arrangements/arrangement_v1/FEEDBACK-v1.md:327:`.mp4` pieces need building from scratch, but the affected scenes (`brandmark/opening`,
+marketing/audio-studio/teaser/arrangements/arrangement_v1/FEEDBACK-v1.md:331:**`brandmark/opening/index.html` (teaser 0–6.5 s) — done.** Found the actual elements:
+marketing/audio-studio/teaser/arrangements/arrangement_v1/FEEDBACK-v1.md:340:**`start-ride/index.html` (teaser 6.5–20.5 s) — found a real conflict, need your call.**
+marketing/audio-studio/teaser/arrangements/arrangement_v1/FEEDBACK-v1.md:358:near 8.6–8.7 s; (b) shorten `brandmark/opening`'s tail hold (5.50–6.50 s) so start-ride
+marketing/audio-studio/teaser/arrangements/arrangement_v1/FEEDBACK-v1.md:362:**Closing — turns out no change needed.** Checked `brandmark/closing/index.html`: wordmark
+marketing/audio-studio/teaser/arrangements/arrangement_v1/FEEDBACK-v1.md:372:powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name brandmark\opening -Render
+marketing/audio-studio/teaser/arrangements/arrangement_v1/FEEDBACK-v1.md:375:versioning) into `all-renders/`, update `teaser/rounds/v9/concat.txt` (or cut a v10), and
+marketing/audio-studio/teaser/arrangements/arrangement_v1/FEEDBACK-v1.md:384:- `brandmark/opening/index.html`: post-tagline hold cut from 0.60 s to 0.30 s (hold now
+marketing/audio-studio/teaser/arrangements/arrangement_v1/FEEDBACK-v1.md:391:  22.6 -> 22.3, E5 gate chimes 24.3 -> 24.0, ranking/closing piano restart 35 -> 34.7 (option B's
+marketing/audio-studio/teaser/arrangements/arrangement_v1/FEEDBACK-v1.md:405:1. Render the updated `brandmark/opening` from a PowerShell window on your PC:
+marketing/audio-studio/teaser/arrangements/arrangement_v1/FEEDBACK-v1.md:408:   powershell -ExecutionPolicy Bypass -File .\render.ps1 -Name brandmark\opening -Render
+marketing/audio-studio/teaser/arrangements/arrangement_v1/rides-options/option-A-piano-then-bed.json:13:  "note": "Option A for the Rides section, corrected 2026-09-25 (stem family fix), rebalanced 2026-09-25 (piano weight): reconstructs the full sound from the B-split stems only (b-piano + b-drums + b-bass + b-other) rather than the monolithic 'bed' file -- same content as bed (the four B stems sum back to it almost exactly, see prep-report.txt), but with per-instrument gain and mute/solo in the tool. Piano stays at 0.45 (the reference level used everywhere else in this arrangement); drums/bass/other are lowered to 0.30 so piano reads as the backbone rather than sitting flat with everything else -- same logic as IDEA-v1.md's 'strings a bit quieter so they don't overbear the piano' applied to all three non-piano B-stems. Starting point only -- tune each independently in the tool. All four B stems share the same clip timing (10.3s and 22.6s, mirroring arrangement_v1.json's original bed clip shape) so they stay mutually in sync. This is the 'other' bucket A/B test case -- it includes b-other, option B doesn't. Ranking/closing restart (piano solo at 35s) is identical to option B. Open in teaser-lanes.html via 'Open arrangement'. Shifted -0.3s (2026-09-25): brandmark/opening's post-tagline hold was cut 0.6s->0.3s, so every later scene starts 0.3s sooner -- every clip time above that was locked to a specific visual moment (ride-start's camera push-in, the ranking restart, the gate-pulse chimes) moved with it. Needs the video actually re-rendered and this kit's prep_kit.py re-run before these numbers are real in the tool -- see FEEDBACK-v1.md. Shifted a further -0.8s (2026-09-26): start-ride's own blank lead-in was cut 1.0s->0.2s (piano-note sync fix -- click now lands exactly on the 4th piano note, 8.60s) which shrinks that scene's own duration by 0.8s and cascades into everything after it. Needs the video actually re-rendered and kitv3 built (prep_kit.py) before these numbers are real in the tool -- see teaser-lanes/README.md and start-ride/index.html's own comment.",
+marketing/audio-studio/teaser/arrangements/arrangement_v1/rides-options/option-B-piano-plus-stems.json:13:  "note": "Option B for the Rides section: piano never stops -- looped on a 12.26s trim (see FEEDBACK-v1.md's loop-length math: last real onset 11.05s + ~2.45s step = 13.50s theoretical next note; loop length = 13.50 - 1.24 attack = 12.26s) across the whole rides window in 3 back-to-back segments (0-12.26, 12.26-24.52, 24.52-35.00, the last one a partial loop so it lands exactly on the 35s ranking restart) -- with isolated strings/drums/bass entering at ride-start instead of 'bed'. Small 0.15s fades at each loop seam to soften the cut (a real crossfade would need overlapping clips -- nudge this yourself in-tool if it still clicks). Strings gain lowered per your note; drums/bass left at piano's level. First-pass starting point, not fully polished automation. Ranking/closing restart (piano solo again at 35s) is identical to option A so the two are comparable end to end. Open in teaser-lanes.html via 'Open arrangement'. Shifted -0.3s (2026-09-25): brandmark/opening's post-tagline hold was cut 0.6s->0.3s, so every later scene starts 0.3s sooner -- every clip time above that was locked to a specific visual moment (ride-start's camera push-in, the ranking restart, the gate-pulse chimes) moved with it. Needs the video actually re-rendered and this kit's prep_kit.py re-run before these numbers are real in the tool -- see FEEDBACK-v1.md. Shifted a further -0.8s (2026-09-26): start-ride's own blank lead-in was cut 1.0s->0.2s (piano-note sync fix -- click now lands exactly on the 4th piano note, 8.60s) which shrinks that scene's own duration by 0.8s and cascades into everything after it. Needs the video actually re-rendered and kitv3 built (prep_kit.py) before these numbers are real in the tool -- see teaser-lanes/README.md and start-ride/index.html's own comment.",
+marketing/audio-studio/teaser/arrangements/arrangement_v1/rides-options/README.md:6:(opening piano, the 35 s ranking/closing piano restart) is the same in both, so you can A/B
+marketing/audio-studio/teaser/AUDIO-BRIEF.md:3:**Visual source:** `../../silent-studio/teaser/rounds/v6/teaser_v6.mp4` (47.6 s)
+marketing/audio-studio/teaser/AUDIO-BRIEF.md:12:Rows below are the sections of the current v6 cut sheet (`../../silent-studio/teaser/rounds/v6/concat.txt`
+marketing/audio-studio/teaser/AUDIO-BRIEF.md:13:and `../../silent-studio/teaser/rounds/v6/FEEDBACK.md`) — five back-to-back scene renders, not six; `colours`
+marketing/audio-studio/teaser/AUDIO-BRIEF.md:14:was dropped from the cut as of v5 and does not appear here (see `../../silent-studio/teaser/README.md`'s v5
+marketing/audio-studio/teaser/AUDIO-BRIEF.md:22:| 0 | 0.0–6.5 | Section 1: brandmark/opening (`opening_v3.mp4`, unchanged) | Mirrors brandmark/opening/soundv2: pitch-sweep ring draw, whoosh, two-beat brand stinger (low boom + bright chime) at 2.95/3.35 | |
+marketing/audio-studio/teaser/AUDIO-BRIEF.md:26:| 4 | 43.6–47.6 | Section 5: brandmark/closing (`closing_v3.mp4`, new tight reveal, 4.0s) | Full two-beat brand-stinger reprise (low boom at 43.6s, bright chime at 43.95s) + sustained pad to the end | |
+marketing/audio-studio/teaser/README.md:12:| soundv3 | — | **Withdrawn 2026-09-23 (cycle 17)**: was a silent round (a copy of teaser_v8.mp4); silent renders live in `../../silent-studio/` — see `silent-studio/teaser/rounds/v9/`. Folder moved to `_to_delete/`. Number not reused; the next round is soundv4. Applying the cycle-16 sounds to the teaser's cut is still a later follow-up. |
+marketing/audio-studio/teaser/README.md:23:soundv2 (built after cycle 06's gates-saving/ranking/closing feedback round)
+marketing/audio-studio/teaser/soundtrack.py:19:  0.0  -  6.5   brandmark/opening   (opening_v3.mp4, unchanged)
+marketing/audio-studio/teaser/soundtrack.py:23:  43.6 - 47.6   brandmark/closing   (closing_v3.mp4 — new tight reveal, 4.0s)
+marketing/audio-studio/teaser/soundtrack.py:46:    # ---- 0.0-6.5s: opening brand — mirrors brandmark/opening/soundv2 -----
+marketing/audio-studio/teaser/soundv2/FEEDBACK.md:15:brandmark/closing) and each got its own new soundtrack this cycle. This round
+marketing/audio-studio/teaser/soundv2/FEEDBACK.md:30:| 0.0-6.5s | brandmark/opening | opening/soundv2: ring-draw sweep, whoosh, two-beat BRAND_STINGER at 2.95s/3.35s |
+marketing/audio-studio/teaser/soundv2/FEEDBACK.md:31:| 6.5-20.5s | start-ride | start-ride/soundv2: hush, click at 9.7s, riser, C-G-Am-F loop at 155bpm |
+marketing/audio-studio/teaser/soundv2/FEEDBACK.md:32:| 20.5-32.8s | gates-saving | gates-saving/soundv3: whoosh, same C-G-Am-F loop boosted 165->210bpm, gate pings |
+marketing/audio-studio/teaser/soundv2/FEEDBACK.md:33:| 32.8-43.6s | ranking | ranking/soundv2: droplet crescendo (36.0-38.05s), purple landing chime |
+marketing/audio-studio/teaser/soundv2/FEEDBACK.md:34:| 43.6-47.6s | brandmark/closing | closing/soundv2: the same two-beat BRAND_STINGER reprised in full |
+marketing/audio-studio/tools/av-align/README.md:77:| ride | `marketing/silent-studio/all-renders/ride_v1.mp4` (cycle 17; `marketing/audio-studio/ride/soundv2/ride_v2_silent.mp4` is the same clock on the older gates-saving_v8 picture) | `marketing/audio-studio/piano/projects/tunetank-ride/sources/tunetank-emotional-classical-484234.mp3` with the shipped placements, or `ride_master_v2.wav` with one placement at 0.0000 to hear the built mix | T1 (nudge) and T2 (derived, do not nudge) |
+marketing/audio-studio/tools/av-align/README.md:78:| opening | `marketing/silent-studio/all-renders/opening_v3.mp4` | `marketing/audio-studio/piano/projects/tunetank/sources/tunetank-piano-logo-484286.mp3` | preset "opening", one placement T0 |
+marketing/audio-studio/tools/teaser-lanes/prep_kit.py:64:            "The opening's own soundtrack (brandmark/opening/soundv3, 6.5 s) has not been re-cut for the 6.2 s opening; the logo clip here simply ends at 6.2 s with the same 0.5 s fade.",
+marketing/audio-studio/tools/teaser-lanes/prep_kit.py:74:            "Cycle 23 (2026-09-26): start-ride's blank lead-in cut 1.0s->0.2s so the button/click land on the piano's own note onsets (button-appear 6.6s, click 8.6s -- exactly the 4th onset per FEEDBACK-v1.md's chroma analysis). Everything from start-ride onward is 0.8s earlier than teaser-full_v1's kit (kitv2): gates-saving/ranking/closing all start 0.8s sooner, total duration 47.3->46.5s. The two rides-options files (audio-studio/teaser/arrangements/arrangement_v1/rides-options/) were already re-cascaded for this video and are ready to open on this kit.",
+marketing/audio-studio/tools/teaser-lanes/prep_kit.py:75:            "Default clips/mutes (2026-09-26): shipped from audio-studio/teaser/arrangements/arrangement_v2/arrangement_v2.json (see default_arrangement below), not the generic ride-soundtrack placeholder every other kit uses -- see that file's own note for the full characteristics and provenance.",
+marketing/audio-studio/tools/teaser-lanes/prep_kit.py:77:        default_arrangement="marketing/audio-studio/teaser/arrangements/arrangement_v2/arrangement_v2.json",
+marketing/audio-studio/tools/teaser-lanes/verify_default_mix.py:8:  (b) render [0, 6.5)    vs archive/pre-teaser-full-studios/audio-studio/brandmark/opening/soundv3/soundtrack_v3.wav            same tolerances (file must be 286,650 frames)
+marketing/README.md:33:| teaser (idea 2) | built, revised per feedback, rendered | `silent-studio/teaser/renders/teaser_2026-09-09_18-08-41.mp4` | [v1](silent-studio/teaser/rounds/v1/FEEDBACK.md) — awaiting feedback |
+marketing/README.md:55:│   └── teaser/ gate/ purple/ tour/

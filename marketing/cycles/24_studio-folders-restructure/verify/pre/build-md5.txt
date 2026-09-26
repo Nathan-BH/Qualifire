@@ -1,0 +1,12 @@
+=== build-before outputs ===
+fdf32150a128e109ce5df2a60a2ce973  marketing/cycles/24_studio-folders-restructure/verify/build-before/compositions/closing.html
+9f9c542b7efd0f41f08f9dd266a1e1c7  marketing/cycles/24_studio-folders-restructure/verify/build-before/compositions/gatessaving.html
+29b39d2c91ae14eebb5a492e6868eef8  marketing/cycles/24_studio-folders-restructure/verify/build-before/compositions/opening.html
+961ec380c701d98903eb46e62da391d2  marketing/cycles/24_studio-folders-restructure/verify/build-before/compositions/ranking.html
+e4a6e13dafd5237b174bcba983388411  marketing/cycles/24_studio-folders-restructure/verify/build-before/compositions/startride.html
+=== live teaser-full compositions ===
+fdf32150a128e109ce5df2a60a2ce973  marketing/silent-studio/teaser-full/compositions/closing.html
+9f9c542b7efd0f41f08f9dd266a1e1c7  marketing/silent-studio/teaser-full/compositions/gatessaving.html
+29b39d2c91ae14eebb5a492e6868eef8  marketing/silent-studio/teaser-full/compositions/opening.html
+961ec380c701d98903eb46e62da391d2  marketing/silent-studio/teaser-full/compositions/ranking.html
+e4a6e13dafd5237b174bcba983388411  marketing/silent-studio/teaser-full/compositions/startride.html

@@ -1,3 +1,8 @@
+> 2026-09-26: cycle 24 (studio-folders restructure) ran, but the `audio-studio/teaser/arrangements/...`
+paths this file references below did NOT move — the move was blocked by a Windows permission error.
+No action needed on this file's own commands; see ../24_studio-folders-restructure/OPEN-ITEMS.md,
+"Cycle 23 (piano-sync) paths that changed" and "Escalations", for the full story.
+
 # Cycle 23 — open items
 
 **Steps 1-4 are DONE (2026-09-26)** -- Nathan rendered, the render was found in

@@ -1,3 +1,6 @@
+> 2026-09-26: some paths below moved in the studio-folders restructure — see
+../24_studio-folders-restructure/README.md, section "Path map".
+
 # Cycle 22 — OPEN ITEMS
 
 ## Blocking items found by the executor — RESOLVED via `RULING-v1.md`

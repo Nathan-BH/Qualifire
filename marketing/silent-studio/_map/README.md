@@ -2,7 +2,7 @@
 
 Not a composition. `map-capture.html` renders the app's own OpenFreeMap **dark** style in Chrome
 (MapLibre GL JS from the jsdelivr CDN) at exactly the framing the three product scenes use, and saves the
-canvas as `map.png` (3840×2160). `start-ride/`, `gates-saving/` and `ranking/` each need a copy of that
+canvas as `map.png` (3840×2160). `scenes/start-ride/`, `scenes/gates-saving/` and `scenes/ranking/` (moved there 2026-09-26, cycle 24) each need a copy of that
 PNG next to their `index.html`; they draw the route, gates and rider on top of it as SVG — the same idea
 as the app's PNG fallback map (`PngWayMap`).
 
@@ -21,9 +21,10 @@ Route: `data/activities/TEST in virgin-app rides/qualifire-20260903/qualifire-20
 3. Click **Download map.png** → lands in `Downloads`.
 4. Copy it into the three scene folders (PowerShell, from anywhere):
    ```powershell
+   cd "C:\Users\natha\Claude personal projects\Qualifire\marketing\silent-studio"
    $src = "$env:USERPROFILE\Downloads\map.png"
    $hf  = "C:\Users\natha\Claude personal projects\Qualifire\marketing\silent-studio"
-   foreach ($c in 'start-ride','gates-saving','ranking') { Copy-Item $src (Join-Path $hf "$c\map.png") -Force }
+   foreach ($c in 'scenes\start-ride','scenes\gates-saving','scenes\ranking','teaser-full') { Copy-Item $src (Join-Path $hf "$c\map.png") -Force }
    ```
 5. Render — see `../COMMANDS.md` ("The three product scenes").
 

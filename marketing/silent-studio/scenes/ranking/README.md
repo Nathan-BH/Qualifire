@@ -1,5 +1,10 @@
 # ranking — product scene (HyperFrames composition)
 
+> 2026-09-26 (marketing cycle 24): this folder now holds only this scene's canonical source. Its renders/
+and rounds/ history (the links in the status table below) moved to
+marketing/archive/pre-teaser-full-studios/silent-studio/ranking/. Edits here reach the teaser only via
+../../build_teaser_full.py → ../../teaser-full/compositions/.
+
 One of the three product scenes of the app preview; position 4 of ../teaser/.
 Feedback for this scene goes in the most recent round's FEEDBACK.md here (currently v8).
 

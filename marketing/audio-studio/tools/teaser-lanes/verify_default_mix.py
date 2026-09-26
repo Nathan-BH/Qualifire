@@ -5,7 +5,7 @@ verify_default_mix.py -- offline mix of kitv1/manifest.json's default (audible) 
 Uses exactly the tool's semantics: a clip plays source [in, out) of its track (plus the track's file_offset_s) starting at render time `at`,
 times gain, times a linear fade in/out sampled per sample (gainAt), summed. Only tracks whose manifest `muted` is false are mixed.
   (a) render [6.5, 32.8) vs ride/soundv2/ride_master_v2.wav (shifted by 6.5 s)      max |diff| <= 4 LSB, rms(diff) <= 1.5 LSB (1 LSB expected)
-  (b) render [0, 6.5)    vs brandmark/opening/soundv3/soundtrack_v3.wav            same tolerances (file must be 286,650 frames)
+  (b) render [0, 6.5)    vs archive/pre-teaser-full-studios/audio-studio/brandmark/opening/soundv3/soundtrack_v3.wav            same tolerances (file must be 286,650 frames)
   (c) render [32.8, 47.6) is all zeros
 Prints per-span numbers and ends with MIX OK, or the failing span, its max diff and the cross-correlation lag (then exit 1).
 Kit WAVs are 32-bit float (prep_kit.py), so decode overs above 1.0 are mixed unclipped, then clipped once at the end like the build scripts.
@@ -128,7 +128,7 @@ def main():
         print("STOP: ride_master_v2.wav has %d frames, expected %d" % (len(master), a1 - a0))
         sys.exit(1)
     ok &= compare("(a) render [6.5, 32.8) vs ride_master_v2.wav", pcm[a0:a1], master)
-    opening = read_wav_int16(os.path.join(AS, "brandmark", "opening", "soundv3", "soundtrack_v3.wav"))
+    opening = read_wav_int16(os.path.join(AS, "..", "archive", "pre-teaser-full-studios", "audio-studio", "brandmark", "opening", "soundv3", "soundtrack_v3.wav"))  # moved 2026-09-26 (marketing cycle 24)
     if len(opening) != 286650:
         print("STOP: soundtrack_v3.wav has %d frames, expected 286650" % len(opening))
         sys.exit(1)

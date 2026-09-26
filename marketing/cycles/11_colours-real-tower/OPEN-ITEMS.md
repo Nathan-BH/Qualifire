@@ -1,3 +1,6 @@
+> 2026-09-26: some paths below moved in the studio-folders restructure — see
+../24_studio-folders-restructure/README.md, section "Path map".
+
 # Cycle 11 — open items for Nathan
 
 ## Done (2026-09-16, after Nathan ran the render himself)

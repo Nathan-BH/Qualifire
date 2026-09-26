@@ -1,3 +1,6 @@
+> 2026-09-26: some paths below moved in the studio-folders restructure — see
+../24_studio-folders-restructure/README.md, section "Path map".
+
 # Cycle 07 — open items
 
 ## 0. Update (2026-09-14, after Nathan's first run): cleanup succeeded, rename did not — fixed

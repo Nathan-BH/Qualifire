@@ -1,5 +1,10 @@
 # brandmark/closing — lockup variant: wordmark + tagline (opening's second part)
 
+> 2026-09-26 (marketing cycle 24): this folder now holds only this scene's canonical source. Its renders/
+and rounds/ history (the links in the status table below) moved to
+marketing/archive/pre-teaser-full-studios/silent-studio/brandmark/closing/. Edits here reach the teaser only via
+../../build_teaser_full.py → ../../teaser-full/compositions/.
+
 One of the brandmark lockup variants (see ../README.md for the family and the
 survey of variants). This is the teaser's closing (position 6 of ../../teaser/).
 

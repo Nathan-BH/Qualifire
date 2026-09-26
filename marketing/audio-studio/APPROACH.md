@@ -1,5 +1,9 @@
 # audio-studio — approach
 
+> 2026-09-26 (marketing cycle 24): historical. The per-scene soundtrack.py/soundvN workflow described here is retired (synth direction dropped
+in cycle 16; per-scene folders archived in cycle 24 to ../archive/pre-teaser-full-studios/audio-studio/).
+Current workflow: tools/teaser-lanes/ — see structure.md.
+
 > **Decision note, 2026-09-23 (cycle 16):** the synthesised (`synth.py`) approach described
 > below is dropped — Nathan: "i do not wish to move forward with any of the synthesized
 > sounds". New rounds use recordings Nathan picks (Tunetank tracks for the ride and the

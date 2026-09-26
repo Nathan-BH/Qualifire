@@ -1,5 +1,9 @@
 # HyperFrames Studio — how to use the local web UI
 
+> 2026-09-26 (marketing cycle 24): the only live composition is now teaser-full/; scene sources live in
+scenes/<scene>/ and the old per-part folders (incl. the concat teaser/) are archived — see structure.md.
+Examples below that name other folders (e.g. project/teaser) predate this.
+
 The page at `http://localhost:3002/…` that opens after `npx hyperframes preview` is
 **HyperFrames Studio**: a browser-based editor and viewer for the composition in
 `silent-studio/<name>/index.html`. It looks like video-editing software because it is one,

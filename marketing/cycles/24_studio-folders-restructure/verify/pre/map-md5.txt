@@ -1,0 +1,4 @@
+34f23820af597ab54e966e36c622ba3e  marketing/silent-studio/teaser-full/map.png
+34f23820af597ab54e966e36c622ba3e  marketing/silent-studio/start-ride/map.png
+34f23820af597ab54e966e36c622ba3e  marketing/silent-studio/gates-saving/map.png
+34f23820af597ab54e966e36c622ba3e  marketing/silent-studio/ranking/map.png

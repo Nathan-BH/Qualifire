@@ -1,3 +1,6 @@
+> 2026-09-26: some paths below moved in the studio-folders restructure — see
+../24_studio-folders-restructure/README.md, section "Path map".
+
 # Open items — cycle 03 (2026-09-10)
 
 Judgment calls made without interrupting Nathan. He reads this whenever; nothing here needs

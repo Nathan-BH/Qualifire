@@ -1,3 +1,6 @@
+> 2026-09-26: some paths below moved in the studio-folders restructure — see
+../24_studio-folders-restructure/README.md, section "Path map".
+
 # Cycle 05 — open items
 
 ## Blocker: the device bridge can't run commands or delete files on Nathan's PC

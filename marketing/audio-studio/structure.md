@@ -1,132 +1,44 @@
 # audio-studio — structure
 
-> **Decision note, 2026-09-23 (cycle 16):** the `synth.py` synthesised direction is dropped —
-> Nathan: "i do not wish to move forward with any of the synthesized sounds". No new round
-> uses `synth.py` audio; the ride and opening use Nathan's Tunetank recordings, the other
-> scenes have no sound round — their deliverable is the silent render in
-> `../silent-studio/all-renders/` (cycle 17 withdrew cycle 16's audio-studio "silent
-> rounds"); earlier `soundvN/` rounds stay on disk for reference. See
-> `../cycles/16_ride-tunetank-soundtrack/README.md`. The text below predates this.
+> Rewritten 2026-09-26 (marketing cycle 24, studio-folders restructure). The previous per-scene version
+is archived at ../archive/pre-teaser-full-studios/audio-studio/structure.md.
 
-This folder is the sound design for the same Qualifire marketing compositions as
-`../silent-studio/`. One folder per teaser ingredient, same names, same set: `brandmark`,
-`colours`, `gates-saving`, `ranking`, `start-ride`, `teaser`.
+## Current workflow
 
-`all-renders/` is the one folder both directions touch. Nathan drops the current picked
-visual render there as the starting point for a scene's audio work (e.g.
-`gates-saving_v4.mp4`). **Every time Claude builds a new round for a scene — soundv1
-included, not just a version worth keeping — the file in `all-renders/` gets replaced**
-with that round's render + audio (e.g. `gates-saving_v4_with_sound_v2.mp4`), so
-`all-renders/` always holds Claude's latest round per scene for a quick look, silent
-only for a scene nobody's touched yet. Nathan did this by hand once, for gates-saving's
-soundv2; every other round (including first-pass soundv1s) is Claude's job as soon as
-that round is built — no "is it good enough yet" gate.
+Sound design for the one teaser happens in `tools/teaser-lanes/teaser-lanes.html` (video left, nine
+lanes right, one playhead; it plays live and writes no audio). Output = a clip list pasted into chat
+and/or a saved arrangement JSON. Carried forward from cycle 16 (2026-09-23): synthesised `synth.py`
+sound is dropped; real recordings (Tunetank) only.
 
-> Note, 2026-09-23 (cycle 17): `all-renders/` here holds **sounded** renders only. A scene's silent starting point is read from `../silent-studio/all-renders/` directly — nothing silent is copied into this folder any more.
+## Kits
 
-**This folder has a silent twin: `../silent-studio/all-renders/`**, which holds the
-same set of current picked renders but without audio (flat filenames, no
-`_with_sound_vN` suffix). The two track the same "what's current" state from two
-angles and both need updating together — see `../silent-studio/structure.md`'s
-all-renders section (READ THAT before any cleanup/"what's superseded" pass, it has
-the full checklist and the story of how this got missed once already).
+`tools/teaser-lanes/kitvN/`, numbered by build iteration, built by `tools/teaser-lanes/prep_kit.py`
+from a silent render in `../silent-studio/all-renders/`. See `tools/teaser-lanes/README.md` for the
+current kit list rather than restating it here.
 
-Created 2026-09-11. `all-renders/` convention added 2026-09-11 after Nathan swapped in
-`gates-saving_v4_with_sound_v2.mp4`; corrected the same day to "every round, not just
-ones worth keeping" after Nathan flagged that the "worth keeping" gate was never a rule
-he'd actually set.
+## Arrangements
 
-## How a scene's sound is made
+`teaser/arrangements/arrangement_vN/` (planned move to `teaser-full/arrangements/` on 2026-09-26,
+cycle 24, blocked by a Windows permission error — see `../cycles/24_studio-folders-restructure/OPEN-ITEMS.md`,
+"Escalations", before retrying). A built sound round, when one exists, goes in `teaser-full/soundvN/`, and
+its muxed MP4 in `all-renders/teaser-full_vN_with_sound_vM.mp4`.
 
-There's no external tool in the loop (Pixverse's free tier is one-shot and unusable
-for real iteration; see `APPROACH.md` for why and what else was considered). Claude
-writes the soundtrack as Python (numpy/scipy — synthesis, envelopes, a hand-rolled
-reverb) and mixes it onto the picked render with ffmpeg, in Claude's own sandbox, all
-in one pass. That's the one real difference from the hyperframes flow: there's no
-render.ps1 / preview-server step, because "render" and "check it" happen in the same
-turn — every version Claude produces is already a candidate for your review, not a
-disposable preview.
+## Sound sources `prep_kit.py` reads — do not move without editing it
 
-Shared building blocks (envelopes, notes, chords, pluck/pad/reverb, plus the brand
-chime and tier-colour tones) live once in `synth.py` at this folder's root, so a
-scene's `soundtrack.py` imports from it instead of redefining tones — see
-`APPROACH.md` for what's in there and why. `gates-saving/soundtrack.py` migrated
-off its own inline copy onto the shared `synth.py` in soundv3 (2026-09-13); every
-scene now imports it.
+`piano/projects/tunetank/…` (logo), `stemsplitter/tunetank-emotional-classical/sources/` (bed +
+stems), `ride/` (`ride_master.py`, `ride_tunetank.py` constants, `soundv2/ride_master_v2.wav`
+regression reference), and the root modules `synth.py`, `salamander_render.py`, `window_mix.py`
+(plus `fluid_render.py`, used by the piano scripts).
 
-Cross-scene tooling lives in `tools/` — first entry `tools/av-align/av-align.html` (cycle 16), Nathan's offline frame-stepping audio/video alignment page; see its README.
+## all-renders
 
-A scene folder is:
-```
-<scene>/
-  soundtrack.py         canonical synthesis script — plays the same role index.html
-                         does for the visuals: the source of truth, edited in place
-                         across iterations, not duplicated per round. Imports the
-                         shared synth.py (sys.path.insert(0, "..") — or "../.." for
-                         a scene nested one level deeper, like brandmark/opening/)
-  README.md             sonic direction + status table (mirrors hyperframes' per-scene
-                         README)
-  AUDIO-BRIEF.md         beat sheet + direction, Nathan's input before a round is
-                         composed; canonical, edited in place (not per round)
-  soundvN/
-    <scene>_..._vN.mp4  the picked render with that round's soundtrack muxed on
-    soundtrack_vN.wav   the soundtrack alone, for judging the audio without
-                         re-watching the video (hyperframes doesn't need this — sound
-                         isn't its deliverable; it is here)
-    FEEDBACK.md         everything about this round in one file: what this render is
-                         and why (so no README.md alongside it — matches hyperframes'
-                         own rounds/vN, which is just the mp4 + FEEDBACK.md), what
-                         changed since vN-1, what to listen for, your notes
-```
-One `soundvN` folder per iteration — same idea as hyperframes' `rounds/vN`, named
-`soundvN` per Nathan's steer. When you say what's off, Claude edits `soundtrack.py` in
-place, regenerates, and adds the next `soundvN`. No README.md inside a `soundvN` folder
-— everything needed to give feedback lives in that round's `FEEDBACK.md`, so review
-never means switching files.
+Empty as of this cycle; the with-sound sibling of `../silent-studio/all-renders/`.
 
-**`AUDIO-BRIEF.md` (added 2026-09-14):** Nathan's input before a round is composed, not
-after — a table of the scene's visual beats with exact timestamps plus a "what I want
-here" column. The trigger for creating or refreshing it is a visual round being
-approved (dropped into `../all-renders/`, per the convention below): Claude pre-fills
-the first three columns (time, what happens on screen, what the current soundtrack
-plays) from the composition's GSAP timeline and from `soundtrack.py`; Nathan directs by
-filling the last column and the whole-scene lines and setting Status; then Claude edits
-`soundtrack.py` to match. Two templates live at the audio-studio root, next to
-`synth.py`: `AUDIO-BRIEF.template.md` (the per-scene brief itself) and
-`FEEDBACK.template.md` (the structured feedback prompt for a `soundvN/FEEDBACK.md`'s
-"Nathan's feedback" section, referencing `AUDIO-BRIEF.md`'s row numbers). See
-`APPROACH.md`'s "Nathan's input before a round" section for the full reasoning and the
-alternatives considered.
+## Other tools
 
-**Finishing any round:** also copy that round's muxed mp4 into `../all-renders/`,
-replacing whatever's there for that scene (silent original or an older sound version)
-— see the `all-renders/` convention above. This happens every round, including a
-first-pass soundv1 or a version still mid-iteration — `all-renders/` is meant to be
-Nathan's quick-look copy of Claude's latest work, not a gate for "is it good enough."
+`tools/av-align/` (older per-scene alignment tool, kept as is).
 
-One exception to "one folder per teaser ingredient": `brandmark/` splits into two
-sub-scenes, `brandmark/opening/` and `brandmark/closing/`, each its own full scene
-folder (own `soundtrack.py`, `README.md`, `soundvN/`) — matching how
-`../silent-studio/brandmark/` is itself split. `sys.path.insert(0, "../..")` from
-inside those two reaches the shared `synth.py`, one level further up than usual.
+## Where the old per-scene folders went
 
-## Folder map
-
-| Folder | Status | Feedback goes to |
-|---|---|---|
-| `gates-saving/` | in progress — soundv1 (pulse + single chord), soundv2 (chord progression + plucked arpeggio + reverb), soundv3 (whoosh on zoom-out, start-ride's C-G-Am-F loop boosted to 165-210bpm, migrated onto shared `synth.py`) — muxed onto `gates-saving_v5.mp4`, and again onto `gates-saving_v6.mp4` unchanged (virgin-cycle9's visual fix touched no gate-crossing timings) … soundv11 (cycle 17): soundv10's Tunetank slice re-muxed onto gates-saving_v9 (inverted easing) | `gates-saving/soundv11/FEEDBACK.md` |
-| `brandmark/opening/` | in progress — soundv1, soundv2 (ring-draw pitch sweep, swoosh, new two-beat BRAND_STINGER replacing the old chime pair) — muxed onto the existing `opening_v3.mp4` | `brandmark/opening/soundv2/FEEDBACK.md` |
-| `brandmark/closing/` | in progress — soundv1, soundv2 (full two-beat BRAND_STINGER reusing opening's soundv2 motif, retimed to the new v3 visual) — muxed onto `closing_v3.mp4` | `brandmark/closing/soundv2/FEEDBACK.md` |
-| `colours/` | in progress — soundv1 | `colours/soundv1/FEEDBACK.md` |
-| `ranking/` | in progress — soundv1, soundv2 (new `droplet_run()` rising/accelerating crescendo synced to the new v5 climb), soundv3 (settle chime GREEN_CHIME not PURPLE_CHIME — Today is a P2 finish, not a personal best, virgin-cycle9) — muxed onto `ranking_v6.mp4` | `ranking/soundv3/FEEDBACK.md` |
-| `start-ride/` | in progress — soundv1, soundv2 (true silence before the button click, click on press, driving C-G-Am-F loop at 155bpm) — muxed onto the existing `start-ride_v4.mp4` | `start-ride/soundv2/FEEDBACK.md` |
-| `teaser/` | in progress — soundv1 (independent composition, not a concat — see `APPROACH.md`), soundv2 (rebuilt for the 47.6s teaser_v6 cut, each section now echoes its scene's current motif at the exact right instant) | `teaser/soundv2/FEEDBACK.md` |
-| `ride/` | family folder for the two-scene ride (start-ride + gates-saving as one soundtrack); the silent picture is `../silent-studio/ride/` (cycle 17) | `ride/soundv3/FEEDBACK.md` |
-
-## The one rule
-
-Same as hyperframes: feedback for a scene goes in that scene's most recent round's
-`FEEDBACK.md`, not in this file. This file and `APPROACH.md` are the only docs meant
-to stay high-level and current across the whole project.
-
-Direction changes go in `AUDIO-BRIEF.md`, round verdicts in `soundvN/FEEDBACK.md`.
+See `../archive/pre-teaser-full-studios/audio-studio/` for the archived material, and
+`../cycles/24_studio-folders-restructure/README.md` for the full old -> new path map.
