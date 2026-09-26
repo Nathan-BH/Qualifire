@@ -1,0 +1,103 @@
+<template>
+  <div data-hf-id="hf-tffi" id="opening" data-composition-id="opening" data-start="0" data-duration="6.2" data-width="1920" data-height="1080" style="position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg);">
+    <style>
+      #opening #opening-scene * { box-sizing: border-box; }
+
+      #opening #opening-scene {
+        position: absolute; top: 0; left: 0;
+        width: 1920px;
+        height: 1080px;
+        background: var(--bg);
+        overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        color: var(--ink);
+      }
+
+      #opening #opening-scene .clip { position: absolute; }
+      #opening #opening-scene .clip.full { top: 0; left: 0; width: 1920px; height: 1080px; }
+      #opening #opening-scene #open .inner { opacity: 1; }
+
+      /* logo mark (ring + slash), centred */
+      #opening #opening-scene #mark { position: absolute; top: 50%; left: 50%; width: 400px; height: 400px; margin: -200px 0 0 -200px; }
+      #opening #opening-scene #mark svg { width: 100%; height: 100%; display: block; }
+      #opening #opening-scene #slash { opacity: 0; }
+
+      /* wordmark + tagline, centred, same block the mark occupied */
+      #opening #opening-scene #wordmark { position: absolute; top: 50%; left: 0; width: 1920px; text-align: center; transform: translateY(-40px); }
+      #opening #opening-scene #wordmark .word    { font-size: 96px; font-weight: 800; letter-spacing: 22px; color: var(--ink); margin: 0 0 22px 0; opacity: 0; }
+      #opening #opening-scene #wordmark .tagline { font-size: 34px; font-weight: 500; letter-spacing: 1px;  color: var(--ink-dim); margin: 0; opacity: 0; }
+
+      /* ---- SVG colour tokens (presentation attribute removed from #ring below) ---- */
+      #opening #opening-scene #ring { stroke: var(--ink); }
+    </style>
+
+    <div data-hf-id="hf-a8nw" id="opening-scene" class="clip full" data-start="0" data-duration="6.2" data-track-index="0">
+
+      <!-- Opening (6.2s, v4): ring draws, yellow tail lands (slower, 1.3-1.8), mark fades OUT completely, a beat of
+           black, then the QUALIFIRE wordmark + tagline fade IN (3.80-4.90, moved later 2026-09-25 to land on the
+           teaser's piano bed -- see FEEDBACK-v1.md), a short hold, then a fade to black (5.20-6.00) instead of a
+           hard kill. Split out 2026-09-10 from ../../teaser/index.html (0-5.0s of the old 11.2s brand teaser);
+           v2 spaces the mark-out and wordmark-in apart per Nathan's v1 feedback; v3 slows the tail draw,
+           wordmark fade-in, and end fade per Nathan's v2 feedback (+1.0s total); v4 (2026-09-25) moves the
+           wordmark/tagline to 3.80/4.20 and shortens the post-tagline hold 0.60s -> 0.30s (total duration
+           6.5s -> 6.2s) so start-ride begins 0.3s sooner -- see FEEDBACK-v1.md's "Render investigation".
+           Geometry inlined from product/brand/logos/qualifire_logo_5_monogram_wordmark.svg (512x512 viewBox). -->
+      <div data-hf-id="hf-7xh0" id="open" class="clip full" data-start="0" data-duration="6.2" data-track-index="1">
+        <div data-hf-id="hf-lm34" class="inner">
+          <div data-hf-id="hf-tn5q" id="mark">
+            <svg data-hf-id="hf-5t8z" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+              <circle data-hf-id="hf-v1uc" id="ring" cx="256" cy="218" r="118" fill="none" stroke-width="30" stroke-linecap="round" transform="rotate(-90 256 218)" />
+              <line data-hf-id="hf-wvr5" id="slash" x1="291.355" y1="253.355" x2="387.5206" y2="349.5206" fill="none" stroke="#F5C542" stroke-width="30" stroke-linecap="round" />
+            </svg>
+          </div>
+          <div data-hf-id="hf-64rm" id="wordmark">
+            <p data-hf-id="hf-f7sf" class="word">QUALIFIRE</p>
+            <p data-hf-id="hf-o21e" class="tagline">Same road. New meaning.</p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+(function () {
+  var R = (document.currentScript && document.currentScript.closest('#opening-scene')) || document.querySelector('#opening-scene');
+  if (!R || !window.gsap) return;
+  function byId(id) { return R.querySelector('#' + id); }
+  gsap.context(function () {
+    var CIRC = 2 * Math.PI * 118;
+    gsap.set('#ring', { strokeDasharray: CIRC });
+    var tl = gsap.timeline({ paused: true });
+
+    // Beat 1 (0-1.65): ring draws clockwise, yellow tail lands. Hold to 2.0.
+    tl.fromTo('#ring', { strokeDashoffset: CIRC }, { strokeDashoffset: 0, duration: 1.3, ease: 'power2.inOut' }, 0);
+    tl.fromTo('#slash', { opacity: 0 }, { opacity: 1, duration: 0.50, ease: 'power1.out' }, 1.3);
+
+    // Beat 2 (2.0-2.45): mark fades out in place and is completely gone before anything else appears.
+    tl.to('#mark', { opacity: 0, duration: 0.45, ease: 'power1.inOut' }, 2.15);
+    tl.set('#mark', { opacity: 0 }, 2.60);
+
+    // 2.45-2.8: empty frame — the spacing Nathan asked for (v1 cross-faded these).
+
+    // Beat 3 (3.80-4.90): wordmark in, then tagline. Moved from 2.95/3.35 (2026-09-25) to land the
+    // wordmark on the bed's piano onset at ~3.70-3.80s (teaser clock == this scene's own clock) --
+    // see marketing/audio-studio/teaser/arrangements/arrangement_v1/FEEDBACK-v1.md.
+    tl.fromTo('#wordmark .word',    { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.80, ease: 'power2.out' }, 3.80);
+    tl.fromTo('#wordmark .tagline', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.70, ease: 'power2.out' }, 4.20);
+
+    // Beat 4 (4.90-5.20): hold, shortened from 0.60s to 0.30s (2026-09-25, Nathan: "text can
+    // appear for less long") so this scene ends 0.3s sooner -- pulls start-ride's whole button
+    // beat 0.3s earlier without touching start-ride's own file. See FEEDBACK-v1.md's "Render
+    // investigation" section for the cascading -0.3s this applies to every later scene and to
+    // the teaser-lanes arrangement's ride-start/e5/ranking-restart clip times.
+    // Beat 5 (5.20-6.00): fade to black, hard-killed at the clip end (6.20, was 6.50).
+    tl.to('#open .inner', { opacity: 0, duration: 0.80, ease: 'power1.inOut' }, 5.20);
+    tl.set('#open .inner', { opacity: 0 }, 6.20);
+
+    window.__timelines = window.__timelines || {};
+    window.__timelines.opening = tl;
+  }, R);
+})();
+    </script>
+  </div>
+</template>

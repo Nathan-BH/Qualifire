@@ -1,0 +1,316 @@
+<template>
+  <div data-hf-id="hf-o1re" id="gatessaving" data-composition-id="gatessaving" data-start="0" data-duration="12.3" data-width="1920" data-height="1080" style="position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg);">
+    <style>
+      #gatessaving #gatessaving-scene * { box-sizing: border-box; }
+
+      #gatessaving #gatessaving-scene {
+        position: absolute; top: 0; left: 0;
+        width: 1920px;
+        height: 1080px;
+        background: var(--bg);
+        overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        color: var(--ink);
+      }
+
+      #gatessaving #gatessaving-scene .clip { position: absolute; }
+      #gatessaving #gatessaving-scene .clip.full { top: 0; left: 0; width: 1920px; height: 1080px; }
+      #gatessaving #gatessaving-scene .clip .inner { opacity: 1; }
+
+      /* ---- map layer: static basemap PNG (see ../_map/README.md) + SVG overlay in the app's casing+core style ---- */
+      #gatessaving #gatessaving-scene #gatessaving-basemap { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; display: block; }
+      #gatessaving #gatessaving-scene svg.full-svg { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; display: block; }
+      #gatessaving #gatessaving-scene #cam { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 50% 50%; }
+      #gatessaving #gatessaving-scene #scrim-bottom {
+        position: absolute; left: 0; top: 780px; width: 1920px; height: 300px;
+        background: linear-gradient(to bottom, rgba(var(--bg-rgb),0) 0%, rgba(var(--bg-rgb),0.92) 100%);
+      }
+      #gatessaving #gatessaving-scene #attrib {
+        position: absolute; right: 24px; bottom: 14px; margin: 0;
+        font-size: 15px; letter-spacing: 0.3px; color: var(--ink-dim); opacity: 0.85;
+      }
+      #gatessaving #gatessaving-scene #dim { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; background: var(--bg); opacity: 0; }
+
+      #gatessaving #gatessaving-scene .caption {
+        position: absolute; top: 990px; left: 0; width: 1920px; margin: 0; text-align: center;
+        font-size: 44px; font-weight: 600; letter-spacing: 0.5px; color: var(--ink); opacity: 0; line-height: 1.3;
+        text-shadow: 0 2px 12px rgba(var(--bg-rgb),0.6);
+      }
+      #gatessaving #gatessaving-scene .caption .em-i { font-style: italic; font-weight: 600; }
+      #gatessaving #gatessaving-scene .caption .em-b { font-weight: 700; font-style: normal; }
+
+      /* ---- START button: RecordScreen.tsx values at exactly 2x (150→300 tall, 40→80px label) ---- */
+      #gatessaving #gatessaving-scene #start-btn {
+        position: absolute; left: 510px; top: 390px; width: 900px; height: 300px;
+        border-radius: 48px; border: 4px solid #F5C542; background: #F5C542;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+        opacity: 0;
+      }
+      #gatessaving #gatessaving-scene #start-btn .label { margin: 0; font-size: 80px; font-weight: 800; letter-spacing: 10px; text-indent: 10px; line-height: 1; color: #17171b; }
+      #gatessaving #gatessaving-scene #start-btn .sub   { margin: 0; font-size: 24px; letter-spacing: 2px; text-indent: 2px; color: #17171b; opacity: 0.75; }
+
+      /* ---- cards (ranking scene) ---- */
+      #gatessaving #gatessaving-scene .card {
+        position: absolute; background: var(--card); border: 2px solid var(--card-border); border-radius: 24px; opacity: 0;
+      }
+      #gatessaving #gatessaving-scene .card .hdr { position: absolute; left: 40px; right: 40px; top: 28px; display: flex; justify-content: space-between; align-items: baseline; }
+      #gatessaving #gatessaving-scene .card .lbl { font-size: 22px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: var(--ink-dim); }
+      #gatessaving #gatessaving-scene .num { font-variant-numeric: tabular-nums; }
+
+      #gatessaving #gatessaving-scene #rank-card { left: 560px; top: 300px; width: 800px; height: 330px; }
+      #gatessaving #gatessaving-scene #rank-pos { font-size: 40px; font-weight: 800; color: #9000C8; opacity: 0; }
+      #gatessaving #gatessaving-scene .rnum { position: absolute; left: 40px; width: 60px; font-size: 48px; font-weight: 800; color: var(--ink); line-height: 80px; }
+      #gatessaving #gatessaving-scene .rrow { position: absolute; left: 110px; right: 40px; height: 80px; display: flex; justify-content: space-between; align-items: center; opacity: 0; }
+      #gatessaving #gatessaving-scene .rrow .who  { font-size: 32px; font-weight: 600; color: var(--ink); }
+      #gatessaving #gatessaving-scene .rrow .time { font-size: 52px; font-weight: 800; color: var(--ink); }
+      #gatessaving #gatessaving-scene .rrow.today .who, #gatessaving #gatessaving-scene .rrow.today .time { color: #9000C8; }
+
+      #gatessaving #gatessaving-scene #tower { left: 560px; top: 110px; width: 800px; height: 700px; }
+      #gatessaving #gatessaving-scene #tower .rows { position: absolute; left: 40px; right: 40px; top: 84px; }
+      #gatessaving #gatessaving-scene .trow { display: flex; align-items: center; height: 60px; opacity: 0; }
+      #gatessaving #gatessaving-scene .trow .rk   { width: 70px; font-size: 30px; font-weight: 800; color: var(--ink-dim); }
+      #gatessaving #gatessaving-scene .trow .who  { flex: 1; font-size: 26px; font-weight: 600; color: var(--ink); }
+      #gatessaving #gatessaving-scene .trow .time { font-size: 34px; font-weight: 800; color: var(--ink); }
+      #gatessaving #gatessaving-scene .trow.today .rk, #gatessaving #gatessaving-scene .trow.today .who, #gatessaving #gatessaving-scene .trow.today .time { color: #9000C8; }
+
+      /* ---- SVG colour tokens (presentation attributes removed from the elements below) ---- */
+      #gatessaving #gatessaving-scene #route-casing { stroke: var(--route-casing); }
+      #gatessaving #gatessaving-scene .gate .gc { stroke: var(--route-casing); }
+      #gatessaving #gatessaving-scene #ring-start, #gatessaving #gatessaving-scene #ring-end { fill: var(--ring-fill); stroke: var(--ink); }
+      #gatessaving #gatessaving-scene #rider { stroke: var(--rider-stroke); }
+    </style>
+
+    <div data-hf-id="hf-ys6q" id="gatessaving-scene" class="clip full" data-start="0" data-duration="12.3" data-track-index="0">
+
+      <!-- Map layer: basemap PNG (captured once via ../_map/map-capture.html) + route/gates/rider as SVG.
+           Casing+core convention and colours are the app's (see product code, RecordScreen / way map). -->
+      <div data-hf-id="hf-c4ya" id="map" class="clip full" data-start="0" data-duration="12.3" data-track-index="1">
+        <div data-hf-id="hf-lm34" class="inner">
+          <div data-hf-id="hf-ftaq" id="cam">
+            <img data-hf-id="hf-vb63" id="gatessaving-basemap" src="map.png" alt="" onerror="this.style.display='none'">
+            <svg data-hf-id="hf-clm9" id="mapsvg" class="full-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+              <path data-hf-id="hf-8arj" id="route-casing" fill="none" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+              <path data-hf-id="hf-ze3x" id="route-core" fill="none" stroke="#F5C542" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" />
+              <path data-hf-id="hf-njco" class="sector" id="sec1" fill="none" stroke="#00D000" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+              <path data-hf-id="hf-wgcc" class="sector" id="sec2" fill="none" stroke="#F5C542" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+              <path data-hf-id="hf-v7tg" class="sector" id="sec3" fill="none" stroke="#9000C8" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+              <path data-hf-id="hf-pjqf" class="sector" id="sec4" fill="none" stroke="#00D000" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+              <g data-hf-id="hf-f0p9" class="gate" id="gate1" opacity="0"><line data-hf-id="hf-07c7" class="gc" stroke-width="8" stroke-linecap="round" /><line data-hf-id="hf-z04u" class="gk" style="stroke: var(--ink)" stroke-width="4" stroke-linecap="round" opacity="1" /></g>
+              <g data-hf-id="hf-4pe2" class="gate" id="gate2" opacity="0"><line data-hf-id="hf-g1jb" class="gc" stroke-width="8" stroke-linecap="round" /><line data-hf-id="hf-26ia" class="gk" style="stroke: var(--ink)" stroke-width="4" stroke-linecap="round" opacity="1" /></g>
+              <g data-hf-id="hf-eh3b" class="gate" id="gate3" opacity="0"><line data-hf-id="hf-fn8a" class="gc" stroke-width="8" stroke-linecap="round" /><line data-hf-id="hf-2ktb" class="gk" style="stroke: var(--ink)" stroke-width="4" stroke-linecap="round" opacity="1" /></g>
+              <circle data-hf-id="hf-2ho0" id="ring-start" r="13" stroke-width="4" opacity="0" />
+              <circle data-hf-id="hf-l2n3" id="ring-end" r="13" stroke-width="4" opacity="0" />
+              <circle data-hf-id="hf-vjca" id="rider" r="11" fill="#2F7DE1" stroke-width="3" opacity="0" />
+            </svg>
+          </div>
+          <div data-hf-id="hf-7iqb" id="scrim-bottom"></div>
+          <div data-hf-id="hf-6pf9" id="dim"></div>
+          <p data-hf-id="hf-fkgz" id="attrib">© OpenStreetMap contributors · OpenFreeMap</p>
+        </div>
+      </div>
+
+      <div data-hf-id="hf-8rfp" id="ui" class="clip full" data-start="0" data-duration="12.3" data-track-index="2">
+        <div data-hf-id="hf-bug8" class="inner">
+          <p data-hf-id="hf-i78s" class="caption" id="capA">Save your route as reference.</p>
+          <p data-hf-id="hf-t8wh" class="caption" id="capB">Next time. Start racing <span data-hf-id="hf-gz2p" class="em-b">your</span><span data-hf-id="hf-pe7j" class="em-i">self</span>.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+(function () {
+  var R = (document.currentScript && document.currentScript.closest('#gatessaving-scene')) || document.querySelector('#gatessaving-scene');
+  if (!R || !window.gsap) return;
+  function byId(id) { return R.querySelector('#' + id); }
+  gsap.context(function () {
+    // ---- shared constants (identical in ../_map/map-capture.html) ----
+    // Route: qualifire-20260903-1828.gpx (pre-start + warm-up points dropped), projected to
+    // 1920x1080 frame px at MAP_CENTER / MAP_ZOOM below (Web Mercator, 512-px tiles, bearing 180, no pitch).
+    // Douglas-Peucker 0.7 px, 70 points, then reflected through the frame centre (x,y)->(1920-x,1080-y) to
+    // match the capture page's bearing:180 (2026-09-10, per Nathan: ride should run bottom-left to top-right).
+    // Do NOT edit by hand; regenerate from the GPX if the framing changes.
+    var MAP_CENTER = [4.663233, 50.84662];   // [lon, lat]
+    var MAP_ZOOM   = 13.4;
+    var ROUTE = "577.0,948.7 578.3,946.1 587.4,940.8 590.9,942.8 591.0,947.5 594.6,952.3 600.9,957.1 612.0,951.2 628.8,946.5 640.6,940.1 647.0,934.5 650.7,933.1 680.0,906.9 682.9,905.7 684.4,908.7 687.0,909.9 718.3,885.5 755.1,859.2 784.7,851.6 830.7,830.3 836.7,833.6 848.2,835.8 854.2,835.6 858.6,833.9 935.4,752.8 975.7,720.7 988.2,706.0 988.5,693.2 984.8,688.8 977.8,684.5 958.3,677.3 954.2,679.7 949.1,679.2 915.3,666.6 914.4,663.0 916.5,658.5 922.5,650.9 924.4,645.7 922.9,642.6 923.9,641.4 926.1,640.4 929.9,641.0 936.2,645.0 949.8,650.0 954.6,652.8 977.5,661.0 986.2,656.2 1046.2,607.4 1063.2,592.6 1088.3,539.3 1099.0,520.7 1109.9,505.7 1124.1,488.9 1129.9,478.9 1149.6,455.4 1161.0,436.3 1163.0,435.0 1192.4,430.8 1220.7,402.9 1243.8,377.3 1248.4,368.1 1250.7,359.8 1272.0,333.6 1273.6,319.2 1279.4,318.7 1313.6,288.5 1319.5,286.8 1324.1,282.9 1342.8,293.3 1345.0,293.1";
+    var GATES = [0.25, 0.50, 0.75];                                  // exact quarters of the route (cycle 14 surge pacing; Nathan waived the 0.42-0.57 hairpin at gate 2)
+    var SECTOR_COLORS = ['#00D000', '#F5C542', '#9000C8', '#00D000'];  // sector k ends at gate k; sector 4 ends at the finish
+    // -------------------------------------------------------------------
+
+    // Day theme uses the positron basemap captured by ../_map/map-capture.html?theme=day (see _map/README.md).
+    if (document.documentElement.getAttribute('data-theme') === 'day') {
+      byId('gatessaving-basemap').src = 'map-day.png';
+    }
+
+    // Build the overlay geometry from ROUTE (runs once, before the timeline).
+    var pts = ROUTE.split(' ').map(function (s) { var a = s.split(','); return [parseFloat(a[0]), parseFloat(a[1])]; });
+    var dAttr = 'M' + pts.map(function (p) { return p[0] + ',' + p[1]; }).join(' L');
+    ['route-casing', 'route-core', 'sec1', 'sec2', 'sec3', 'sec4'].forEach(function (id) { byId(id).setAttribute('d', dAttr); });
+    var core = byId('route-core');
+    var L = core.getTotalLength();
+    function at(len) { return core.getPointAtLength(Math.max(0, Math.min(L, len))); }
+    var P0 = at(0), P1 = at(L);
+
+    // Scored-sector overlays: one dash window per sector on a copy of the route path.
+    var bounds = [0].concat(GATES).concat([1]);
+    for (var s = 0; s < 4; s++) {
+      var a = bounds[s] * L, b = bounds[s + 1] * L, el = byId('sec' + (s + 1));
+      el.setAttribute('stroke-dasharray', (b - a) + ' ' + L);
+      el.setAttribute('stroke-dashoffset', -a);
+    }
+
+    // Gates: 44-px tick perpendicular to the local heading, centred exactly on the route point.
+    var GATE_PT = [];
+    GATES.forEach(function (f, i) {
+      var p = at(f * L), q1 = at(f * L - 8), q2 = at(f * L + 8);
+      var ang = Math.atan2(q2.y - q1.y, q2.x - q1.x) + Math.PI / 2;
+      var dx = Math.cos(ang) * 22, dy = Math.sin(ang) * 22;
+      var g = byId('gate' + (i + 1));
+      Array.prototype.forEach.call(g.querySelectorAll('line'), function (ln) {
+        ln.setAttribute('x1', p.x - dx); ln.setAttribute('y1', p.y - dy);
+        ln.setAttribute('x2', p.x + dx); ln.setAttribute('y2', p.y + dy);
+      });
+      GATE_PT.push(p);
+    });
+    // Each tick is exactly 44 px long (±22 px about the route point, see dx/dy above). Seed the
+    // same stroke-dash reveal the brand mark's ring uses: dasharray = length, offset = length = hidden.
+    var GATE_LEN = 44;
+    gsap.set('.gate line', { strokeDasharray: GATE_LEN, strokeDashoffset: GATE_LEN });
+
+    gsap.set('#ring-start', { attr: { cx: P0.x, cy: P0.y } });
+    gsap.set('#ring-end',   { attr: { cx: P1.x, cy: P1.y } });
+    // Rider carries over from start-ride's finishing frame: starts at the route's finish point, full opacity,
+    // then fades out over the zoom-out lead-in before fading back in for this scene's own ride (see below).
+    gsap.set('#rider',      { attr: { cx: P1.x, cy: P1.y, r: 7, 'stroke-width': 2 }, opacity: 1 });
+
+    // ---- camera (ported verbatim from start-ride, for the zoom-out lead-in match-cut) ----
+    var CAM_S = 2.0;
+    var CAM_MIN_X = 960 / CAM_S, CAM_MAX_X = 1920 - 960 / CAM_S;   // 480..1440
+    var CAM_MIN_Y = 540 / CAM_S, CAM_MAX_Y = 1080 - 540 / CAM_S;   // 270..810
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+    function camAt(len) {   // mean of the route over +/-5% of L around len, clamped to the basemap
+      var W = 0.05 * L, sx = 0, sy = 0, n = 0;
+      for (var k = -10; k <= 10; k++) { var q = at(len + k / 10 * W); sx += q.x; sy += q.y; n++; }
+      return { x: clamp(sx / n, CAM_MIN_X, CAM_MAX_X), y: clamp(sy / n, CAM_MIN_Y, CAM_MAX_Y) };
+    }
+    function camXY(c, s) { return { x: s * (960 - c.x), y: s * (540 - c.y) }; }   // for transform-origin 50% 50%
+
+    // camStart = camera centred on the route's finish (camAt(L)) at 2x -- reproduces start-ride's own
+    // final camera position almost exactly, so the lead-in continues that frame instead of cutting to it.
+    var camStart = camXY(camAt(L), CAM_S);
+    gsap.set('#cam', { x: 0, y: 0, scale: 1, transformOrigin: '50% 50%' });
+    gsap.set('#cam', { x: camStart.x, y: camStart.y, scale: CAM_S });
+
+    // Melody-aligned pacing, take 3 (cycle 17, Nathan's feedback on v8): the rider still
+    // crosses each gate exactly on one of the soundtrack's own E5 pulses -- FIVE consecutive
+    // pulses carry the ride (start line, gate 1, gate 2, gate 3, finish line) and the gates
+    // sit at exact quarters of the route (GATES), so every leg is 0.25 of the route in one
+    // E5 interval (~1.9 s). Take 2 (cycle 14) had the speed shape backwards: it PEAKED at
+    // each gate and dipped between them. Nathan wants the opposite -- "speed up in between
+    // gates and slow down at the gates" -- so the profile is now the mirror image: within
+    // each leg the rider's speed is a half-cosine ramp chain DOWN to a DIP at every pulse
+    // (start line, the three gates, finish line -- the same rule at all five) and UP to a
+    // CREST at the leg's mid-time; every leg, the first and the last included, is one
+    // dip-crest-dip cycle, so the rider rolls out of the start gently and arrives at the
+    // finish gently. Because a ramp from speed a to b over d seconds covers d*(a+b)/2 of the
+    // route, every pulse is hit at its PULSE_T by construction and speed is continuous
+    // everywhere (no jolts). Numbers and the calculation:
+    // marketing/cycles/17_silent-versions-gate-easing-and-tool-ui/BRIEF-gate-easing-inversion.md
+    var PULSE_T = [0, 2.01, 3.85, 5.71, 7.58]; // ride-relative seconds of the five E5 pulses = video 3.80 / 5.81 / 7.65 / 9.51 / 11.38
+    var GATE_T = PULSE_T.slice(1, 4);          // the gate crossings (pulses 2-4)
+    var DIP_A = 0.6;                           // dip = (1-A) x mean of the adjacent legs' mean speeds; crest = whatever lands the leg
+    var RIDE_PROFILE = (function () {
+      var F = [0].concat(GATES).concat([1]), n = F.length - 1, D = [], vbar = [], v = [], crest = [], segs = [], k;
+      for (k = 0; k < n; k++) { D[k] = PULSE_T[k + 1] - PULSE_T[k]; vbar[k] = (F[k + 1] - F[k]) / D[k]; }
+      for (k = 1; k < n; k++) v[k] = (1 - DIP_A) * (vbar[k - 1] + vbar[k]) / 2;   // dip speed at every gate
+      v[0] = (1 - DIP_A) * vbar[0];                                               // start line: the same dip rule, one adjacent leg
+      v[n] = (1 - DIP_A) * vbar[n - 1];                                           // finish line: the same dip rule, one adjacent leg
+      for (k = 0; k < n; k++) { crest[k] = 2 * vbar[k] - (v[k] + v[k + 1]) / 2; segs.push([D[k] / 2, v[k], crest[k]]); segs.push([D[k] / 2, crest[k], v[k + 1]]); }   // per leg: [duration, vFrom, vTo] half-cosine ramps dip -> crest -> dip; the crest is what lands the leg
+      return { segs: segs, D: D, vbar: vbar, v: v, crest: crest, dur: PULSE_T[n] };
+    })();
+    // Route fraction at ride-relative time t. Monotone as long as every ramp stays above 0.
+    function rideFrac(t) {
+      var x = 0, t0 = 0, segs = RIDE_PROFILE.segs;
+      for (var i = 0; i < segs.length; i++) {
+        var d = segs[i][0], va = segs[i][1], vb = segs[i][2];
+        if (t <= t0 + d) { var tau = t - t0; return x + ((va + vb) / 2) * tau - ((vb - va) / 2) * (d / Math.PI) * Math.sin(Math.PI * tau / d); }
+        x += d * (va + vb) / 2; t0 += d;
+      }
+      return 1;
+    }
+
+    // Rider along the route on the surge profile: still 240 short linear tweens (no
+    // callbacks, no plugins, so a frame-seeking renderer always lands on the right point),
+    // now equal in TIME (dur/240 each) with the position per step taken from rideFrac(t).
+    function ride(tl, start, dur) {
+      var N = 240, prev = at(0), step = dur / N;
+      for (var i = 1; i <= N; i++) {
+        var p = at(rideFrac(i * step) * L);
+        tl.fromTo('#rider', { attr: { cx: prev.x, cy: prev.y } },
+          { attr: { cx: p.x, cy: p.y }, duration: step, ease: 'none', immediateRender: false, lazy: false },
+          start + (i - 1) * step);
+        prev = p;
+      }
+    }
+
+    var tl = gsap.timeline({ paused: true });
+
+    // Frame 0: continuing from start-ride's finishing 2x frame -- zoomed in on the route's finish,
+    // rider still there (fades out over the lead-in below); route already fully drawn, nothing saved yet.
+
+    // Beat 0 (0-1.0): zoom-out lead-in, continuing the camera from start-ride's end frame down to this
+    // scene's normal framing. Stroke widths crossfade from start-ride's 2x-reduced values (7/4) to
+    // gates-saving's normal values (10/6) over the same 1.0s. Rider (left over from start-ride) fades out.
+    tl.fromTo('#cam', { x: camStart.x, y: camStart.y, scale: CAM_S }, { x: 0, y: 0, scale: 1, duration: 1.0, ease: 'power2.inOut' }, 0);
+    tl.fromTo('#route-casing', { attr: { 'stroke-width': 7 } }, { attr: { 'stroke-width': 10 }, duration: 1.0, ease: 'power2.inOut' }, 0);
+    tl.fromTo('#route-core', { attr: { 'stroke-width': 4 } }, { attr: { 'stroke-width': 6 }, duration: 1.0, ease: 'power2.inOut' }, 0);
+    tl.to('#rider', { opacity: 0, duration: 0.5, ease: 'power1.in' }, 0);
+    // Snap the (now-invisible) rider back to the route's start point, so its 3.4s fade-in for the
+    // second ride reappears at the start line rather than jumping there from the finish at 3.8s.
+    tl.set('#rider', { attr: { cx: P0.x, cy: P0.y, r: 11, 'stroke-width': 3 } }, 0.5);
+
+    // Beat 1 (1.05-1.55): start/end landmark rings pop in.
+    tl.fromTo('#ring-start', { opacity: 0, scale: 0, svgOrigin: P0.x + ' ' + P0.y }, { opacity: 1, scale: 1, duration: 0.4, ease: 'back.out(2)' }, 1.05);
+    tl.fromTo('#ring-end',   { opacity: 0, scale: 0, svgOrigin: P1.x + ' ' + P1.y }, { opacity: 1, scale: 1, duration: 0.4, ease: 'back.out(2)' }, 1.15);
+
+    // Beat 2 (1.6-4.9): caption + three gate ticks pop in, centred on the route.
+    tl.fromTo('#capA', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 1.6);
+    // Gates draw across the route the way the brand mark's ring draws on (stroke-dash reveal),
+    // casing and tick together as one stroke. Same stagger points as before (1.9 / 2.2 / 2.5).
+    GATE_PT.forEach(function (p, i) {
+      var t0 = 1.9 + i * 0.3;
+      tl.set('#gate' + (i + 1), { opacity: 1 }, t0);
+      tl.fromTo('#gate' + (i + 1) + ' line', { strokeDashoffset: GATE_LEN },
+        { strokeDashoffset: 0, duration: 0.4, ease: 'power2.out' }, t0);
+    });
+    tl.to('#capA', { opacity: 0, duration: 0.4 }, 4.5);
+    tl.set('#capA', { opacity: 0 }, 4.9);
+
+    // Beat 3 (5.2-12.3): caption B -- fades in while the second ride (started 3.8) is already running.
+    tl.fromTo('#capB', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 5.2);
+    tl.to('#capB', { opacity: 0, duration: 0.4 }, 11.9);
+    tl.set('#capB', { opacity: 0 }, 12.3);
+
+    // Beat 4 (3.8-11.38): second ride, on the surge profile -- start line, three gates and the finish each
+    // on an E5 pulse. Crossing a gate = that sector paints its tier colour (cycle 9: the overlay is now the
+    // core's own 6px, so the line changes colour but never width; the gate ticks stay white -- the old
+    // recolour-on-cross was never a wanted feature, per Nathan).
+    var RIDE_T0 = 3.80, RIDE_DUR = RIDE_PROFILE.dur;                 // ride starts ON the E5 at video 3.80s; ends ON the E5 at 11.38s
+    tl.fromTo('#rider', { opacity: 0 }, { opacity: 1, duration: 0.3, immediateRender: false }, RIDE_T0 - 0.4);
+    ride(tl, RIDE_T0, RIDE_DUR);
+    // Sector recolouring fires at the gate's own crossing time -- GATE_T is what ride() paces to,
+    // so the dot and the paint cannot drift apart.
+    GATES.forEach(function (f, i) {
+      tl.to('#sec' + (i + 1), { opacity: 1, duration: 0.25 }, RIDE_T0 + GATE_T[i]);
+    });
+    tl.to('#sec4', { opacity: 1, duration: 0.25 }, RIDE_T0 + RIDE_DUR);
+    // hold to 12.4
+    tl.set('#rider', { opacity: 1 }, RIDE_T0 + RIDE_DUR);
+
+    window.__timelines = window.__timelines || {};
+    window.__timelines.gatessaving = tl;
+  }, R);
+})();
+    </script>
+  </div>
+</template>

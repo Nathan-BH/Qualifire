@@ -1,0 +1,267 @@
+<template>
+  <div data-hf-id="hf-r5ql" id="startride" data-composition-id="startride" data-start="0" data-duration="14.0" data-width="1920" data-height="1080" style="position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg);">
+    <style>
+      #startride #startride-scene * { box-sizing: border-box; }
+
+      #startride #startride-scene {
+        position: absolute; top: 0; left: 0;
+        width: 1920px;
+        height: 1080px;
+        background: var(--bg);
+        overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        color: var(--ink);
+      }
+
+      #startride #startride-scene .clip { position: absolute; }
+      #startride #startride-scene .clip.full { top: 0; left: 0; width: 1920px; height: 1080px; }
+      #startride #startride-scene .clip .inner { opacity: 1; }
+
+      /* ---- map layer: static basemap PNG (see ../_map/README.md) + SVG overlay in the app's casing+core style ---- */
+      #startride #startride-scene #startride-basemap { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; display: block; }
+      #startride #startride-scene svg.full-svg { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; display: block; }
+      /* camera: everything map-space lives in #cam and is zoomed/panned as one layer (map.png is 3840x2160, so 2x is native) */
+      #startride #startride-scene #cam  { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; transform-origin: 50% 50%; }
+      #startride #startride-scene #tint { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; background: rgba(var(--bg-rgb),0.25); }
+      /* virtual cursor: hotspot (arrow tip) is the element's top-left corner */
+      #startride #startride-scene #cursor { position: absolute; left: 0; top: 0; width: 44px; height: 66px; opacity: 0; }
+      #startride #startride-scene #attrib {
+        position: absolute; right: 24px; bottom: 14px; margin: 0;
+        font-size: 15px; letter-spacing: 0.3px; color: var(--ink-dim); opacity: 0.85;
+      }
+      #startride #startride-scene #dim { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; background: var(--bg); opacity: 0; }
+      #startride #startride-scene #blackout { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; background: var(--bg); opacity: 1; pointer-events: none; }
+
+      #startride #startride-scene .caption {
+        position: absolute; top: 920px; left: 0; width: 1920px; margin: 0; text-align: center;
+        font-size: 44px; font-weight: 600; letter-spacing: 0.5px; color: var(--ink); opacity: 0; line-height: 1.3;
+        text-shadow: 0 2px 12px rgba(var(--bg-rgb),0.6);
+      }
+
+      /* ---- START button: RecordScreen.tsx values at exactly 2x (150→300 tall, 40→80px label) ---- */
+      #startride #startride-scene #start-btn {
+        position: absolute; left: 510px; top: 390px; width: 900px; height: 300px;
+        border-radius: 48px; border: 4px solid #F5C542; background: #F5C542;
+        display: flex; align-items: center; justify-content: center;
+        opacity: 0;
+      }
+      #startride #startride-scene #start-btn .label { margin: 0; font-size: 80px; font-weight: 800; letter-spacing: 10px; text-indent: 10px; line-height: 1; color: #17171b; }
+
+      /* ---- cards (ranking scene) ---- */
+      #startride #startride-scene .card {
+        position: absolute; background: var(--card); border: 2px solid var(--card-border); border-radius: 24px; opacity: 0;
+      }
+      #startride #startride-scene .card .hdr { position: absolute; left: 40px; right: 40px; top: 28px; display: flex; justify-content: space-between; align-items: baseline; }
+      #startride #startride-scene .card .lbl { font-size: 22px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: var(--ink-dim); }
+      #startride #startride-scene .num { font-variant-numeric: tabular-nums; }
+
+      #startride #startride-scene #rank-card { left: 560px; top: 300px; width: 800px; height: 330px; }
+      #startride #startride-scene #rank-pos { font-size: 40px; font-weight: 800; color: #9000C8; opacity: 0; }
+      #startride #startride-scene .rnum { position: absolute; left: 40px; width: 60px; font-size: 48px; font-weight: 800; color: var(--ink); line-height: 80px; }
+      #startride #startride-scene .rrow { position: absolute; left: 110px; right: 40px; height: 80px; display: flex; justify-content: space-between; align-items: center; opacity: 0; }
+      #startride #startride-scene .rrow .who  { font-size: 32px; font-weight: 600; color: var(--ink); }
+      #startride #startride-scene .rrow .time { font-size: 52px; font-weight: 800; color: var(--ink); }
+      #startride #startride-scene .rrow.today .who, #startride #startride-scene .rrow.today .time { color: #9000C8; }
+
+      #startride #startride-scene #tower { left: 560px; top: 110px; width: 800px; height: 700px; }
+      #startride #startride-scene #tower .rows { position: absolute; left: 40px; right: 40px; top: 84px; }
+      #startride #startride-scene .trow { display: flex; align-items: center; height: 60px; opacity: 0; }
+      #startride #startride-scene .trow .rk   { width: 70px; font-size: 30px; font-weight: 800; color: var(--ink-dim); }
+      #startride #startride-scene .trow .who  { flex: 1; font-size: 26px; font-weight: 600; color: var(--ink); }
+      #startride #startride-scene .trow .time { font-size: 34px; font-weight: 800; color: var(--ink); }
+      #startride #startride-scene .trow.today .rk, #startride #startride-scene .trow.today .who, #startride #startride-scene .trow.today .time { color: #9000C8; }
+
+      /* ---- SVG colour tokens (presentation attributes removed from the elements below) ---- */
+      #startride #startride-scene #route-casing { stroke: var(--route-casing); }
+      #startride #startride-scene .gate .gc { stroke: var(--route-casing); }
+      #startride #startride-scene #ring-start, #startride #startride-scene #ring-end { fill: var(--ring-fill); stroke: var(--ink); }
+      #startride #startride-scene #rider { stroke: var(--rider-stroke); }
+    </style>
+
+    <div data-hf-id="hf-vdz9" id="startride-scene" class="clip full" data-start="0" data-duration="14.0" data-track-index="0">
+
+      <!-- Map layer: basemap PNG (captured once via ../_map/map-capture.html) + route/gates/rider as SVG.
+           Casing+core convention and colours are the app's (see product code, RecordScreen / way map). -->
+      <div data-hf-id="hf-6mhp" id="map" class="clip full" data-start="0" data-duration="14.0" data-track-index="1">
+        <div data-hf-id="hf-lm34" class="inner">
+          <div data-hf-id="hf-ftaq" id="cam">
+            <img data-hf-id="hf-se2r" id="startride-basemap" src="map.png" alt="" onerror="this.style.display='none'">
+            <div data-hf-id="hf-5tue" id="tint"></div>
+            <svg data-hf-id="hf-clm9" id="mapsvg" class="full-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+              <path data-hf-id="hf-nvjv" id="route-casing" fill="none" stroke-width="7" stroke-linejoin="round" stroke-linecap="round" />
+              <path data-hf-id="hf-7abz" id="route-core" fill="none" stroke="#F5C542" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" />
+              <path data-hf-id="hf-py1b" class="sector" id="sec1" fill="none" stroke="#00D000" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+              <path data-hf-id="hf-si8b" class="sector" id="sec2" fill="none" stroke="#F5C542" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+              <path data-hf-id="hf-a4wj" class="sector" id="sec3" fill="none" stroke="#9000C8" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+              <path data-hf-id="hf-228w" class="sector" id="sec4" fill="none" stroke="#00D000" stroke-width="9" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+              <g data-hf-id="hf-f0p9" class="gate" id="gate1" opacity="0"><line data-hf-id="hf-07c7" class="gc" stroke-width="8" stroke-linecap="round" /><line data-hf-id="hf-qy5d" class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
+              <g data-hf-id="hf-4pe2" class="gate" id="gate2" opacity="0"><line data-hf-id="hf-g1jb" class="gc" stroke-width="8" stroke-linecap="round" /><line data-hf-id="hf-sa5x" class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
+              <g data-hf-id="hf-eh3b" class="gate" id="gate3" opacity="0"><line data-hf-id="hf-fn8a" class="gc" stroke-width="8" stroke-linecap="round" /><line data-hf-id="hf-th30" class="gk" stroke="#F5C542" stroke-width="3" stroke-linecap="round" opacity="0.6" /></g>
+              <circle data-hf-id="hf-2ho0" id="ring-start" r="13" stroke-width="4" opacity="0" />
+              <circle data-hf-id="hf-l2n3" id="ring-end" r="13" stroke-width="4" opacity="0" />
+              <circle data-hf-id="hf-2ndi" id="rider" r="7" fill="#2F7DE1" stroke-width="2" opacity="0" />
+            </svg>
+          </div>
+          <div data-hf-id="hf-6pf9" id="dim"></div>
+          <p data-hf-id="hf-fkgz" id="attrib">© OpenStreetMap contributors · OpenFreeMap</p>
+        </div>
+      </div>
+
+      <div data-hf-id="hf-rou4" id="ui" class="clip full" data-start="0" data-duration="14.0" data-track-index="2">
+        <div data-hf-id="hf-bug8" class="inner">
+          <div data-hf-id="hf-lzxk" id="start-btn"><p data-hf-id="hf-ppnx" class="label">START</p></div>
+          <svg data-hf-id="hf-eoi7" id="cursor" viewBox="0 0 28 42" xmlns="http://www.w3.org/2000/svg"><polygon data-hf-id="hf-f34z" points="1,1 1,35 9.5,27 15.5,41 21,38.5 15,25 26,25" fill="#FFFFFF" stroke="#17171b" stroke-width="2" stroke-linejoin="round" /></svg>
+          <p data-hf-id="hf-5s91" class="caption" id="cap1">Ride your normal route.</p>
+        </div>
+      </div>
+
+      <div data-hf-id="hf-9vqe" id="blackout"></div>
+
+    </div>
+
+    <script>
+(function () {
+  var R = (document.currentScript && document.currentScript.closest('#startride-scene')) || document.querySelector('#startride-scene');
+  if (!R || !window.gsap) return;
+  function byId(id) { return R.querySelector('#' + id); }
+  gsap.context(function () {
+    // ---- shared constants (identical in ../_map/map-capture.html) ----
+    // Route: qualifire-20260903-1828.gpx (pre-start + warm-up points dropped), projected to
+    // 1920x1080 frame px at MAP_CENTER / MAP_ZOOM below (Web Mercator, 512-px tiles, bearing 180, no pitch).
+    // Douglas-Peucker 0.7 px, 70 points, then reflected through the frame centre (x,y)->(1920-x,1080-y) to
+    // match the capture page's bearing:180 (2026-09-10, per Nathan: ride should run bottom-left to top-right).
+    // Do NOT edit by hand; regenerate from the GPX if the framing changes.
+    var MAP_CENTER = [4.663233, 50.84662];   // [lon, lat]
+    var MAP_ZOOM   = 13.4;
+    var ROUTE = "577.0,948.7 578.3,946.1 587.4,940.8 590.9,942.8 591.0,947.5 594.6,952.3 600.9,957.1 612.0,951.2 628.8,946.5 640.6,940.1 647.0,934.5 650.7,933.1 680.0,906.9 682.9,905.7 684.4,908.7 687.0,909.9 718.3,885.5 755.1,859.2 784.7,851.6 830.7,830.3 836.7,833.6 848.2,835.8 854.2,835.6 858.6,833.9 935.4,752.8 975.7,720.7 988.2,706.0 988.5,693.2 984.8,688.8 977.8,684.5 958.3,677.3 954.2,679.7 949.1,679.2 915.3,666.6 914.4,663.0 916.5,658.5 922.5,650.9 924.4,645.7 922.9,642.6 923.9,641.4 926.1,640.4 929.9,641.0 936.2,645.0 949.8,650.0 954.6,652.8 977.5,661.0 986.2,656.2 1046.2,607.4 1063.2,592.6 1088.3,539.3 1099.0,520.7 1109.9,505.7 1124.1,488.9 1129.9,478.9 1149.6,455.4 1161.0,436.3 1163.0,435.0 1192.4,430.8 1220.7,402.9 1243.8,377.3 1248.4,368.1 1250.7,359.8 1272.0,333.6 1273.6,319.2 1279.4,318.7 1313.6,288.5 1319.5,286.8 1324.1,282.9 1342.8,293.3 1345.0,293.1";
+    var GATES = [0.24, 0.63, 0.84];                                  // fractions of route length (clear of the 0.40-0.57 self-loop)
+    var SECTOR_COLORS = ['#00D000', '#F5C542', '#9000C8', '#00D000'];  // sector k ends at gate k; sector 4 ends at the finish
+    // -------------------------------------------------------------------
+
+    // Day theme uses the positron basemap captured by ../_map/map-capture.html?theme=day (see _map/README.md).
+    if (document.documentElement.getAttribute('data-theme') === 'day') {
+      byId('startride-basemap').src = 'map-day.png';
+    }
+
+    // Build the overlay geometry from ROUTE (runs once, before the timeline).
+    var pts = ROUTE.split(' ').map(function (s) { var a = s.split(','); return [parseFloat(a[0]), parseFloat(a[1])]; });
+    var dAttr = 'M' + pts.map(function (p) { return p[0] + ',' + p[1]; }).join(' L');
+    ['route-casing', 'route-core', 'sec1', 'sec2', 'sec3', 'sec4'].forEach(function (id) { byId(id).setAttribute('d', dAttr); });
+    var core = byId('route-core');
+    var L = core.getTotalLength();
+    function at(len) { return core.getPointAtLength(Math.max(0, Math.min(L, len))); }
+    var P0 = at(0), P1 = at(L);
+
+    // Scored-sector overlays: one dash window per sector on a copy of the route path.
+    var bounds = [0].concat(GATES).concat([1]);
+    for (var s = 0; s < 4; s++) {
+      var a = bounds[s] * L, b = bounds[s + 1] * L, el = byId('sec' + (s + 1));
+      el.setAttribute('stroke-dasharray', (b - a) + ' ' + L);
+      el.setAttribute('stroke-dashoffset', -a);
+    }
+
+    // Gates: 44-px tick perpendicular to the local heading, centred exactly on the route point.
+    var GATE_PT = [];
+    GATES.forEach(function (f, i) {
+      var p = at(f * L), q1 = at(f * L - 8), q2 = at(f * L + 8);
+      var ang = Math.atan2(q2.y - q1.y, q2.x - q1.x) + Math.PI / 2;
+      var dx = Math.cos(ang) * 22, dy = Math.sin(ang) * 22;
+      var g = byId('gate' + (i + 1));
+      Array.prototype.forEach.call(g.querySelectorAll('line'), function (ln) {
+        ln.setAttribute('x1', p.x - dx); ln.setAttribute('y1', p.y - dy);
+        ln.setAttribute('x2', p.x + dx); ln.setAttribute('y2', p.y + dy);
+      });
+      GATE_PT.push(p);
+    });
+
+    gsap.set('#ring-start', { attr: { cx: P0.x, cy: P0.y } });
+    gsap.set('#ring-end',   { attr: { cx: P1.x, cy: P1.y } });
+    gsap.set('#rider',      { attr: { cx: P0.x, cy: P0.y } });
+
+    // ---- camera (start-ride only; shared constants above are untouched) ----
+    var CAM_S = 2.0;                                                  // 2x = map.png's native pixelRatio:2 resolution
+    var CAM_MIN_X = 960 / CAM_S, CAM_MAX_X = 1920 - 960 / CAM_S;      // 480..1440: frame never shows past the basemap
+    var CAM_MIN_Y = 540 / CAM_S, CAM_MAX_Y = 1080 - 540 / CAM_S;      // 270..810
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+    // Camera centre for the rider at route length len: mean of the route over +/-5% of L around it
+    // (symmetric window -> smooth, no lag), clamped to the basemap.
+    function camAt(len) {
+      var W = 0.05 * L, sx = 0, sy = 0, n = 0;
+      for (var k = -10; k <= 10; k++) { var q = at(len + k / 10 * W); sx += q.x; sy += q.y; n++; }
+      return { x: clamp(sx / n, CAM_MIN_X, CAM_MAX_X), y: clamp(sy / n, CAM_MIN_Y, CAM_MAX_Y) };
+    }
+    // GSAP x/y for #cam (transform-origin 50% 50%) that puts map point c on the frame centre at scale s.
+    function camXY(c, s) { return { x: s * (960 - c.x), y: s * (540 - c.y) }; }
+
+    // Rider along the route at constant speed: 240 short linear tweens (no callbacks, no plugins,
+    // so a frame-seeking renderer always lands on the right point).
+    function ride(tl, start, dur) {
+      var N = 240, prev = at(0), cprev = camXY(camAt(0), CAM_S);
+      for (var i = 1; i <= N; i++) {
+        var len = i / N * L, p = at(len), c = camXY(camAt(len), CAM_S), t0 = start + (i - 1) * dur / N;
+        tl.fromTo('#rider', { attr: { cx: prev.x, cy: prev.y } },
+          { attr: { cx: p.x, cy: p.y }, duration: dur / N, ease: 'none', immediateRender: false, lazy: false }, t0);
+        tl.fromTo('#cam', { x: cprev.x, y: cprev.y },
+          { x: c.x, y: c.y, duration: dur / N, ease: 'none', immediateRender: false, lazy: false }, t0);
+        prev = p; cprev = c;
+      }
+    }
+    // Static colour swap when a gate is crossed (the app has no gate pulse).
+    function scoreGate(tl, k, t) {
+      tl.set('#gate' + k + ' .gk', { attr: { stroke: SECTOR_COLORS[k - 1], 'stroke-width': 5, opacity: 1 } }, t);
+    }
+
+    var tl = gsap.timeline({ paused: true });
+
+    // Frame 0: map + rider at the start under a dim; the START button is the first thing you see.
+    gsap.set('#rider', { opacity: 1 });
+    gsap.set('#dim', { opacity: 0.6 });
+    gsap.set('#cam', { x: 0, y: 0, scale: 1, transformOrigin: '50% 50%' });   // frame 0: overview
+
+    // Beat 1 (1.0-4.0): START button in, pressed, out.
+    tl.fromTo('#start-btn', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 0.2);
+    tl.to('#start-btn', { scale: 0.96, duration: 0.15, ease: 'power2.out', transformOrigin: '50% 50%' }, 2.2);
+    tl.to('#start-btn', { scale: 1, duration: 0.2, ease: 'power2.out' }, 2.35);
+    tl.to('#start-btn', { opacity: 0, duration: 0.45, ease: 'power1.in' }, 2.55);
+    tl.to('#dim', { opacity: 0, duration: 0.45, ease: 'power1.in' }, 2.55);
+    tl.set('#start-btn', { opacity: 0 }, 3.0);
+
+    // Beat 1b: virtual cursor — in at bottom-right, glides onto START, presses with the button (2.2), out with it.
+    tl.set('#cursor', { x: 1290, y: 790, scale: 1, transformOrigin: '0 0' }, 0);
+    tl.to('#cursor', { opacity: 1, duration: 0.3 }, 0.9);
+    tl.to('#cursor', { x: 1010, y: 555, duration: 0.9, ease: 'power2.inOut' }, 1.0);
+    tl.to('#cursor', { scale: 0.85, duration: 0.15, ease: 'power2.out' }, 2.2);
+    tl.to('#cursor', { scale: 1, duration: 0.2, ease: 'power2.out' }, 2.35);
+    tl.to('#cursor', { opacity: 0, duration: 0.45, ease: 'power1.in' }, 2.55);
+    tl.set('#cursor', { opacity: 0 }, 3.0);
+
+    // Camera push-in (3.8-5.1): overview -> 2x on the start of the route, as the START overlay clears.
+    var cam0 = camXY(camAt(0), CAM_S);
+    tl.to('#cam', { x: cam0.x, y: cam0.y, scale: CAM_S, duration: 1.3, ease: 'power2.inOut' }, 2.8);
+
+    // Beat 2 (4.0-5.3): rider waits at the start (already there). Caption in.
+    tl.fromTo('#cap1', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 3.6);
+
+    // Beat 3 (5.3-13.8): route draws behind the rider, constant speed.
+    tl.fromTo(['#route-casing', '#route-core'], { strokeDasharray: L, strokeDashoffset: L },
+      { strokeDashoffset: 0, duration: 8.5, ease: 'none' }, 4.3);
+    ride(tl, 4.3, 8.5);
+
+    // Beat 4 (13.8-14.0): hold at the finish; caption out.
+    tl.to('#cap1', { opacity: 0, duration: 0.4 }, 12.6);
+    tl.set('#cap1', { opacity: 0 }, 13.0);
+
+    // 1.0s blank lead-in: shift every beat above by +1.0s in one move (all camera/rider motion is
+    // driven by these tween start times, not by absolute-clock reads, so a single shiftChildren is
+    // exact), then add the blackout hold/reveal as new tweens positioned AFTER the shift so they land
+    // at their own literal times (0.0-0.4 hold, 0.4-1.0 reveal) instead of being shifted again.
+    tl.shiftChildren(1.0, true);
+    tl.to('#blackout', { opacity: 0, duration: 0.6, ease: 'power1.inOut' }, 0.4);
+
+    window.__timelines = window.__timelines || {};
+    window.__timelines.startride = tl;
+  }, R);
+})();
+    </script>
+  </div>
+</template>

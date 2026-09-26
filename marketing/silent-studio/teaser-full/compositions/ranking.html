@@ -1,0 +1,283 @@
+<template>
+  <div data-hf-id="hf-g77d" id="ranking" data-composition-id="ranking" data-start="0" data-duration="10.8" data-width="1920" data-height="1080" style="position: relative; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg);">
+    <style>
+      #ranking #ranking-scene * { box-sizing: border-box; }
+
+      #ranking #ranking-scene {
+        position: absolute; top: 0; left: 0;
+        width: 1920px;
+        height: 1080px;
+        background: var(--bg);
+        overflow: hidden;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        color: var(--ink);
+      }
+
+      #ranking #ranking-scene .clip { position: absolute; }
+      #ranking #ranking-scene .clip.full { top: 0; left: 0; width: 1920px; height: 1080px; }
+      #ranking #ranking-scene .clip .inner { opacity: 1; }
+
+      /* ---- map layer: static basemap PNG (see ../_map/README.md) + SVG overlay in the app's casing+core style ---- */
+      #ranking #ranking-scene #ranking-basemap { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; display: block; }
+      #ranking #ranking-scene svg.full-svg { position: absolute; top: 0; left: 0; width: 1920px; height: 1080px; display: block; }
+      #ranking #ranking-scene #scrim-bottom {
+        position: absolute; left: 0; top: 780px; width: 1920px; height: 300px;
+        background: linear-gradient(to bottom, rgba(var(--bg-rgb),0) 0%, rgba(var(--bg-rgb),0.92) 100%);
+      }
+      #ranking #ranking-scene #attrib {
+        position: absolute; right: 24px; bottom: 14px; margin: 0;
+        font-size: 15px; letter-spacing: 0.3px; color: var(--ink-dim); opacity: 0.85;
+      }
+      #ranking #ranking-scene #dim { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; background: var(--bg); opacity: 0; }
+
+      #ranking #ranking-scene .caption {
+        position: absolute; top: 920px; left: 0; width: 1920px; margin: 0; text-align: center;
+        font-size: 44px; font-weight: 600; letter-spacing: 0.5px; color: var(--ink); opacity: 0; line-height: 1.3;
+        text-shadow: 0 2px 12px rgba(var(--bg-rgb),0.6);
+      }
+      /* v4: reverse of v3's <em> emphasis. .em-b = "your" (bold, not italic); .em-i = "selfs" (italic, not
+         bold — kept at the caption's own base weight of 600, same as v3's <em> weight, just now italic-only). */
+      #ranking #ranking-scene .em-b { font-weight: 700; font-style: normal; }
+      #ranking #ranking-scene .em-i { font-style: italic; font-weight: 600; }
+
+      /* ---- START button: RecordScreen.tsx values at exactly 2x (150→300 tall, 40→80px label) ---- */
+      #ranking #ranking-scene #start-btn {
+        position: absolute; left: 510px; top: 390px; width: 900px; height: 300px;
+        border-radius: 48px; border: 4px solid #F5C542; background: #F5C542;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+        opacity: 0;
+      }
+      #ranking #ranking-scene #start-btn .label { margin: 0; font-size: 80px; font-weight: 800; letter-spacing: 10px; text-indent: 10px; line-height: 1; color: #17171b; }
+      #ranking #ranking-scene #start-btn .sub   { margin: 0; font-size: 24px; letter-spacing: 2px; text-indent: 2px; color: #17171b; opacity: 0.75; }
+
+      /* ---- cards (ranking scene) ---- */
+      #ranking #ranking-scene .card {
+        position: absolute; background: var(--card); border: 2px solid var(--card-border); border-radius: 24px; opacity: 0;
+      }
+      #ranking #ranking-scene .card .hdr { position: absolute; left: 40px; right: 40px; top: 28px; display: flex; justify-content: space-between; align-items: baseline; }
+      #ranking #ranking-scene .card .lbl { font-size: 22px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: var(--ink-dim); }
+      #ranking #ranking-scene .num { font-variant-numeric: tabular-nums; }
+
+      /* v4: rank-card (the "This ride" P1-of-10 beat) is gone — straight to the tower. */
+      #ranking #ranking-scene #tower { left: 560px; top: 110px; width: 800px; height: 700px; }
+      #ranking #ranking-scene #tower .rows { position: absolute; left: 40px; right: 40px; top: 84px; height: 600px; }
+      /* .tnum = fixed rank numerals, one per slot, 60px pitch — never move and never change text (same
+         principle as #rank-card's .rnum in earlier rounds: the number belongs to the SLOT, not the row,
+         so two rows can never show the same rank while the slide-in is mid-flight). */
+      #ranking #ranking-scene .tnum { position: absolute; left: 0; width: 70px; height: 60px; display: flex; align-items: center; font-size: 30px; font-weight: 800; color: var(--ink-dim); }
+      /* .trow = the sliding who/time content for one row, absolutely positioned per slot (top:Npx) so it
+         can be tweened independently of document flow — mirrors #rank-card's .rrow[style="top:Npx"] pattern. */
+      #ranking #ranking-scene .trow { position: absolute; left: 70px; right: 0; height: 60px; display: flex; align-items: center; justify-content: space-between; opacity: 0; }
+      #ranking #ranking-scene .trow .who  { font-size: 26px; font-weight: 600; color: var(--ink); }
+      #ranking #ranking-scene .trow .time { font-size: 34px; font-weight: 800; color: var(--ink); }
+      #ranking #ranking-scene .trow.today { z-index: 2; }
+      /* .trow.today no longer forces a colour here -- it inherits the same white */
+      /* (var(--ink)) as every other row from .trow .who/.trow .time above while it */
+      /* climbs, and only turns green via the tl.set() at CLIMB_T0+CLIMB_DUR below, */
+      /* the instant it lands in slot 2 (cycle 9, Nathan: it should come up white   */
+      /* and only become green -- P2, not purple -- when it actually slots in).    */
+
+      /* ---- SVG colour tokens (presentation attributes removed from the elements below) ---- */
+      #ranking #ranking-scene #route-casing { stroke: var(--route-casing); }
+      #ranking #ranking-scene .gate .gc { stroke: var(--route-casing); }
+      #ranking #ranking-scene #ring-start, #ranking #ranking-scene #ring-end { fill: var(--ring-fill); stroke: var(--ink); }
+      #ranking #ranking-scene #rider { stroke: var(--rider-stroke); }
+    </style>
+
+    <div data-hf-id="hf-exzh" id="ranking-scene" class="clip full" data-start="0" data-duration="10.8" data-track-index="0">
+
+      <!-- Map layer: basemap PNG (captured once via ../_map/map-capture.html) + route/gates/rider as SVG.
+           Casing+core convention and colours are the app's (see product code, RecordScreen / way map). -->
+      <div data-hf-id="hf-7opt" id="map" class="clip full" data-start="0" data-duration="10.8" data-track-index="1">
+        <div data-hf-id="hf-lm34" class="inner">
+          <img data-hf-id="hf-gk47" id="ranking-basemap" src="map.png" alt="" onerror="this.style.display='none'">
+          <svg data-hf-id="hf-clm9" id="mapsvg" class="full-svg" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+            <path data-hf-id="hf-8arj" id="route-casing" fill="none" stroke-width="10" stroke-linejoin="round" stroke-linecap="round" />
+            <path data-hf-id="hf-ze3x" id="route-core" fill="none" stroke="#F5C542" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" />
+            <path data-hf-id="hf-njco" class="sector" id="sec1" fill="none" stroke="#00D000" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+            <path data-hf-id="hf-wgcc" class="sector" id="sec2" fill="none" stroke="#F5C542" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+            <path data-hf-id="hf-v7tg" class="sector" id="sec3" fill="none" stroke="#9000C8" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+            <path data-hf-id="hf-pjqf" class="sector" id="sec4" fill="none" stroke="#00D000" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="0" />
+            <g data-hf-id="hf-f0p9" class="gate" id="gate1" opacity="0"><line data-hf-id="hf-07c7" class="gc" stroke-width="8" stroke-linecap="round" /><line data-hf-id="hf-z04u" class="gk" style="stroke: var(--ink)" stroke-width="4" stroke-linecap="round" opacity="1" /></g>
+            <g data-hf-id="hf-4pe2" class="gate" id="gate2" opacity="0"><line data-hf-id="hf-g1jb" class="gc" stroke-width="8" stroke-linecap="round" /><line data-hf-id="hf-26ia" class="gk" style="stroke: var(--ink)" stroke-width="4" stroke-linecap="round" opacity="1" /></g>
+            <g data-hf-id="hf-eh3b" class="gate" id="gate3" opacity="0"><line data-hf-id="hf-fn8a" class="gc" stroke-width="8" stroke-linecap="round" /><line data-hf-id="hf-2ktb" class="gk" style="stroke: var(--ink)" stroke-width="4" stroke-linecap="round" opacity="1" /></g>
+            <circle data-hf-id="hf-2ho0" id="ring-start" r="13" stroke-width="4" opacity="0" />
+            <circle data-hf-id="hf-l2n3" id="ring-end" r="13" stroke-width="4" opacity="0" />
+            <circle data-hf-id="hf-vjca" id="rider" r="11" fill="#2F7DE1" stroke-width="3" opacity="0" />
+          </svg>
+          <div data-hf-id="hf-7iqb" id="scrim-bottom"></div>
+          <div data-hf-id="hf-6pf9" id="dim"></div>
+          <p data-hf-id="hf-fkgz" id="attrib">© OpenStreetMap contributors · OpenFreeMap</p>
+        </div>
+      </div>
+
+      <div data-hf-id="hf-399k" id="ui" class="clip full" data-start="0" data-duration="10.8" data-track-index="2">
+        <div data-hf-id="hf-bug8" class="inner">
+          <div data-hf-id="hf-tl4f" id="tower" class="card">
+            <div data-hf-id="hf-tyyu" class="hdr"><span data-hf-id="hf-rrx9" class="lbl">Last ten rides</span><span data-hf-id="hf-n3o0" class="lbl">this route</span></div>
+            <div data-hf-id="hf-hnc7" class="rows">
+              <div data-hf-id="hf-jgoe" class="tnum" style="top:0px">1</div>
+              <div data-hf-id="hf-e3vr" class="tnum" style="top:60px">2</div>
+              <div data-hf-id="hf-7jst" class="tnum" style="top:120px">3</div>
+              <div data-hf-id="hf-t9be" class="tnum" style="top:180px">4</div>
+              <div data-hf-id="hf-dx88" class="tnum" style="top:240px">5</div>
+              <div data-hf-id="hf-sqai" class="tnum" style="top:300px">6</div>
+              <div data-hf-id="hf-l7dz" class="tnum" style="top:360px">7</div>
+              <div data-hf-id="hf-gfj3" class="tnum" style="top:420px">8</div>
+              <div data-hf-id="hf-nl7m" class="tnum" style="top:480px">9</div>
+              <div data-hf-id="hf-zscr" class="tnum" style="top:540px">10</div>
+              <div data-hf-id="hf-xi0f" class="trow" id="trow-1" style="top:0px"><span data-hf-id="hf-2hjr" class="who">Mon</span><span data-hf-id="hf-0dss" class="time num">17:02.8</span></div>
+              <div data-hf-id="hf-33fy" class="trow" id="trow-2" style="top:60px"><span data-hf-id="hf-xyp5" class="who">Sat</span><span data-hf-id="hf-unkg" class="time num">17:15.0</span></div>
+              <div data-hf-id="hf-k6ma" class="trow" id="trow-3" style="top:120px"><span data-hf-id="hf-wr68" class="who">3 Sep</span><span data-hf-id="hf-yb7a" class="time num">17:24.6</span></div>
+              <div data-hf-id="hf-zamj" class="trow" id="trow-4" style="top:180px"><span data-hf-id="hf-2410" class="who">31 Aug</span><span data-hf-id="hf-nn0c" class="time num">17:31.2</span></div>
+              <div data-hf-id="hf-ntwd" class="trow" id="trow-5" style="top:240px"><span data-hf-id="hf-dcvp" class="who">29 Aug</span><span data-hf-id="hf-pvy9" class="time num">17:48.9</span></div>
+              <div data-hf-id="hf-4o0b" class="trow" id="trow-6" style="top:300px"><span data-hf-id="hf-dgl4" class="who">26 Aug</span><span data-hf-id="hf-b2y8" class="time num">17:55.4</span></div>
+              <div data-hf-id="hf-4p34" class="trow" id="trow-7" style="top:360px"><span data-hf-id="hf-gnwa" class="who">24 Aug</span><span data-hf-id="hf-vc97" class="time num">18:07.1</span></div>
+              <div data-hf-id="hf-efro" class="trow" id="trow-8" style="top:420px"><span data-hf-id="hf-eg19" class="who">21 Aug</span><span data-hf-id="hf-gj4j" class="time num">18:20.8</span></div>
+              <div data-hf-id="hf-xpz7" class="trow" id="trow-9" style="top:480px"><span data-hf-id="hf-inyy" class="who">19 Aug</span><span data-hf-id="hf-od2s" class="time num">18:33.5</span></div>
+              <div data-hf-id="hf-0rxa" class="trow" id="trow-10" style="top:540px"><span data-hf-id="hf-kbb3" class="who">12 Aug</span><span data-hf-id="hf-24eq" class="time num">18:48.1</span></div>
+              <div data-hf-id="hf-p9o4" class="trow today" id="trow-today" style="top:600px"><span data-hf-id="hf-kwcg" class="who">Today</span><span data-hf-id="hf-672l" class="time num">17:08.9</span></div>
+            </div>
+          </div>
+          <p data-hf-id="hf-mc4p" class="caption" id="capB">Compare against <span data-hf-id="hf-gz2p" class="em-b">your</span><span data-hf-id="hf-kslw" class="em-i">selfs</span></p>
+        </div>
+      </div>
+
+    </div>
+
+    <script>
+(function () {
+  var R = (document.currentScript && document.currentScript.closest('#ranking-scene')) || document.querySelector('#ranking-scene');
+  if (!R || !window.gsap) return;
+  function byId(id) { return R.querySelector('#' + id); }
+  gsap.context(function () {
+    // ---- shared constants (identical in ../_map/map-capture.html) ----
+    // Route: qualifire-20260903-1828.gpx (pre-start + warm-up points dropped), projected to
+    // 1920x1080 frame px at MAP_CENTER / MAP_ZOOM below (Web Mercator, 512-px tiles, bearing 180, no pitch).
+    // Douglas-Peucker 0.7 px, 70 points, then reflected through the frame centre (x,y)->(1920-x,1080-y) to
+    // match the capture page's bearing:180 (2026-09-10, per Nathan: ride should run bottom-left to top-right).
+    // Do NOT edit by hand; regenerate from the GPX if the framing changes.
+    var MAP_CENTER = [4.663233, 50.84662];   // [lon, lat]
+    var MAP_ZOOM   = 13.4;
+    var ROUTE = "577.0,948.7 578.3,946.1 587.4,940.8 590.9,942.8 591.0,947.5 594.6,952.3 600.9,957.1 612.0,951.2 628.8,946.5 640.6,940.1 647.0,934.5 650.7,933.1 680.0,906.9 682.9,905.7 684.4,908.7 687.0,909.9 718.3,885.5 755.1,859.2 784.7,851.6 830.7,830.3 836.7,833.6 848.2,835.8 854.2,835.6 858.6,833.9 935.4,752.8 975.7,720.7 988.2,706.0 988.5,693.2 984.8,688.8 977.8,684.5 958.3,677.3 954.2,679.7 949.1,679.2 915.3,666.6 914.4,663.0 916.5,658.5 922.5,650.9 924.4,645.7 922.9,642.6 923.9,641.4 926.1,640.4 929.9,641.0 936.2,645.0 949.8,650.0 954.6,652.8 977.5,661.0 986.2,656.2 1046.2,607.4 1063.2,592.6 1088.3,539.3 1099.0,520.7 1109.9,505.7 1124.1,488.9 1129.9,478.9 1149.6,455.4 1161.0,436.3 1163.0,435.0 1192.4,430.8 1220.7,402.9 1243.8,377.3 1248.4,368.1 1250.7,359.8 1272.0,333.6 1273.6,319.2 1279.4,318.7 1313.6,288.5 1319.5,286.8 1324.1,282.9 1342.8,293.3 1345.0,293.1";
+    var GATES = [0.24, 0.63, 0.84];                                  // fractions of route length (clear of the 0.40-0.57 self-loop)
+    var SECTOR_COLORS = ['#00D000', '#F5C542', '#9000C8', '#00D000'];  // sector k ends at gate k; sector 4 ends at the finish
+    // -------------------------------------------------------------------
+
+    // Day theme uses the positron basemap captured by ../_map/map-capture.html?theme=day (see _map/README.md).
+    if (document.documentElement.getAttribute('data-theme') === 'day') {
+      byId('ranking-basemap').src = 'map-day.png';
+    }
+
+    // Build the overlay geometry from ROUTE (runs once, before the timeline).
+    var pts = ROUTE.split(' ').map(function (s) { var a = s.split(','); return [parseFloat(a[0]), parseFloat(a[1])]; });
+    var dAttr = 'M' + pts.map(function (p) { return p[0] + ',' + p[1]; }).join(' L');
+    ['route-casing', 'route-core', 'sec1', 'sec2', 'sec3', 'sec4'].forEach(function (id) { byId(id).setAttribute('d', dAttr); });
+    var core = byId('route-core');
+    var L = core.getTotalLength();
+    function at(len) { return core.getPointAtLength(Math.max(0, Math.min(L, len))); }
+    var P0 = at(0), P1 = at(L);
+
+    // Scored-sector overlays: one dash window per sector on a copy of the route path.
+    var bounds = [0].concat(GATES).concat([1]);
+    for (var s = 0; s < 4; s++) {
+      var a = bounds[s] * L, b = bounds[s + 1] * L, el = byId('sec' + (s + 1));
+      el.setAttribute('stroke-dasharray', (b - a) + ' ' + L);
+      el.setAttribute('stroke-dashoffset', -a);
+    }
+
+    // Gates: 44-px tick perpendicular to the local heading, centred exactly on the route point.
+    var GATE_PT = [];
+    GATES.forEach(function (f, i) {
+      var p = at(f * L), q1 = at(f * L - 8), q2 = at(f * L + 8);
+      var ang = Math.atan2(q2.y - q1.y, q2.x - q1.x) + Math.PI / 2;
+      var dx = Math.cos(ang) * 22, dy = Math.sin(ang) * 22;
+      var g = byId('gate' + (i + 1));
+      Array.prototype.forEach.call(g.querySelectorAll('line'), function (ln) {
+        ln.setAttribute('x1', p.x - dx); ln.setAttribute('y1', p.y - dy);
+        ln.setAttribute('x2', p.x + dx); ln.setAttribute('y2', p.y + dy);
+      });
+      GATE_PT.push(p);
+    });
+
+    gsap.set('#ring-start', { attr: { cx: P0.x, cy: P0.y } });
+    gsap.set('#ring-end',   { attr: { cx: P1.x, cy: P1.y } });
+    gsap.set('#rider',      { attr: { cx: P0.x, cy: P0.y } });
+
+    // Rider along the route at constant speed: 240 short linear tweens (no callbacks, no plugins,
+    // so a frame-seeking renderer always lands on the right point).
+    function ride(tl, start, dur) {
+      var N = 240, prev = at(0);
+      for (var i = 1; i <= N; i++) {
+        var p = at(i / N * L);
+        tl.fromTo('#rider', { attr: { cx: prev.x, cy: prev.y } },
+          { attr: { cx: p.x, cy: p.y }, duration: dur / N, ease: 'none', immediateRender: false, lazy: false },
+          start + (i - 1) * dur / N);
+        prev = p;
+      }
+    }
+
+    var tl = gsap.timeline({ paused: true });
+
+    // Frame 0: end of the second ride — every sector painted, gate ticks white (cycle 9), rider at the finish = gates-saving's last frame.
+    gsap.set('.sector', { opacity: 1 });
+    gsap.set('.gate', { opacity: 1 });
+    gsap.set(['#ring-start', '#ring-end'], { opacity: 1 });
+    gsap.set('#rider', { opacity: 1, attr: { cx: P1.x, cy: P1.y } });
+
+    // Tower row ids, in slot order (slot 1 = trow-1 ... slot 10 = trow-10). trow-today is a purely
+    // absolutely-positioned 11th row parked below slot 10 (top:600px) and stays opacity:0 (its base
+    // .trow state) until Beat 2 reveals it and climbs it into slot 2 — never touched by the DOM,
+    // never moved by a callback, only ever tweened, so frame-seeking always lands correctly (same
+    // "no callbacks" discipline the rider tween above already relies on).
+    var TOWER_ROWS = ['trow-1', 'trow-2', 'trow-3', 'trow-4', 'trow-5', 'trow-6', 'trow-7', 'trow-8', 'trow-9', 'trow-10'];
+
+    // Beat 1 (0.0-0.7): map dims, timing tower fades in, then its ten rows (Mon...12 Aug) fill top-down.
+    tl.to('#dim', { opacity: 0.7, duration: 0.5, ease: 'power1.inOut' }, 0.0);
+    tl.fromTo('#tower', { opacity: 0 }, { opacity: 1, duration: 0.4 }, 0.3);
+    for (var r = 0; r < 10; r++) {
+      tl.fromTo('#' + TOWER_ROWS[r], { opacity: 0, x: -24 }, { opacity: 1, x: 0, duration: 0.35, ease: 'power2.out' }, 0.80 + r * 0.15);
+    }
+    // hold 2.50-3.00
+
+    // Beat 2 (3.0-5.4): "Today" climbs the tower. Old P10 (12 Aug / trow-10) fades out and drops
+    // off the bottom first; Today emerges just below slot 10 (top:600px) and rides 540px up to
+    // slot 2 in one continuous glide (power2.out, 2.2 s -- cycle 9: fast off the line, decelerating
+    // into slot 2; was power1.inOut, which Nathan read as constant speed; total time unchanged).
+    // Each row it overtakes steps down one slot (60px, this tower's row pitch), centred on the
+    // moment Today crosses it. Step times are pre-computed from the climb's easing (power2.out
+    // inverse: u = 1 - sqrt(1 - e)) — no callbacks, frame-seek safe.
+    tl.to('#trow-10', { opacity: 0, y: 60, duration: 0.35, ease: 'power2.in' }, 3.00);
+    var CLIMB_T0 = 3.20, CLIMB_DUR = 2.2;
+    tl.fromTo('#trow-today', { y: 0 }, { y: -540, duration: CLIMB_DUR, ease: 'power2.out' }, CLIMB_T0);
+    // Fade-in shortened 0.4 -> 0.25 with the new ease: Today now reaches row 9 at 3.39s and should be solid by then.
+    tl.fromTo('#trow-today', { opacity: 0 }, { opacity: 1, duration: 0.25, ease: 'power1.out' }, CLIMB_T0);
+    // Colour flip, not a fade: Today rides up white (same var(--ink) as every other
+    // row) and turns green -- a P2 finish, not purple -- the instant it lands in
+    // slot 2, same discrete "flip on completion" rule as the app's own sector strip.
+    // Timed to the exact landing instant (also where the audio's green settle chime
+    // fires), not before.
+    tl.set('#trow-today .who, #trow-today .time', { color: '#00D000' }, CLIMB_T0 + CLIMB_DUR);
+    // [row, start] — start = (CLIMB_T0 + u_cross * CLIMB_DUR) - 0.15, where u_cross is when Today's
+    // top is half a slot below that row's top (Today at slot 10 pitch, rows at 60*(k-1)):
+    // e_cross(k) = (570 - 60*(k-1)) / 540, u_cross = 1 - sqrt(1 - e_cross).
+    var STEP_DOWN = [[9, 3.24], [8, 3.38], [7, 3.53], [6, 3.69], [5, 3.88], [4, 4.09], [3, 4.35], [2, 4.73]];
+    STEP_DOWN.forEach(function (s) {
+      tl.to('#trow-' + s[0], { y: 60, duration: 0.3, ease: 'power2.inOut' }, s[1]);
+    });
+    // hold 5.4-5.9
+
+    // Beat 3 (5.9-10.8): the one caption (cycle 9: "Compare directly to your previous ride" removed per Nathan;
+    // "Compare against yourselfs" now comes in where the first caption used to, 5.9, and holds to the same
+    // 10.4 fade / 10.8 hard kill, so the scene length and the teaser cut sheet are unchanged).
+    tl.fromTo('#capB', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' }, 5.90);
+    tl.to('#capB', { opacity: 0, duration: 0.4 }, 10.40);
+    tl.set('#capB', { opacity: 0 }, 10.8);
+
+    window.__timelines = window.__timelines || {};
+    window.__timelines.ranking = tl;
+  }, R);
+})();
+    </script>
+  </div>
+</template>
