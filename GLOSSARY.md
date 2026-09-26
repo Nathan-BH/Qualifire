@@ -87,11 +87,7 @@ ride as its reference.
 tap one for its all-time ranked history (fastest first) and a plot of your last nine rides
 on it — faster is higher, each dot purple/green/yellow against the window's average.
 
-**Luck factor (raw vs. moving; renamed from "Timing" virgin-cycle7, 2026-09-15).** *Luck*
-(raw, default) is wall-clock time from gate to gate — a stop is your luck, same as a real
-race. *Off* (moving) removes the time you spent stopped. SETTINGS → SCORING → Luck factor;
-colours, ranks and the tower all follow whichever is set. Display rename only — the stored
-key/type (`timing`, `TimingMode = 'raw' | 'moving'`) are unchanged.
+**Luck factor (retired virgin-cycle14, Nathan #5).** Was SETTINGS → SCORING's raw/moving switch (cycle7 rename of "Timing"). Gone from the screen: every score is raw wall-clock time from gate to gate — a stop is your luck, same as a real race. Moving time is still computed and stored (`movingS`) but nothing user-facing reads it; `store/timing.ts`'s register stays at `raw`.
 
 **Earcon.** A short sound the app plays instead of a visual alert, so you don't have to
 look at the phone while riding — one buzz, distinct tones for distinct meanings.
