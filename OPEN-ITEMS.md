@@ -175,6 +175,21 @@ Nathan answered most of `deployment/QUESTIONS-FOR-NATHAN.md` on 2026-09-09; fold
 
 ## Housekeeping (agent-side, no phone needed)
 
+- **Git index corruption on the `virgin` branch, found 2026-09-26 during cycle14's commit,
+  cause confirmed by Nathan same day.** HEAD's tree had silently shrunk to ~50 tracked
+  files (vs. `origin/main`'s 513) — a Haiku subagent in an earlier session had run
+  `pkill -9` on a stuck git process while it held lock files, corrupting the local index
+  so git believed hundreds of real, on-disk, unchanged files were untracked. **Nothing was
+  lost from disk** — this was a git-bookkeeping problem, not data loss. The cycle14
+  coordinator commit (`401969a`) was scoped narrowly to only this cycle's own files to
+  avoid compounding the problem. **Nathan is fixing the index himself (in progress as of
+  2026-09-26).** Until it's confirmed fixed: don't run `git clean` or `git reset --hard`
+  on this repo — under the corrupted tracking state those could delete files git
+  (wrongly) considers disposable untracked clutter. See [[qualifire-model-tier-protocol]]
+  memory for the standing rule this adds: never `pkill -9`/`kill -9` a git process stuck
+  on a lock, even via device_bash — rename the lock file away instead (already the
+  documented fix for stranded `.git/index.lock`/`.git/HEAD.lock` files).
+
 - **Record build7's fingerprint in `scripts/OTA-TROUBLESHOOTING.md`** — the last cycle4 step
   per `cycles/virgin-cycle4/TOKEN-USAGE.md`, still not done (the seed-flip tail itself landed
   as `09a0aa0`).
