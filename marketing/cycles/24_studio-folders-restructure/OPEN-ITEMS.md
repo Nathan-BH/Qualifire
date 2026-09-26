@@ -119,6 +119,14 @@ Additional items V8 (this cycle's stale-reference grep) turned up, not previousl
   from a moved default-arrangement path he hasn't seen change is exactly the kind of silent breakage this
   process exists to avoid. Once both are true, re-run this cycle's V1-V4 and V8 for the audio-studio side
   only, and re-apply the three doc/tool-string edits above (this time verified, not reverted).
+- **Follow-up (2026-09-26, later same day, Nathan asked why `teaser/` mixed old sound folders with the
+  live arrangements):** the rest of row 40 had no such blocker — `AUDIO-BRIEF.md`, `README.md`,
+  `soundtrack.py`, `soundv1/`, `soundv2/` are the old per-teaser-concat synth soundtrack (2026-09-11/13,
+  references the pre-cycle-21 `teaser_v5.mp4`/`teaser_v6.mp4` concat), dead since cycle 16 dropped synth
+  for Tunetank recordings, and nothing else references them (checked). Moved those five to
+  `../archive/pre-teaser-full-studios/audio-studio/teaser/` directly (coordinator, no subagent — a handful
+  of `mv`s). `marketing/audio-studio/teaser/` now holds only `arrangements/`, so it no longer looks like
+  two workflows mixed together — just the one folder still waiting on the row-39 move above.
 
 ## Nits (found by Inspect, not fixed live — low priority, next pass)
 
