@@ -82,7 +82,7 @@
  * PNG rung untouched — a cropped bitmap cannot rotate.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, LayoutChangeEvent, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
 import manifest from '../../assets/ways/ways.json';
 import { cropFor, gateTickPx, offWayM, projectToPixel, type WayAsset } from './wayMapMath.ts';
 import { currentCatalog } from '../store/catalogStore.ts';
@@ -100,6 +100,7 @@ import { tierLineColour } from './tierColour.ts';
 import { patchMapStyle } from './wayMapStyle.ts';
 import { colors, radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
+import { CREDIT_AUTO_HIDE_MS, creditFor, type MapRung } from './mapCreditModel.ts';
 import type { CameraRef, CameraStop } from '@maplibre/maplibre-react-native';
 
 /** Shape of the MapLibre `onRegionWillChange` event we actually read.
@@ -291,52 +292,57 @@ export default function WayMapView(props: WayMapProps) {
 
 // --------------------------------------------------------------- attribution
 
-/** Shared by both rungs (design contract C): the credit becomes a Pressable
- * that opens a "Map data sources" sheet — except while the live ribbon is
- * actually locked (moving/stopped), where it stays a flat, non-interactive
- * label so it never reads as one more control on the D-006 no-controls
- * surface. */
-function Credit(props: { rung: 'maplibre' | 'png'; interactive: boolean }) {
+/** Shared by both rungs. virgin-cycle14 brief 05 (Nathan #8, tester
+ * feedback): the credit is a small round "i" in the bottom-right corner,
+ * not a line of text across the map. Tapping it opens the "Map data
+ * sources" card in-frame (no Modal, no backdrop — nothing may eat map
+ * gestures, cycle 020); the card closes on a tap of "i" or of itself, or
+ * by itself after CREDIT_AUTO_HIDE_MS. Interactive on every surface — an
+ * inert "i" is a broken control — and merely dimmed while the live ribbon
+ * is locked, the same relaxation D-006 already made for the zoom bar. The
+ * wording (mapCreditModel.ts) is a licence obligation and is never
+ * shortened; MapLibre's own attribution control is off on <M.Map>, so this
+ * overlay is the only credit on the tile rung. Never a tier colour: a
+ * credit in purple/green/yellow would read as a signal. */
+function Credit(props: { rung: MapRung; locked: boolean }) {
   const { t } = useTheme();
   const [open, setOpen] = useState(false);
-  const label = props.rung === 'maplibre'
-    ? 'OpenFreeMap © OpenMapTiles Data from OpenStreetMap'
-    : ATTRIBUTION;
-  const rows = props.rung === 'maplibre'
-    ? [
-      { source: 'OpenFreeMap', role: 'tiles' },
-      { source: '© OpenMapTiles', role: 'schema' },
-      { source: '© OpenStreetMap contributors', role: 'data' },
-    ]
-    : [
-      { source: 'Esri, HERE, Garmin', role: 'imagery' },
-      { source: '© OpenStreetMap contributors', role: 'data' },
-    ];
+  const { label, rows } = creditFor(props.rung);
+  useEffect(() => {
+    if (!open) return;
+    const id = setTimeout(() => setOpen(false), CREDIT_AUTO_HIDE_MS);
+    return () => clearTimeout(id);
+  }, [open]);
   return (
     <>
-      <Pressable
-        disabled={!props.interactive}
-        onPress={() => setOpen(true)}
-        style={st.credit}
-        hitSlop={4}
-      >
-        <Text style={st.creditText} numberOfLines={1}>{label}</Text>
-      </Pressable>
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <Pressable style={st.sheetBackdrop} onPress={() => setOpen(false)}>
-          <View style={[st.sheetCard, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-            <Text style={[st.sheetTitle, { color: t.text }]}>Map data sources</Text>
-            {rows.map((r) => (
-              <Text key={r.source} style={[st.sheetRow, { color: t.text2 }]}>
-                {r.source} — {r.role}
-              </Text>
-            ))}
-            <Pressable style={st.sheetClose} onPress={() => setOpen(false)}>
-              <Text style={[st.sheetCloseText, { color: t.accentText }]}>CLOSE</Text>
-            </Pressable>
-          </View>
+      {open ? (
+        <Pressable
+          style={[st.creditCard, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
+          onPress={() => setOpen(false)}
+          accessibilityRole="button"
+          accessibilityLabel="Close map data sources"
+        >
+          <Text style={[st.creditTitle, { color: t.text }]}>Map data sources</Text>
+          {rows.map((r) => (
+            <Text key={r.source} style={[st.creditRow, { color: t.text2 }]}>
+              {r.source} — {r.role}
+            </Text>
+          ))}
         </Pressable>
-      </Modal>
+      ) : null}
+      <Pressable
+        onPress={() => setOpen((o) => !o)}
+        style={[
+          st.creditBtn,
+          { backgroundColor: t.race.card, borderColor: t.cardBorder },
+          props.locked && st.creditBtnLocked,
+        ]}
+        hitSlop={6}
+        accessibilityRole="button"
+        accessibilityLabel={`Map data sources: ${label}`}
+      >
+        <Text style={[st.creditBtnText, { color: t.textDim }]}>i</Text>
+      </Pressable>
     </>
   );
 }
@@ -371,7 +377,7 @@ function MapLibreWayMap(props: WayMapProps & {
   // coupling to the labels/zoom-bar matrix above.
   const rotateEnabled = rotateEnabledFor(variant, liveState);
   const dimmed = variant === 'live' && liveState === 'stopped';
-  const interactiveCredit = !(variant === 'live' && (liveState === 'moving' || liveState === 'stopped'));
+  const creditLocked = variant === 'live' && (liveState === 'moving' || liveState === 'stopped');
 
   const initialMode: 'follow' | 'fit' = variant === 'browse' || liveState === 'prestart'
     ? 'fit'
@@ -920,7 +926,7 @@ function MapLibreWayMap(props: WayMapProps & {
           </Pressable>
         ) : null}
       </View>
-      <Credit rung="maplibre" interactive={interactiveCredit} />
+      <Credit rung="maplibre" locked={creditLocked} />
       {off ? (
         <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card }]}>
           {'OFF ROUTE · >120 m from the route line'}
@@ -935,12 +941,8 @@ function MapLibreWayMap(props: WayMapProps & {
 
 // ------------------------------------------------------------------ PNG rung
 
-/**
- * Required by the tile licence, and it is drawn HERE rather than baked into
- * the PNG on purpose: the live screen crops the asset at zoom 4, so a baked
- * corner would be off-screen exactly when the map is being used.
- */
-const ATTRIBUTION = 'Esri, HERE, Garmin, © OpenStreetMap contributors';
+// The PNG rung's credit string lives in mapCreditModel.ts (PNG_CREDIT) — drawn as an
+// overlay by <Credit>, never baked into the PNG (see that file for why).
 
 function PngWayMap(props: WayMapProps) {
   const { t } = useTheme();
@@ -961,11 +963,10 @@ function PngWayMap(props: WayMapProps) {
   const liveState = props.liveState ?? 'moving';
   const showRider = props.showRider ?? true;
   // B-51: this rung is not rebuilt for the full behaviour matrix — it only
-  // honours showRider, the stopped-dim and the non-interactive credit while
+  // honours showRider, the stopped-dim and the dimmed credit button while
   // the live ribbon is locked (zoom bar always shown since cycle 020).
   const locked = variant === 'live' && (liveState === 'moving' || liveState === 'stopped');
   const dimmed = variant === 'live' && liveState === 'stopped';
-  const interactiveCredit = !locked;
 
   // WP-B: this rung is a single pre-rendered PNG per route (see the file
   // header) — it cannot honestly draw a 20-route (or filtered-but-still-
@@ -985,7 +986,7 @@ function PngWayMap(props: WayMapProps) {
         <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card }]}>
           gates map needs the tile map
         </Text>
-        <Credit rung="png" interactive={interactiveCredit} />
+        <Credit rung="png" locked={locked} />
       </View>
     );
   }
@@ -1151,7 +1152,7 @@ function PngWayMap(props: WayMapProps) {
           MAP IMAGE FAILED — drawing the line
         </Text>
       ) : null}
-      {!imgFailed && img ? <Credit rung="png" interactive={interactiveCredit} /> : null}
+      {!imgFailed && img ? <Credit rung="png" locked={locked} /> : null}
       {off ? (
         <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card }]}>
           {'OFF ROUTE · >120 m from the route line'}
@@ -1179,26 +1180,23 @@ const st = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   zoomText: { fontSize: 17, fontWeight: '700' },
-  // Deliberately NOT a palette colour: a credit that used a tier colour would
-  // read as a signal.
-  credit: {
-    position: 'absolute', right: 6, bottom: 6, maxWidth: '80%',
-    backgroundColor: 'rgba(255,255,255,0.6)',
-    paddingHorizontal: 5, paddingVertical: 2, borderRadius: 5, overflow: 'hidden',
+  // virgin-cycle14 brief 05: the "i" credit button + its in-frame card. Theme
+  // tokens at the call site; deliberately NOT a palette colour — a credit
+  // that used a tier colour would read as a signal.
+  creditBtn: {
+    position: 'absolute', right: 6, bottom: 6, width: 22, height: 22, borderRadius: 11,
+    borderWidth: 1, alignItems: 'center', justifyContent: 'center',
   },
-  creditText: { fontSize: 8.5, color: '#2B2B2B' },
+  creditBtnLocked: { opacity: 0.6 },
+  creditBtnText: { fontSize: 12, fontWeight: '700', fontStyle: 'italic', lineHeight: 14 },
+  creditCard: {
+    position: 'absolute', right: 6, bottom: 32, maxWidth: '85%', borderRadius: 10, borderWidth: 1,
+    paddingHorizontal: 10, paddingVertical: 8, gap: 2,
+  },
+  creditTitle: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5, marginBottom: 2 },
+  creditRow: { fontSize: 11 },
   badge: {
     position: 'absolute', bottom: 6, left: 6, fontSize: 10.5, letterSpacing: 1.2,
     paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8, overflow: 'hidden',
   },
-  sheetBackdrop: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 24,
-  },
-  sheetCard: {
-    borderRadius: radius.card, borderWidth: 1, padding: 18, gap: 8, minWidth: 240, maxWidth: '90%',
-  },
-  sheetTitle: { fontSize: 15, fontWeight: '800', letterSpacing: 0.5, marginBottom: 4 },
-  sheetRow: { fontSize: 13 },
-  sheetClose: { marginTop: 10, alignSelf: 'flex-end', paddingHorizontal: 10, paddingVertical: 6 },
-  sheetCloseText: { fontSize: 12.5, fontWeight: '700', letterSpacing: 1.5 },
 });

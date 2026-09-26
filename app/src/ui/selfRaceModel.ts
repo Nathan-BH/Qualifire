@@ -42,6 +42,7 @@ import { scoredS } from '../store/timing.ts';
 import { catalogTrackSpecs } from '../live/tracks.ts';
 import { chronologicalFixes, decodeRideFile } from '../storage/jsonl.ts';
 import type { FsAdapter } from '../storage/fsAdapter.ts';
+import type { RideResult } from '../store/types.ts';
 
 // ---------------------------------------------------------------- geo shapes
 //
@@ -113,8 +114,9 @@ export interface SelfDot {
  * `targetMs`, clamped to the first/last fix and linearly interpolated
  * between the bracketing pair otherwise (binary search). follow-up (live
  * PX): also interpolates `sM` when BOTH bracketing fixes carry it, else
- * null; a clamped end returns that fix's `sM ?? null`. */
-function interpAt(
+ * null; a clamped end returns that fix's `sM ?? null`.
+ * Exported for replayModel.ts (virgin-cycle14 brief 02). */
+export function interpAt(
   fixes: readonly { tUnixMs: number; lat: number; lon: number; sM?: number }[],
   targetMs: number,
 ): { lat: number; lon: number; sM: number | null } {
@@ -269,10 +271,17 @@ const trackCache = new Map<string, SelfTrack>();
 export async function loadSelfTracks(
   wayId: string, gateSetVersion: number, fs: FsAdapter,
 ): Promise<SelfTrack[]> {
+  return loadSelfTracksFor(wayId, gateSetVersion, fs, ghostsFor(wayId));
+}
+
+/** virgin-cycle14 brief 02 (replay): loadSelfTracks over an EXPLICIT window (the replay
+ * passes colourModel.priorWindowFor's as-ridden window). Same cache, same skips, same
+ * logging; loadSelfTracks is now this with ghostsFor(wayId). */
+export async function loadSelfTracksFor(
+  wayId: string, gateSetVersion: number, fs: FsAdapter, window: readonly RideResult[],
+): Promise<SelfTrack[]> {
   const spec = catalogTrackSpecs().find((s) => s.id === wayId);
   if (!spec) return [];
-
-  const window = ghostsFor(wayId);
   const out: SelfTrack[] = [];
   let skipped = 0;
 

@@ -37,12 +37,14 @@ const {
   demoHistoryFor, demoPriorLapSeconds, demoPriorResults, buildDemoReveal, demoAddedWayLine,
   demoChainage, demoSelfTracks, DEMO_SELF_FIX_STEP_S,
   demoRefFixes, demoGateAdjustDraft,
+  demoTodayResult, demoPlotResults, demoPlotPosLabel, demoPlotCaption, DEMO_TODAY_RIDE_ID,
 } = await import('../src/ui/demoModel.ts');
 const { DEMO_WAY_ID, DEMO_WAY_ASSET } = await import('../src/ui/demoWayFixture.ts');
 const { selfDotsAt, selfLivePosition } = await import('../src/ui/selfRaceModel.ts');
 const { positionAtTime } = await import('../src/ui/wayMapMath.ts');
 const { START_FRAC, FINISH_FRAC, SECTOR_FRACS, seedGateChainages } = await import('../src/store/gateSeeding.ts');
 const { MIN_TRACK_LENGTH_M } = await import('../src/store/routeCreation.ts');
+const { buildPlotModel, plotWindow, PLOT_N, PAD_R } = await import('../src/ui/resultsPlotModel.ts');
 
 test('demoModel: buildDemoScript() with default secs computes gateAt/lap', () => {
   const s = buildDemoScript();
@@ -582,4 +584,122 @@ test('demoModel: the line names the outcome (R4)', () => {
     demoSavedLine(n, 'adjusted') === 'Home → Work created · gates adjusted · demo only, nothing saved',
     `unexpected adjusted line: ${demoSavedLine(n, 'adjusted')}`,
   );
+});
+
+// virgin-cycle14 brief 08 (Nathan #11): the RESULTS scatterplot on the demo's ending screen.
+const T = 2_000_000_000_000;
+const W = 300;
+
+test('demoModel: plot — demoTodayResult is the scripted lap as a RideResult', () => {
+  const r = demoTodayResult(T);
+  assert(r.rideId === DEMO_TODAY_RIDE_ID, `expected rideId DEMO_TODAY_RIDE_ID, got ${r.rideId}`);
+  assert(r.startedAtMs === T, `expected startedAtMs ${T}, got ${r.startedAtMs}`);
+  assert(r.lap.rawS === 836 && r.lap.movingS === 836, `expected rawS/movingS 836, got ${r.lap.rawS}/${r.lap.movingS}`);
+  assert(r.lap.quality === 'clean', `expected quality 'clean', got ${r.lap.quality}`);
+  assert(r.wayId === DEMO_WAY_ID, `expected wayId DEMO_WAY_ID, got ${r.wayId}`);
+  assert(r.source === 'app', `expected source 'app', got ${r.source}`);
+  assert(r.sectors.length === 0, `expected sectors.length 0, got ${r.sectors.length}`);
+  const custom = demoTodayResult(T, buildDemoScript([1, 1, 1, 1]));
+  assert(custom.lap.rawS === 4, `expected custom script rawS 4, got ${custom.lap.rawS}`);
+});
+
+test('demoModel: plot — demoPlotResults is the mode\'s priors plus today, newest last', () => {
+  for (const mode of ['first', 'second', 'tenth'] as const) {
+    const results = demoPlotResults(mode, T);
+    const n = DEMO_PRIOR_LAPS[mode];
+    assert(results.length === n + 1, `${mode}: expected length ${n + 1}, got ${results.length}`);
+    assert(results[results.length - 1].rideId === DEMO_TODAY_RIDE_ID, `${mode}: expected last id DEMO_TODAY_RIDE_ID, got ${results[results.length - 1].rideId}`);
+    const priors = demoPriorResults(n, T);
+    assert(
+      JSON.stringify(results.slice(0, n)) === JSON.stringify(priors),
+      `${mode}: expected first ${n} elements to equal demoPriorResults(${n}, T)`,
+    );
+    for (let i = 1; i < results.length; i++) {
+      assert(results[i].startedAtMs > results[i - 1].startedAtMs, `${mode}: expected strictly ascending startedAtMs at index ${i}`);
+    }
+    assert(
+      plotWindow(results).length === Math.min(results.length, PLOT_N),
+      `${mode}: expected plotWindow length ${Math.min(results.length, PLOT_N)}, got ${plotWindow(results).length}`,
+    );
+  }
+});
+
+test('demoModel: plot — TENTH window is priors 2-9 + today (the real slice(-9))', () => {
+  const w = plotWindow(demoPlotResults('tenth', T));
+  assert(w.length === 9, `expected window length 9, got ${w.length}`);
+  assert(w[0].rideId === 'demo:prior-2', `expected first id 'demo:prior-2', got ${w[0].rideId}`);
+  assert(w[w.length - 1].rideId === DEMO_TODAY_RIDE_ID, `expected last id DEMO_TODAY_RIDE_ID, got ${w[w.length - 1].rideId}`);
+});
+
+test('demoModel: plot — TENTH model matches the pinned arithmetic', () => {
+  const m = buildPlotModel(demoPlotResults('tenth', T), W);
+  assert(m.empty === 'none', `expected empty 'none', got ${m.empty}`);
+  assert(m.points.length === 9, `expected 9 points, got ${m.points.length}`);
+  const today = m.points[8];
+  assert(today.rideId === DEMO_TODAY_RIDE_ID, `expected points[8] to be today, got ${today.rideId}`);
+  assert(today.tone === 'faster', `expected today's tone 'faster' (green), got ${today.tone}`);
+  const fastest = m.points.filter((p) => p.tone === 'fastest');
+  assert(fastest.length === 1 && fastest[0].rideId === 'demo:prior-2', `expected exactly one fastest point, 'demo:prior-2', got ${JSON.stringify(fastest.map((p) => p.rideId))}`);
+  const slower = m.points.filter((p) => p.tone === 'slower');
+  assert(slower.length === 4, `expected 4 slower points, got ${slower.length}`);
+  assert(m.meanS !== null, 'expected meanS not null');
+  assert(Math.abs(m.meanS - 7598 / 9) < 1e-6, `expected meanS ~${7598 / 9}, got ${m.meanS}`);
+  assert(today.x === W - PAD_R, `expected today's x ${W - PAD_R}, got ${today.x}`);
+  assert(Number.isFinite(m.meanY), `expected meanY finite, got ${m.meanY}`);
+  for (const p of m.points) {
+    assert(p.x >= 0 && p.x <= W, `expected x within [0, ${W}], got ${p.x}`);
+    assert(p.y >= 0 && p.y <= m.plotH, `expected y within [0, ${m.plotH}], got ${p.y}`);
+  }
+});
+
+test('demoModel: plot — SECOND model is today (purple) vs the one prior (yellow)', () => {
+  const m = buildPlotModel(demoPlotResults('second', T), W);
+  assert(m.points.length === 2, `expected 2 points, got ${m.points.length}`);
+  const today = m.points.find((p) => p.rideId === DEMO_TODAY_RIDE_ID)!;
+  const prior = m.points.find((p) => p.rideId === 'demo:prior-9')!;
+  assert(today.tone === 'fastest', `expected today's tone 'fastest', got ${today.tone}`);
+  assert(prior.tone === 'slower', `expected prior's tone 'slower', got ${prior.tone}`);
+  assert(m.meanS === 839, `expected meanS 839, got ${m.meanS}`);
+});
+
+test('demoModel: plot — FIRST model is one purple dot, no throw', () => {
+  const m = buildPlotModel(demoPlotResults('first', T), W);
+  assert(m.points.length === 1, `expected 1 point, got ${m.points.length}`);
+  assert(m.points[0].tone === 'fastest', `expected tone 'fastest', got ${m.points[0].tone}`);
+  assert(m.empty === 'none', `expected empty 'none', got ${m.empty}`);
+  assert(m.points[0].x === W - PAD_R, `expected x ${W - PAD_R}, got ${m.points[0].x}`);
+  assert(m.meanS === 836, `expected meanS 836, got ${m.meanS}`);
+  assert(m.yTicks.length >= 1, `expected at least 1 yTick, got ${m.yTicks.length}`);
+  assert(m.xTicks.length >= 1, `expected at least 1 xTick, got ${m.xTicks.length}`);
+});
+
+test('demoModel: plot — demoPlotPosLabel mirrors the real screen\'s P<pos> of <total>', () => {
+  const tenth = demoPlotResults('tenth', T);
+  const second = demoPlotResults('second', T);
+  const first = demoPlotResults('first', T);
+  assert(demoPlotPosLabel(tenth, DEMO_TODAY_RIDE_ID) === 'P3 of 10', `expected 'P3 of 10', got ${demoPlotPosLabel(tenth, DEMO_TODAY_RIDE_ID)}`);
+  assert(demoPlotPosLabel(tenth, 'demo:prior-2') === 'P1 of 10', `expected 'P1 of 10', got ${demoPlotPosLabel(tenth, 'demo:prior-2')}`);
+  assert(demoPlotPosLabel(second, DEMO_TODAY_RIDE_ID) === 'P1 of 2', `expected 'P1 of 2', got ${demoPlotPosLabel(second, DEMO_TODAY_RIDE_ID)}`);
+  assert(demoPlotPosLabel(first, DEMO_TODAY_RIDE_ID) === 'P1 of 1', `expected 'P1 of 1', got ${demoPlotPosLabel(first, DEMO_TODAY_RIDE_ID)}`);
+  assert(demoPlotPosLabel(tenth, 'nope') === '', `expected '' for unknown id, got '${demoPlotPosLabel(tenth, 'nope')}'`);
+  assert(demoPlotPosLabel(tenth, null) === '', `expected '' for null, got '${demoPlotPosLabel(tenth, null)}'`);
+});
+
+test('demoModel: plot — demoPlotCaption is the real windowCaption over plotWindow', () => {
+  assert(demoPlotCaption(demoPlotResults('tenth', T)) === 'LAST 9 RIDES', `expected 'LAST 9 RIDES', got ${demoPlotCaption(demoPlotResults('tenth', T))}`);
+  assert(demoPlotCaption(demoPlotResults('second', T)) === 'LAST 2 RIDES', `expected 'LAST 2 RIDES', got ${demoPlotCaption(demoPlotResults('second', T))}`);
+  assert(demoPlotCaption(demoPlotResults('first', T)) === 'LAST 1 RIDE', `expected 'LAST 1 RIDE', got ${demoPlotCaption(demoPlotResults('first', T))}`);
+});
+
+test('demoModel: plot — no throw pre-layout (width 0), and a lopsided lap is still honestly fastest', () => {
+  for (const mode of ['first', 'second', 'tenth'] as const) {
+    const results = demoPlotResults(mode, T);
+    const m = buildPlotModel(results, 0);
+    assert(m.points.length === Math.min(results.length, PLOT_N), `${mode}: expected ${Math.min(results.length, PLOT_N)} points at width 0, got ${m.points.length}`);
+  }
+  const lopsided = demoPlotResults('tenth', T, buildDemoScript([100, 100, 100, 100]));
+  const m = buildPlotModel(lopsided, W);
+  const today = m.points.find((p) => p.rideId === DEMO_TODAY_RIDE_ID)!;
+  assert(today.tone === 'fastest', `expected lopsided today's tone 'fastest', got ${today.tone}`);
+  assert(demoPlotPosLabel(lopsided, DEMO_TODAY_RIDE_ID) === 'P1 of 10', `expected 'P1 of 10', got ${demoPlotPosLabel(lopsided, DEMO_TODAY_RIDE_ID)}`);
 });

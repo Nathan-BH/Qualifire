@@ -15,6 +15,10 @@
  * columns are what makes SECOND RIDE (1 prior) honestly purple/yellow only
  * and TENTH RIDE (9 priors, the whole ranking pool) show all three verdict
  * colours on the scripted lap in `DEMO_SECS`, on every build, forever.
+ *
+ * virgin-cycle14 brief 08 (Nathan #11): the same pinned laps also feed the RESULTS
+ * scatterplot at the end of every demo ride — demoPlotResults / demoPlotPosLabel /
+ * demoPlotCaption hand the real ResultsPlot the store's own shapes, nothing stored.
  */
 import { WINDOW_PREV, tierFor, type UiTier } from './colourModel.ts';
 import type { LiveViewModel } from './liveView.tsx';   // type-only, house precedent towerModel.ts:22-23
@@ -28,6 +32,8 @@ import { DEMO_WAY_ASSET, DEMO_WAY_ID } from './demoWayFixture.ts';
 import type { RefLine } from '../../core/src/index.ts';
 import { buildRefFromRideFixes, type RefFixInput } from '../live/userRefs.ts';
 import { seedGateChainages } from '../store/gateSeeding.ts';   // pure, import-free (brief D R5)
+import { buildHistoryBoard, windowCaption } from './resultsListModel.ts';   // pure over a results array (brief 08)
+import { plotWindow } from './resultsPlotModel.ts';                          // the real plot's own window rule (brief 08)
 // Re-exported so DemoScreen.tsx never has to import from '../store/**' at all
 // (Rules: DemoScreen must not import anything from app/src/store/**).
 export type { RouteNames };
@@ -259,6 +265,50 @@ export function buildDemoReveal(
     { track: DEMO_WAY_ID, lap: { rawS: script.lap, stoppedS: 0, movingS: script.lap, estimated: false } },
     DEMO_TODAY_RIDE_ID, nowMs, demoPriorResults(priorLaps, nowMs), allTimeBest,
   );
+}
+
+/** virgin-cycle14 brief 08 (Nathan #11): today's scripted lap as a RideResult — the same
+ *  shape/fields as demoPriorResults' rows (rawS === movingS, 'clean', DEMO_WAY_ID), id
+ *  DEMO_TODAY_RIDE_ID, dated `nowMs`. Never stored; only ever handed to pure builders. */
+export function demoTodayResult(nowMs: number, script: DemoScript = buildDemoScript()): RideResult {
+  return {
+    kind: 'rideResult',
+    schemaVersion: 2,
+    rideId: DEMO_TODAY_RIDE_ID,
+    startedAtMs: nowMs,
+    wayId: DEMO_WAY_ID,
+    source: 'app',
+    lap: { rawS: script.lap, movingS: script.lap, quality: 'clean' },
+    sectors: [],
+    derivedBy: { engineVersion: 'demo', gateSetVersion: 1, resultSchemaVersion: 2 },
+  };
+}
+
+/** brief 08: what the RESULTS tab would hold for this way after the demo lap — the mode's
+ *  priors (the LAST DEMO_PRIOR_LAPS[mode] columns, oldest first, same ids/dates as the tower
+ *  and the self dots) plus today, newest. Feed this straight to ResultsPlot's `results`:
+ *  its own plotWindow() keeps the last PLOT_N ranked (TENTH: priors 2-9 + today, 9 dots;
+ *  SECOND: 2; FIRST: 1 — the real component's own <2-point rendering, no special case). */
+export function demoPlotResults(
+  mode: DemoMode, nowMs: number, script: DemoScript = buildDemoScript(),
+): RideResult[] {
+  return [...demoPriorResults(DEMO_PRIOR_LAPS[mode], nowMs), demoTodayResult(nowMs, script)];
+}
+
+/** brief 08: the plot caption's position segment, exactly as ResultsDetailScreen.tsx builds
+ *  it (`P<pos> of <total>` from the real buildHistoryBoard over the same results; PB marker
+ *  irrelevant here, so allTimeBestS is null). '' for no selection, an unknown id, or an
+ *  unranked row — the screen blanks it itself when SETTINGS rankings are off. */
+export function demoPlotPosLabel(results: readonly RideResult[], rideId: string | null): string {
+  if (rideId === null) return '';
+  const board = buildHistoryBoard([...results], null);
+  const row = board.rows.find((r) => r.rideId === rideId);
+  return row !== undefined && row.pos !== null ? `P${row.pos} of ${board.total}` : '';
+}
+
+/** brief 08: the real screen's header over the same window — 'LAST 9 RIDES' / 'LAST 1 RIDE'. */
+export function demoPlotCaption(results: readonly RideResult[]): string {
+  return windowCaption(plotWindow([...results]).length);
 }
 
 /** R6: the known route SECOND/TENTH RIDE are on — fixed text on the WP-G card by that

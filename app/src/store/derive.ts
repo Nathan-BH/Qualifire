@@ -147,6 +147,9 @@ export interface GateCrossings {
   /** follow-up (live PX): chainage in metres along `ref` per input fix — projectRideOffline's
    *  own `s`, unchanged. Same array length as `t`. */
   chainageM: ArrayLike<number>;
+  /** virgin-cycle14 brief 02 (replay): crossTime per gate, same order as `gates`;
+   *  gateS[0] === startS, gateS[last] === finishS; null = never crossed. */
+  gateS: (number | null)[];
 }
 
 export function deriveGateCrossings(inp: {
@@ -164,5 +167,6 @@ export function deriveGateCrossings(inp: {
     startS: crossTime(inp.t, s, g0),
     finishS: crossTime(inp.t, s, gLast),
     chainageM: s,
+    gateS: inp.gates.map((g) => crossTime(inp.t, s, g)),
   };
 }

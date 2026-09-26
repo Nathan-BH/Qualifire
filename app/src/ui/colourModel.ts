@@ -78,6 +78,16 @@ export function ghostsFor(wayId: string, excludeRideId?: string): RideResult[] {
   return rankedFor(wayId).filter((r) => r.rideId !== excludeRideId).slice(-WINDOW_PREV);
 }
 
+/** virgin-cycle14 brief 02 (replay): the comparison window AS IT STOOD when `rideId`
+ * was ridden — ranked rides of the way started before `beforeMs`, this ride excluded
+ * by id, last WINDOW_PREV. Ride k replays against k-1 (capped at 9), exactly what
+ * the live screen showed that day; rides ridden later never appear. */
+export function priorWindowFor(wayId: string, rideId: string, beforeMs: number): RideResult[] {
+  return rankedFor(wayId)
+    .filter((r) => r.rideId !== rideId && r.startedAtMs < beforeMs)
+    .slice(-WINDOW_PREV);
+}
+
 /** True count of rankable rides on file for a route — NOT windowed. The only
  * honest source for an "N rides on file" caption (cycle 025: the old caption
  * showed the window size capped at 10 and could contradict the header). */

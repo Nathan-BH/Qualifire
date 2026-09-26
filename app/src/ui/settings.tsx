@@ -22,9 +22,9 @@ import {
 import { currentSports, initSportStore, saveSports, sportWritesArmed } from '../store/sportStore';
 import { initRideHistory, resetRecorded } from './lastRide';
 import { saveTextFile } from './saveGpx';
-import { DEFAULT_TIMING, setTimingMode, type TimingMode } from '../store/timing';
 import { PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
+import { DEFAULT_DAY_END, DEFAULT_DAY_START, formatHHMM, parseHHMM, themeForTime } from './autoTheme';
 
 export interface Settings {
   startMode: 'auto' | 'pick';
@@ -41,10 +41,6 @@ export interface Settings {
    * (colourModel.ghostsFor, <= 9 rides) as moving dots on the live map,
    * timed from the START gate. Default true. */
   selfDots: boolean;
-  /** Which clock scores a ride (STATE.md ground rule): 'raw' = wall clock,
-   * every stop counts (the default — luck counts); 'moving' = raw minus
-   * detected stopped time, the opt-in. Read by store/timing.ts's scoredS(). */
-  timing: TimingMode;
   /** WP-1 (2026-09-06, Q3): show the sport pill row on RECORD's setup phase
    * when 2+ sports exist. Off = switch sports only in SETTINGS → SPORTS.
    * Meaningless (and not rendered) below 2 sports. Default true. */
@@ -53,6 +49,13 @@ export interface Settings {
    * Off hides every row's "?" (and collapses any open hint); on is the
    * pre-cycle-7 behaviour. Persisted like every other field. Default true. */
   showHelp: boolean;
+  /** virgin-cycle14 brief 01 (testuser LBH #1): switch daylight/night on a clock.
+   * Off = manual only (the default, so existing installs see no change). Times are
+   * "HH:MM" device-local; dayStart > dayEnd wraps midnight. The pure model is
+   * ui/autoTheme.ts, the effect is ui/autoThemeScheduler.tsx. */
+  autoTheme: boolean;
+  dayStart: string;
+  dayEnd: string;
 }
 
 const DEFAULTS: Settings = {
@@ -62,9 +65,11 @@ const DEFAULTS: Settings = {
   earcons: true,
   sectorColours: false,
   selfDots: true,
-  timing: DEFAULT_TIMING,
   showSportPillOnRecord: true,
   showHelp: true,
+  autoTheme: false,
+  dayStart: DEFAULT_DAY_START,
+  dayEnd: DEFAULT_DAY_END,
 };
 
 interface Ctx { s: Settings; set: <K extends keyof Settings>(k: K, v: Settings[K]) => void }
@@ -89,17 +94,15 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [s, setS] = useState<Settings>(DEFAULTS);
   const loaded = useRef(false);
 
-  // Sync, not an effect: RecordScreen/RidesScreen/RideDetailScreen memoise
-  // their verdicts on s.timing and recompute in THIS render pass, so the
-  // register must already hold the new mode when they do (an effect would
-  // lag one render). Idempotent, so StrictMode's double render is harmless.
-  setTimingMode(s.timing);
-
   useEffect(() => {
     (async () => {
       const saved = await load();
       if (saved) {
         delete (saved as Record<string, unknown>).redLight; // virgin-cycle7: setting retired; scrub old files
+        delete (saved as Record<string, unknown>).timing; // virgin-cycle14 #5: "Luck factor" row retired; scoring is raw-only, scrub old files
+        // virgin-cycle14 brief 01: never load an unparseable time (hand-edited file).
+        if (typeof saved.dayStart !== 'string' || parseHHMM(saved.dayStart) === null) delete saved.dayStart;
+        if (typeof saved.dayEnd !== 'string' || parseHHMM(saved.dayEnd) === null) delete saved.dayEnd;
         setS((prev) => ({ ...prev, ...saved }));
       }
       loaded.current = true;
@@ -155,6 +158,34 @@ function Switch({ on, onToggle, t }: { on: boolean; onToggle: () => void; t: Pad
       style={[st.sw, { backgroundColor: on ? t.accent : t.cardBorder }]}>
       <View style={[st.knob, { left: on ? 22 : 3, backgroundColor: on ? '#fff' : t.textDim }]} />
     </Pressable>
+  );
+}
+
+/** virgin-cycle14 brief 01: one HH:MM field. Local draft while typing; commits on
+ * end-editing only if it parses, otherwise snaps back to the last saved value. */
+function TimeRow(props: { label: string; value: string; onCommit: (v: string) => void; t: PaddockTheme; help: Help }) {
+  const { t } = props;
+  const [draft, setDraft] = useState(props.value);
+  useEffect(() => { setDraft(props.value); }, [props.value]);
+  return (
+    <Row label={props.label} t={t} help={props.help}>
+      <TextInput
+        value={draft}
+        onChangeText={setDraft}
+        onEndEditing={() => {
+          const m = parseHHMM(draft.trim());
+          if (m === null) { setDraft(props.value); return; }
+          const norm = formatHHMM(m);
+          setDraft(norm);
+          if (norm !== props.value) props.onCommit(norm);
+        }}
+        keyboardType="numbers-and-punctuation"
+        maxLength={5}
+        placeholder="09:00"
+        placeholderTextColor={t.textDim}
+        style={[st.input, { color: t.text, borderColor: t.cardBorder, backgroundColor: t.bg, minWidth: 74, textAlign: 'center' }]}
+      />
+    </Row>
   );
 }
 
@@ -273,7 +304,7 @@ async function performReset(): Promise<void> {
       : 'There was nothing on this phone to move — it was already at first launch.';
     Alert.alert(
       'Reset done',
-      `This build is back at its first launch. Close Qualifire fully and reopen it to see the launch animation and a clean RECORD tab.\n${movedMsg}`,
+      `Qualifire is back at its first launch. Close it fully and reopen it to see the launch animation and a clean RECORD tab.\n${movedMsg}`,
     );
   } catch (e) {
     const afterMoveMsg = moved
@@ -298,8 +329,8 @@ async function onResetPress(): Promise<void> {
   const w = uc.routes.length;
   const q = uc.ways.length;
   Alert.alert(
-    'Reset to virgin?',
-    `${r} ride${r === 1 ? '' : 's'}, ${p} place${p === 1 ? '' : 's'}, ${w} route${w === 1 ? '' : 's'}, ${q} way${q === 1 ? '' : 's'} and every result will be moved out of the app. Your settings and theme stay. Export anything you want to keep first (RIDES → Export GPX+, or the two share buttons above).`,
+    'Reset app?',
+    `${r} ride${r === 1 ? '' : 's'}, ${p} place${p === 1 ? '' : 's'}, ${w} route${w === 1 ? '' : 's'}, ${q} way${q === 1 ? '' : 's'}, every sport and every result will be moved out of the app. Your settings and theme stay. Export anything you want to keep first (RIDES → Export GPX+, or the two share buttons above).`,
     [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -327,6 +358,7 @@ async function onResetPress(): Promise<void> {
  * currentSports()/listRides() on mount and after every successful save) —
  * the same manual-tick pattern RidesScreen.tsx uses for resultsTick, because
  * this screen is a different module from the store.
+ * virgin-cycle14 brief 03 (Nathan #3): rendered second, under APPEARANCE, so a fresh install finds it without scrolling.
  */
 function SportsSection({ t, help }: { t: PaddockTheme; help: Help }) {
   const { s, set } = useSettings();
@@ -514,7 +546,7 @@ function SportsSection({ t, help }: { t: PaddockTheme; help: Help }) {
 
         {!sportWritesArmed() ? (
           <Text style={{ color: t.textDim, fontSize: 11, marginTop: 10 }}>
-            sports.json could not be read at boot — saving is disabled this session. Reset to virgin or fix the file (debug export) to recover.
+            sports.json could not be read at boot — saving is disabled this session. Reset the app (DATA → Reset app) or fix the file (debug export) to recover.
           </Text>
         ) : null}
 
@@ -533,7 +565,7 @@ function SportsSection({ t, help }: { t: PaddockTheme; help: Help }) {
 }
 
 export default function SettingsScreen() {
-  const { t, mode, toggleMode } = useTheme();
+  const { t, mode, toggleMode, pickMode } = useTheme();
   const { s, set } = useSettings();
   const [helpOpen, setHelpOpen] = useState<string | null>(null);
   const help: Help = {
@@ -545,20 +577,37 @@ export default function SettingsScreen() {
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
       <Text style={[st.h2, { color: t.textDim }]}>APPEARANCE</Text>
       <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-        <Row label="Theme" hint="The map and race surface follow it." help={help} t={t}>
+        <Row label="Theme" hint="The map and race surface follow it. With Auto on, your pick holds until the next scheduled change." help={help} t={t}>
           <Seg t={t} value={mode === 'daylight' ? 'day' : 'night'}
             options={[['night', 'night'], ['day', 'day']]}
-            onPick={(v) => { if ((v === 'day') !== (mode === 'daylight')) toggleMode(); }} />
+            onPick={(v) => pickMode(v === 'day' ? 'daylight' : 'night')} />
         </Row>
+        <Row label="Auto day/night" t={t} help={help}
+          hint="Day theme inside the window, night outside, switched at the times below (phone clock). Never switches mid-ride — it waits for STOP.">
+          <Switch on={s.autoTheme} onToggle={() => set('autoTheme', !s.autoTheme)} t={t} />
+        </Row>
+        {s.autoTheme ? (
+          <>
+            <TimeRow label="Day from" value={s.dayStart} onCommit={(v) => set('dayStart', v)} t={t} help={help} />
+            <TimeRow label="Day until" value={s.dayEnd} onCommit={(v) => set('dayEnd', v)} t={t} help={help} />
+            <Text style={{ color: t.textDim, fontSize: 11.5, paddingVertical: 8 }}>
+              {themeForTime(Date.now(), s.dayStart, s.dayEnd) === null
+                ? 'Times must be HH:MM and different — auto is paused until they are.'
+                : `Day ${s.dayStart}–${s.dayEnd}, night otherwise.`}
+            </Text>
+          </>
+        ) : null}
         <Row label="Help icons" t={t} help={help}>
           <Switch on={s.showHelp}
             onToggle={() => { set('showHelp', !s.showHelp); setHelpOpen(null); }} t={t} />
         </Row>
       </View>
 
-      <Text style={[st.h2, { color: t.textDim }]}>ON THE BIKE</Text>
+      <SportsSection t={t} help={help} />
+
+      <Text style={[st.h2, { color: t.textDim }]}>WHILE RECORDING</Text>
       <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-        <Row label="Live map" hint="Show the moving dot on the route while riding." help={help} t={t}>
+        <Row label="Live map" hint="Show the moving dot on the route while recording." help={help} t={t}>
           <Switch on={s.liveMap} onToggle={() => set('liveMap', !s.liveMap)} t={t} />
         </Row>
         <Row label="Sector colours" t={t} help={help}
@@ -589,21 +638,11 @@ export default function SettingsScreen() {
             Result tab with the RIDES/RESULT redesign; this switch now gates
             the ranking table inside Result's Personal Bests accordion. Still
             a real switch, never decorative (file doctrine, unchanged).
-            virgin-cycle7 (Nathan, QUESTIONS.md Q2): row relabelled "Luck factor" —
-            underlying key/type stay `timing`/`TimingMode`/`raw`|`moving` (store/timing.ts,
-            settings.json) unchanged, this is a display-only rename. */}
-        <Row label="Luck factor" t={t} help={help}
-          hint="luck (default): a stop is your luck, same as a real race — the wall clock keeps running. off: stopped time is dropped from your score, as if you'd been paused automatically">
-          <Seg t={t} value={s.timing}
-            options={[['raw', 'luck'], ['moving', 'off']]}
-            onPick={(v) => set('timing', v)} />
-        </Row>
+            virgin-cycle14 #5 (Nathan): the "Luck factor" raw/moving row that sat above this one is gone — scoring is raw wall-clock only; store/timing.ts's register stays at DEFAULT_TIMING. */}
         <Row label="Rankings" hint="Show where each ride placed against your others on that way — in the ride detail and on RESULTS." help={help} t={t}>
           <Switch on={s.tower} onToggle={() => set('tower', !s.tower)} t={t} />
         </Row>
       </View>
-
-      <SportsSection t={t} help={help} />
 
       <Text style={[st.h2, { color: t.textDim }]}>DATA</Text>
       <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
@@ -616,8 +655,8 @@ export default function SettingsScreen() {
             <Text style={[st.shareText, { color: t.text }]}>share</Text>
           </Pressable>
         </Row>
-        <Row label="Reference lines" t={t} help={help}
-          hint="Share refs.user.json — the reference lines built from your rides. Per-ride GPX+ export lives on RIDES.">
+        <Row label="Reference rides" t={t} help={help}
+          hint="Share refs.user.json — the line of each way, built from its reference ride. Per-ride GPX+ export lives on RIDES.">
           <Pressable
             style={[st.shareBtn, { borderColor: t.cardBorder }]}
             onPress={() => void shareStoreFile(USER_REFS_FILE, `qualifire-refs-${dateStamp(Date.now())}.json`)}
@@ -632,8 +671,8 @@ export default function SettingsScreen() {
             is the honest reading of the brief's "danger/dim colour"; the
             destructive style lives entirely in the two-step Alert.alert
             confirm, same as RidesScreen's own delete button. */}
-        <Row label="Reset to virgin" t={t} sep help={help}
-          hint="Moves every ride, result, place, way and route aside and starts this build over from its first launch. Settings and theme are kept.">
+        <Row label="Reset app" t={t} sep help={help}
+          hint="Moves every ride, result, sport, place, route and way aside and starts the app over from its first launch. Settings and theme are kept.">
           <Pressable
             style={[st.shareBtn, { borderColor: t.cardBorder }]}
             onPress={() => void onResetPress()}

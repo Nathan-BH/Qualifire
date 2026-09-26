@@ -4,8 +4,8 @@
  * own luck, exactly as in a real race — with moving time (raw minus detected
  * stopped time) as the opt-in.
  *
- * ONE module-level register, set by SettingsProvider (ui/settings.tsx) the
- * same way setEarconsEnabled() is, read by every verdict through scoredS():
+ * ONE module-level register — since virgin-cycle14 (#5) nothing in the app sets it (the
+ * SETTINGS row is gone; tests do), read by every verdict through scoredS():
  * no pure model threads a mode parameter, and no call site reads `.movingS`
  * for a tier, rank, PB or printed time again. Nothing stored changes — rawS
  * and movingS both stay on file (store/derive.ts) — this only decides which

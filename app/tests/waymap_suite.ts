@@ -335,3 +335,19 @@ test('routemap: the MapLibre zoom bar has exactly one compass reset button; the 
   assert(!/resetNorth/.test(pngBar),
     'the PNG zoom bar must have no compass button — the PNG rung is a cropped bitmap and cannot rotate');
 });
+
+test('routemap: map credits are an "i" button, never an always-visible label, and the native attribution stays off (virgin-cycle14 brief 05)', () => {
+  const src = fs.readFileSync(
+    path.join(TESTS_DIR, '..', 'src', 'ui', 'wayMapView.tsx'), 'utf8');
+  assert(!src.includes('numberOfLines={1}>{label}'), 'the old always-visible credit label is back');
+  assert(!src.includes('st.creditText') && !src.includes("'#2B2B2B'"), 'old credit pill style is back');
+  assert(!src.includes('<Modal'), 'the credit card must be in-frame — no Modal in wayMapView.tsx');
+  assert(src.includes('accessibilityLabel={`Map data sources: ${label}`}'), 'the "i" button must carry the full credit as its accessibility label');
+  assert(src.includes('CREDIT_AUTO_HIDE_MS'), 'the opened card must auto-hide');
+  assert((src.match(/<Credit rung="maplibre"/g) ?? []).length === 1, 'MapLibre rung must mount exactly one <Credit>');
+  assert((src.match(/<Credit rung="png"/g) ?? []).length === 2, 'PNG rung must mount <Credit> in both its gatesOnly frame and its image frame');
+  const mapStart = src.indexOf('<M.Map');
+  const openTag = src.slice(mapStart, src.indexOf('<M.Camera', mapStart));
+  assert(/attribution=\{false\}/.test(openTag) && /logo=\{false\}/.test(openTag),
+    'native attribution/logo must stay off — the JS <Credit> is the only credit, so both halves of this test guard the licence together');
+});

@@ -3,6 +3,9 @@
  * toggle on the Record screen. Persisted to <documents>/qualifire/settings.json
  * via expo-file-system (no AsyncStorage in the dev build). Race mode follows
  * the theme (t.race) — one toggle, two complete worlds.
+ * virgin-cycle14 brief 01: `pickMode`/`applyScheduledMode`/`manualAt` for the
+ * auto day/night schedule (schedule itself lives in settings.tsx +
+ * autoThemeScheduler.tsx).
  */
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { Directory, File, Paths } from 'expo-file-system';
@@ -43,12 +46,26 @@ interface ThemeCtx {
   t: PaddockTheme;
   mode: ThemeMode;
   toggleMode: () => void;
+  /** User's explicit pick (Seg row / RECORD pill). Records manualAt. */
+  pickMode: (m: ThemeMode) => void;
+  /** The auto-schedule's write: same as pickMode but does NOT touch manualAt. */
+  applyScheduledMode: (m: ThemeMode) => void;
+  /** Date.now() of the last user pick this JS launch; null if none. In-memory only. */
+  manualAt: number | null;
 }
 
-const Ctx = createContext<ThemeCtx>({ t: daylight, mode: 'daylight', toggleMode: () => {} });
+const Ctx = createContext<ThemeCtx>({
+  t: daylight,
+  mode: 'daylight',
+  toggleMode: () => {},
+  pickMode: () => {},
+  applyScheduledMode: () => {},
+  manualAt: null,
+});
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [mode, setMode] = useState<ThemeMode>('daylight');
+  const [manualAt, setManualAt] = useState<number | null>(null);
 
   useEffect(() => {
     loadMode().then(setMode);
@@ -60,10 +77,22 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       saveMode(next);
       return next;
     });
+    setManualAt(Date.now());
+  }, []);
+
+  const pickMode = useCallback((m: ThemeMode) => {
+    saveMode(m);
+    setMode(m);
+    setManualAt(Date.now());
+  }, []);
+
+  const applyScheduledMode = useCallback((m: ThemeMode) => {
+    saveMode(m);
+    setMode(m);
   }, []);
 
   return (
-    <Ctx.Provider value={{ t: mode === 'daylight' ? daylight : night, mode, toggleMode }}>
+    <Ctx.Provider value={{ t: mode === 'daylight' ? daylight : night, mode, toggleMode, pickMode, applyScheduledMode, manualAt }}>
       {children}
     </Ctx.Provider>
   );
