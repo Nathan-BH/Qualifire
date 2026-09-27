@@ -79,6 +79,7 @@ import { effectiveRideSportId, setActiveSport, showSportPillRow, wayIdsOfSport }
 import { afterSportSwitch } from '../store/sportSwitch';
 import { activeCatalog, activeSportId, currentSports, saveSports } from '../store/sportStore';
 import { defaultEndpoints, wayLabelIn, wayVariantLabel, sortWaysForDisplay } from '../store/defaultWay';
+import { landmarkUsageCounts, sortLandmarksByUsage } from '../store/landmarkUsage';
 import type { Way } from '../store/types';
 import { PaddockTheme, colors, radius } from './theme';
 import { useTheme } from './themeContext';
@@ -976,7 +977,13 @@ export default function RecordScreen({
     return p === null ? null : `P${p}`;
   }, [selfDots, live.chainageM, live.startGateT, live.lap, live.mode, settings.selfDots]);
 
-  const startable = CATALOG.landmarks.filter((l) => l.offerAtStart);
+  // cycle15 brief 14 (Nathan 2026-09-27): most-used places first, ties keep
+  // catalog order. Counted on demand from stored results (no cache); only
+  // worth doing while the START / GOING TO pill rows are on screen.
+  const startableUnsorted = CATALOG.landmarks.filter((l) => l.offerAtStart);
+  const startable = phase === 'setup'
+    ? sortLandmarksByUsage(startableUnsorted, landmarkUsageCounts(CATALOG))
+    : startableUnsorted;
 
   // DETECTED start: the real one, from the last fix through the catalog. Null
   // when the phone is nowhere known -- it used to claim "home" regardless

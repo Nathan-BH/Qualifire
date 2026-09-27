@@ -29,6 +29,7 @@ import './sports_suite.ts';
 import './sportstore_suite.ts';
 import './sportswitch_suite.ts';
 import './catalogdelete_suite.ts';
+import './landmarkusage_suite.ts';
 import './routecreation_suite.ts';
 import './wayspec_suite.ts';
 import './userrefs_suite.ts';
