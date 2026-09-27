@@ -242,14 +242,14 @@ async function shareStoreFile(rel: string, outName: string): Promise<void> {
   try {
     const text = await createExpoFsAdapter().readText(rel);
     if (text === null) {
-      Alert.alert('Nothing to share yet', `${rel} does not exist on this phone.`);
+      Alert.alert('Nothing to export yet', `${rel} does not exist on this phone.`);
       return;
     }
     const res = await saveTextFile(outName, 'application/json', text);
     if (res.method === 'saf') Alert.alert('Exported', `${outName} saved to the folder you picked.`);
-    else if (res.method === 'share-text') Alert.alert('Shared', `${outName} sent as text via the share sheet.`);
+    else if (res.method === 'share-text') Alert.alert('Exported', `${outName} sent as text via the share sheet.`);
   } catch (e) {
-    Alert.alert('Share failed', e instanceof Error ? e.message : String(e));
+    Alert.alert('Export failed', e instanceof Error ? e.message : String(e));
   }
 }
 
@@ -330,7 +330,7 @@ async function onResetPress(): Promise<void> {
   const q = uc.ways.length;
   Alert.alert(
     'Reset app?',
-    `${r} ride${r === 1 ? '' : 's'}, ${p} place${p === 1 ? '' : 's'}, ${w} route${w === 1 ? '' : 's'}, ${q} way${q === 1 ? '' : 's'}, every sport and every result will be moved out of the app. Your settings and theme stay. Export anything you want to keep first (RIDES → Export GPX+, or the two share buttons above).`,
+    `${r} ride${r === 1 ? '' : 's'}, ${p} place${p === 1 ? '' : 's'}, ${w} route${w === 1 ? '' : 's'}, ${q} way${q === 1 ? '' : 's'}, every sport and every result will be moved out of the app. Your settings and theme stay. Export anything you want to keep first (RIDES → Export GPX+, or the two export buttons above).`,
     [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -611,14 +611,14 @@ export default function SettingsScreen() {
           <Switch on={s.liveMap} onToggle={() => set('liveMap', !s.liveMap)} t={t} />
         </Row>
         <Row label="Sector colours" t={t} help={help}
-          hint="Paint each stretch of the route line in the tier its sector earned — on the live map, in the ride view and on the RIDES list. Purple beats your best, green beats your recent average, yellow is an ordinary lap. Off keeps the whole line yellow.">
+          hint="Paint each stretch of the route line in the colour its sector earned.">
           <Switch on={s.sectorColours} onToggle={() => set('sectorColours', !s.sectorColours)} t={t} />
         </Row>
         <Row label="Race your past rides" t={t} help={help}
           hint="Your previous rides of this route move along the map as small dots, timed from the START gate. Purple is your best of the last nine, green is faster than their average, yellow slower. The P-number under the map is your position among them right now.">
           <Switch on={s.selfDots} onToggle={() => set('selfDots', !s.selfDots)} t={t} />
         </Row>
-        <Row label="Earcons" hint="A short buzz at each gate crossing." help={help} t={t}>
+        <Row label="Gate buzz" hint="A short buzz at each gate crossing." help={help} t={t}>
           <Switch on={s.earcons} onToggle={() => set('earcons', !s.earcons)} t={t} />
         </Row>
       </View>
@@ -647,21 +647,21 @@ export default function SettingsScreen() {
       <Text style={[st.h2, { color: t.textDim }]}>DATA</Text>
       <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
         <Row label="Places & routes" t={t} help={help}
-          hint="Share catalog.user.json — every place, way and route created on this phone.">
+          hint="Export catalog.user.json — every place, way and route created on this phone.">
           <Pressable
             style={[st.shareBtn, { borderColor: t.cardBorder }]}
             onPress={() => void shareStoreFile(USER_CATALOG_FILE, `qualifire-catalog-${dateStamp(Date.now())}.json`)}
           >
-            <Text style={[st.shareText, { color: t.text }]}>share</Text>
+            <Text style={[st.shareText, { color: t.text }]}>export</Text>
           </Pressable>
         </Row>
         <Row label="Reference rides" t={t} help={help}
-          hint="Share refs.user.json — the line of each way, built from its reference ride. Per-ride GPX+ export lives on RIDES.">
+          hint="Export refs.user.json — the line of each way, built from its reference ride. Per-ride GPX+ export lives on RIDES.">
           <Pressable
             style={[st.shareBtn, { borderColor: t.cardBorder }]}
             onPress={() => void shareStoreFile(USER_REFS_FILE, `qualifire-refs-${dateStamp(Date.now())}.json`)}
           >
-            <Text style={[st.shareText, { color: t.text }]}>share</Text>
+            <Text style={[st.shareText, { color: t.text }]}>export</Text>
           </Pressable>
         </Row>
         {/* WP-Q Part B: visually separated from the two share rows above (a
