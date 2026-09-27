@@ -9,10 +9,12 @@ import * as path from 'node:path';
 import { assert, loadJson, test, TESTS_DIR } from './lib.ts';
 import {
   allGatesBounds, allGatesFeatureCollection, bearingBetween, cameraTargetFor, gatesFeatureCollection,
-  gateTicksFeatureCollection, metresBetween, riderFeature, rotateEnabledFor, wayBounds, wayLineFeature,
-  waySplitFeatures, sectorSpansFeatureCollection, trailBounds,
+  gateTicksFeatureCollection, liveMapGateWayIds, metresBetween, riderFeature, rotateEnabledFor, wayBounds,
+  wayLineFeature, waySplitFeatures, sectorSpansFeatureCollection, trailBounds,
 } from '../src/ui/wayMapGeo.ts';
 import { gateName } from '../src/ui/gateAdjustModel.ts';
+import { freeRideWayIds } from '../src/store/catalog.ts';
+import type { Catalog } from '../src/store/types.ts';
 import type { WayAsset } from '../src/ui/wayMapMath.ts';
 
 interface Manifest { schemaVersion: number; projection: string; ways: Record<string, WayAsset> }
@@ -199,6 +201,89 @@ test('routemapgeo: allGatesBounds — unfiltered spans at least as much as a sin
     assert(g.lat >= filtered!.minLat && g.lat <= filtered!.maxLat, 'Morning gate outside its own filtered bounds');
   }
   assert(allGatesBounds(manifest.ways, []) === null, 'an empty routeIds filter must yield null bounds');
+});
+
+// ============================================================ virgin-cycle15 06 (cross-ride isolation)
+//
+// Nathan (2026-09-27): a HomeChurch way saved that morning painted its gates
+// onto a later, unrelated NEW>>NEW ride's live map, and FIT framed those
+// gates instead of the trail actually ridden. Root cause confirmed by the
+// executor's Step 0 (see cycles/virgin-cycle15/06-stale-route-gates-bugfix.md
+// "Executor confirmation"): freeRideWayIds(catalog, null, null) returns
+// `null` — its own documented, already-tested "unfiltered" contract (see
+// store_suite.ts's freeRideRouteIds test) — and every consumer downstream
+// (allGatesFeatureCollection/allGatesBounds's `wayIds ?? Object.keys(assets)`
+// fallback) reads that null as "every way in the catalog", not "no ways".
+// liveMapGateWayIds is the one place that turns NEW>>NEW into an explicit
+// empty list before it reaches those consumers, for exactly the case
+// (both endpoints unknown) that has no business drawing anything else's gates.
+
+const NEW_ID_FIXTURE = '~new'; // mirrors RecordScreen.tsx's private NEW_ID by value (see wayMapGeo.ts's own note on liveMapGateWayIds)
+
+test('routemapgeo: liveMapGateWayIds — NEW>>NEW always empties the candidate list', () => {
+  assert(
+    JSON.stringify(liveMapGateWayIds(NEW_ID_FIXTURE, NEW_ID_FIXTURE, ['wayA'])) === '[]',
+    'both ends unknown must drop every candidate, however many were passed in',
+  );
+});
+
+test('routemapgeo: liveMapGateWayIds — a partial free ride (one end known) passes candidates through unchanged', () => {
+  assert(
+    JSON.stringify(liveMapGateWayIds('home', NEW_ID_FIXTURE, ['wayA', 'wayB'])) === JSON.stringify(['wayA', 'wayB']),
+    'known FROM / unknown TO must not filter further — freeRideWayIds already narrowed this list',
+  );
+});
+
+test('routemapgeo: liveMapGateWayIds — both ends known passes candidates through (route mode never actually calls this)', () => {
+  assert(
+    JSON.stringify(liveMapGateWayIds('home', 'church', ['wayA'])) === JSON.stringify(['wayA']),
+    'the helper is total — it does not special-case a pair it is never actually called with',
+  );
+});
+
+test('routemapgeo: cross-ride isolation end-to-end — a way saved earlier the same day must not leak onto a later NEW>>NEW ride', () => {
+  // Minimal catalog: one saved way, "homechurch" (stands in for Nathan's
+  // HomeChurch), exactly like the state right after ride A's save.
+  const catalogWithHomeChurch: Catalog = {
+    schemaVersion: 2,
+    landmarks: [],
+    routes: [{ id: 'home>church', startLandmarkId: 'home', endLandmarkId: 'church', wayIds: ['homechurch'] }],
+    ways: [{ id: 'homechurch', routeId: 'home>church', refLineId: 'homechurch', gateSetVersion: 1, seeded: false }],
+    gateSets: [],
+  };
+  // Ride B's setup: NEW>>NEW, exactly like Nathan's WorkHome ride.
+  const candidates = freeRideWayIds(catalogWithHomeChurch, null, null);
+  assert(candidates === null,
+    'documents the actual H1 mechanism: both-unknown is UNFILTERED (null), not an explicit id list — ' +
+    'if freeRideWayIds ever starts returning an array here instead, this test (and liveMapGateWayIds\'s ' +
+    'RecordScreen.tsx callsite, which does `rideFreeWayIds ?? []`) must be revisited, not silently pass');
+  // RecordScreen.tsx's actual callsite: `rideFreeWayIds ?? []`, then liveMapGateWayIds.
+  const mapGateWayIds = liveMapGateWayIds(NEW_ID_FIXTURE, NEW_ID_FIXTURE, candidates ?? []);
+  assert(JSON.stringify(mapGateWayIds) === '[]', 'a NEW>>NEW ride must resolve to an explicit empty gate list');
+  // Before this fix, RecordScreen.tsx fed `rideFreeWayIds` (null) straight to
+  // WayMapView's gateWayIds prop, and allGatesFeatureCollection/allGatesBounds
+  // read that null as "every way" via their own `?? Object.keys(assets)`
+  // fallback — reproduce that directly against a drawable that actually
+  // contains homechurch-shaped gates (manifest.ways stands in; any non-empty
+  // asset map demonstrates the same fallback):
+  const leakedFC = allGatesFeatureCollection(manifest.ways, undefined, '#ffea00', candidates ?? undefined);
+  assert(leakedFC.features.length === Object.values(manifest.ways).reduce((n, a) => n + a.gates.length, 0),
+    'sanity check on the OLD (unfixed) wiring: an unfiltered null must draw every way\'s gates — ' +
+    'this is the bug Nathan hit, reproduced here so the fixed wiring below can be contrasted against it');
+  const fixedFC = allGatesFeatureCollection(manifest.ways, undefined, '#ffea00', mapGateWayIds);
+  assert(fixedFC.features.length === 0, 'the fixed wiring (liveMapGateWayIds\'s output) must draw zero gates');
+  const fixedBounds = allGatesBounds(manifest.ways, mapGateWayIds);
+  assert(fixedBounds === null, 'the fixed wiring must also yield null bounds, not a degenerate box');
+  // wayMapView.tsx's post-fix bounds ternary (mirrored here — see that
+  // file's `bounds`/`gatesOnlyBounds` for the real wiring, not exported as a
+  // standalone function): a null gates-only bounds must fall through to the
+  // trail actually ridden, never stay stuck at null while a trail exists.
+  const trail = [{ lat: 50.85, lon: 4.65 }, { lat: 50.86, lon: 4.66 }];
+  const gatesOnlyBounds = fixedBounds; // === allGatesBounds(manifest.ways, mapGateWayIds), computed above
+  const bounds = gatesOnlyBounds ?? (trail.length > 1 ? trailBounds(trail) : null);
+  const expectedTrailBounds = trailBounds(trail);
+  assert(bounds !== null && JSON.stringify(bounds) === JSON.stringify(expectedTrailBounds),
+    'FIT on a NEW>>NEW ride must frame the trail ridden so far, not stay null and not frame homechurch');
 });
 
 test('routemapgeo: metresBetween — zero for an identical fix, ~111km per degree of latitude', () => {

@@ -604,10 +604,17 @@ function MapLibreWayMap(props: WayMapProps & {
   const sectorSpansFC = !gatesOnly && asset && props.sectorColours
     ? sectorSpansFeatureCollection(asset, props.sectorColours, props.leadColour)
     : null;
-  const bounds = gatesOnly && drawable
+  // virgin-cycle15 06: an empty gate selection (e.g. a NEW>>NEW free ride,
+  // via liveMapGateWayIds) must fall through to the trail actually ridden,
+  // not stay stuck at a null gates-only bounds — `asset` is always undefined
+  // whenever `gatesOnly` is true (see its definition above), so this ??
+  // reaches straight past it to `hasTrail` exactly as intended.
+  const gatesOnlyBounds = gatesOnly && drawable
     ? allGatesBounds(drawable, props.gateWayIds)
-    : asset ? wayBounds(asset)
-    : hasTrail ? trailBounds(props.trail!) : null;
+    : null;
+  const bounds = gatesOnlyBounds
+    ?? (asset ? wayBounds(asset)
+    : hasTrail ? trailBounds(props.trail!) : null);
 
   // WP-D §3.1c: the camera-target rule itself lives in routeMapGeo.ts
   // (headlessly testable) — this is just wiring the live inputs through.

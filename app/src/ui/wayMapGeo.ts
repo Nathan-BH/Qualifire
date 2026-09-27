@@ -472,6 +472,33 @@ export function cameraTargetFor(input: {
   return {};
 }
 
+// ============================================================ virgin-cycle15 06 (cross-ride gate leak)
+
+/** UI pseudo-id for "no landmark known yet" — mirrors RecordScreen.tsx's own
+ * `NEW_ID` ('~new') by value, not by import: this module stays pure/
+ * headless-testable (RecordScreen.tsx pulls in react-native), the same
+ * discipline catalog.ts's `freeRideWayIds` doc comment already calls out
+ * ("a UI concept this pure catalog module deliberately does not know the id
+ * of"). If RecordScreen.tsx's NEW_ID literal ever changes, this must change
+ * with it — there is no single source of truth today for that string.
+ */
+const NEW_ID = '~new';
+
+/** Which way ids the LIVE MAP may draw gates for on a free ride. A ride
+ * whose setup is NEW>>NEW has declared no known start and no known end —
+ * nothing in the catalog belongs on its map, whatever candidate set the
+ * engine itself is matching against (virgin-cycle15 06: a way saved that
+ * same morning painted its gates onto an unrelated NEW>>NEW ride later the
+ * same day; FIT framed those gates instead of the trail actually ridden).
+ * `candidateWayIds` is whatever the caller already computed for a partial
+ * free ride (one endpoint known) — passed straight through unchanged. */
+export function liveMapGateWayIds(
+  fromId: string, toId: string, candidateWayIds: readonly string[],
+): string[] {
+  if (fromId === NEW_ID && toId === NEW_ID) return [];
+  return [...candidateWayIds];
+}
+
 /** WP-M (Nathan Q3, 2026-09-05): two-finger rotation is on everywhere except
  * the actual race ribbon. Mirrors routeMapView's `unlocked` matrix: browse,
  * prestart and finished are "released to browse"; moving/stopped stay

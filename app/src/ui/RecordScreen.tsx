@@ -38,7 +38,7 @@ import { LaunchAnimation } from './launchAnimation';
 import { effectiveFromId, isFullscreen, liveMapOverlayFor, statusItemsFor, type RecordPhase } from './recordFlow';
 import { useTabNav } from './tabNav';
 import WayMapView from './wayMapView';
-import { metresBetween } from './wayMapGeo';
+import { liveMapGateWayIds, metresBetween } from './wayMapGeo';
 import { appendTrailPoint, type TrailPoint } from './trailModel';
 import { useSettings } from './settings';
 import { chipColors, tierLineColour, type Tier } from './chips';
@@ -596,6 +596,19 @@ export default function RecordScreen({
       // notes5 N5: a finished ride's explicit FROM tap must not carry into
       // the next ride's setup — the next setup gets a fresh suggestion.
       setFromExplicit(false);
+      // virgin-cycle15 06 (D3): these five are ride-scoped by their own
+      // comments above ("frozen at START", "the pre-lock candidate for the
+      // LIVE map") and none feeds the post-ride setup suggestion (unlike
+      // from/to, deliberately left alone — D4). Reset here, at ride end, not
+      // at the next ride's START, so any future consumer that reads them
+      // between rides (results, ride-detail hand-off, a future "last ride"
+      // panel) sees them cleared too — WP-H's own identity capture already
+      // ran above, from `s`/`sessionRef`, not from these.
+      setWayPick(null);
+      pickedWayRef.current = null;
+      setRideWayHint(null);
+      setRideFreeWayIds(null);
+      freeWayIdsRef.current = [];
       setReveal(nextReveal);
       setRevealDone(nextReveal === null);
       postRevealRef.current = draft === null ? 'rev' : 'card';
@@ -750,6 +763,13 @@ export default function RecordScreen({
             // notes5 N5: same reset as onEnd — a discarded ride's explicit
             // FROM tap must not carry into the next ride's setup.
             setFromExplicit(false);
+            // virgin-cycle15 06 (D3): same ride-scoped reset as onEnd, and
+            // for the same reason — a discarded ride is a ride ending too.
+            setWayPick(null);
+            pickedWayRef.current = null;
+            setRideWayHint(null);
+            setRideFreeWayIds(null);
+            freeWayIdsRef.current = [];
             setPhase('setup');
             try {
               await deleteRide(s.rideId);
@@ -1215,7 +1235,16 @@ export default function RecordScreen({
               sectorColours={sectorColours}
               gatesOnly={live.mode === 'free'}
               crossedGates={live.freeCrossings}
-              gateWayIds={rideFreeWayIds}
+              // virgin-cycle15 06: rideFreeWayIds is `null` ("unfiltered" —
+              // freeRideWayIds' own documented contract) exactly when this
+              // ride is NEW>>NEW, which every consumer downstream (here via
+              // `?? []`, then wayMapGeo's own `wayIds ?? Object.keys(assets)`
+              // fallbacks) was otherwise reading as "every way in the
+              // catalog" — a way saved earlier the same day then painted its
+              // gates onto an unrelated later ride. liveMapGateWayIds is the
+              // single place that turns NEW>>NEW into "no gates", leaving a
+              // partial free ride's real candidate list untouched.
+              gateWayIds={liveMapGateWayIds(fromId, to, rideFreeWayIds ?? [])}
               trail={mapOverlay.showTrail ? trail : undefined}
               selfs={settings.selfDots && live.mode === 'route' ? selfDots : undefined}
               variant="live"
