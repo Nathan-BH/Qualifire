@@ -35,7 +35,7 @@ import {
 import { liveEngine, type LiveEngineState } from '../live/engine';
 import { LiveSectorPane, realTimebase, viewModelFromEngine } from './liveView';
 import { LaunchAnimation } from './launchAnimation';
-import { effectiveFromId, isFullscreen, liveMapOverlayFor, recordPressAction, statusItemsFor, type RecordPhase } from './recordFlow';
+import { effectiveFromId, isFullscreen, liveMapOverlayFor, namingOfferMode, recordPressAction, statusItemsFor, type RecordPhase } from './recordFlow';
 import { useTabNav } from './tabNav';
 import WayMapView from './wayMapView';
 import { liveMapGateWayIds, metresBetween } from './wayMapGeo';
@@ -184,11 +184,22 @@ export default function RecordScreen({
   // the STOP-step naming offer for endpoints that match no existing way, or
   // that diverge >MATCHED_ENDPOINT_SLACK_M from the ride's own matched route
   // (null = no offer). While non-null the 'ending' phase shows the naming
-  // card and holds the reversed launch mark.
+  // card and holds the reversed launch mark. Brief 05: a quiet offer
+  // (namingOfferMode) does NOT hold the reversed mark unless expanded — see
+  // namingExpanded.
   const [naming, setNaming] = useState<RouteCreationDraft | null>(null);
   // Mirror for the [] useCallback closures below, same reason as sessionRef.
   const namingRef = useRef<RouteCreationDraft | null>(null);
   namingRef.current = naming;
+  // virgin-cycle15 brief 05: a 'quiet' offer (namingOfferMode — the ride was
+  // scored as an existing way of a route you have) shows only a one-line
+  // "not <way>?" link and lets the screen proceed by itself; tapping the
+  // link sets this, which (1) renders the full RouteNamingCard and (2) makes
+  // the post-reveal hold below keep the screen up instead of playing the
+  // reversed mark. Ref for the [] timeout closure, same reason as namingRef.
+  const [namingExpanded, setNamingExpanded] = useState(false);
+  const namingExpandedRef = useRef(false);
+  namingExpandedRef.current = namingExpanded;
   // OPEN-ITEMS item 3 (Part B): the seeded-gates adjustment step, shown by
   // 'ending' after a CREATE WAY whose reference line + gate seed were built
   // (naming is cleared first — the two cards are never up together). Its
@@ -636,12 +647,16 @@ export default function RecordScreen({
       freeWayIdsRef.current = [];
       setReveal(nextReveal);
       setRevealDone(nextReveal === null);
-      postRevealRef.current = draft === null ? 'rev' : 'card';
+      // Brief 05: a quiet offer (namingOfferMode) is treated as no offer here —
+      // the ride is already saved as the scored way, so the screen proceeds by
+      // itself; only a full-card offer holds.
+      postRevealRef.current = namingOfferMode(draft) === 'card' ? 'card' : 'rev';
       setPhase('ending');
+      setNamingExpanded(false); // a fresh ride never starts expanded
       setNaming(draft);
       // No reveal: the end mark plays at once, exactly as before. With a reveal it
       // waits for onRevealPlayed (below).
-      if (draft === null && nextReveal === null) setShowAnim('rev');
+      if (namingOfferMode(draft) !== 'card' && nextReveal === null) setShowAnim('rev');
     } catch (e) {
       Alert.alert('Could not stop cleanly', e instanceof Error ? e.message : String(e));
       // No navigation, no animation — stay exactly where the ride actually
@@ -662,7 +677,10 @@ export default function RecordScreen({
     revealHoldRef.current = setTimeout(() => {
       revealHoldRef.current = null;
       setRevealDone(true);
-      if (postRevealRef.current === 'rev') setShowAnim('rev');
+      // Brief 05: postRevealRef's 'rev' baseline (decided in onEnd) is
+      // overridden if the rider tapped "not <way>?" during the hold —
+      // namingExpandedRef is the live escape hatch the frozen baseline can't see.
+      if (postRevealRef.current === 'rev' && !namingExpandedRef.current) setShowAnim('rev');
     }, REVEAL_HOLD_MS);
   }, []);
 
@@ -1195,7 +1213,7 @@ export default function RecordScreen({
                 onKeep={onAdjustKeep}
                 onSave={onAdjustSave}
               />
-            ) : naming !== null ? (
+            ) : naming !== null && (namingOfferMode(naming) === 'card' || namingExpanded) ? (
               <RouteNamingCard
                 startExistingLabel={existingLandmarkLabel(naming.start)}
                 endExistingLabel={existingLandmarkLabel(naming.end)}
@@ -1207,6 +1225,17 @@ export default function RecordScreen({
                 onSave={onNamingSave}
                 onSkip={onNamingSkip}
               />
+            ) : naming !== null && naming.matchedWayId ? (
+              /* brief 05: quiet offer — the ride is already saved as the scored
+                 way; this one dim line is the whole correction affordance. */
+              <Pressable
+                style={styles.notThisWayBtn}
+                disabled={busy || showAnim !== null}
+                onPress={() => setNamingExpanded(true)}
+                accessibilityLabel="This ride was a different way"
+              >
+                <Text style={styles.notThisWayText}>{`not ${wayLabelIn(currentCatalog(), naming.matchedWayId)}?`}</Text>
+              </Pressable>
             ) : null
           ) : null}
         </ScrollView>
@@ -1215,6 +1244,8 @@ export default function RecordScreen({
             onDone={() => {
               setShowAnim(null);
               setReveal(null); // a board must never survive into the next ride's 'ending'
+              setNaming(null); // brief 05: a quiet offer rides through the mark un-cleared
+              setNamingExpanded(false);
               setPhase('setup');
               // WP-H: post-STOP now opens the ride detail overlay instead of
               // the retired RESULT tab. No session id (should not happen for
@@ -1713,6 +1744,11 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
   sub: { color: t.text2, fontSize: 15, textAlign: 'center' },
   startFlow: { alignSelf: 'stretch', gap: 4, marginTop: 6 },
   flowLabel: { color: t.textDim, fontSize: 11, letterSpacing: 2, marginTop: 8 },
+  // virgin-cycle15 brief 05: the routeNamingCard.tsx 235-236 skipBtn/skipText
+  // values — the smallest secondary control on this screen already, reused
+  // so the new affordance reads as a footnote and nothing new is designed.
+  notThisWayBtn: { paddingVertical: 10, alignItems: 'center' },
+  notThisWayText: { color: t.textDim, fontSize: 13 },
   pillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   pill: {
     borderWidth: 1, borderColor: t.cardBorder, borderRadius: radius.pill,

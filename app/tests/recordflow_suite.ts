@@ -5,7 +5,7 @@
  */
 import { assert, test } from './lib.ts';
 import {
-  canTransition, effectiveFromId, isFullscreen, liveMapOverlayFor, recordPressAction, statusItemsFor, type RecordPhase,
+  canTransition, effectiveFromId, isFullscreen, liveMapOverlayFor, namingOfferMode, recordPressAction, statusItemsFor, type RecordPhase,
 } from '../src/ui/recordFlow.ts';
 import { addSport, emptySports } from '../src/store/sports.ts';
 
@@ -214,4 +214,36 @@ test('recordFlow: onFirstSport\'s save-then-arm sequence — after addSport, the
     recordPressAction({ sportCount: result.sports.length, firstSportPrompt: true }) === 'arm',
     'once the sport is saved, the next press must be a plain arm',
   );
+});
+test('namingOfferMode: no draft => none', () => {
+  assert(namingOfferMode(null) === 'none', 'null draft must be none');
+});
+
+test('namingOfferMode: scored as an existing way of a route you have => quiet (default-assumed-correct case)', () => {
+  assert(
+    namingOfferMode({ existingRouteId: 'r1', matchedWayId: 'w1' }) === 'quiet',
+    'existingRouteId + matchedWayId both set: the ride is already saved as that way, no card',
+  );
+});
+
+test('namingOfferMode: route exists but no way matched => card (variant 3 — nothing to assume)', () => {
+  assert(
+    namingOfferMode({ existingRouteId: 'r1', matchedWayId: null }) === 'card',
+    'route exists, no way matched: nothing to assume',
+  );
+});
+
+test('namingOfferMode: scored, but no route between these places => card (variant 1b — still a new route)', () => {
+  assert(
+    namingOfferMode({ existingRouteId: null, matchedWayId: 'w1' }) === 'card',
+    'scored, but no route between these places: still a new route',
+  );
+});
+
+test('namingOfferMode: neither route nor way matched => card (variant 1c)', () => {
+  assert(namingOfferMode({ existingRouteId: null, matchedWayId: null }) === 'card', 'variant 1c must be card');
+});
+
+test('namingOfferMode: both fields absent (undefined) => card', () => {
+  assert(namingOfferMode({}) === 'card', 'both undefined must be card, same as both null');
 });

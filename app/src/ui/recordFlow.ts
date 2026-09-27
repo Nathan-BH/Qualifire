@@ -115,3 +115,18 @@ export function recordPressAction(input: { sportCount: number; firstSportPrompt:
   if (input.sportCount > 0) return 'arm';
   return input.firstSportPrompt ? 'add-first-sport' : 'open-first-sport';
 }
+
+/** virgin-cycle15 brief 05 (Nathan 2026-09-26): how loud the STOP-time naming
+ * offer is. 'none' = no draft (nothing to offer); 'quiet' = the ride is on a
+ * route the rider has AND the engine scored it as one of that route's ways —
+ * the ride is already saved as that way, so the screen proceeds by itself and
+ * only a small "not <way>?" link is shown; 'card' = every other draft (new
+ * route, or a route with no matching way): nothing to assume, full card as
+ * before. Takes the two ids rather than the draft type so the rule has no
+ * store import. */
+export type NamingOfferMode = 'none' | 'quiet' | 'card';
+export function namingOfferMode(draft: { existingRouteId?: string | null; matchedWayId?: string | null } | null): NamingOfferMode {
+  if (draft === null) return 'none';
+  return draft.existingRouteId && draft.matchedWayId ? 'quiet' : 'card';
+}
+

@@ -16,6 +16,13 @@
  * saveUserCatalog() call. An endpoint that matched an EXISTING landmark
  * renders as fixed text, not an input. SKIP is always available and loses
  * nothing — the ride itself was already saved before this card exists.
+ *
+ * virgin-cycle15 brief 05 (Nathan 2026-09-26): when the ride was scored as
+ * an existing way of an existing route (`existingRoute && matchedWayLabel`)
+ * this card is no longer shown by default — RecordScreen shows a one-line
+ * `not <way>?` link and only opens the card on tap. In that case the
+ * explanatory body sentence is dropped: the rider already said it was
+ * different.
  */
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -87,19 +94,19 @@ export function RouteNamingCard(props: RouteNamingCardProps) {
       <Text style={[st.title, { color: t.text }]}>
         {existingRoute ? `New way on ${existingRoute.label}` : 'New route — name where you rode'}
       </Text>
-      <Text style={[st.sub, { color: t.textDim }]}>
-        {existingRoute
-          ? props.matchedWayLabel
-            ? `Scored as ${props.matchedWayLabel}. Was this a different way? Add what made it different to save it as a new way on this route — this ride becomes its reference.`
-            : `${existingRoute.label} is a route you have, but this ride did not follow any of its ways. Name what made it different to save it as a new way — this ride becomes its reference.`
-          : props.loop
-            ? props.startExistingLabel !== null
-              ? `This ride looped from and back to ${props.startExistingLabel}.`
-              : 'This ride looped from and back to one new place.'
-            : props.matchedWayLabel
-              ? `Scored as ${props.matchedWayLabel}, but no route of yours runs between these two places. Name them to make this a way of its own — this ride becomes its reference.`
-              : 'This ride does not match any route you have. Name its start and end to make it a real way — this ride becomes its reference.'}
-      </Text>
+      {!(existingRoute && props.matchedWayLabel) && (
+        <Text style={[st.sub, { color: t.textDim }]}>
+          {existingRoute
+            ? `${existingRoute.label} is a route you have, but this ride did not follow any of its ways. Name what made it different to save it as a new way — this ride becomes its reference.`
+            : props.loop
+              ? props.startExistingLabel !== null
+                ? `This ride looped from and back to ${props.startExistingLabel}.`
+                : 'This ride looped from and back to one new place.'
+              : props.matchedWayLabel
+                ? `Scored as ${props.matchedWayLabel}, but no route of yours runs between these two places. Name them to make this a way of its own — this ride becomes its reference.`
+                : 'This ride does not match any route you have. Name its start and end to make it a real way — this ride becomes its reference.'}
+        </Text>
+      )}
 
       <Text style={[st.label, { color: t.textDim }]}>STARTED AT</Text>
       {needStart ? (
