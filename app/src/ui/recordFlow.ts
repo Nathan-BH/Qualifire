@@ -130,3 +130,22 @@ export function namingOfferMode(draft: { existingRouteId?: string | null; matche
   return draft.existingRouteId && draft.matchedWayId ? 'quiet' : 'card';
 }
 
+/** virgin-cycle15 brief 05 follow-up (Inspect 2026-09-28): what the 'ending'
+ * screen's slot under the tower shows. Before the reveal has landed
+ * (`revealDone` false — tower climb + REVEAL_HOLD_MS hold) a quiet offer shows
+ * the one-line "not <way>?" link, and nothing else is ever shown there. Once
+ * landed: the gate-adjust card outranks everything; the naming card shows for
+ * a full-card offer, or for a quiet offer the rider expanded via the link.
+ * The card is never shown before the reveal has landed — the hold timer must
+ * not be pending while a card exit could start the end mark (see
+ * RecordScreen's onNotThisWay). */
+export type EndingSlot = 'adjust' | 'card' | 'link' | 'none';
+export function endingSlotFor(input: {
+  revealDone: boolean; adjust: boolean; offer: NamingOfferMode; namingExpanded: boolean;
+}): EndingSlot {
+  if (!input.revealDone) return input.offer === 'quiet' && !input.namingExpanded ? 'link' : 'none';
+  if (input.adjust) return 'adjust';
+  if (input.offer === 'card' || (input.offer === 'quiet' && input.namingExpanded)) return 'card';
+  return 'none';
+}
+

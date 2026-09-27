@@ -35,7 +35,7 @@ import {
 import { liveEngine, type LiveEngineState } from '../live/engine';
 import { LiveSectorPane, realTimebase, viewModelFromEngine } from './liveView';
 import { LaunchAnimation } from './launchAnimation';
-import { effectiveFromId, isFullscreen, liveMapOverlayFor, namingOfferMode, recordPressAction, statusItemsFor, type RecordPhase } from './recordFlow';
+import { effectiveFromId, endingSlotFor, isFullscreen, liveMapOverlayFor, namingOfferMode, recordPressAction, statusItemsFor, type RecordPhase } from './recordFlow';
 import { useTabNav } from './tabNav';
 import WayMapView from './wayMapView';
 import { liveMapGateWayIds, metresBetween } from './wayMapGeo';
@@ -197,6 +197,8 @@ export default function RecordScreen({
   // link sets this, which (1) renders the full RouteNamingCard and (2) makes
   // the post-reveal hold below keep the screen up instead of playing the
   // reversed mark. Ref for the [] timeout closure, same reason as namingRef.
+  // Inspect 2026-09-28: the link is shown BEFORE revealDone (tower climb +
+  // hold) — see endingSlotFor; inside the revealDone slot it was unreachable.
   const [namingExpanded, setNamingExpanded] = useState(false);
   const namingExpandedRef = useRef(false);
   namingExpandedRef.current = namingExpanded;
@@ -674,6 +676,12 @@ export default function RecordScreen({
   // REVEAL_HOLD_MS before whatever the 'ending' screen would have done
   // anyway (the card, or — with no card due — the reverse mark).
   const onRevealPlayed = useCallback(() => {
+    // Inspect 2026-09-28: the rider already tapped "not <way>?" during the
+    // climb — nothing to hold for, the card is due the moment the tower lands.
+    if (namingExpandedRef.current) {
+      setRevealDone(true);
+      return;
+    }
     revealHoldRef.current = setTimeout(() => {
       revealHoldRef.current = null;
       setRevealDone(true);
@@ -682,6 +690,19 @@ export default function RecordScreen({
       // namingExpandedRef is the live escape hatch the frozen baseline can't see.
       if (postRevealRef.current === 'rev' && !namingExpandedRef.current) setShowAnim('rev');
     }, REVEAL_HOLD_MS);
+  }, []);
+
+  // brief 05 follow-up (Inspect 2026-09-28): the "not <way>?" tap. Expands the
+  // offer and, if the post-landing hold is running, ends it now — the card
+  // shows at once and the cleared timer can never start the end mark later.
+  // During the climb (no timer yet) onRevealPlayed above handles the landing.
+  const onNotThisWay = useCallback(() => {
+    setNamingExpanded(true);
+    if (revealHoldRef.current) {
+      clearTimeout(revealHoldRef.current);
+      revealHoldRef.current = null;
+      setRevealDone(true);
+    }
   }, []);
 
   // OPEN-ITEMS item 2 — the naming card's two exits. Skip loses nothing: the
@@ -1175,6 +1196,9 @@ export default function RecordScreen({
   // launch mark plays on top (below) before folding back to 'setup' and
   // handing off to Result. No PAUSE/END here — the ride is already over.
   if (phase === 'ending') {
+    const endingSlot = endingSlotFor({
+      revealDone, adjust: adjust !== null, offer: namingOfferMode(naming), namingExpanded,
+    });
     return (
       <View style={styles.raceColumn}>
         {/* virgin-cycle11: tower + card can exceed one screen on a small
@@ -1202,41 +1226,44 @@ export default function RecordScreen({
               onPlayed={onRevealPlayed}
             />
           )}
-          {revealDone ? (
-            adjust !== null ? (
-              <GateAdjustCard
-                wayId={adjust.wayId}
-                refLine={adjust.ref}
-                refLengthM={adjust.refLengthM}
-                initialChainageM={adjust.chainageM}
-                busy={busy}
-                onKeep={onAdjustKeep}
-                onSave={onAdjustSave}
-              />
-            ) : naming !== null && (namingOfferMode(naming) === 'card' || namingExpanded) ? (
-              <RouteNamingCard
-                startExistingLabel={existingLandmarkLabel(naming.start)}
-                endExistingLabel={existingLandmarkLabel(naming.end)}
-                loop={naming.loop}
-                busy={busy}
-                matchedWayLabel={naming.matchedWayId ? wayLabelIn(currentCatalog(), naming.matchedWayId) : null}
-                existingRoute={naming.existingRouteId ? existingRouteProps(naming.existingRouteId) : null}
-                vocabulary={specVocabulary(activeCatalog().ways)}
-                onSave={onNamingSave}
-                onSkip={onNamingSkip}
-              />
-            ) : naming !== null && naming.matchedWayId ? (
-              /* brief 05: quiet offer — the ride is already saved as the scored
-                 way; this one dim line is the whole correction affordance. */
-              <Pressable
-                style={styles.notThisWayBtn}
-                disabled={busy || showAnim !== null}
-                onPress={() => setNamingExpanded(true)}
-                accessibilityLabel="This ride was a different way"
-              >
-                <Text style={styles.notThisWayText}>{`not ${wayLabelIn(currentCatalog(), naming.matchedWayId)}?`}</Text>
-              </Pressable>
-            ) : null
+          {/* Inspect 2026-09-28: which one thing sits under the tower is a pure
+              rule (recordFlow.ts endingSlotFor) — the "not <way>?" link is only
+              reachable BEFORE the reveal lands; inside the revealDone slot it
+              rendered in the same tick as the end mark and was never tappable. */}
+          {endingSlot === 'adjust' && adjust !== null ? (
+            <GateAdjustCard
+              wayId={adjust.wayId}
+              refLine={adjust.ref}
+              refLengthM={adjust.refLengthM}
+              initialChainageM={adjust.chainageM}
+              busy={busy}
+              onKeep={onAdjustKeep}
+              onSave={onAdjustSave}
+            />
+          ) : endingSlot === 'card' && naming !== null ? (
+            <RouteNamingCard
+              startExistingLabel={existingLandmarkLabel(naming.start)}
+              endExistingLabel={existingLandmarkLabel(naming.end)}
+              loop={naming.loop}
+              busy={busy}
+              matchedWayLabel={naming.matchedWayId ? wayLabelIn(currentCatalog(), naming.matchedWayId) : null}
+              existingRoute={naming.existingRouteId ? existingRouteProps(naming.existingRouteId) : null}
+              vocabulary={specVocabulary(activeCatalog().ways)}
+              onSave={onNamingSave}
+              onSkip={onNamingSkip}
+            />
+          ) : endingSlot === 'link' && naming !== null && naming.matchedWayId ? (
+            /* brief 05: quiet offer — the ride is already saved as the scored
+               way; this one dim line is the whole correction affordance. Shown
+               through the tower climb + hold; tapping holds the screen. */
+            <Pressable
+              style={styles.notThisWayBtn}
+              disabled={busy || showAnim !== null}
+              onPress={onNotThisWay}
+              accessibilityLabel="This ride was a different way"
+            >
+              <Text style={styles.notThisWayText}>{`not ${wayLabelIn(currentCatalog(), naming.matchedWayId)}?`}</Text>
+            </Pressable>
           ) : null}
         </ScrollView>
         {showAnim === 'rev' && (
@@ -1298,14 +1325,15 @@ export default function RecordScreen({
               crossedGates={live.freeCrossings}
               // virgin-cycle15 06: rideFreeWayIds is `null` ("unfiltered" —
               // freeRideWayIds' own documented contract) exactly when this
-              // ride is NEW>>NEW, which every consumer downstream (here via
-              // `?? []`, then wayMapGeo's own `wayIds ?? Object.keys(assets)`
-              // fallbacks) was otherwise reading as "every way in the
-              // catalog" — a way saved earlier the same day then painted its
-              // gates onto an unrelated later ride. liveMapGateWayIds is the
-              // single place that turns NEW>>NEW into "no gates", leaving a
-              // partial free ride's real candidate list untouched.
-              gateWayIds={liveMapGateWayIds(fromId, to, rideFreeWayIds ?? [])}
+              // ride was NEW>>NEW at START; liveMapGateWayIds turns that into
+              // "no gates" instead of the downstream "every way" fallback,
+              // and passes a partial free ride's candidate list through.
+              // Inspect 2026-09-28: the FROZEN list only — never the live
+              // `fromId`/`to`, which drift mid-ride in auto start mode (see
+              // rideWayHint's comment above) and emptied a Home>>NEW ride's
+              // gates the moment the rider left Home's disc. Route mode also
+              // freezes null here, but never reads gateWayIds (gatesOnly false).
+              gateWayIds={liveMapGateWayIds(rideFreeWayIds)}
               trail={mapOverlay.showTrail ? trail : undefined}
               selfs={settings.selfDots && live.mode === 'route' ? selfDots : undefined}
               variant="live"

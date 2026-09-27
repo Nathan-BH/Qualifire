@@ -218,27 +218,30 @@ test('routemapgeo: allGatesBounds — unfiltered spans at least as much as a sin
 // empty list before it reaches those consumers, for exactly the case
 // (both endpoints unknown) that has no business drawing anything else's gates.
 
-const NEW_ID_FIXTURE = '~new'; // mirrors RecordScreen.tsx's private NEW_ID by value (see wayMapGeo.ts's own note on liveMapGateWayIds)
-
-test('routemapgeo: liveMapGateWayIds — NEW>>NEW always empties the candidate list', () => {
-  assert(
-    JSON.stringify(liveMapGateWayIds(NEW_ID_FIXTURE, NEW_ID_FIXTURE, ['wayA'])) === '[]',
-    'both ends unknown must drop every candidate, however many were passed in',
-  );
+test('routemapgeo: liveMapGateWayIds — a NEW>>NEW ride (frozen list null = "unfiltered") draws no gates', () => {
+  assert(JSON.stringify(liveMapGateWayIds(null)) === '[]',
+    'null is freeRideWayIds\' both-ends-unknown answer; it must become an explicit empty list, never "every way"');
 });
 
-test('routemapgeo: liveMapGateWayIds — a partial free ride (one end known) passes candidates through unchanged', () => {
-  assert(
-    JSON.stringify(liveMapGateWayIds('home', NEW_ID_FIXTURE, ['wayA', 'wayB'])) === JSON.stringify(['wayA', 'wayB']),
-    'known FROM / unknown TO must not filter further — freeRideWayIds already narrowed this list',
-  );
-});
-
-test('routemapgeo: liveMapGateWayIds — both ends known passes candidates through (route mode never actually calls this)', () => {
-  assert(
-    JSON.stringify(liveMapGateWayIds('home', 'church', ['wayA'])) === JSON.stringify(['wayA']),
-    'the helper is total — it does not special-case a pair it is never actually called with',
-  );
+test('routemapgeo: liveMapGateWayIds — a partial free ride keeps its START-time candidates, whatever the live endpoints later read', () => {
+  // Inspect 2026-09-28 regression: a ride started inside Home's disc (auto
+  // start mode, nothing tapped) is Home>>NEW at START and freezes Home's
+  // outbound ways. The first cut ALSO read the live fromId/to and emptied the
+  // list once the rider left the disc (detected landmark null → fromId back
+  // to '~new'). The helper now sees only the frozen list, so there is nothing
+  // left to drift: the same call, mid-ride, gives the same answer.
+  const catalogWithHomeChurch: Catalog = {
+    schemaVersion: 2,
+    landmarks: [],
+    routes: [{ id: 'home>church', startLandmarkId: 'home', endLandmarkId: 'church', wayIds: ['homechurch'] }],
+    ways: [{ id: 'homechurch', routeId: 'home>church', refLineId: 'homechurch', gateSetVersion: 1, seeded: false }],
+    gateSets: [],
+  };
+  const frozenAtStart = freeRideWayIds(catalogWithHomeChurch, 'home', null);
+  assert(JSON.stringify(frozenAtStart) === JSON.stringify(['homechurch']), 'Home>>NEW at START narrows to Home\'s outbound ways');
+  assert(JSON.stringify(liveMapGateWayIds(frozenAtStart)) === JSON.stringify(['homechurch']),
+    'the frozen candidates pass through unchanged — mid-ride drift of the live endpoints cannot reach this rule');
+  assert(liveMapGateWayIds(frozenAtStart) !== frozenAtStart, 'a copy, not the caller\'s array');
 });
 
 test('routemapgeo: cross-ride isolation end-to-end — a way saved earlier the same day must not leak onto a later NEW>>NEW ride', () => {
@@ -256,9 +259,9 @@ test('routemapgeo: cross-ride isolation end-to-end — a way saved earlier the s
   assert(candidates === null,
     'documents the actual H1 mechanism: both-unknown is UNFILTERED (null), not an explicit id list — ' +
     'if freeRideWayIds ever starts returning an array here instead, this test (and liveMapGateWayIds\'s ' +
-    'RecordScreen.tsx callsite, which does `rideFreeWayIds ?? []`) must be revisited, not silently pass');
-  // RecordScreen.tsx's actual callsite: `rideFreeWayIds ?? []`, then liveMapGateWayIds.
-  const mapGateWayIds = liveMapGateWayIds(NEW_ID_FIXTURE, NEW_ID_FIXTURE, candidates ?? []);
+    'RecordScreen.tsx callsite, which passes it straight in) must be revisited, not silently pass');
+  // RecordScreen.tsx's actual callsite: rideFreeWayIds passed straight into liveMapGateWayIds.
+  const mapGateWayIds = liveMapGateWayIds(candidates);
   assert(JSON.stringify(mapGateWayIds) === '[]', 'a NEW>>NEW ride must resolve to an explicit empty gate list');
   // Before this fix, RecordScreen.tsx fed `rideFreeWayIds` (null) straight to
   // WayMapView's gateWayIds prop, and allGatesFeatureCollection/allGatesBounds

@@ -5,7 +5,7 @@
  */
 import { assert, test } from './lib.ts';
 import {
-  canTransition, effectiveFromId, isFullscreen, liveMapOverlayFor, namingOfferMode, recordPressAction, statusItemsFor, type RecordPhase,
+  canTransition, effectiveFromId, endingSlotFor, isFullscreen, liveMapOverlayFor, namingOfferMode, recordPressAction, statusItemsFor, type RecordPhase,
 } from '../src/ui/recordFlow.ts';
 import { addSport, emptySports } from '../src/store/sports.ts';
 
@@ -246,4 +246,26 @@ test('namingOfferMode: neither route nor way matched => card (variant 1c)', () =
 
 test('namingOfferMode: both fields absent (undefined) => card', () => {
   assert(namingOfferMode({}) === 'card', 'both undefined must be card, same as both null');
+});
+
+test('endingSlotFor: quiet offer shows the link BEFORE the reveal lands (climb + hold), not after', () => {
+  assert(endingSlotFor({ revealDone: false, adjust: false, offer: 'quiet', namingExpanded: false }) === 'link', 'during the hold the link must be up');
+  assert(endingSlotFor({ revealDone: true, adjust: false, offer: 'quiet', namingExpanded: false }) === 'none', 'once landed with no tap, nothing — the end mark is playing');
+});
+
+test('endingSlotFor: a tapped quiet offer shows the card only once the reveal has landed', () => {
+  assert(endingSlotFor({ revealDone: false, adjust: false, offer: 'quiet', namingExpanded: true }) === 'none', 'tapped mid-climb: link gone, card not yet (no card exit may run under a pending hold timer)');
+  assert(endingSlotFor({ revealDone: true, adjust: false, offer: 'quiet', namingExpanded: true }) === 'card', 'tapped and landed: the full card');
+});
+
+test('endingSlotFor: a full-card offer never shows the link and shows the card once landed', () => {
+  assert(endingSlotFor({ revealDone: false, adjust: false, offer: 'card', namingExpanded: false }) === 'none', 'card offers have no link');
+  assert(endingSlotFor({ revealDone: true, adjust: false, offer: 'card', namingExpanded: false }) === 'card', 'card offer, landed');
+});
+
+test('endingSlotFor: no offer shows nothing in either state; the adjust card outranks a card once landed', () => {
+  assert(endingSlotFor({ revealDone: false, adjust: false, offer: 'none', namingExpanded: false }) === 'none', 'no offer, climbing');
+  assert(endingSlotFor({ revealDone: true, adjust: false, offer: 'none', namingExpanded: false }) === 'none', 'no offer, landed');
+  assert(endingSlotFor({ revealDone: true, adjust: true, offer: 'none', namingExpanded: true }) === 'adjust', 'after ADD WAY the gate-adjust card is what shows');
+  assert(endingSlotFor({ revealDone: false, adjust: true, offer: 'none', namingExpanded: true }) === 'none', 'adjust is a landed-only card too');
 });

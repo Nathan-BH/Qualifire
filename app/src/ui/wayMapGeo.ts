@@ -474,29 +474,27 @@ export function cameraTargetFor(input: {
 
 // ============================================================ virgin-cycle15 06 (cross-ride gate leak)
 
-/** UI pseudo-id for "no landmark known yet" — mirrors RecordScreen.tsx's own
- * `NEW_ID` ('~new') by value, not by import: this module stays pure/
- * headless-testable (RecordScreen.tsx pulls in react-native), the same
- * discipline catalog.ts's `freeRideWayIds` doc comment already calls out
- * ("a UI concept this pure catalog module deliberately does not know the id
- * of"). If RecordScreen.tsx's NEW_ID literal ever changes, this must change
- * with it — there is no single source of truth today for that string.
- */
-const NEW_ID = '~new';
-
-/** Which way ids the LIVE MAP may draw gates for on a free ride. A ride
- * whose setup is NEW>>NEW has declared no known start and no known end —
- * nothing in the catalog belongs on its map, whatever candidate set the
- * engine itself is matching against (virgin-cycle15 06: a way saved that
- * same morning painted its gates onto an unrelated NEW>>NEW ride later the
- * same day; FIT framed those gates instead of the trail actually ridden).
- * `candidateWayIds` is whatever the caller already computed for a partial
- * free ride (one endpoint known) — passed straight through unchanged. */
-export function liveMapGateWayIds(
-  fromId: string, toId: string, candidateWayIds: readonly string[],
-): string[] {
-  if (fromId === NEW_ID && toId === NEW_ID) return [];
-  return [...candidateWayIds];
+/** Which way ids the LIVE MAP may draw gates for on a free ride. Takes the
+ * candidate list RecordScreen FROZE AT START (`rideFreeWayIds`, the value
+ * `freeRideWayIds` returned for the setup endpoints the ride was actually
+ * started with) and nothing else. That value is `null` — freeRideWayIds'
+ * documented "unfiltered" contract — exactly when the ride was NEW>>NEW at
+ * START, and every consumer downstream (allGatesFeatureCollection /
+ * allGatesBounds' `wayIds ?? Object.keys(assets)` fallback) read that null as
+ * "every way in the catalog": a way saved that same morning painted its gates
+ * onto an unrelated NEW>>NEW ride later the same day, and FIT framed those
+ * gates instead of the trail actually ridden (virgin-cycle15 06). This is the
+ * one place that turns that null into an explicit empty list. A partial free
+ * ride's (one end known) list passes through unchanged.
+ *
+ * Inspect 2026-09-28: the first cut took the LIVE `fromId`/`to` as well and
+ * emptied the list when both read '~new' — but `fromId` drifts mid-ride in
+ * auto start mode (the detected landmark goes null once you leave its disc),
+ * so a ride started Home>>NEW lost its gates, and FIT its target, a few
+ * hundred metres in. The frozen list already encodes the START-time answer;
+ * the live endpoints only added the drift. */
+export function liveMapGateWayIds(rideFreeWayIds: readonly string[] | null): string[] {
+  return rideFreeWayIds === null ? [] : [...rideFreeWayIds];
 }
 
 /** WP-M (Nathan Q3, 2026-09-05): two-finger rotation is on everywhere except
