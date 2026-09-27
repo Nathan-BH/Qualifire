@@ -35,7 +35,7 @@ import {
 import { liveEngine, type LiveEngineState } from '../live/engine';
 import { LiveSectorPane, realTimebase, viewModelFromEngine } from './liveView';
 import { LaunchAnimation } from './launchAnimation';
-import { effectiveFromId, isFullscreen, liveMapOverlayFor, statusItemsFor, type RecordPhase } from './recordFlow';
+import { effectiveFromId, isFullscreen, liveMapOverlayFor, recordPressAction, statusItemsFor, type RecordPhase } from './recordFlow';
 import { useTabNav } from './tabNav';
 import WayMapView from './wayMapView';
 import { liveMapGateWayIds, metresBetween } from './wayMapGeo';
@@ -71,11 +71,12 @@ import {
 } from '../store/routeFromRide';
 import { GateAdjustCard } from './gateAdjustCard';
 import { RouteNamingCard } from './routeNamingCard';
+import { FirstSportPrompt } from './firstSportPrompt';
 import { deleteRide } from '../storage';
 import { removeStoredResult } from '../store/resultsStore';
 import { currentCatalog } from '../store/catalogStore';
 import { freeRideWayIds, gateSetFor, landmarkAt } from '../store/catalog';
-import { effectiveRideSportId, setActiveSport, showSportPillRow, wayIdsOfSport } from '../store/sports';
+import { addSport, effectiveRideSportId, setActiveSport, showSportPillRow, wayIdsOfSport } from '../store/sports';
 import { afterSportSwitch } from '../store/sportSwitch';
 import { activeCatalog, activeSportId, currentSports, saveSports } from '../store/sportStore';
 import { defaultEndpoints, wayLabelIn, wayVariantLabel, sortWaysForDisplay } from '../store/defaultWay';
@@ -228,15 +229,15 @@ export default function RecordScreen({
   // sport in the SAME render pass, not one frame later.
   const [, setSportSwitchTick] = useState(0);
   const CATALOG = activeCatalog();
-  // Q4: zero sports blocks the whole setup flow (the C0 card further down)
-  // and onRecord (belt-and-braces guard below) — a ride cannot start
-  // without a sport for it to belong to.
+  // Q4: zero sports blocks the whole setup flow (the C0 block further down)
+  // and onRecord (belt-and-braces guard below, which reads the live store) —
+  // a ride cannot start without a sport for it to belong to.
   const noSport = currentSports().sports.length === 0;
-  // onRecord is a []-deps useCallback (mirrors pickedWayRef/freeRideRef's
-  // pattern below): it must read the CURRENT noSport, not the one from the
-  // render it was created in.
-  const noSportRef = useRef(noSport);
-  noSportRef.current = noSport;
+  // virgin-cycle15 brief 02: the first sport is named right here. RECORD
+  // press 1 opens the prompt, press 2 saves the sport and arms (onFirstSport).
+  const [firstSportPrompt, setFirstSportPrompt] = useState(false);
+  const [firstSportText, setFirstSportText] = useState('');
+  const [firstSportError, setFirstSportError] = useState<string | null>(null);
   // B-39: data-driven, never literal ids — the first two offerable catalog
   // landmarks (today's seed: home, work), or the 'new' pseudo-landmark when
   // the catalog has none, so a blank install opens on new>>new: the free
@@ -451,10 +452,11 @@ export default function RecordScreen({
   }, [phase]);
 
   const onRecord = useCallback(async () => {
-    // Q4 belt-and-braces: the button is not rendered while noSport (the C0
-    // card replaces the whole setup flow), but the guard makes the
-    // invariant explicit rather than relying on render-absence alone.
-    if (noSportRef.current) return;
+    // Q4 belt-and-braces: the setup flow is not rendered while zero sports
+    // exist, but the guard makes the invariant explicit. Reads the live store
+    // (not a render-time flag) because onFirstSport calls this in the same
+    // tick as the saveSports that created sport #1.
+    if (currentSports().sports.length === 0) return;
     setBusy(true);
     try {
       // Permissions move up to RECORD (armed press) so the OS dialogs happen
@@ -475,6 +477,24 @@ export default function RecordScreen({
       setBusy(false);
     }
   }, []);
+
+  // virgin-cycle15 brief 02: RECORD press 2 with zero sports — SETTINGS'
+  // handleAdd transplanted (addSport → saveSports, first sport auto-active),
+  // then straight into the normal arming path. Not a []-deps callback: it
+  // reads the typed text.
+  const onFirstSport = useCallback(async () => {
+    const label = firstSportText.trim();
+    if (label.length === 0) { setFirstSportError('type a sport name first'); return; }
+    const candidate = addSport(currentSports(), label, Date.now());
+    if (Array.isArray(candidate)) { setFirstSportError(candidate.join('; ')); return; }
+    const errs = await saveSports(candidate);
+    if (errs.length > 0) { setFirstSportError(errs.join('; ')); return; }
+    setFirstSportError(null);
+    setFirstSportText('');
+    setFirstSportPrompt(false);
+    setSportSwitchTick((v) => v + 1);
+    await onRecord();
+  }, [firstSportText, onRecord]);
 
   const onStart = useCallback(async () => {
     setBusy(true);
@@ -1361,6 +1381,7 @@ export default function RecordScreen({
       style={styles.scroll}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
     >
       {/* Theme toggle — settings-lite; hidden while recording (inert surface). */}
       <Pressable style={styles.modePill} onPress={toggleMode}>
@@ -1406,13 +1427,23 @@ export default function RecordScreen({
         ) : null}
         {/* Q4 (WP-1): zero sports blocks the whole setup flow — a ride
             cannot start without a sport for it to belong to. No onboarding
-            screen; SETTINGS -> SPORTS only. Nathan 2026-09-24: dropped the
-            explanatory body copy (too much AI-sounding text for a real
-            product) — the label alone, extended with the destination, is
-            enough. */}
+            screen. Nathan 2026-09-24: label only, no body copy.
+            virgin-cycle15 brief 02 (Nathan 2026-09-26): the first sport is
+            named HERE — RECORD opens the prompt, RECORD again saves + arms.
+            2nd+ sports: SETTINGS -> SPORTS, unchanged. */}
         {noSport ? (
           <View style={styles.startFlow}>
-            <Text style={styles.flowLabel}>SET UP A SPORT FIRST — GO TO SETTINGS</Text>
+            {firstSportPrompt ? (
+              <FirstSportPrompt
+                value={firstSportText}
+                onChange={(v) => { setFirstSportText(v); if (firstSportError) setFirstSportError(null); }}
+                error={firstSportError}
+                busy={busy}
+                onDismiss={() => { setFirstSportPrompt(false); setFirstSportText(''); setFirstSportError(null); }}
+              />
+            ) : (
+              <Text style={styles.flowLabel}>SET UP A SPORT FIRST — PRESS RECORD</Text>
+            )}
           </View>
         ) : (
           <>
@@ -1524,20 +1555,25 @@ export default function RecordScreen({
           the launch mark, then the RACE screen is ready but not moving until
           START is pressed there. Amber, no red (D-013) — see WP-A2's
           NEEDS-NATHAN #1 for the red option. Q4 (WP-1): while zero sports
-          exist the button still presses through to SETTINGS, but Nathan
-          2026-09-24 wants it reading as the normal RECORD button (not a
-          distinct "GO TO SETTINGS" label) — only the subtext below it flags
-          the missing sport. virgin-cycle14 brief 07 (Nathan #10): the caption
+          exist the button opens the first-sport prompt, then saves + arms
+          (virgin-cycle15 brief 02; recordFlow.recordPressAction) — Nathan
+          2026-09-24 wants it reading as the normal RECORD button, only the
+          subtext flags the missing sport. virgin-cycle14 brief 07 (Nathan #10): the caption
           under RECORD is the slogan now, not the arming hint. */}
       <Pressable
         style={[styles.bigBtn, styles.startYellow, busy && styles.busy]}
         disabled={busy}
-        onPress={noSport ? () => tabNav.go('settings') : onRecord}
+        onPress={() => {
+          const action = recordPressAction({ sportCount: currentSports().sports.length, firstSportPrompt });
+          if (action === 'arm') void onRecord();
+          else if (action === 'add-first-sport') void onFirstSport();
+          else setFirstSportPrompt(true);
+        }}
       >
         {noSport ? (
           <>
             <Text style={[styles.bigBtnText, styles.startText]}>{'●'} RECORD</Text>
-            <Text style={[styles.bigBtnSub, styles.startSub]}>no sport selected</Text>
+            <Text style={[styles.bigBtnSub, styles.startSub]}>{firstSportPrompt ? 'with this sport' : 'no sport yet'}</Text>
           </>
         ) : (
           <>

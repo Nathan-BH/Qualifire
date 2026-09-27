@@ -5,8 +5,9 @@
  */
 import { assert, test } from './lib.ts';
 import {
-  canTransition, effectiveFromId, isFullscreen, liveMapOverlayFor, statusItemsFor, type RecordPhase,
+  canTransition, effectiveFromId, isFullscreen, liveMapOverlayFor, recordPressAction, statusItemsFor, type RecordPhase,
 } from '../src/ui/recordFlow.ts';
+import { addSport, emptySports } from '../src/store/sports.ts';
 
 const PHASES: RecordPhase[] = ['setup', 'armed', 'running', 'ending'];
 
@@ -173,4 +174,44 @@ test('liveMapOverlayFor: trail and route line are mutually exclusive in every re
       }
     }
   }
+});
+
+test('recordPressAction: fresh install — the first RECORD press opens the first-sport prompt, never navigates', () => {
+  assert(
+    recordPressAction({ sportCount: 0, firstSportPrompt: false }) === 'open-first-sport',
+    'zero sports, prompt closed must open the first-sport prompt',
+  );
+});
+
+test('recordPressAction: press 2 saves the typed sport and arms', () => {
+  assert(
+    recordPressAction({ sportCount: 0, firstSportPrompt: true }) === 'add-first-sport',
+    'zero sports, prompt open must save and arm',
+  );
+});
+
+test('recordPressAction: at least one sport always arms', () => {
+  assert(recordPressAction({ sportCount: 1, firstSportPrompt: false }) === 'arm', '1 sport must arm');
+  assert(recordPressAction({ sportCount: 3, firstSportPrompt: false }) === 'arm', '3 sports must arm');
+});
+
+test('recordPressAction: a stale prompt flag is ignored once a sport exists', () => {
+  assert(
+    recordPressAction({ sportCount: 1, firstSportPrompt: true }) === 'arm',
+    'a stale prompt flag (sport added in SETTINGS meanwhile) must not block arming',
+  );
+});
+
+test('recordFlow: onFirstSport\'s save-then-arm sequence — after addSport, the very next press is a plain arm', () => {
+  const result = addSport(emptySports(), 'Bike', 1_000);
+  assert(!Array.isArray(result), `addSport must succeed for a fresh label, got ${JSON.stringify(result)}`);
+  if (Array.isArray(result)) return;
+  assert(
+    result.activeSportId === result.sports[0].id,
+    'the first sport added must become the active sport',
+  );
+  assert(
+    recordPressAction({ sportCount: result.sports.length, firstSportPrompt: true }) === 'arm',
+    'once the sport is saved, the next press must be a plain arm',
+  );
 });

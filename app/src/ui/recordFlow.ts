@@ -103,3 +103,15 @@ export function statusItemsFor(input: {
     ? [input.gpsLine, input.wayLine]
     : [input.wayLine, input.gpsLine];
 }
+
+/** virgin-cycle15 brief 02: what the big RECORD button does on press.
+ * 'open-first-sport' = zero sports and the inline prompt is closed → open it;
+ * 'add-first-sport'  = zero sports and the prompt is open → save the typed
+ *                      sport (RecordScreen's onFirstSport), then arm;
+ * 'arm'              = at least one sport → onRecord as always (the prompt
+ *                      flag is ignored: it can only be stale here). */
+export type RecordPressAction = 'open-first-sport' | 'add-first-sport' | 'arm';
+export function recordPressAction(input: { sportCount: number; firstSportPrompt: boolean }): RecordPressAction {
+  if (input.sportCount > 0) return 'arm';
+  return input.firstSportPrompt ? 'add-first-sport' : 'open-first-sport';
+}
