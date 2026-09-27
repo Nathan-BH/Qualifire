@@ -17,6 +17,7 @@ import { registerHooks } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import * as nodeFs from 'node:fs';
 import { assert, test } from './lib.ts';
+import type { DemoClockAnchor } from '../src/ui/demoModel.ts';
 
 registerHooks({
   load(url, context, nextLoad) {
@@ -38,6 +39,7 @@ const {
   demoChainage, demoSelfTracks, DEMO_SELF_FIX_STEP_S,
   demoRefFixes, demoGateAdjustDraft,
   demoTodayResult, demoPlotResults, demoPlotPosLabel, demoPlotCaption, DEMO_TODAY_RIDE_ID,
+  DEMO_RATES, DEMO_RATE_DEFAULT, demoSimSAt, reanchorDemo, skipDemoAnchor,
 } = await import('../src/ui/demoModel.ts');
 const { DEMO_WAY_ID, DEMO_WAY_ASSET } = await import('../src/ui/demoWayFixture.ts');
 const { selfDotsAt, selfLivePosition } = await import('../src/ui/selfRaceModel.ts');
@@ -113,6 +115,62 @@ test('demoModel: the run rolls out past the lap, then ends', () => {
   const script = buildDemoScript();
   assert(demoRunEndS(script) === 836 + DEMO_ROLL_OUT_S, `expected ${836 + DEMO_ROLL_OUT_S}, got ${demoRunEndS(script)}`);
   assert(DEMO_ROLL_OUT_S >= 30, `DEMO_ROLL_OUT_S must be >= 30 (brief C's slowest self), got ${DEMO_ROLL_OUT_S}`);
+});
+
+// virgin-cycle15 brief 03: DEMO speed pills (5x/15x/25x) + SKIP -> RESULTS.
+// The clock is a movable anchor (demoSimSAt/reanchorDemo/skipDemoAnchor) so
+// changing speed mid-ride is seamless (re-anchor, never rescale) and SKIP can
+// force the clock straight to the ride's natural end.
+
+test('demoModel: DEMO_RATES is 5/15/25, default is today\'s fixed RATE', () => {
+  assert(JSON.stringify(DEMO_RATES) === JSON.stringify([5, 15, 25]), `expected [5,15,25], got ${JSON.stringify(DEMO_RATES)}`);
+  assert(DEMO_RATE_DEFAULT === 25, `expected default 25, got ${DEMO_RATE_DEFAULT}`);
+});
+
+test('demoModel: demoSimSAt reads simulated seconds off the anchor', () => {
+  const got = demoSimSAt({ simS: 0, wallMs: 1000, rate: 25 }, 5000);
+  assert(got === 100, `expected 100 (4s real * 25), got ${got}`);
+});
+
+test('demoModel: reanchorDemo is seamless — no jump at the switch, correct slope after', () => {
+  const a0 = { simS: 0, wallMs: 0, rate: 25 as const };
+  assert(demoSimSAt(a0, 4000) === 100, `expected 100 before switch, got ${demoSimSAt(a0, 4000)}`);
+  const a1 = reanchorDemo(a0, 4000, 5);
+  assert(a1.simS === 100 && a1.wallMs === 4000 && a1.rate === 5, `expected {simS:100,wallMs:4000,rate:5}, got ${JSON.stringify(a1)}`);
+  assert(demoSimSAt(a1, 4000) === 100, `expected no jump at the switch, got ${demoSimSAt(a1, 4000)}`);
+  assert(demoSimSAt(a1, 6000) === 110, `expected 110 (2s real * 5 after switch), got ${demoSimSAt(a1, 6000)}`);
+});
+
+test('demoModel: reanchorDemo on the already-active pill is a no-op', () => {
+  const a0 = { simS: 0, wallMs: 0, rate: 25 as const };
+  assert(reanchorDemo(a0, 4000, 25) === a0, 'expected the same anchor object back (no-op)');
+});
+
+test('demoModel: the simulated clock never decreases across a chain of speed switches', () => {
+  let anchor: DemoClockAnchor = { simS: 0, wallMs: 0, rate: 25 };
+  let prev = -Infinity;
+  for (let t = 0; t <= 8000; t += 1000) {
+    if (t === 2000) anchor = reanchorDemo(anchor, t, 15);
+    if (t === 5000) anchor = reanchorDemo(anchor, t, 5);
+    const simS = demoSimSAt(anchor, t);
+    assert(simS >= prev, `simS decreased at t=${t}: ${simS} < ${prev}`);
+    prev = simS;
+  }
+});
+
+test('demoModel: demoSimSAt clamps a wall clock that steps backwards', () => {
+  const got = demoSimSAt({ simS: 50, wallMs: 5000, rate: 25 }, 4000);
+  assert(got === 50, `expected 50 (clamped, no negative elapsed), got ${got}`);
+});
+
+test('demoModel: skipDemoAnchor points the clock at the ride\'s natural end', () => {
+  const a0 = { simS: 0, wallMs: 0, rate: 25 as const };
+  const skipped = skipDemoAnchor(a0, 9000, 1380);
+  assert(skipped.simS === 1380 && skipped.rate === 25, `expected {simS:1380,rate:25}, got ${JSON.stringify(skipped)}`);
+  const script = buildDemoScript();
+  const endS = demoRunEndS(script);
+  const skippedReal = skipDemoAnchor(a0, 9000, endS);
+  assert(skippedReal.simS === endS, `expected simS === demoRunEndS(script) (${endS}), got ${skippedReal.simS}`);
 });
 
 test('demoModel: STOP skips before the line, ends after it', () => {

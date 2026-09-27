@@ -362,3 +362,31 @@ export function demoLiveViewModel(
     })),
   };
 }
+
+/** virgin-cycle15 brief 03: DEMO playback speed presets (Nathan 2026-09-26:
+ * "5x,15x,25x"). Deliberately NOT REPLAY_RATES (5/10/25) — DEMO is a test
+ * harness with its own list. 25 is today's fixed RATE, so the default demo
+ * ride is unchanged. */
+export const DEMO_RATES = [5, 15, 25] as const;
+export type DemoRate = (typeof DEMO_RATES)[number];
+export const DEMO_RATE_DEFAULT: DemoRate = 25;
+
+/** The simulated clock is a line through a movable anchor:
+ *  simS(now) = anchor.simS + (now - anchor.wallMs) / 1000 * anchor.rate.
+ * Changing speed moves the anchor to "now" first, so the line stays
+ * continuous and only its slope changes (no jump, no pause). */
+export interface DemoClockAnchor { simS: number; wallMs: number; rate: DemoRate }
+
+export function demoSimSAt(anchor: DemoClockAnchor, nowMs: number): number {
+  return anchor.simS + Math.max(0, nowMs - anchor.wallMs) / 1000 * anchor.rate;
+}
+
+export function reanchorDemo(anchor: DemoClockAnchor, nowMs: number, rate: DemoRate): DemoClockAnchor {
+  if (rate === anchor.rate) return anchor;
+  return { simS: demoSimSAt(anchor, nowMs), wallMs: nowMs, rate };
+}
+
+/** SKIP ▸ RESULTS: an anchor whose next read is the ride's natural end. */
+export function skipDemoAnchor(anchor: DemoClockAnchor, nowMs: number, endS: number): DemoClockAnchor {
+  return { simS: endS, wallMs: nowMs, rate: anchor.rate };
+}

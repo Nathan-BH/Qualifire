@@ -76,19 +76,26 @@ import {
   demoSavedLine,
   demoSectorColours,
   demoSelfTracks,
+  demoSimSAt,
   demoStopOutcome,
+  reanchorDemo,
+  skipDemoAnchor,
   DEMO_FAKE_SAVE_MS,
   DEMO_PRIOR_LAPS,
+  DEMO_RATES,
+  DEMO_RATE_DEFAULT,
   DEMO_ROUTE_END,
   DEMO_ROUTE_LABEL,
   DEMO_ROUTE_START,
   DEMO_SAVED_HOLD_MS,
   DEMO_SPEC_VOCABULARY,
   DEMO_TODAY_RIDE_ID,
+  type DemoClockAnchor,
   type DemoGateAdjustDraft,
   type DemoGatesOutcome,
   type DemoMode,
   type DemoPhase,
+  type DemoRate,
   type RouteNames,
 } from './demoModel.ts';
 import { DEMO_WAY_ASSET, DEMO_WAY_ID } from './demoWayFixture.ts';
@@ -101,6 +108,7 @@ import ResultsPlot from './resultsPlot';
 import { selfDotsAt, selfLivePosition } from './selfRaceModel.ts';
 import { ALL_YELLOW } from './sectorTrailModel.ts';
 import { useSettings } from './settings';
+import { useTabNav } from './tabNav';
 import { colors, PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
 import { TimingTower } from './tower';
@@ -112,7 +120,9 @@ import { positionAtTime } from './wayMapMath';
 // (demoRouteFixture.ts), not a manifest or catalog route — it renders
 // identically on every build, virgin included, and never touches the
 // bundled route manifest.
-const RATE = 25;              // a ~14-minute commute plays in ~34 s
+// virgin-cycle15 brief 03: the fixed 25x RATE became a movable clock anchor
+// (demoModel.reanchorDemo) so the DEMO speed pills can change speed mid-ride
+// with no jump/pause/restart — see anchorRef below.
 const TICK_MS = 33;           // ~30 fps redraw; sim time is wall-clock anchored so RATE is exact
 
 // FIRST RIDE mode: a deliberately non-null id with NO manifest entry, so
@@ -131,12 +141,20 @@ export default function DemoScreen({ onFullscreenChange }: {
 }) {
   const { t } = useTheme();
   const { s: settings } = useSettings();
+  const tabNav = useTabNav();
   const styles = useMemo(() => makeStyles(t), [t]);
   const [mode, setMode] = useState<DemoMode>('tenth');
   const [running, setRunning] = useState(false);
   const [clockS, setClockS] = useState(0);
   const [trail, setTrail] = useState<readonly TrailPoint[]>([]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  // virgin-cycle15 brief 03: playback speed is a movable clock anchor, not a
+  // constant — see demoModel.reanchorDemo. `rate` is the rendered pill state,
+  // anchorRef is what the tick reads (the tick is a timer callback and must
+  // not close over a stale render).
+  const [rate, setRate] = useState<DemoRate>(DEMO_RATE_DEFAULT);
+  const anchorRef = useRef<DemoClockAnchor>({ simS: 0, wallMs: 0, rate: DEMO_RATE_DEFAULT });
+  const skippingRef = useRef(false);
   // Nathan (2026-09-19): after a full run -> ending -> reverse-launch -> idle -> re-run
   // cycle, the map sometimes came back with no route line/gate ticks (route asset drawn
   // fine on a fresh mount, so this is a native map-view lifecycle issue across a mount
@@ -286,15 +304,18 @@ export default function DemoScreen({ onFullscreenChange }: {
     setPendingNames(null);
     setPhase('running');
     setRunning(true);
-    // Simulated seconds = real elapsed × RATE, read off the wall clock each
-    // tick — the tick only sets how OFTEN the dot redraws, never how fast
-    // simulated time advances (setInterval drift cannot slow the ride).
-    const startedAtMs = Date.now();
+    // Simulated seconds = real elapsed × rate, read off the wall clock anchor
+    // each tick — the tick only sets how OFTEN the dot redraws, never how
+    // fast simulated time advances (setInterval drift cannot slow the ride).
+    // virgin-cycle15 brief 03: the rate chosen before/while a previous ride
+    // persists for the session (decision 2) — only simS and wallMs reset.
+    anchorRef.current = { simS: 0, wallMs: Date.now(), rate: anchorRef.current.rate };
+    skippingRef.current = false;
     // R3: the clock keeps running DEMO_ROLL_OUT_S past the lap (long enough
     // to read the neutral lap chip) and then auto-STOPs into 'ending'.
     const endS = demoRunEndS(script);
     timer.current = setInterval(() => {
-      const next = ((Date.now() - startedAtMs) / 1000) * RATE;
+      const next = demoSimSAt(anchorRef.current, Date.now());
       if (next >= endS) {
         clearTimer();
         setRunning(false);
@@ -305,6 +326,35 @@ export default function DemoScreen({ onFullscreenChange }: {
       setClockS(next);
     }, TICK_MS);
   };
+
+  // virgin-cycle15 brief 03: re-anchor the clock at "now" with the new rate
+  // (decision 3) — the simulated clock stays continuous, only its slope
+  // changes. reanchorDemo is a no-op on the already-active pill.
+  const onPickRate = useCallback((r: DemoRate) => {
+    anchorRef.current = reanchorDemo(anchorRef.current, Date.now(), r);
+    setRate(r);
+  }, []);
+
+  // virgin-cycle15 brief 03: SKIP ▸ RESULTS — end the demo ride through the
+  // same completion path the auto-stop uses (so RESULTS has this ride), then
+  // leave for the RESULTS tab. Branch (a) per brief 03 decision 4: the tick
+  // is a pure function of simS (demoSimSAt off the anchor, no per-tick
+  // accumulation), so SKIP just re-anchors simS to the natural end and lets
+  // the existing auto-stop check (which enterEnding() below mirrors) trip.
+  const onSkip = useCallback(() => {
+    if (phase !== 'running' || skippingRef.current) return;
+    skippingRef.current = true;
+    const endS = demoRunEndS(script);
+    anchorRef.current = skipDemoAnchor(anchorRef.current, Date.now(), endS);
+    clearTimer();
+    setRunning(false);
+    setClockS(endS);
+    enterEnding();
+    tabNav.go('results');
+    // skippingRef stays true until the next start() — by the time this
+    // returns, phase is no longer 'running' and the SKIP button is gone
+    // from the render (or the tab has navigated away entirely).
+  }, [phase, script, enterEnding, tabNav]);
 
   // Switching mode stops any run in progress and resets every piece of
   // scripted state — the three modes never share a run. Only reachable from
@@ -420,6 +470,26 @@ export default function DemoScreen({ onFullscreenChange }: {
           ? <Text style={styles.trackLine}>{FIRST_RIDE_STATUS} · {demoFmtMS(clockS)}</Text>
           : <LiveSectorPane vm={vm} showLap />}
         <Text style={styles.trackLine}>demo · nothing is recorded</Text>
+        {/* virgin-cycle15 brief 03: speed pills (DEMO_RATES, not REPLAY's) +
+            SKIP ▸ RESULTS for troubleshooting the results screen without
+            waiting a demo lap out. Running phase only. */}
+        <View style={styles.demoCtl}>
+          <View style={styles.pillRow}>
+            {DEMO_RATES.map((r) => (
+              <Pressable
+                key={r}
+                style={[styles.pill, r === rate ? styles.pillSelected : styles.pillOutline]}
+                onPress={() => onPickRate(r)}
+                accessibilityLabel={`Demo speed ${r}x`}
+              >
+                <Text style={r === rate ? styles.pillTextSelected : styles.pillText}>{r}x</Text>
+              </Pressable>
+            ))}
+          </View>
+          <Pressable style={styles.stopSlim} onPress={onSkip} accessibilityLabel="Skip to results">
+            <Text style={styles.stopSlimText}>SKIP ▸ RESULTS</Text>
+          </Pressable>
+        </View>
         <Pressable style={styles.stopSlim} onPress={onStop}>
           <Text style={styles.stopSlimText}>STOP</Text>
           <Text style={styles.stopSlimSub}>
@@ -594,4 +664,7 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
   },
   stopSlimText: { color: colors.amber, fontSize: 18, fontWeight: '800', letterSpacing: 4, flexShrink: 1 },
   stopSlimSub: { color: t.textDim, fontSize: 11, letterSpacing: 1 },
+  // virgin-cycle15 brief 03: wraps the DEMO speed pills + SKIP ▸ RESULTS,
+  // running phase only.
+  demoCtl: { gap: 8, marginTop: 8 },
 });
