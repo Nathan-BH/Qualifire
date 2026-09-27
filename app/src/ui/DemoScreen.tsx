@@ -17,7 +17,8 @@
  *   routeMapView.tsx no longer has any catalog-wide fallback to avoid).
  *
  * Both modes drive the SAME pane as the Record screen (§17's
- * shared-render-path rule): a scripted ride replayed at 25x. Nothing here
+ * shared-render-path rule): a scripted ride replayed at 25x by default (5x/15x
+ * pills since virgin-cycle15 brief 03). Nothing here
  * writes to storage and nothing here is a ride — the Rides tab and the
  * Result tab never see it.
  *
@@ -108,7 +109,6 @@ import ResultsPlot from './resultsPlot';
 import { selfDotsAt, selfLivePosition } from './selfRaceModel.ts';
 import { ALL_YELLOW } from './sectorTrailModel.ts';
 import { useSettings } from './settings';
-import { useTabNav } from './tabNav';
 import { colors, PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
 import { TimingTower } from './tower';
@@ -123,7 +123,12 @@ import { positionAtTime } from './wayMapMath';
 // virgin-cycle15 brief 03: the fixed 25x RATE became a movable clock anchor
 // (demoModel.reanchorDemo) so the DEMO speed pills can change speed mid-ride
 // with no jump/pause/restart — see anchorRef below.
-const TICK_MS = 33;           // ~30 fps redraw; sim time is wall-clock anchored so RATE is exact
+const TICK_MS = 33;           // ~30 fps redraw; sim time is wall-clock anchored so the rate is exact
+// virgin-cycle15 brief 03 fix-up: the picked speed lives for the app session,
+// not the mount — App.tsx renders one tab at a time, so leaving DEMO unmounts
+// this screen; without this the pick fell back to 25x on every tab hop.
+// Module scope, never stored (decision 2 of brief 03: no settings key).
+let demoSessionRate: DemoRate = DEMO_RATE_DEFAULT;
 
 // FIRST RIDE mode: a deliberately non-null id with NO manifest entry, so
 // RouteMapView's `asset` lookup misses and WP-D's rider-only path (basemap +
@@ -141,7 +146,6 @@ export default function DemoScreen({ onFullscreenChange }: {
 }) {
   const { t } = useTheme();
   const { s: settings } = useSettings();
-  const tabNav = useTabNav();
   const styles = useMemo(() => makeStyles(t), [t]);
   const [mode, setMode] = useState<DemoMode>('tenth');
   const [running, setRunning] = useState(false);
@@ -152,8 +156,8 @@ export default function DemoScreen({ onFullscreenChange }: {
   // constant — see demoModel.reanchorDemo. `rate` is the rendered pill state,
   // anchorRef is what the tick reads (the tick is a timer callback and must
   // not close over a stale render).
-  const [rate, setRate] = useState<DemoRate>(DEMO_RATE_DEFAULT);
-  const anchorRef = useRef<DemoClockAnchor>({ simS: 0, wallMs: 0, rate: DEMO_RATE_DEFAULT });
+  const [rate, setRate] = useState<DemoRate>(demoSessionRate);
+  const anchorRef = useRef<DemoClockAnchor>({ simS: 0, wallMs: 0, rate: demoSessionRate });
   const skippingRef = useRef(false);
   // Nathan (2026-09-19): after a full run -> ending -> reverse-launch -> idle -> re-run
   // cycle, the map sometimes came back with no route line/gate ticks (route asset drawn
@@ -332,15 +336,19 @@ export default function DemoScreen({ onFullscreenChange }: {
   // changes. reanchorDemo is a no-op on the already-active pill.
   const onPickRate = useCallback((r: DemoRate) => {
     anchorRef.current = reanchorDemo(anchorRef.current, Date.now(), r);
+    demoSessionRate = r;
     setRate(r);
   }, []);
 
-  // virgin-cycle15 brief 03: SKIP ▸ RESULTS — end the demo ride through the
-  // same completion path the auto-stop uses (so RESULTS has this ride), then
-  // leave for the RESULTS tab. Branch (a) per brief 03 decision 4: the tick
-  // is a pure function of simS (demoSimSAt off the anchor, no per-tick
-  // accumulation), so SKIP just re-anchors simS to the natural end and lets
-  // the existing auto-stop check (which enterEnding() below mirrors) trip.
+  // virgin-cycle15 brief 03 (+ fix-up): SKIP ▸ RESULTS — end the demo ride
+  // through the same completion path the auto-stop uses and land on this
+  // tab's own 'ending' screen (reveal, naming card, the RESULTS-style plot),
+  // exactly the state a ride left to play out reaches. It does NOT switch to
+  // the real RESULTS tab: the demo writes no ride, so that tab has nothing
+  // of ours to show, and App.tsx would unmount this screen (losing the
+  // ending state) on the way. Branch (a) per brief 03 decision 4: the tick
+  // is a pure function of simS, so re-anchoring simS to the natural end and
+  // mirroring the auto-stop check below is the whole skip.
   const onSkip = useCallback(() => {
     if (phase !== 'running' || skippingRef.current) return;
     skippingRef.current = true;
@@ -350,11 +358,9 @@ export default function DemoScreen({ onFullscreenChange }: {
     setRunning(false);
     setClockS(endS);
     enterEnding();
-    tabNav.go('results');
     // skippingRef stays true until the next start() — by the time this
-    // returns, phase is no longer 'running' and the SKIP button is gone
-    // from the render (or the tab has navigated away entirely).
-  }, [phase, script, enterEnding, tabNav]);
+    // returns, phase is no longer 'running' and the SKIP button is gone.
+  }, [phase, script, enterEnding]);
 
   // Switching mode stops any run in progress and resets every piece of
   // scripted state — the three modes never share a run. Only reachable from
@@ -471,8 +477,9 @@ export default function DemoScreen({ onFullscreenChange }: {
           : <LiveSectorPane vm={vm} showLap />}
         <Text style={styles.trackLine}>demo · nothing is recorded</Text>
         {/* virgin-cycle15 brief 03: speed pills (DEMO_RATES, not REPLAY's) +
-            SKIP ▸ RESULTS for troubleshooting the results screen without
-            waiting a demo lap out. Running phase only. */}
+            SKIP ▸ RESULTS, which jumps to this tab's own ending screen (the
+            post-ride reveal + RESULTS-style plot) without waiting a demo lap
+            out. Running phase only. */}
         <View style={styles.demoCtl}>
           <View style={styles.pillRow}>
             {DEMO_RATES.map((r) => (

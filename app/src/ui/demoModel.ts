@@ -123,7 +123,7 @@ export function demoSectorColours(
 }
 
 /** R3: simulated seconds the clock keeps running past the lap before the run auto-STOPs
- *  (~2.4 real s at RATE 25). Long enough to read the neutral lap chip; brief C also needs
+ *  (~2.4 real s at the default 25x). Long enough to read the neutral lap chip; brief C also needs
  *  every slower self to reach its finish inside it. */
 export const DEMO_ROLL_OUT_S = 60;
 /** sim second at which the run auto-STOPs (R3). */
@@ -365,8 +365,8 @@ export function demoLiveViewModel(
 
 /** virgin-cycle15 brief 03: DEMO playback speed presets (Nathan 2026-09-26:
  * "5x,15x,25x"). Deliberately NOT REPLAY_RATES (5/10/25) — DEMO is a test
- * harness with its own list. 25 is today's fixed RATE, so the default demo
- * ride is unchanged. */
+ * harness with its own list. 25 was the fixed RATE before this brief, so the
+ * default demo ride is unchanged. */
 export const DEMO_RATES = [5, 15, 25] as const;
 export type DemoRate = (typeof DEMO_RATES)[number];
 export const DEMO_RATE_DEFAULT: DemoRate = 25;

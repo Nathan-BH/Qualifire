@@ -117,7 +117,7 @@ test('demoModel: the run rolls out past the lap, then ends', () => {
   assert(DEMO_ROLL_OUT_S >= 30, `DEMO_ROLL_OUT_S must be >= 30 (brief C's slowest self), got ${DEMO_ROLL_OUT_S}`);
 });
 
-// virgin-cycle15 brief 03: DEMO speed pills (5x/15x/25x) + SKIP -> RESULTS.
+// virgin-cycle15 brief 03: DEMO speed pills (5x/15x/25x) + SKIP to the demo's ending screen.
 // The clock is a movable anchor (demoSimSAt/reanchorDemo/skipDemoAnchor) so
 // changing speed mid-ride is seamless (re-anchor, never rescale) and SKIP can
 // force the clock straight to the ride's natural end.
