@@ -4,7 +4,7 @@
  * numbers `autoThemeScheduler.tsx` drives the theme switch from.
  */
 import { assert, test } from './lib.ts';
-import { parseHHMM, formatHHMM, themeForTime, boundariesAround } from '../src/ui/autoTheme.ts';
+import { parseHHMM, formatHHMM, themeForTime, boundariesAround, pushTimeDigit, digitsFromText, displayTime, digitsAfterEdit } from '../src/ui/autoTheme.ts';
 
 test('autoTheme: parseHHMM accepts valid HH:MM and lenient H:MM', () => {
   assert(parseHHMM('09:00') === 540, `expected 540, got ${parseHHMM('09:00')}`);
@@ -104,4 +104,101 @@ test('autoTheme: boundariesAround is null for invalid or equal schedule', () => 
   assert(boundariesAround(now, '09:00', '09:00') === null, 'equal times must be null');
   assert(boundariesAround(now, 'abc', '19:00') === null, 'invalid start must be null');
   assert(boundariesAround(now, '09:00', '25:00') === null, 'invalid end must be null');
+});
+
+test('autoTheme: pushTimeDigit first digit', () => {
+  assert(pushTimeDigit('', '7') === '07', `expected 07, got ${pushTimeDigit('', '7')}`);
+  assert(pushTimeDigit('', '9') === '09', `expected 09, got ${pushTimeDigit('', '9')}`);
+  assert(pushTimeDigit('', '3') === '03', `expected 03, got ${pushTimeDigit('', '3')}`);
+  assert(pushTimeDigit('', '0') === '0', `expected 0, got ${pushTimeDigit('', '0')}`);
+  assert(pushTimeDigit('', '1') === '1', `expected 1, got ${pushTimeDigit('', '1')}`);
+  assert(pushTimeDigit('', '2') === '2', `expected 2, got ${pushTimeDigit('', '2')}`);
+});
+
+test('autoTheme: pushTimeDigit second hour digit', () => {
+  assert(pushTimeDigit('1', '9') === '19', `expected 19, got ${pushTimeDigit('1', '9')}`);
+  assert(pushTimeDigit('2', '3') === '23', `expected 23, got ${pushTimeDigit('2', '3')}`);
+  assert(pushTimeDigit('0', '0') === '00', `expected 00, got ${pushTimeDigit('0', '0')}`);
+  assert(pushTimeDigit('2', '4') === '2', `expected 2 (refused), got ${pushTimeDigit('2', '4')}`);
+  assert(pushTimeDigit('2', '9') === '2', `expected 2 (refused), got ${pushTimeDigit('2', '9')}`);
+});
+
+test('autoTheme: pushTimeDigit minutes', () => {
+  assert(pushTimeDigit('19', '5') === '195', `expected 195, got ${pushTimeDigit('19', '5')}`);
+  assert(pushTimeDigit('19', '0') === '190', `expected 190, got ${pushTimeDigit('19', '0')}`);
+  assert(pushTimeDigit('19', '6') === '19', `expected 19 (refused), got ${pushTimeDigit('19', '6')}`);
+  assert(pushTimeDigit('19', '9') === '19', `expected 19 (refused), got ${pushTimeDigit('19', '9')}`);
+  assert(pushTimeDigit('195', '9') === '1959', `expected 1959, got ${pushTimeDigit('195', '9')}`);
+  assert(pushTimeDigit('070', '0') === '0700', `expected 0700, got ${pushTimeDigit('070', '0')}`);
+});
+
+test('autoTheme: pushTimeDigit full buffer and junk input', () => {
+  assert(pushTimeDigit('1959', '0') === '1959', `expected 1959 (full), got ${pushTimeDigit('1959', '0')}`);
+  assert(pushTimeDigit('', 'a') === '', `expected '' (non-digit), got ${pushTimeDigit('', 'a')}`);
+  assert(pushTimeDigit('07', ':') === '07', `expected 07 (non-digit), got ${pushTimeDigit('07', ':')}`);
+  assert(pushTimeDigit('07', ' ') === '07', `expected 07 (non-digit), got ${pushTimeDigit('07', ' ')}`);
+});
+
+test('autoTheme: digitsFromText', () => {
+  assert(digitsFromText('07:00') === '0700', `expected 0700, got ${digitsFromText('07:00')}`);
+  assert(digitsFromText('9:00') === '0900', `expected 0900, got ${digitsFromText('9:00')}`);
+  assert(digitsFromText('7') === '07', `expected 07, got ${digitsFromText('7')}`);
+  assert(digitsFromText('7000') === '0700', `expected 0700 (4th 0 dropped), got ${digitsFromText('7000')}`);
+  assert(digitsFromText('0700') === '0700', `expected 0700, got ${digitsFromText('0700')}`);
+  assert(digitsFromText('') === '', `expected '', got ${digitsFromText('')}`);
+  assert(digitsFromText(':') === '', `expected '', got ${digitsFromText(':')}`);
+  assert(digitsFromText('07:') === '07', `expected 07, got ${digitsFromText('07:')}`);
+  assert(digitsFromText('25:00') === '200', `expected 200 (5 skipped), got ${digitsFromText('25:00')}`);
+  assert(digitsFromText('07:0a') === '070', `expected 070, got ${digitsFromText('07:0a')}`);
+  assert(digitsFromText('1959') === '1959', `expected 1959, got ${digitsFromText('1959')}`);
+});
+
+test('autoTheme: displayTime', () => {
+  assert(displayTime('') === ':', `expected ':', got ${displayTime('')}`);
+  assert(displayTime('0') === '0:', `expected '0:', got ${displayTime('0')}`);
+  assert(displayTime('07') === '07:', `expected '07:', got ${displayTime('07')}`);
+  assert(displayTime('070') === '07:0', `expected '07:0', got ${displayTime('070')}`);
+  assert(displayTime('0700') === '07:00', `expected '07:00', got ${displayTime('0700')}`);
+  assert(displayTime('1959') === '19:59', `expected '19:59', got ${displayTime('1959')}`);
+});
+
+test('autoTheme: displayTime/digitsFromText round trip', () => {
+  for (const s of ['00:00', '07:00', '09:05', '19:00', '23:59']) {
+    const d = digitsFromText(s);
+    assert(displayTime(d) === s, `round trip mismatch for ${s}: got ${displayTime(d)}`);
+    const parsed = parseHHMM(displayTime(d));
+    assert(parsed !== null && formatHHMM(parsed) === s, `parse round trip mismatch for ${s}`);
+  }
+});
+
+test('autoTheme: every full buffer parses (1440 iterations)', () => {
+  for (let h = 0; h < 24; h++) {
+    for (let m = 0; m < 60; m++) {
+      const hhmm = formatHHMM(h * 60 + m);
+      let digits = '';
+      for (const ch of hhmm) {
+        if (ch === ':') continue;
+        digits = pushTimeDigit(digits, ch);
+      }
+      assert(digits.length === 4, `did not fill 4 digits for ${hhmm}, got '${digits}'`);
+      const parsed = parseHHMM(displayTime(digits));
+      assert(parsed === h * 60 + m, `round trip mismatch for ${hhmm}: got ${parsed}`);
+    }
+  }
+});
+
+test('autoTheme: digitsAfterEdit backspace-over-colon rule', () => {
+  assert(digitsAfterEdit('07', '07') === '0', `expected 0, got ${digitsAfterEdit('07', '07')}`);
+  assert(digitsAfterEdit('0', '0') === '', `expected '', got ${digitsAfterEdit('0', '0')}`);
+  assert(digitsAfterEdit('', '') === '', `expected '', got ${digitsAfterEdit('', '')}`);
+});
+
+test('autoTheme: digitsAfterEdit ordinary path', () => {
+  assert(digitsAfterEdit('0700', '07:0') === '070', `expected 070, got ${digitsAfterEdit('0700', '07:0')}`);
+  assert(digitsAfterEdit('070', '07:00') === '0700', `expected 0700, got ${digitsAfterEdit('070', '07:00')}`);
+  assert(digitsAfterEdit('07', '07:') === '07', `expected 07 (no change), got ${digitsAfterEdit('07', '07:')}`);
+  assert(digitsAfterEdit('0700', '0700') === '070', `expected 070 (colon deleted mid-string), got ${digitsAfterEdit('0700', '0700')}`);
+  assert(digitsAfterEdit('0700', '0:00') === '000', `expected 000 (re-flow), got ${digitsAfterEdit('0700', '0:00')}`);
+  assert(digitsAfterEdit('', '7') === '07', `expected 07, got ${digitsAfterEdit('', '7')}`);
+  assert(digitsAfterEdit('07', '07:0a') === '070', `expected 070, got ${digitsAfterEdit('07', '07:0a')}`);
 });

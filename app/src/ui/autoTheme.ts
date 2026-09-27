@@ -4,6 +4,8 @@
  * device-local. See ui/settings.tsx (the switch + fields) and
  * ui/autoThemeScheduler.tsx (the effect that applies this model).
  */
+/** virgin-cycle15 brief 01: `pushTimeDigit`/`digitsFromText`/`displayTime`/`digitsAfterEdit` back the
+ * fixed-colon field in settings.tsx. */
 import type { ThemeMode } from './themeContext.tsx';
 
 export const DEFAULT_DAY_START = '09:00';
@@ -74,4 +76,59 @@ export function boundariesAround(now: Date | number, dayStart: string, dayEnd: s
   const mode = themeForTime(now, dayStart, dayEnd);
   if (mode === null) return null;
   return { mode, prevMs, nextMs };
+}
+
+/** virgin-cycle15 brief 01: fixed-colon time entry. The field's state is a
+ * left-filled buffer of 0-4 digits; the colon is display only.
+ * Feed one character into the buffer. Returns the new buffer, or the same
+ * string when the character is refused. Rules: first digit 3-9 is a one-digit
+ * hour ("7" -> "07"); a second hour digit making 24-29 is refused; minute tens
+ * 6-9 refused; a 5th digit refused; non-digits refused. */
+export function pushTimeDigit(digits: string, ch: string): string {
+  if (!/^[0-9]$/.test(ch)) return digits;
+  if (digits.length >= 4) return digits;
+  if (digits.length === 0) {
+    if (ch >= '3' && ch <= '9') return '0' + ch;
+    return ch;
+  }
+  if (digits.length === 1) {
+    const hour = Number(digits + ch);
+    if (hour > 23) return digits;
+    return digits + ch;
+  }
+  if (digits.length === 2) {
+    if (ch > '5') return digits;
+    return digits + ch;
+  }
+  // digits.length === 3
+  return digits + ch;
+}
+
+/** Any text the native field reports -> canonical buffer: keep only digits and
+ * replay them through pushTimeDigit from empty (refused digits are skipped,
+ * later ones still land -- same as typing them one by one). */
+export function digitsFromText(raw: string): string {
+  let digits = '';
+  for (const ch of raw) {
+    if (/^[0-9]$/.test(ch)) digits = pushTimeDigit(digits, ch);
+  }
+  return digits;
+}
+
+/** Buffer -> what the field shows: "" -> ":", "07" -> "07:", "070" -> "07:0",
+ * "0700" -> "07:00". */
+export function displayTime(digits: string): string {
+  return digits.slice(0, 2) + ':' + digits.slice(2);
+}
+
+/** Reported native text after an edit -> new buffer, given the buffer before
+ * the edit. The one special case: digits unchanged, colon gone, buffer
+ * non-empty = the user backspaced over the colon -> drop the last digit.
+ * Everything else is digitsFromText(raw). */
+export function digitsAfterEdit(prevDigits: string, raw: string): string {
+  const rawDigits = raw.replace(/[^0-9]/g, '');
+  if (rawDigits === prevDigits && !raw.includes(':') && prevDigits.length > 0) {
+    return prevDigits.slice(0, -1);
+  }
+  return digitsFromText(raw);
 }

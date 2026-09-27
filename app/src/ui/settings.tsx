@@ -24,7 +24,7 @@ import { initRideHistory, resetRecorded } from './lastRide';
 import { saveTextFile } from './saveGpx';
 import { PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
-import { DEFAULT_DAY_END, DEFAULT_DAY_START, formatHHMM, parseHHMM, themeForTime } from './autoTheme';
+import { DEFAULT_DAY_END, DEFAULT_DAY_START, digitsAfterEdit, digitsFromText, displayTime, formatHHMM, parseHHMM, themeForTime } from './autoTheme';
 
 export interface Settings {
   startMode: 'auto' | 'pick';
@@ -161,30 +161,47 @@ function Switch({ on, onToggle, t }: { on: boolean; onToggle: () => void; t: Pad
   );
 }
 
-/** virgin-cycle14 brief 01: one HH:MM field. Local draft while typing; commits on
- * end-editing only if it parses, otherwise snaps back to the last saved value. */
-function TimeRow(props: { label: string; value: string; onCommit: (v: string) => void; t: PaddockTheme; help: Help }) {
+/** virgin-cycle15 brief 01: one fixed-colon HH:MM field. State is a 0-4 digit
+ * buffer (ui/autoTheme.ts pushTimeDigit rules); the ":" is display only, never
+ * typed, never deleted. Commits the moment 4 digits are in; an incomplete field
+ * snaps back to the saved value on end-editing. */
+function TimeField(props: { value: string; onCommit: (v: string) => void; t: PaddockTheme }) {
   const { t } = props;
-  const [draft, setDraft] = useState(props.value);
-  useEffect(() => { setDraft(props.value); }, [props.value]);
+  const [digits, setDigits] = useState(() => digitsFromText(props.value));
+  useEffect(() => { setDigits(digitsFromText(props.value)); }, [props.value]);
+  const display = displayTime(digits);
   return (
-    <Row label={props.label} t={t} help={props.help}>
-      <TextInput
-        value={draft}
-        onChangeText={setDraft}
-        onEndEditing={() => {
-          const m = parseHHMM(draft.trim());
-          if (m === null) { setDraft(props.value); return; }
-          const norm = formatHHMM(m);
-          setDraft(norm);
+    <TextInput
+      value={display}
+      onChangeText={(raw) => {
+        const next = digitsAfterEdit(digits, raw);
+        setDigits(next);
+        if (next.length === 4) {
+          const norm = formatHHMM(parseHHMM(displayTime(next))!);
           if (norm !== props.value) props.onCommit(norm);
-        }}
-        keyboardType="numbers-and-punctuation"
-        maxLength={5}
-        placeholder="09:00"
-        placeholderTextColor={t.textDim}
-        style={[st.input, { color: t.text, borderColor: t.cardBorder, backgroundColor: t.bg, minWidth: 74, textAlign: 'center' }]}
-      />
+        }
+      }}
+      onEndEditing={() => { if (digits.length !== 4) setDigits(digitsFromText(props.value)); }}
+      keyboardType="number-pad"
+      maxLength={5}
+      selectTextOnFocus
+      accessibilityLabel="Time, hours and minutes"
+      style={[st.input, { color: t.text, borderColor: t.cardBorder, backgroundColor: t.bg, minWidth: 64, paddingHorizontal: 8, textAlign: 'center' }]}
+    />
+  );
+}
+
+/** virgin-cycle15 brief 01: "Day from [HH:MM] until [HH:MM]" as ONE settings row
+ * (was two rows in cycle14). */
+function DayWindowRow(props: { start: string; end: string; onStart: (v: string) => void; onEnd: (v: string) => void; t: PaddockTheme; help: Help }) {
+  const { t } = props;
+  return (
+    <Row label="Day from" t={t} help={props.help}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <TimeField value={props.start} onCommit={props.onStart} t={t} />
+        <Text style={{ color: t.textDim, fontSize: 13 }}>until</Text>
+        <TimeField value={props.end} onCommit={props.onEnd} t={t} />
+      </View>
     </Row>
   );
 }
@@ -588,13 +605,13 @@ export default function SettingsScreen() {
         </Row>
         {s.autoTheme ? (
           <>
-            <TimeRow label="Day from" value={s.dayStart} onCommit={(v) => set('dayStart', v)} t={t} help={help} />
-            <TimeRow label="Day until" value={s.dayEnd} onCommit={(v) => set('dayEnd', v)} t={t} help={help} />
-            <Text style={{ color: t.textDim, fontSize: 11.5, paddingVertical: 8 }}>
-              {themeForTime(Date.now(), s.dayStart, s.dayEnd) === null
-                ? 'Times must be HH:MM and different — auto is paused until they are.'
-                : `Day ${s.dayStart}–${s.dayEnd}, night otherwise.`}
-            </Text>
+            <DayWindowRow start={s.dayStart} end={s.dayEnd}
+              onStart={(v) => set('dayStart', v)} onEnd={(v) => set('dayEnd', v)} t={t} help={help} />
+            {themeForTime(Date.now(), s.dayStart, s.dayEnd) === null ? (
+              <Text style={{ color: t.textDim, fontSize: 11.5, paddingVertical: 8 }}>
+                Times must be different — auto is paused until they are.
+              </Text>
+            ) : null}
           </>
         ) : null}
         <Row label="Help icons" t={t} help={help}>
