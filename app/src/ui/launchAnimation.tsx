@@ -38,6 +38,11 @@
  * 0, tail first then ring — the existing rightRotate/leftRotate/slashOpacity
  * interpolations already read symmetrically in both directions, so no new
  * geometry is needed, only a different animation sequence and start point.
+ *
+ * Cycle15 brief 15 (Nathan 2026-09-27): the END mark is drawn FORWARD again
+ * ("drawing the logo like at the start instead of removing it backwards").
+ * RecordScreen no longer passes `reverse`; the prop and the REV_* choreography
+ * stay in place, unused, in case the undraw ever comes back.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, Easing, StyleSheet, View } from 'react-native';

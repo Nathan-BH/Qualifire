@@ -159,6 +159,10 @@ export default function RecordScreen({
   // 'rev' while the END-press reversed mark plays ('ending'). Folded into
   // the fullscreen report below so the OVERLAY itself is never seen with the
   // tab bar still showing, even for the brief moment before phase flips.
+  // 'fwd' = the mark at ride START (onDone arms), 'rev' = the mark at ride END
+  // (onDone clears the board, returns to setup, opens the ride). Both play the
+  // SAME forward draw since cycle15 brief 15 (Nathan 2026-09-27); 'rev' is a
+  // historical name from cycle 024 WP-A2, when the end mark undrew itself.
   const [showAnim, setShowAnim] = useState<'fwd' | 'rev' | null>(null);
   const [session, setSession] = useState<ActiveSession | null>(null);
   // Mirror for onEnd's [] useCallback closure (it must read the CURRENT
@@ -614,7 +618,7 @@ export default function RecordScreen({
       postRevealRef.current = draft === null ? 'rev' : 'card';
       setPhase('ending');
       setNaming(draft);
-      // No reveal: the reverse mark plays at once, exactly as before. With a reveal it
+      // No reveal: the end mark plays at once, exactly as before. With a reveal it
       // waits for onRevealPlayed (below).
       if (draft === null && nextReveal === null) setShowAnim('rev');
     } catch (e) {
@@ -675,7 +679,7 @@ export default function RecordScreen({
       }
       setNaming(null);
       if (out.adjust) {
-        // SETUP-UX §4: offer tap-then-nudge before the reversed mark plays;
+        // SETUP-UX §4: offer tap-then-nudge before the end mark plays;
         // the card's exits (onAdjustKeep/onAdjustSave) start the animation.
         setAdjust(out.adjust);
       } else {
@@ -1130,7 +1134,7 @@ export default function RecordScreen({
       <View style={styles.raceColumn}>
         {/* virgin-cycle11: tower + card can exceed one screen on a small
             phone — the idle screen's own ScrollView-plus-absolute-overlay
-            pattern, mirrored here. The reversed LaunchAnimation stays an
+            pattern, mirrored here. The end-of-ride LaunchAnimation stays an
             absolute-fill sibling below, outside the scroll. */}
         <ScrollView
           style={{ flex: 1, alignSelf: 'stretch' }}
@@ -1181,7 +1185,6 @@ export default function RecordScreen({
         </ScrollView>
         {showAnim === 'rev' && (
           <LaunchAnimation
-            reverse
             onDone={() => {
               setShowAnim(null);
               setReveal(null); // a board must never survive into the next ride's 'ending'
