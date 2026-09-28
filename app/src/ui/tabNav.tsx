@@ -83,6 +83,17 @@ export interface TabNav {
   openResults(req: ResultsDetailRequest): void;
   /** WP-2: dismiss the detail; the active tab's screen remounts underneath. */
   closeResults(): void;
+  /** virgin-cycle15 brief 13 (Fable ruling 2026-09-28): which route the
+   * RESULTS tab has drilled into (its ridden-way list), or null for the
+   * route list. Shell holds it -- not ResultsScreen -- because
+   * ResultsDetailScreen is mount-swapped IN PLACE of ResultsScreen (the
+   * ternary in App.tsx), so any in-screen state dies on the hop into a
+   * way's detail and BACK would always land on the route list. NOT an
+   * overlay: the tab bar stays and it only ever renders inside RESULTS
+   * (App.tsx passes it to <ResultsScreen openRouteId=.../>). Idempotent. */
+  openResultsRoute(routeId: string): void;
+  /** virgin-cycle15 brief 13: back to the route list. */
+  closeResultsRoute(): void;
 }
 
 const TabNavContext = createContext<TabNav | null>(null);

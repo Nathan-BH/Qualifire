@@ -28,6 +28,7 @@ registerHooks({
 
 const {
   buildResultsList, buildHistoryBoard, boardCaption, windowCaption,
+  buildResultsRoutes, rideCountForRoute, routeLabel,
 } = await import('../src/ui/resultsListModel.ts');
 const {
   plotWindow, fitDomain, toneFor, buildPlotModel, mean,
@@ -136,6 +137,89 @@ test('resultsmodel: buildResultsList — new way:def id labels via wayLabelIn to
   const model = buildResultsList(CATALOG, resultsFor, () => null);
   assert(model.rows.length === 1 && model.rows[0].label === 'Home → Station · Fast',
     `expected 'Home → Station · Fast', got ${JSON.stringify(model.rows)}`);
+});
+
+// buildResultsRoutes / rideCountForRoute / routeLabel — virgin-cycle15 brief
+// 13 / Fable ruling 2026-09-28. routeAB (rt:AB) has two ways in this
+// fixture (Morning, route:abc); routeAC (rt:AC) has exactly one (way:def) —
+// so routeAC doubles as the "single ridden way" case the ruling's §5 cares
+// about, with no separate fixture needed.
+
+test('resultsmodel: buildResultsRoutes — most-used route first, single-ridden-way route keeps ways.length === 1', () => {
+  const resultsFor = (wayId: string): RideResult[] => {
+    if (wayId === 'Morning') return [1, 2].map((i) => mk(`m${i}`, i * 1000, 600 + i));
+    if (wayId === 'route:abc') return [3, 4].map((i) => mk(`a${i}`, i * 1000, 700 + i, 'clean', { wayId: 'route:abc' }));
+    if (wayId === 'way:def') return [1, 2, 3].map((i) => mk(`d${i}`, i * 1000, 500 + i, 'clean', { wayId: 'way:def' }));
+    return [];
+  };
+  const routes = buildResultsRoutes(CATALOG, resultsFor, () => null);
+  assert(routes.length === 2, `expected 2 routes, got ${routes.length}`);
+  assert(routes[0].routeId === 'rt:AB', `expected rt:AB first (4 rides > 3), got ${routes[0].routeId}`);
+  assert(routes[0].rideCount === 4, `expected rt:AB rideCount 4, got ${routes[0].rideCount}`);
+  assert(routes[0].ways.length === 2, `expected rt:AB to have 2 ridden ways, got ${routes[0].ways.length}`);
+  assert(routes[1].routeId === 'rt:AC', `expected rt:AC second (3 rides), got ${routes[1].routeId}`);
+  assert(routes[1].ways.length === 1, `expected rt:AC to have exactly 1 ridden way, got ${routes[1].ways.length}`);
+  assert(routes[1].rideCount === 3, `expected rt:AC rideCount 3, got ${routes[1].rideCount}`);
+  assert(routes[0].label === 'Home → Work', `expected 'Home → Work', got '${routes[0].label}'`);
+  assert(routes[1].label === 'Home → Station', `expected 'Home → Station', got '${routes[1].label}'`);
+});
+
+test('resultsmodel: buildResultsRoutes — tie on total rides broken by most recent ride across the route', () => {
+  const resultsFor = (wayId: string): RideResult[] => {
+    if (wayId === 'Morning') return [mk('m1', 100, 600), mk('m2', 200, 610)];
+    if (wayId === 'route:abc') return [];
+    if (wayId === 'way:def') return [mk('d1', 400, 500), mk('d2', 500, 510)];
+    return [];
+  };
+  const routes = buildResultsRoutes(CATALOG, resultsFor, () => null);
+  assert(routes.length === 2, `expected 2 routes, got ${routes.length}`);
+  assert(routes[0].rideCount === 2 && routes[1].rideCount === 2, 'expected both routes tied at 2 rides');
+  assert(routes[0].routeId === 'rt:AC', `expected rt:AC first (last ride at 500 > 200), got ${routes[0].routeId}`);
+});
+
+test('resultsmodel: buildResultsRoutes — tie on total rides AND last-ridden broken by label asc', () => {
+  const resultsFor = (wayId: string): RideResult[] => {
+    if (wayId === 'Morning') return [mk('m1', 100, 600)];
+    if (wayId === 'route:abc') return [];
+    if (wayId === 'way:def') return [mk('d1', 100, 500)];
+    return [];
+  };
+  const routes = buildResultsRoutes(CATALOG, resultsFor, () => null);
+  assert(routes.length === 2, `expected 2 routes, got ${routes.length}`);
+  assert(routes[0].label < routes[1].label, `expected label-asc order, got ${routes[0].label}, ${routes[1].label}`);
+  // 'Home → Station' < 'Home → Work' ('S' < 'W') — rt:AC sorts first.
+  assert(routes[0].routeId === 'rt:AC', `expected rt:AC first ('Home → Station' < 'Home → Work'), got ${routes[0].routeId}`);
+});
+
+test('resultsmodel: buildResultsRoutes — a route with zero ridden ways is absent', () => {
+  const resultsFor = (wayId: string): RideResult[] => (wayId === 'Morning' ? [mk('m1', 100, 600)] : []);
+  const routes = buildResultsRoutes(CATALOG, resultsFor, () => null);
+  assert(routes.length === 1, `expected 1 route, got ${routes.length}`);
+  assert(routes[0].routeId === 'rt:AB', `expected only rt:AB, got ${routes[0].routeId}`);
+  assert(routes.every((r) => r.routeId !== 'rt:AC'), 'expected rt:AC (zero ridden ways) to be absent');
+});
+
+test('resultsmodel: buildResultsRoutes — empty catalog returns []', () => {
+  const empty: Catalog = { schemaVersion: 2, landmarks: [], routes: [], ways: [], gateSets: [] };
+  const routes = buildResultsRoutes(empty, () => [], () => null);
+  assert(routes.length === 0, `expected [], got ${JSON.stringify(routes)}`);
+});
+
+test('resultsmodel: rideCountForRoute — sums over the route\'s own wayIds only, ignoring a stray way', () => {
+  const resultsFor = (wayId: string): RideResult[] => {
+    if (wayId === 'Morning') return [mk('m1', 100, 600), mk('m2', 200, 610)];
+    if (wayId === 'route:abc') return [mk('a1', 300, 700)];
+    if (wayId === 'not-in-any-route') return [mk('x1', 400, 800), mk('x2', 500, 810)];
+    return [];
+  };
+  const total = rideCountForRoute(routeAB, resultsFor);
+  assert(total === 3, `expected 3 (2 + 1, stray way ignored), got ${total}`);
+});
+
+test('resultsmodel: routeLabel — From → To via landmark lookup; missing landmark renders as \'?\'', () => {
+  assert(routeLabel(routeAB, CATALOG) === 'Home → Work', `expected 'Home → Work', got '${routeLabel(routeAB, CATALOG)}'`);
+  const brokenRoute: Route = { id: 'rt:broken', startLandmarkId: 'lm:missing', endLandmarkId: 'lm:b', wayIds: [] };
+  assert(routeLabel(brokenRoute, CATALOG) === '? → Work', `expected '? → Work', got '${routeLabel(brokenRoute, CATALOG)}'`);
 });
 
 // buildHistoryBoard

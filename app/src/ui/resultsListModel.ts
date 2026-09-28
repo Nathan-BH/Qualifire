@@ -3,7 +3,7 @@
  * and the per-way all-time history board (§3.2). No React, no store reads —
  * everything the caller knows is passed in, so this runs headless.
  */
-import type { Catalog, RideResult } from '../store/types.ts';
+import type { Catalog, RideResult, Route } from '../store/types.ts';
 import { wayLabelIn } from '../store/defaultWay.ts';
 import { tower } from '../store/results.ts';
 import { towerDate } from './towerModel.ts';
@@ -65,6 +65,114 @@ export function buildResultsList(
     { wayId, label, rides, bestLabel, lastLabel }
   ));
   return { rows, unriddenWays };
+}
+
+// ------------------------------------------------------------- the routes
+
+/**
+ * virgin-cycle15 brief 13 / Fable ruling 2026-09-28: RESULTS is grouped by
+ * route, then way. Only ridden things are listed at either level. Both
+ * levels sort most-used first, ties -> most recent -> label. Counts are
+ * derived on demand from resultsFor (the codebase convention -- no cache).
+ * Built on top of buildResultsList's rows (not a re-implementation of the
+ * way-level sort) -- a route's ridden ways are that function's rows
+ * filtered onto route.wayIds; `lastRiddenAtMs` is recomputed directly from
+ * resultsFor since ResultsListRow does not expose its internal lastMs.
+ */
+export interface ResultsWayRow {
+  wayId: string;
+  label: string;          // the way's display label as the flat list showed it today
+  rideCount: number;
+  lastRiddenAtMs: number; // max start time over its rides
+  bestLapS: number | null;
+}
+
+export interface ResultsRoute {
+  routeId: string;
+  label: string;          // `From → To`, same helper as RoutesScreen
+  rideCount: number;      // sum over ridden ways
+  lastRiddenAtMs: number; // max over ridden ways
+  ways: ResultsWayRow[];  // ridden ways only, sorted (rides desc, recent desc, label asc)
+}
+
+/** `From → To`, lifted from RoutesScreen.tsx's inline JSX (decision 10) --
+ * RoutesScreen.tsx itself is left untouched. A missing landmark (should not
+ * happen in a valid catalog) renders as '?' for that side, never a raw id. */
+export function routeLabel(route: Route, catalog: Catalog): string {
+  const from = catalog.landmarks.find((l) => l.id === route.startLandmarkId);
+  const to = catalog.landmarks.find((l) => l.id === route.endLandmarkId);
+  return `${from?.label ?? '?'} → ${to?.label ?? '?'}`;
+}
+
+/** Sum of ridden-way ride counts over exactly this route's `wayIds` -- a
+ * stray result on a way not listed under the route (should not happen) does
+ * not count. */
+export function rideCountForRoute(route: Route, resultsFor: (wayId: string) => readonly RideResult[]): number {
+  let total = 0;
+  for (const wayId of route.wayIds) total += resultsFor(wayId).length;
+  return total;
+}
+
+/** §2/§3: group `buildResultsList`'s ridden ways by route, drop routes with
+ * zero ridden ways, sort routes most-used first (ties -> most recent ->
+ * label). Mirrors `buildResultsList`'s own parameter shape so both read the
+ * same store accessors. */
+export function buildResultsRoutes(
+  catalog: Catalog,
+  resultsFor: (wayId: string) => RideResult[],
+  bestS: (wayId: string) => number | null,
+): ResultsRoute[] {
+  const { rows } = buildResultsList(catalog, resultsFor, bestS);
+  const rowByWayId = new Map(rows.map((r) => [r.wayId, r]));
+
+  interface Internal extends ResultsRoute { lastMs: number }
+  const internal: Internal[] = [];
+
+  for (const route of catalog.routes) {
+    const ways: ResultsWayRow[] = [];
+    let rideCount = 0;
+    let lastRiddenAtMs = -Infinity;
+    for (const wayId of route.wayIds) {
+      const row = rowByWayId.get(wayId);
+      if (row === undefined) continue; // unridden -- decision 6
+      const results = resultsFor(wayId);
+      let lastMs = -Infinity;
+      for (const r of results) if (r.startedAtMs > lastMs) lastMs = r.startedAtMs;
+      ways.push({
+        wayId: row.wayId,
+        label: row.label,
+        rideCount: row.rides,
+        lastRiddenAtMs: lastMs,
+        bestLapS: bestS(wayId),
+      });
+      rideCount += row.rides;
+      if (lastMs > lastRiddenAtMs) lastRiddenAtMs = lastMs;
+    }
+    if (ways.length === 0) continue; // decision 6 -- route not ridden at all
+    ways.sort((a, b) => {
+      if (b.rideCount !== a.rideCount) return b.rideCount - a.rideCount;
+      if (b.lastRiddenAtMs !== a.lastRiddenAtMs) return b.lastRiddenAtMs - a.lastRiddenAtMs;
+      return a.label < b.label ? -1 : a.label > b.label ? 1 : 0;
+    });
+    internal.push({
+      routeId: route.id,
+      label: routeLabel(route, catalog),
+      rideCount,
+      lastRiddenAtMs,
+      ways,
+      lastMs: lastRiddenAtMs,
+    });
+  }
+
+  internal.sort((a, b) => {
+    if (b.rideCount !== a.rideCount) return b.rideCount - a.rideCount;
+    if (b.lastMs !== a.lastMs) return b.lastMs - a.lastMs;
+    return a.label < b.label ? -1 : a.label > b.label ? 1 : 0;
+  });
+
+  return internal.map(({ routeId, label, rideCount, lastRiddenAtMs, ways }) => (
+    { routeId, label, rideCount, lastRiddenAtMs, ways }
+  ));
 }
 
 // ------------------------------------------------------------ the board

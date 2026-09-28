@@ -93,6 +93,12 @@ function Shell() {
   // intent, Shell owns chrome" split. Sits UNDER rideDetail: opening a board
   // row's ride detail is what opens it, so its BACK lands back here.
   const [resultsDetail, setResultsDetail] = useState<ResultsDetailRequest | null>(null);
+  // virgin-cycle15 brief 13: the RESULTS tab's drilled-into route (its way
+  // list) -- Shell state, not ResultsScreen state, because the results
+  // detail below mount-swaps ResultsScreen away and BACK must land on the
+  // way list (see tabNav.tsx's openResultsRoute doc). Not an overlay: does
+  // not hide the tab bar, only rendered while `tab === 'results'`.
+  const [resultsRoute, setResultsRoute] = useState<string | null>(null);
   const { t } = useTheme();
   const insets = useSafeAreaInsets();
   const bottomPad = Math.max(insets.bottom, NAV_BAR_MIN_PAD);
@@ -100,8 +106,9 @@ function Shell() {
   // like every other tab, rather than being forced into night mode.
   const chrome: PaddockTheme = t;
 
-  // System back: gate editor → ride detail → catalog detail → other tabs →
-  // Record; from Record, default behaviour (app backgrounds). PreviewScreen
+  // System back: gate editor → ride detail → catalog detail → results detail →
+  // results way list → other tabs → Record; from Record, default behaviour
+  // (app backgrounds). PreviewScreen
   // registers its own handler (runs first) to walk its internal screens back
   // to its home before this one fires.
   useEffect(() => {
@@ -126,6 +133,10 @@ function Shell() {
         setResultsDetail(null);
         return true;
       }
+      if (tab === 'results' && resultsRoute !== null) {
+        setResultsRoute(null);
+        return true;
+      }
       if (tab !== 'record') {
         setTab('record');
         return true;
@@ -133,7 +144,7 @@ function Shell() {
       return false;
     });
     return () => sub.remove();
-  }, [tab, rideDetail, gateAdjust, catalogDetail, resultsDetail]);
+  }, [tab, rideDetail, gateAdjust, catalogDetail, resultsDetail, resultsRoute]);
 
   // Rehydrate the comparison window once per launch, from the persistent
   // results/ store (cycle 024, WP-A1 — replaced B-40's results-cache.json;
@@ -198,6 +209,8 @@ function Shell() {
       closeCatalog: () => setCatalogDetail(null),
       openResults: setResultsDetail,
       closeResults: () => setResultsDetail(null),
+      openResultsRoute: setResultsRoute,
+      closeResultsRoute: () => setResultsRoute(null),
     }),
     [],
   );
@@ -213,7 +226,7 @@ function Shell() {
             : tab === 'record' ? <RecordScreen onFullscreenChange={setRecFullscreen} />
             : tab === 'rides' ? <RidesScreen />
             : tab === 'routes' ? <RoutesScreen />
-            : tab === 'results' ? <ResultsScreen />
+            : tab === 'results' ? <ResultsScreen openRouteId={resultsRoute} />
             : tab === 'settings' ? <SettingsScreen />
             : <DemoScreen onFullscreenChange={setDemoFullscreen} />}
         </View>
