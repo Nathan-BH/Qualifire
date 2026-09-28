@@ -2,7 +2,7 @@
  * Post-ride REPLAY — virgin-cycle14 brief 02 (testuser LBH #2). Wiring only;
  * all logic lives in the pure `replayModel.ts`. Looks like the DEMO tab's
  * SECOND/TENTH RIDE run: live-variant map, the rider's dot on its own
- * recorded fixes, prior rides racing as self dots, the shared
+ * recorded fixes, its own trace drawn thin beneath the way line (cycle15 07), prior rides racing as self dots, the shared
  * LiveSectorPane, a status line, and PAUSE/PLAY, RESTART, a speed pill
  * (5x / 10x / 25x), BACK. Mounted by RideDetailScreen.tsx in place of its
  * scroll view while `replaying`.
@@ -206,6 +206,7 @@ export default function ReplayScreen(props: {
             sectorColours={sectorColours}
             leadColour={settings.sectorColours ? colors.grey : undefined}
             selfs={settings.selfDots ? selfDots : undefined}
+            rideTrace={rider.fixes}
             variant="live"
             liveState={anchor.playing ? 'moving' : 'finished'}
             fill

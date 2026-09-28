@@ -20,7 +20,9 @@ import { registerHooks } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import * as nodeFs from 'node:fs';
 import { test, assert } from './lib.ts';
-import { toXY, xyToLatLon } from '../core/src/index.ts';
+import { cumdist, toXY, type RefLine, xyToLatLon } from '../core/src/index.ts';
+import { buildRuntimeWayAsset, RUNTIME_PATH_MAX_VERTICES } from '../src/ui/wayAssetRuntime.ts';
+import { trailLineFeature } from '../src/ui/trailModel.ts';
 
 // selfRaceModel.ts -> store/derive.ts -> catalogStore.ts -> seed.ts does a
 // bare `.json` import (catalog.seed.json) that Node cannot resolve without
@@ -128,3 +130,74 @@ for (const { r, vKmh } of COMBOS) {
     );
   });
 }
+// ---------------------------------------------------------------- E: the drawn line
+/** A RefLine at the builder's native 5 m spacing (core/src/reference.ts resamples at 5 m):
+ * `leadM` straight east, a quarter circle of radius `r` turning north, 3 km straight north.
+ * Planar metres about (LAT0, LON0), the same shape buildReference() emits. `leadM` is swept
+ * by the test so the bend lands at every phase of a decimation stride. */
+function bendRef(r: number, leadM: number, stepM = 5): RefLine {
+  const xs: number[] = []; const ys: number[] = [];
+  for (let s = 0; s <= leadM; s += stepM) { xs.push(s); ys.push(0); }
+  const arcLen = (Math.PI / 2) * r;
+  for (let s = stepM; s < arcLen; s += stepM) {
+    const th = s / r; xs.push(leadM + r * Math.sin(th)); ys.push(r - r * Math.cos(th));
+  }
+  for (let s = 0; s <= 3000; s += stepM) { xs.push(leadM + r); ys.push(r + s); }
+  const rx = Float64Array.from(xs); const ry = Float64Array.from(ys); const ch = cumdist(rx, ry);
+  return { rx, ry, ch, lat0: LAT0, lon0: LON0, length: ch[ch.length - 1] };
+}
+
+/** Planar distance (m) from a lat/lon point to the nearest point of a [lat,lon] polyline —
+ * the same toXY plane as distM above. */
+function distToPolylineM(path: readonly [number, number][], p: { lat: number; lon: number }): number {
+  let best = Infinity;
+  for (let i = 0; i + 1 < path.length; i++) {
+    const { x, y } = toXY([path[i][0], path[i + 1][0], p.lat], [path[i][1], path[i + 1][1], p.lon], LAT0, LON0);
+    const vx = x[1] - x[0]; const vy = y[1] - y[0]; const len2 = vx * vx + vy * vy || 1;
+    let t = ((x[2] - x[0]) * vx + (y[2] - y[0]) * vy) / len2; t = Math.max(0, Math.min(1, t));
+    best = Math.min(best, Math.hypot(x[2] - (x[0] + t * vx), y[2] - (y[0] + t * vy)));
+  }
+  return best;
+}
+
+for (const r of [5, 10, 20]) {
+  test(`replayDrift: the drawn way line keeps a ${r}m-radius corner (max arc->line distance <= 1m, any stride phase)`, () => {
+    let worst = 0;
+    for (const leadM of [3000, 3005, 3010, 3015, 3020, 3025, 3030]) {
+      const ref = bendRef(r, leadM);
+      const asset = buildRuntimeWayAsset(ref, [100, ref.length - 100]);
+      const path = asset.path!;
+      for (let k = 0; k <= 40; k++) {
+        const th = (k / 40) * (Math.PI / 2);
+        const [lat, lon] = xyToLatLon(leadM + r * Math.sin(th), r - r * Math.cos(th), LAT0, LON0);
+        worst = Math.max(worst, distToPolylineM(path, { lat, lon }));
+      }
+    }
+    console.log(`  [replayDrift] r=${r}m corner: worst arc->drawn-line distance ${worst.toFixed(2)}m`);
+    assert(worst <= 1.0, `r=${r}m: drawn line is ${worst.toFixed(2)}m off the reference at the corner apex (limit 1m)`);
+  });
+}
+
+test('replayDrift: the drawn way line keeps every 5m ref vertex up to the cap, and thins only beyond it', () => {
+  const short = bendRef(10, 3000);
+  const a1 = buildRuntimeWayAsset(short, [100, short.length - 100]);
+  assert(a1.path!.length >= short.ch.length && a1.path!.length <= short.ch.length + 2,
+    `expected every one of ${short.ch.length} ref vertices kept (+<=2 gate vertices), got ${a1.path!.length}`);
+  const long = bendRef(10, 5 * 6 * RUNTIME_PATH_MAX_VERTICES);
+  const a2 = buildRuntimeWayAsset(long, [100, long.length - 100]);
+  assert(a2.path!.length <= RUNTIME_PATH_MAX_VERTICES + 3,
+    `a ${long.ch.length}-vertex ref must be capped near ${RUNTIME_PATH_MAX_VERTICES}, got ${a2.path!.length}`);
+});
+
+// ---------------------------------------------------------------- D: the ride trace
+test('replayDrift: the replay dot never leaves the ride trace (interpAt samples lie on the fixes polyline)', () => {
+  const r = 10; const vMs = 20 * KMH_TO_MS; const t0Ms = 1_700_000_000_000;
+  const nFixes = Math.round(((Math.PI / 2) * r) / vMs);
+  const fixes = Array.from({ length: nFixes + 1 }, (_, i) => ({ tUnixMs: t0Ms + i * 1000, ...arcPoint(r, vMs, i) }));
+  const f = trailLineFeature(fixes);
+  assert(f !== null && f.geometry.coordinates.length === fixes.length, 'trace must have one vertex per fix');
+  const path = f.geometry.coordinates.map(([lon, lat]) => [lat, lon] as [number, number]);
+  let worst = 0;
+  for (let tS = 0; tS <= nFixes; tS += 0.25) worst = Math.max(worst, distToPolylineM(path, interpAt(fixes, t0Ms + tS * 1000)));
+  assert(worst < 1e-6, `dot left its own trace by ${worst}m`);
+});

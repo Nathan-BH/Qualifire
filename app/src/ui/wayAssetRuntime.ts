@@ -1,7 +1,7 @@
 /**
  * Runtime RouteAsset for routes with no entry in assets/ways/routes.json
  * (WP-C). Builds the SAME RouteAsset shape the Python renderer writes: a
- * decimated [lat,lon] path, gates resolved from chainage onto that line, a
+ * [lat,lon] path at the reference's own 5 m spacing (capped — RUNTIME_PATH_MAX_VERTICES), gates resolved from chainage onto that line, a
  * gateIdx per gate, and a Web-Mercator fit into the renderer's 900x1400 /
  * 60px-pad frame — so the PNG rung's projectToPixel/cropFor/gateTickPx work
  * unchanged; image is '' (the same no-PNG convention 17 of the 20 seed
@@ -21,7 +21,16 @@ import { projectToPixel, type WayAsset, type WayGate } from './wayMapMath.ts';
 export const RUNTIME_ASSET_W = 900;
 export const RUNTIME_ASSET_H = 1400;
 export const RUNTIME_ASSET_PAD_PX = 60;
-export const RUNTIME_PATH_TARGET_VERTICES = 180;
+/** virgin-cycle15 07 (replay drift, 2026-09-28): the drawn path keeps EVERY vertex of the
+ * reference line (5 m apart — core/src/reference.ts resamples at 5 m) up to this cap; only
+ * a way longer than ~cap x 5 m (~20 km) is thinned, by the smallest integer stride that
+ * fits. Was a ~180-vertex target (30-38 m spacing, mirroring the seed manifest's Python
+ * renderer — cycle1 WP-C risk 5: "one constant to change if Nathan dislikes it on device"),
+ * which cut every bend tighter than ~35 m straight across: measured 7-10 m off the
+ * reference at a 5-20 m-radius corner apex (tests/replay_drift_suite.ts), an order of
+ * magnitude more than the replay dot's own <=1.6 m chord error. 4000 = trailModel.ts's
+ * TRAIL_MAX_POINTS, a vertex count the MapLibre rung already draws live. */
+export const RUNTIME_PATH_MAX_VERTICES = 4000;
 const DEDUPE_M = 0.5;
 
 const mercX = (lon: number): number => (lon * Math.PI) / 180;
@@ -35,7 +44,7 @@ export function buildRuntimeWayAsset(
   ref: RefLine, gateChainageM: readonly number[], sourceRide = '',
 ): WayAsset {
   const n = ref.ch.length;
-  const stride = Math.max(1, Math.round((n - 1) / RUNTIME_PATH_TARGET_VERTICES));
+  const stride = Math.max(1, Math.ceil((n - 1) / RUNTIME_PATH_MAX_VERTICES));
   interface Cand { s: number; ll: [number, number]; gate: number | null }
   const vertex = (i: number): Cand =>
     ({ s: ref.ch[i], ll: xyToLatLon(ref.rx[i], ref.ry[i], ref.lat0, ref.lon0), gate: null });

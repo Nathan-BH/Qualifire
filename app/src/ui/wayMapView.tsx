@@ -270,6 +270,16 @@ type WayMapProps = {
    * MapLibre rung draws it — the PNG rung has no equivalent (see file
    * header's rung notes) and is unaffected. */
   trail?: readonly TrailPoint[];
+  /** virgin-cycle15 07 (replay drift): the ride's OWN recorded fixes, drawn as one thin
+   * riderBlue line BENEATH the route line (mount order: this source is the first child
+   * after the camera, so route/trail/spans/gates/selfs/rider all paint over it). It shows
+   * only where the ride left the reference by more than the route casing's half-width —
+   * and the replay dot always sits on it, because riderPositionAt interpolates between
+   * these very fixes. riderBlue on purpose: the dot's own hue, readable on both basemaps
+   * (a t.textDim line "read as nothing" on the night basemap — see the gate-ticks note
+   * below), not a tier colour (D-030). MapLibre rung only; the PNG rung ignores it (same
+   * accepted degradation as `trail`/`selfs`). Only ReplayScreen passes it. */
+  rideTrace?: readonly TrailPoint[];
   /** virgin-cycle6: past rides of this way replayed as dots (selfRaceModel.ts).
    * Drawn by the MapLibre rung only, BELOW the rider dot (mount order).
    * undefined/[] = the source still mounts, empty. The PNG rung ignores it
@@ -529,6 +539,14 @@ function MapLibreWayMap(props: WayMapProps & {
     return { type: 'FeatureCollection' as const, features: f ? [f] : [] };
   }, [props.trail, props.lat, props.lon]);
 
+  // virgin-cycle15 07: always-mounted, possibly-empty (same mount-order reasoning as
+  // trailFC). No `tail` — a full trace must not get a straight leg from its last fix back
+  // to the current dot.
+  const rideTraceFC = useMemo(() => {
+    const f = props.rideTrace && props.rideTrace.length > 1 ? trailLineFeature(props.rideTrace) : null;
+    return { type: 'FeatureCollection' as const, features: f ? [f] : [] };
+  }, [props.rideTrace]);
+
   // virgin-cycle6 (self racing): always-mounted, possibly-empty
   // FeatureCollection — same Rules-of-Hooks / mount-order reasoning as
   // trailFC above (must run before the riderOnly guard below, and must not
@@ -698,6 +716,14 @@ function MapLibreWayMap(props: WayMapProps & {
         touchPitch={false}
       >
         <M.Camera ref={cameraRef} {...cameraProps} />
+        {/* virgin-cycle15 07: the ride's own trace, first source after the camera so it
+            mounts beneath everything else (route source is conditional and mounts later or
+            in the same render — either way above this). key === id per the cycle-025 rule. */}
+        <M.GeoJSONSource key="ride-trace" id="ride-trace" data={rideTraceFC}>
+          <M.Layer id="ride-trace-core" type="line"
+            paint={{ 'line-color': colors.riderBlue, 'line-width': 2, 'line-opacity': 0.85 }}
+            layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
+        </M.GeoJSONSource>
         {/* Reverted 2026-08-24: one solid line, casing beneath a yellow
             core, the whole route — see the routeFC comment above for why
             the dotted-ahead split was pulled back out. */}

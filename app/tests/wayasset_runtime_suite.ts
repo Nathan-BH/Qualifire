@@ -24,7 +24,7 @@
 import { assert, test } from './lib.ts';
 import type { RefLine } from '../core/src/index.ts';
 import {
-  RUNTIME_ASSET_H, RUNTIME_ASSET_PAD_PX, RUNTIME_ASSET_W, RUNTIME_PATH_TARGET_VERTICES,
+  RUNTIME_ASSET_H, RUNTIME_ASSET_PAD_PX, RUNTIME_ASSET_W, RUNTIME_PATH_MAX_VERTICES,
   allWayAssets, buildRuntimeWayAsset, pointAtChainage, resetWayAssetCacheForTests,
   resolveWayAsset, type WayAssetDeps,
 } from '../src/ui/wayAssetRuntime.ts';
@@ -76,8 +76,11 @@ test('routeAssetRuntime: buildRuntimeRouteAsset — path/gates/gateIdx from a Re
 
   assert(asset.gates.length === gates.length, `expected ${gates.length} gates, got ${asset.gates.length}`);
   assert(asset.gateIdx !== undefined && asset.gateIdx.length === gates.length, 'gateIdx must have one entry per gate');
-  assert((asset.path?.length ?? 0) >= 150 && (asset.path?.length ?? 0) <= 200,
-    `path length ${asset.path?.length} out of the expected ~${RUNTIME_PATH_TARGET_VERTICES}-vertex range`);
+  // virgin-cycle15 07: no ~180-vertex thinning any more — every ref vertex (5 m apart) is
+  // kept up to RUNTIME_PATH_MAX_VERTICES, plus one spliced vertex per gate that does not
+  // land within DEDUPE_M of a kept vertex.
+  assert((asset.path?.length ?? 0) >= 1000 && (asset.path?.length ?? 0) <= 1000 + gates.length,
+    `path length ${asset.path?.length} outside [1000, ${1000 + gates.length}] (cap ${RUNTIME_PATH_MAX_VERTICES})`);
 
   gates.forEach((s, i) => {
     const [expLat, expLon] = pointAtChainage(ref, s);
