@@ -193,6 +193,47 @@ export function trailBounds(pts: readonly { lat: number; lon: number }[]): LonLa
   return { minLon, minLat, maxLon, maxLat };
 }
 
+export interface PolygonGeometry { type: 'Polygon'; coordinates: GeoPosition[][] }
+
+export interface PlaceProperties { part: 'disc' | 'centre' }
+
+const EARTH_R_M = 6371000;
+
+/** virgin-cycle15 brief 12: a landmark's arrival disc (catalog.ts landmarkAt's
+ * `d <= radiusM`) as a closed polygon ring in REAL metres, plus its centre as a
+ * point — so the disc scales with the map on zoom, which a pixel-radius circle
+ * layer cannot do. Same equirectangular offsets as metresBetween; sub-decimetre
+ * at the radii the catalog validates (catalog.ts:67 forbids <= 0). Ring is
+ * [lon, lat] like every other builder here. */
+export function placeFeatureCollection(
+  lat: number, lon: number, radiusM: number, steps = 64,
+): GeoFeatureCollection<PolygonGeometry | PointGeometry, PlaceProperties> {
+  const dLat = (radiusM / EARTH_R_M) * (180 / Math.PI);
+  const dLon = dLat / Math.cos((lat * Math.PI) / 180);
+  const ring: GeoPosition[] = [];
+  for (let i = 0; i < steps; i++) {
+    const a = (2 * Math.PI * i) / steps;
+    ring.push([lon + dLon * Math.cos(a), lat + dLat * Math.sin(a)]);
+  }
+  ring.push([ring[0][0], ring[0][1]]);
+  return {
+    type: 'FeatureCollection',
+    features: [
+      { type: 'Feature', properties: { part: 'disc' }, geometry: { type: 'Polygon', coordinates: [ring] } },
+      { type: 'Feature', properties: { part: 'centre' }, geometry: { type: 'Point', coordinates: [lon, lat] } },
+    ],
+  };
+}
+
+/** Bounds for the camera 'fit': the disc's box widened by `pad` (1.6 = the
+ * disc sits inside the frame with air around it, on top of cameraTargetFor's
+ * own 20 px padding). */
+export function placeBounds(lat: number, lon: number, radiusM: number, pad = 1.6): LonLatBoundsBox {
+  const dLat = (radiusM / EARTH_R_M) * (180 / Math.PI) * pad;
+  const dLon = (dLat / Math.cos((lat * Math.PI) / 180));
+  return { minLon: lon - dLon, minLat: lat - dLat, maxLon: lon + dLon, maxLat: lat + dLat };
+}
+
 /** Cheap equirectangular distance estimate (metres), good enough at
  * bike-ride scale to decide "did the fix actually move" — not a substitute
  * for a real geodesic when correctness at range matters (see bearingBetween

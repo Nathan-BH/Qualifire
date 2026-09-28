@@ -11,6 +11,7 @@ import {
   allGatesBounds, allGatesFeatureCollection, bearingBetween, cameraTargetFor, gatesFeatureCollection,
   gateTicksFeatureCollection, liveMapGateWayIds, metresBetween, riderFeature, rotateEnabledFor, wayBounds,
   wayLineFeature, waySplitFeatures, sectorSpansFeatureCollection, trailBounds,
+  placeFeatureCollection, placeBounds,
 } from '../src/ui/wayMapGeo.ts';
 import { gateName } from '../src/ui/gateAdjustModel.ts';
 import { freeRideWayIds } from '../src/store/catalog.ts';
@@ -660,6 +661,58 @@ test('routemapgeo: trailBounds — null for <2 points; min/max over a 3-point tr
   assert(b !== null, 'a 3-point trail must produce bounds');
   assert(b!.minLat === 50.80 && b!.maxLat === 50.86, `expected lat [50.80,50.86], got [${b!.minLat},${b!.maxLat}]`);
   assert(b!.minLon === 4.60 && b!.maxLon === 4.70, `expected lon [4.60,4.70], got [${b!.minLon},${b!.maxLon}]`);
+});
+
+test('wayMapGeo: placeFeatureCollection — ring has steps+1 positions closing on itself, each within 1% of radiusM', () => {
+  const lat = 50.88, lon = 4.70;
+  for (const radiusM of [60, 250]) {
+    const fc = placeFeatureCollection(lat, lon, radiusM);
+    const disc = fc.features.find((f) => f.properties.part === 'disc')!;
+    assert(disc.geometry.type === 'Polygon', `expected Polygon, got ${disc.geometry.type}`);
+    const ring = disc.geometry.coordinates[0];
+    assert(ring.length === 65, `expected 64+1=65 ring positions, got ${ring.length}`);
+    assert(ring[0][0] === ring[64][0] && ring[0][1] === ring[64][1], 'ring must close on itself (first === last)');
+    for (const [plon, plat] of ring) {
+      const d = metresBetween(lat, lon, plat, plon);
+      const err = Math.abs(d - radiusM) / radiusM;
+      assert(err < 0.01, `ring point ${d}m off by ${(err * 100).toFixed(2)}% from radiusM=${radiusM}`);
+    }
+  }
+});
+
+test('wayMapGeo: placeFeatureCollection — lon/lat order matches every other builder ([lon, lat])', () => {
+  const lat = 50.88, lon = 4.70, radiusM = 100;
+  const fc = placeFeatureCollection(lat, lon, radiusM);
+  const disc = fc.features.find((f) => f.properties.part === 'disc')!;
+  const ring = disc.geometry.coordinates[0] as [number, number][];
+  // ring[0] is angle 0: cos(0)=1, sin(0)=0 -> lon offset only, lat unchanged.
+  assert(ring[0][1] === lat, `expected ring[0][1] (lat slot) === lat, got ${ring[0][1]}`);
+  assert(ring[0][0] > lon, `expected ring[0][0] (lon slot) > lon (angle-0 point is due east), got ${ring[0][0]}`);
+});
+
+test('wayMapGeo: placeFeatureCollection — centre feature is part="centre" at [lon, lat]', () => {
+  const lat = 50.88, lon = 4.70;
+  const fc = placeFeatureCollection(lat, lon, 100);
+  const centre = fc.features.find((f) => f.properties.part === 'centre')!;
+  assert(centre.geometry.type === 'Point', `expected Point, got ${centre.geometry.type}`);
+  assert(centre.geometry.coordinates[0] === lon && centre.geometry.coordinates[1] === lat,
+    `expected centre [${lon},${lat}], got ${JSON.stringify(centre.geometry.coordinates)}`);
+});
+
+test('wayMapGeo: placeBounds — contains every ring point strictly inside, widened by pad', () => {
+  const lat = 50.88, lon = 4.70, radiusM = 250, pad = 1.6;
+  const fc = placeFeatureCollection(lat, lon, radiusM);
+  const disc = fc.features.find((f) => f.properties.part === 'disc')!;
+  const ring = disc.geometry.coordinates[0] as [number, number][];
+  const b = placeBounds(lat, lon, radiusM, pad);
+  for (const [plon, plat] of ring) {
+    assert(plon > b.minLon && plon < b.maxLon, `ring lon ${plon} not strictly inside [${b.minLon},${b.maxLon}]`);
+    assert(plat > b.minLat && plat < b.maxLat, `ring lat ${plat} not strictly inside [${b.minLat},${b.maxLat}]`);
+  }
+  const dLatRing = (radiusM / 6371000) * (180 / Math.PI);
+  const expectedHalfLat = dLatRing * pad;
+  assert(Math.abs((b.maxLat - lat) - expectedHalfLat) < 1e-9,
+    `expected maxLat-lat ${expectedHalfLat}, got ${b.maxLat - lat}`);
 });
 
 test('routemapgeo/routeMapView: no hardcoded Leuven literal (4.68/50.85) survives anywhere in the camera path', () => {

@@ -73,6 +73,8 @@ test('catalogdetail: place A — one touching way, direction "from", touchingRou
   assert(p.routes[0].wayCount === 2, `expected routeCount 2, got ${p.routes[0].wayCount}`);
   assert(p.touchingWayIds.length === 2 && p.touchingWayIds[0] === STD_ID && p.touchingWayIds[1] === ALT_ID,
     `expected [${STD_ID}, ${ALT_ID}], got ${JSON.stringify(p.touchingWayIds)}`);
+  assert(p.lat === lmA.lat && p.lon === lmA.lon && p.radiusM === lmA.radiusM,
+    `expected lat/lon/radiusM to equal lmA's own fields, got ${p.lat}/${p.lon}/${p.radiusM}`);
 });
 
 test('catalogdetail: place B — direction "to", dormant by offerAtStart=false', () => {

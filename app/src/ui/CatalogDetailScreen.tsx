@@ -183,21 +183,18 @@ function PlaceBody({
         </>
       )}
 
-      {model.touchingWayIds.length > 0 ? (
-        <View style={{ marginTop: 12 }}>
-          <WayMapView
-            variant="browse"
-            gatesOnly
-            gateWayIds={model.touchingWayIds}
-            wayId={null}
-            lat={null}
-            lon={null}
-            showRider={false}
-            zoom={1}
-            height={260}
-          />
-        </View>
-      ) : null}
+      <View style={{ marginTop: 12 }}>
+        <WayMapView
+          variant="browse"
+          place={{ lat: model.lat, lon: model.lon, radiusM: model.radiusM }}
+          wayId={null}
+          lat={null}
+          lon={null}
+          showRider={false}
+          zoom={1}
+          height={260}
+        />
+      </View>
 
       <View style={{ marginTop: 16 }}>
         <Text style={[st.h2, { color: t.textDim }]}>ACTIONS</Text>

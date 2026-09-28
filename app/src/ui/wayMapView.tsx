@@ -92,7 +92,7 @@ import { allWayAssets, resolveWayAsset, type WayAssetDeps } from './wayAssetRunt
 import {
   allGatesBounds, allGatesFeatureCollection, bearingBetween, cameraTargetFor,
   gateHalfLenM, gateTicksFeatureCollection, metresBetween, nearestOnPath, riderFeature, rotateEnabledFor, wayBounds,
-  wayLineFeature, sectorSpansFeatureCollection, trailBounds,
+  wayLineFeature, sectorSpansFeatureCollection, trailBounds, placeFeatureCollection, placeBounds,
 } from './wayMapGeo.ts';
 import { trailLineFeature, type TrailPoint } from './trailModel.ts';
 import { selfsFeatureCollection, type SelfDot } from './selfRaceModel.ts';
@@ -264,6 +264,14 @@ type WayMapProps = {
    * freeRideRouteIds()). undefined/null = every catalog route (the
    * deliberately-unfiltered both-ends-unknown free ride). */
   gateWayIds?: string[] | null;
+  /** virgin-cycle15 brief 12 (Nathan 2026-09-27): a PLACE surface — the
+   * ROUTES-tab place detail. Draws one yellow disc of `radiusM` real metres
+   * (the landmark's arrival radius, catalog.ts landmarkAt) at lat/lon, an
+   * outline and a centre dot; no route line, no gates, no rider. Camera fits
+   * the disc. Only meaningful with `wayId` null and `gatesOnly` false — a
+   * caller passing both is a bug. MapLibre rung only; the PNG rung shows a
+   * degraded frame like gatesOnly. */
+  place?: { lat: number; lon: number; radiusM: number } | null;
   /** WP-J (breadcrumb trail): the rider's own ridden line, decimated GPS
    * fixes accumulated by RecordScreen (trailModel.ts). Rendered behind the
    * rider dot, casing+core styled the same as the route line. Only the
@@ -577,8 +585,13 @@ function MapLibreWayMap(props: WayMapProps & {
   // WP-H: a browse surface with a ridden TRAIL but no asset (the ride-detail
   // trace view for an unmatched/free ride) is not "nothing to show" either.
   const hasTrail = !!props.trail && props.trail.length > 1;
+  // virgin-cycle15 brief 12: a PLACE surface (props.place) is drawable
+  // content just like an asset/trail — it must survive this early return
+  // even with no asset, no rider and no trail. gatesOnly wins if somehow
+  // both are passed (a caller bug per the prop's own doc comment).
+  const place = !gatesOnly ? props.place ?? null : null;
   const riderOnly = !gatesOnly && !asset;
-  if (riderOnly && !showRider && !hasTrail) return null;
+  if (riderOnly && !showRider && !hasTrail && !place) return null;
 
   const here = props.lat !== null && props.lon !== null;
   // D-025: off-route reads from the TRUE fix, same call the PNG rung makes.
@@ -622,6 +635,11 @@ function MapLibreWayMap(props: WayMapProps & {
   const sectorSpansFC = !gatesOnly && asset && props.sectorColours
     ? sectorSpansFeatureCollection(asset, props.sectorColours, props.leadColour)
     : null;
+  // virgin-cycle15 brief 12: the place disc. Pure builder, one 64-point
+  // ring — cheap enough per render, and a hook here would sit after the
+  // riderOnly early return above (Rules of Hooks), same reasoning as the
+  // other unmemoized builders in this block.
+  const placeFC = place ? placeFeatureCollection(place.lat, place.lon, place.radiusM) : null;
   // virgin-cycle15 06: an empty gate selection (e.g. a NEW>>NEW free ride,
   // via liveMapGateWayIds) must fall through to the trail actually ridden,
   // not stay stuck at a null gates-only bounds — `asset` is always undefined
@@ -632,6 +650,7 @@ function MapLibreWayMap(props: WayMapProps & {
     : null;
   const bounds = gatesOnlyBounds
     ?? (asset ? wayBounds(asset)
+    : place ? placeBounds(place.lat, place.lon, place.radiusM)
     : hasTrail ? trailBounds(props.trail!) : null);
 
   // WP-D §3.1c: the camera-target rule itself lives in routeMapGeo.ts
@@ -813,6 +832,24 @@ function MapLibreWayMap(props: WayMapProps & {
             the source (and its layers) instead of rebinding the id. Sources only:
             <M.Map>'s own key={styleUrl} (cycle 023) is left alone — a whole-map
             remount here would pay B-71's camera-state cost for nothing. */}
+        {placeFC ? (
+          <M.GeoJSONSource key="place" id="place" data={placeFC}>
+            <M.Layer id="place-disc-fill" type="fill"
+              filter={['==', ['get', 'part'], 'disc']}
+              paint={{ 'fill-color': colors.neutral, 'fill-opacity': 0.18 }} />
+            <M.Layer id="place-disc-line" type="line"
+              filter={['==', ['get', 'part'], 'disc']}
+              paint={{ 'line-color': colors.neutral, 'line-width': 2, 'line-opacity': 0.9 }} />
+            <M.Layer id="place-centre" type="circle"
+              filter={['==', ['get', 'part'], 'centre']}
+              paint={{
+                'circle-radius': 4,
+                'circle-color': colors.neutral,
+                'circle-stroke-color': CASING,
+                'circle-stroke-width': 1.5,
+              }} />
+          </M.GeoJSONSource>
+        ) : null}
         {gatesOnly ? (
           <M.GeoJSONSource key="gates" id="gates" data={gatesFC!}>
             <M.Layer id="gate-rings" type="circle" paint={{
@@ -1018,6 +1055,25 @@ function PngWayMap(props: WayMapProps) {
       ]}>
         <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card }]}>
           gates map needs the tile map
+        </Text>
+        <Credit rung="png" locked={locked} />
+      </View>
+    );
+  }
+
+  // virgin-cycle15 brief 12: mirror the gatesOnly degraded frame above —
+  // this rung is one pre-rendered PNG per route and has no way to draw a
+  // metres-accurate disc without tiles, same honesty rule as gatesOnly.
+  if (props.place && !gatesOnly) {
+    return (
+      <View style={[
+        st.frame,
+        props.fill ? { flex: 1, alignSelf: 'stretch' } : { height: h },
+        { backgroundColor: t.race.bg, borderColor: t.cardBorder },
+        dimmed && st.dimmedFrame,
+      ]}>
+        <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card }]}>
+          place map needs the tile map
         </Text>
         <Credit rung="png" locked={locked} />
       </View>

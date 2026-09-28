@@ -345,7 +345,7 @@ test('routemap: map credits are an "i" button, never an always-visible label, an
   assert(src.includes('accessibilityLabel={`Map data sources: ${label}`}'), 'the "i" button must carry the full credit as its accessibility label');
   assert(src.includes('CREDIT_AUTO_HIDE_MS'), 'the opened card must auto-hide');
   assert((src.match(/<Credit rung="maplibre"/g) ?? []).length === 1, 'MapLibre rung must mount exactly one <Credit>');
-  assert((src.match(/<Credit rung="png"/g) ?? []).length === 2, 'PNG rung must mount <Credit> in both its gatesOnly frame and its image frame');
+  assert((src.match(/<Credit rung="png"/g) ?? []).length === 3, 'PNG rung must mount <Credit> in its gatesOnly frame, its place frame (virgin-cycle15 brief 12), and its image frame');
   const mapStart = src.indexOf('<M.Map');
   const openTag = src.slice(mapStart, src.indexOf('<M.Camera', mapStart));
   assert(/attribution=\{false\}/.test(openTag) && /logo=\{false\}/.test(openTag),

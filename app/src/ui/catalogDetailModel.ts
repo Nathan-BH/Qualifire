@@ -26,6 +26,7 @@ export interface CatalogDetailDeps {
 export interface TouchingRouteModel { routeId: string; label: string; direction: 'from' | 'to' | 'loop'; wayCount: number }
 export interface PlaceDetailModel {
   id: string; label: string; coordsLabel: string; radiusLabel: string;
+  lat: number; lon: number; radiusM: number;
   dormant: boolean; offerAtStart: boolean; seedOwned: boolean; deletable: boolean;
   routes: TouchingRouteModel[]; touchingWayIds: string[];
 }
@@ -121,6 +122,7 @@ export function placeDetailFor(id: string, deps: CatalogDetailDeps): PlaceDetail
     label: l.label,
     coordsLabel: `${l.lat.toFixed(5)}, ${l.lon.toFixed(5)}`,
     radiusLabel: `radius ${l.radiusM} m`,
+    lat: l.lat, lon: l.lon, radiusM: l.radiusM,
     dormant,
     offerAtStart: l.offerAtStart,
     seedOwned,
