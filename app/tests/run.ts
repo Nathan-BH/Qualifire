@@ -53,6 +53,7 @@ import './virginmanifest_suite.ts';
 import './autotheme_suite.ts';
 import './mapcredit_suite.ts';
 import './replay_suite.ts';
+import './replay_drift_suite.ts';
 import { runAll } from './lib.ts';
 
 const { fail } = await runAll();
