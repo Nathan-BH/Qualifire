@@ -311,3 +311,41 @@ dot to the yellow line (recommended against); C changes nothing visible.
 5. **Reference-line quality on today's three routes** is unknown: if one of them was created
    from a reference ride that itself cut the corner (phone lag, cause 3), no rendering
    change fixes that — only re-recording the reference would, and that is out of scope here.
+
+---
+
+## Ruling 2026-09-28 (Plan tier, Fable — after Phase 0 landed as 782f042)
+
+**Implement E + D. Not A, not B, not C.**
+
+Phase 0's numbers: the drawn way line has ~30-38m vertex spacing (RUNTIME_PATH_TARGET_VERTICES
+= 180), while the replay dot's own chord-interpolation error is under ~1-1.6m even in the
+tightest/fastest corners — an order of magnitude smaller. A follow-up probe against the live
+code confirmed a 5/10/20m-radius corner apex was 7-10m off the reference at the old line
+resolution. The corner-cutting Nathan sees is the LINE's coarseness, not the dot's math.
+
+- **E**: `wayAssetRuntime.ts`'s `RUNTIME_PATH_TARGET_VERTICES` (180) replaced with
+  `RUNTIME_PATH_MAX_VERTICES` (4000) — every ~5m reference vertex is now kept up to the cap
+  (only ways >~20km thin further). Fixes the live RECORD map and gate-adjust card too (same
+  builder), not just replay. Landed as `68fcc3a`.
+- **D**: the ride's own recorded fixes drawn as a thin line beneath the route line (so the
+  replay dot is visibly "real" — it interpolates between exactly these fixes, so it can never
+  leave this line by construction). Landed in the same commit. Note for on-device review: this
+  ships as `colors.riderBlue`, width 2, BENEATH the route line (only visible where the ride
+  left the reference by more than the route casing's half-width) — a deliberate choice so it
+  doesn't draw a permanent hairline down the middle of the yellow line everywhere, not what an
+  earlier draft of this ruling sketched (dim/above). If Nathan finds it too subtle to notice on
+  most rides, that line's color/width/z-order is a one-line follow-up, not a redesign.
+- **A** (smooth the dot's own interpolation): rejected — the artifact it would fix is already
+  an order of magnitude smaller than what E fixes, and it would draw a path between real fixes
+  that doesn't reflect where the rider actually was.
+- **B** (snap the dot to reference chainage): rejected, and already forbidden by an existing
+  rule (`wayMapMath.ts`: "the dot is placed from the rider's TRUE position, never from
+  chainage-along-the-reference," D-025).
+- Opus Inspect (fresh pass, `abef903`) flagged a performance risk worth Nathan's attention, not
+  from this ruling but surfaced during its review: `WayMapView`'s GeoJSON sources re-serialize
+  on every render (pre-existing, `sectorSpansFC` was already unmemoized) and the larger way-line
+  vertex count from E makes that somewhat heavier during REPLAY scrubbing specifically (measured
+  ~2ms/render on desktop V8 for a 1800-vertex way; Hermes on-device will be slower). The live
+  RECORD map renders at 1Hz and should be unaffected. Logged in OPEN-ITEMS as a watch item, not
+  blocking — fix is a one-line memoization if it stutters on-device.
