@@ -62,10 +62,10 @@ day (below).
   `activity-index.csv` and the Python side live on `main` only), `app/src/live/`
   (full-catalog pick-bias engine; candidates are ways), `app/src/store/` (sports + catalog +
   results + timing, empty-seed-capable — see below), `app/src/ui/` (six tabs:
-  RECORD / RIDES / ROUTES / RESULTS / SETTINGS / DEMO). `app/tests/`: **676 tests, 673 pass,
-  0 fail, 3 skip**. `tsc --noEmit`: clean, exit 0. Last verified 2026-09-26 (virgin-cycle14,
-  all 8 briefs landed; previously 634/631/0/3 on 2026-09-19, virgin-cycle11 DEMO tab overhaul
-  briefs A + B + C + D).
+  RECORD / RIDES / ROUTES / RESULTS / SETTINGS / DEMO). `app/tests/`: **750 tests, 747 pass,
+  0 fail, 3 skip**. `tsc --noEmit`: clean, exit 0. Last verified 2026-09-28 (virgin-cycle15,
+  all 15 briefs landed; previously 676/673/0/3 on 2026-09-26, virgin-cycle14's 8 tester-
+  feedback briefs).
 - **The empty-seed install path is built.** `store/seed.ts` + `store/catalogStore.ts`: the
   runtime catalog is the shipped seed merged read-side with an on-phone
   `catalog.user.json` (never copied to disk, so a seed edit still reaches every install).
@@ -196,6 +196,25 @@ day (below).
   screen now shows the real RESULTS scatterplot fed synthetic laps (1/2/9 dots for
   FIRST/SECOND/TENTH). Full record, execution order, and the on-device checklist for all 8:
   `cycles/virgin-cycle14/README.md`.
+- **virgin-cycle15 landed (2026-09-28, all 15 briefs Nathan fed in one session); nothing yet
+  seen on a phone.** Stale route gates + FIT-leak-across-rides bugfix; end-of-ride map mark
+  now drawn forward, not reversed; RECORD place pills ranked by usage; first sport can be
+  added directly from a RECORD press, not only via SETTINGS; the scored-way assumption on
+  save now offers a small "not this way?" correction instead of a picker; compact "Day from
+  ... until ..." time input for the auto day/night schedule; DEMO gained 5x/15x/25x speed
+  pills + a SKIP that lands on DEMO's own ending screen; the way line drawn on the live/
+  replay map now renders at reference resolution (4000-vertex cap, not 180) with the ride's
+  own recorded fixes traced beneath it, fixing visible corner-cutting on tight bends; REPLAY
+  redesigned (bigger map, one control row); the PLACE detail map now shows one yellow disc
+  with no gates; the RESULTS plot/Timing Tower cleaned up (fixed x-slots, single dot style,
+  no legend, tier-coloured TODAY bar); RESULTS restructured from a flat way list into
+  route -> way grouping, most-used-first, with free rides now correctly labeled in RIDES
+  instead of a generic "new -> new". Two Fable rulings mid-cycle: brief 13's in-screen
+  `openRouteId` navigation couldn't survive `App.tsx`'s mount-swap ternary, replaced with a
+  Shell-owned `resultsRoute` + `tabNav.openResultsRoute`/`closeResultsRoute`; brief 13 §1's
+  premise (free rides absent from RIDES) was wrong, fixed with a small fallback-chain slot
+  instead of the prescribed merge module. Full record, execution order, every ruling in
+  full, and the on-device checklist for all 15: `cycles/virgin-cycle15/README.md`.
 
 ## Open items
 
@@ -320,6 +339,13 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   `buildRefFromRideFixes` over the demo path, gates by the real `seedGateChainages`
   (`demoModel.ts` `demoGateAdjustDraft`); KEEP/SAVE GATES are theatre, one line names the
   outcome, nothing is written.
+- **`WayMapView`'s GeoJSON sources re-serialize on every render** (pre-existing —
+  `sectorSpansFC` was already unmemoized before this). virgin-cycle15 brief 07's larger
+  way-line vertex cap (4000, up from 180) makes this somewhat heavier specifically during
+  REPLAY scrubbing (measured ~2ms/render on desktop V8 for a 1800-vertex way; Hermes
+  on-device will be slower). The live RECORD map renders at 1Hz and should be unaffected.
+  Flagged by a fresh Opus Inspect pass, not blocking — fix is a one-line memoization if it
+  stutters on-device; watch for it during virgin-cycle15's on-device pass.
 - **`CatalogDetailScreen.tsx`'s `placeDetailFor` reads the unscoped catalog**, so a place's
   detail can list another sport's routes/ways (cycle3 WP-1 Inspect, non-blocking, confirmed
   real). Needs a product decision — split "list" scoping from "deletable" scoping — not a
@@ -393,6 +419,15 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   (required) â e.g. Dry, Left"). 23 occurrences fixed, text-only, no logic changed. Test suite
   unchanged (631 pass/0 fail/3 skip); full `tsc --noEmit` did not complete on this mount, a
   fast syntax-only check passed instead. Uncommitted.
+- `cycles/virgin-cycle15/README.md` — 2026-09-28: all 15 briefs Nathan fed in one session,
+  run in 5 groups (easiest/fastest to largest), each group inspected fresh — stale route
+  gates + FIT-leak bugfix, forward-drawn end mark, RECORD place-pill usage sort, first sport
+  from RECORD, "not this way?" correction, compact day/night time input, DEMO speed
+  pills + SKIP, way-line resolution + ride-trace fix (corner-cutting), REPLAY redesign,
+  PLACE detail map fix, RESULTS plot/tower cleanup, RESULTS route -> way grouping. Two Fable
+  rulings on executor escalations (results-screen navigation redesign; free-ride labeling).
+  676 -> 750 tests, `tsc` clean throughout, 4 Opus Inspect passes finding and fixing 5 real
+  defects total, none blocking.
 
 ## Nathan's own files (unmanaged by any agent)
 

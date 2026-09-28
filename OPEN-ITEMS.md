@@ -145,6 +145,17 @@ replaced. Vocabulary is post-WP-3: a route is the from→to path, a way is one v
    replay's "no replay available" message names one specific cause (never crossed START)
    but also fires for a couple of others (missing ride file, unknown way) — worth a
    follow-up chore to disambiguate, or fine as a generic message?
+9. **virgin-cycle15 — on-device pass (phone only), 15 features from one unattended session.**
+   Nothing in this cycle has been seen on a phone. Each brief's own "On-device checklist"
+   section is the authoritative per-feature list; full summary in
+   `cycles/virgin-cycle15/README.md`. Worth extra attention: the way line no longer visibly
+   cutting corners on tight bends, with the ride's own trace beneath it (07) — also watch for
+   scrub-stutter during REPLAY (see STATE.md's GeoJSON re-serialization note); RESULTS's new
+   route -> way grouping — most-used first, tapping into a multi-way route's way list, Back
+   from a way's detail landing on the way list (not the route list), and that the route list
+   actually scrolls past the first screenful (13); DEMO's SKIP landing on its own ending
+   screen rather than a blank RESULTS tab (03); the "not this way?" correction link actually
+   being reachable (05).
 
 ## Distribution (2026-09-09 pivot — see `deployment/`)
 
