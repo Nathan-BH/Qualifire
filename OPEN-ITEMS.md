@@ -268,3 +268,13 @@ Nathan answered most of `deployment/QUESTIONS-FOR-NATHAN.md` on 2026-09-09; fold
   01-04, not blocking (nothing is broken, on-device checklists just undersell the extra
   tap). Open question for Nathan/a fresh Fable: should `RouteNamingCard` on RECORD get its
   own "Save as free ride" exit alongside Skip/Save, so it's offered in one step?
+
+- **virgin-cycle16 (2026-09-29) — brief 06's title/theme-pill spacing wasn't
+  checked against the removed logo's width.** With the Q mark gone, the QUALIFIRE
+  title is now the header's only flow child, roughly centred, sharing its row with
+  the absolutely-positioned theme pill (top-right). Opus's Inspect pass on cycle16
+  Group B estimated only ~10-15dp of clearance between the title's right edge and
+  the pill on a 360dp-wide screen — not provably broken, but worth Nathan's eye on
+  the on-device pass. If it looks cramped, a small `marginTop`/reflow on `appTitle`
+  would fix it; that's a new call for Nathan/a fresh Fable, not something brief 06
+  pre-resolved.

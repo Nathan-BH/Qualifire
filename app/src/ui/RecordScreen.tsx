@@ -15,7 +15,7 @@
  * bottom.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, BackHandler, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Animated, BackHandler, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   ActiveSession,
   PermissionOutcome,
@@ -88,6 +88,16 @@ import { useTheme } from './themeContext';
  * [ASSUMPTION — tune on device: long enough to survive a glance delay, short
  * enough that the carousel is not effectively disabled.] */
 const PIN_MS = 20000;
+
+/** virgin-cycle16 05 (Nathan 2026-09-28): pressing RECORD/START with the
+ * phone's location toggle off no longer adds a banner at the top of the
+ * screen (off-screen once the form is scrolled to the button). The yellow
+ * button's own sub-label shows this text instead, holds GPS_FLASH_HOLD_MS,
+ * fades out over GPS_FLASH_FADE_MS and the normal caption returns. Every
+ * further press with GPS still off restarts the flash. */
+const GPS_OFF_MSG = 'Location (GPS) is turned off';
+const GPS_FLASH_HOLD_MS = 2000;
+const GPS_FLASH_FADE_MS = 400;
 
 /** Piece 3 (Nathan 2026-09-01, ride 2): fixes fed before "detecting route…"
  * gives way to "writing history" when no candidate has anchored at its own
@@ -458,6 +468,42 @@ export default function RecordScreen({
     return () => sub.remove();
   }, [phase]);
 
+  // virgin-cycle16 05: transient GPS-off message in the yellow button's
+  // sub-label (RECORD in setup, START when armed). Imperative rather than an
+  // effect on `problem` because Nathan wants it to re-fire on EVERY press
+  // while GPS stays off, and `problem` would not change between presses.
+  const [gpsFlash, setGpsFlash] = useState(false);
+  const gpsFlashOpacity = useRef(new Animated.Value(1)).current;
+  const gpsFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashGpsOff = useCallback(() => {
+    if (gpsFlashTimer.current !== null) clearTimeout(gpsFlashTimer.current);
+    gpsFlashOpacity.stopAnimation();
+    gpsFlashOpacity.setValue(1);
+    setGpsFlash(true);
+    gpsFlashTimer.current = setTimeout(() => {
+      gpsFlashTimer.current = null;
+      Animated.timing(gpsFlashOpacity, {
+        toValue: 0,
+        duration: GPS_FLASH_FADE_MS,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (!finished) return; // a newer press stopped this fade — it owns the state now
+        setGpsFlash(false);
+      });
+    }, GPS_FLASH_HOLD_MS);
+  }, [gpsFlashOpacity]);
+  useEffect(() => () => {
+    if (gpsFlashTimer.current !== null) clearTimeout(gpsFlashTimer.current);
+    gpsFlashOpacity.stopAnimation();
+  }, []);
+  // Sub-label of either yellow button: the GPS-off message while flashing
+  // (animated opacity replaces startSub's static 0.75), the caption otherwise.
+  const yellowSub = (caption: string) => (
+    <Animated.Text style={[styles.bigBtnSub, styles.startSub, gpsFlash ? { opacity: gpsFlashOpacity } : null]}>
+      {gpsFlash ? GPS_OFF_MSG : caption}
+    </Animated.Text>
+  );
+
   const onRecord = useCallback(async () => {
     // Q4 belt-and-braces: the setup flow is not rendered while zero sports
     // exist, but the guard makes the invariant explicit. Reads the live store
@@ -471,6 +517,7 @@ export default function RecordScreen({
       const outcome = await ensurePermissions();
       if (outcome === 'denied' || outcome === 'services-off') {
         setProblem(outcome);
+        if (outcome === 'services-off') flashGpsOff(); // virgin-cycle16 05: message in the button, not a banner
         return; // stay in setup
       }
       setProblem(outcome === 'foreground-only' ? 'foreground-only' : null);
@@ -517,6 +564,7 @@ export default function RecordScreen({
       const outcome = await ensurePermissions();
       if (outcome === 'denied' || outcome === 'services-off') {
         setProblem(outcome);
+        if (outcome === 'services-off') flashGpsOff(); // virgin-cycle16 05
         return;
       }
       setProblem(outcome === 'foreground-only' ? 'foreground-only' : null);
@@ -1068,16 +1116,11 @@ export default function RecordScreen({
     from: fromId, to, fromLabel: landmarkLabel(fromId), toLabel: landmarkLabel(to), pickSource,
   };
 
-  // Shared between both branches below — unchanged position/behaviour, just
-  // no longer duplicated between an idle ScrollView and a recording column.
+  // Shared between the three phase branches below — unchanged position/behaviour.
+  // 'services-off' is deliberately NOT here: it flashes in the yellow button
+  // (virgin-cycle16 05, flashGpsOff above) instead of a top-of-screen banner.
   const problemStates = (
     <>
-      {problem === 'services-off' && (
-        <Text style={styles.warn}>
-          Location (GPS) is turned off on this phone. Enable it in quick settings, then press
-          Start again.
-        </Text>
-      )}
       {problem === 'denied' && (
         <View style={styles.warnBox}>
           <Text style={styles.warn}>
@@ -1136,7 +1179,7 @@ export default function RecordScreen({
           onPress={onStart}
         >
           <Text style={[styles.bigBtnText, styles.startText]}>START</Text>
-          <Text style={[styles.bigBtnSub, styles.startSub]}>the clock runs from here</Text>
+          {yellowSub('the clock runs from here')}
         </Pressable>
         <Pressable style={styles.cancelBar} onPress={() => setPhase('setup')}>
           <Text style={styles.cancelBarText}>‹ cancel — back to setup</Text>
@@ -1376,15 +1419,9 @@ export default function RecordScreen({
 
       {/* Idle readout */}
       <View style={styles.readout}>
-        {/* The mark, measured off product/brand/logos/qualifire_logo_1_gate_q.png
-            rather than eyeballed: on a 512 canvas the ring is 309 px across
-            with a 34 px stroke, and the slash is a 238 px diagonal 36 px thick
-            whose bbox starts at the ring's centre — a Q's tail, not a bar
-            through the whole mark. Scaled here to a 122 px wrap. */}
-        <View style={styles.logoWrap}>
-          <View style={styles.logoRing} />
-          <View style={styles.logoSlash} />
-        </View>
+        {/* virgin-cycle16 06 (Nathan 2026-09-28): the drawn Q mark that used to
+            sit above the word is retired — the word alone heads the tab and
+            the freed height went to the map below (200 → 330). */}
         <Text style={styles.appTitle}>Qualifire</Text>
         {/* B-51: at the rack, before START — real pannable streets, the
             candidate route (whichever way/route is picked so far). WP-D
@@ -1406,7 +1443,7 @@ export default function RecordScreen({
               showRider
               variant="live"
               liveState="prestart"
-              height={200}
+              height={330}
             />
           </View>
         ) : null}
@@ -1557,7 +1594,7 @@ export default function RecordScreen({
         {noSport ? (
           <>
             <Text style={[styles.bigBtnText, styles.startText]}>{'●'} RECORD</Text>
-            <Text style={[styles.bigBtnSub, styles.startSub]}>{firstSportPrompt ? 'with this sport' : 'no sport yet'}</Text>
+            {yellowSub(firstSportPrompt ? 'with this sport' : 'no sport yet')}
           </>
         ) : (
           <>
@@ -1566,9 +1603,7 @@ export default function RecordScreen({
                 existing accent-yellow slab — t.onAccent inherited from the
                 parent Text, same colour the RECORD label itself uses. */}
             <Text style={[styles.bigBtnText, styles.startText]}>{'●'} RECORD</Text>
-            <Text style={[styles.bigBtnSub, styles.startSub]}>
-              same ride · new meaning
-            </Text>
+            {yellowSub('same ride · new meaning')}
           </>
         )}
       </Pressable>
@@ -1590,7 +1625,7 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
   scroll: { flex: 1 },
   // WP-M (Nathan Q5, 2026-09-03: "tight and grows"): the setup form starts at
   // the top and grows downward as the catalog fills — no vertical centring,
-  // no blank band above the logo. Pills are already flush-left + wrapping
+  // no blank band above the title. Pills are already flush-left + wrapping
   // (startFlow stretches; pillRow's default justifyContent is flex-start).
   // alignItems stays 'center': it governs only the problem-state texts here
   // (readout and RECORD both alignSelf: 'stretch'). Tall content still scrolls.
@@ -1638,32 +1673,6 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
     textAlign: 'center',
     fontWeight: '800',
     marginBottom: 4,
-  },
-  // Logo mark, drawn: ink ring, yellow gate slash crossing it (BRAND P4).
-  logoWrap: { width: 122, height: 122, marginBottom: 10 },
-  // ring: 309/512 of the canvas, 34/512 stroke, centred (101..410 of 512)
-  logoRing: {
-    position: 'absolute',
-    left: 24,   // 101/512 * 122
-    top: 22,    //  91/512 * 122
-    width: 74,  // 309/512 * 122
-    height: 74,
-    borderRadius: 37,
-    borderWidth: 8, // 34/512 * 122
-    borderColor: t.text,
-  },
-  // slash: 238/512 long, 36/512 thick, running from the ring centre down-right.
-  // Rotating about the centre, so left/top place its MIDPOINT at the midpoint
-  // of the reference bbox (269..437, 259..427 of 512).
-  logoSlash: {
-    position: 'absolute',
-    left: 56,   // midpoint x 353/512*122 = 84, minus half the 57 px length
-    top: 78,    // midpoint y 343/512*122 = 82, minus half the 9 px thickness
-    width: 57,  // 238/512 * 122
-    height: 9,  //  36/512 * 122
-    borderRadius: 5,
-    backgroundColor: t.accent,
-    transform: [{ rotate: '45deg' }],
   },
   // Race readout: colours follow the theme's race surface. The ticking lap
   // clock IS the elapsed display now (LAYOUT §2 v2) — no second clock.
