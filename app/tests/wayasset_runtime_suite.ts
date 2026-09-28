@@ -29,7 +29,7 @@ import {
   resolveWayAsset, type WayAssetDeps,
 } from '../src/ui/wayAssetRuntime.ts';
 import {
-  allGatesBounds, allGatesFeatureCollection, gateHalfLenM, gateTicksFeatureCollection, wayBounds,
+  gateHalfLenM, gateTicksFeatureCollection, wayBounds,
   wayLineFeature, sectorSpansFeatureCollection,
 } from '../src/ui/wayMapGeo.ts';
 import { gateTickPx, type WayAsset } from '../src/ui/wayMapMath.ts';
@@ -66,6 +66,13 @@ function way(id: string, refLineId: string, gateSetVersion: number, referenceRid
 function gateSet(wayId: string, version: number, chainageM: number[]): GateSet {
   return { wayId, version, chainageM, createdAtMs: 0 };
 }
+
+/** virgin-cycle16 04: allGatesFeatureCollection/allGatesBounds (the retired
+ * gates-only free-ride field) are gone — this is the local stand-in for
+ * "how many gates are there across a drawable-way set", used only to keep
+ * this suite's own gate-count checks meaningful. */
+const gateCount = (assets: Record<string, { gates: readonly unknown[] }>): number =>
+  Object.values(assets).reduce((n, a) => n + a.gates.length, 0);
 
 // ---------------------------------------------------------- 1. buildRuntimeRouteAsset
 
@@ -282,7 +289,7 @@ test('routeAssetRuntime: resolveRouteAsset returns null for an unknown id, a mis
 
 // ---------------------------------------------------------- 7. allRouteAssets
 
-test('routeAssetRuntime: allRouteAssets — seed from the manifest by identity, user routes built, undrawable omitted, feeds the gates-only builders', () => {
+test('routeAssetRuntime: allRouteAssets — seed from the manifest by identity, user routes built, undrawable omitted', () => {
   resetWayAssetCacheForTests();
   const bundled: WayAsset = {
     image: '', path: [[50.85, 4.68], [50.86, 4.69]], gateIdx: [0, 1],
@@ -311,13 +318,9 @@ test('routeAssetRuntime: allRouteAssets — seed from the manifest by identity, 
   assert(all['U-undrawable'] === undefined, 'an undrawable user route (no ref) must be OMITTED, not present as null/undefined-valued');
   assert(Object.keys(all).length === 2, `expected exactly 2 drawable routes, got ${Object.keys(all).length}: ${Object.keys(all)}`);
 
-  const gatesFC = allGatesFeatureCollection(all, undefined, '#fff');
   const expectedGateCount = bundled.gates.length + all['U-drawable'].gates.length;
-  assert(gatesFC.features.length === expectedGateCount,
-    `allGatesFeatureCollection over allRouteAssets() expected ${expectedGateCount} gate features, got ${gatesFC.features.length}`);
-
-  const bounds = allGatesBounds(all);
-  assert(bounds !== null, 'allGatesBounds over a non-empty allRouteAssets() result must not be null');
+  assert(gateCount(all) === expectedGateCount,
+    `expected ${expectedGateCount} total gates across allRouteAssets(), got ${gateCount(all)}`);
 });
 
 // ---------------------------------------------------------- 8. virgin-install end-to-end

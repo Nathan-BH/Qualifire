@@ -316,7 +316,7 @@ test('migrations 8: initResultsStore reads a v1 AND a v2 result file, neither is
 
 // --------------------------------------------------------- 9. free-rides cache
 
-test('migrations 9: upgradeFreeRidesCache renames crossings/sectors routeId -> wayId; a v2 file is untouched; init never rewrites', async () => {
+test('migrations 9: upgradeFreeRidesCache reduces v1/v2 rides to the v3 identity shape; a v3 file is untouched; init never rewrites', async () => {
   const v1Raw = {
     schemaVersion: 1,
     rides: [{
@@ -328,11 +328,9 @@ test('migrations 9: upgradeFreeRidesCache renames crossings/sectors routeId -> w
   const upgraded = upgradeFreeRidesCache(v1Raw) as unknown as Record<string, unknown>[];
   assert(upgraded !== null && upgraded.length === 1, 'must upgrade, not refuse');
   const ride = upgraded[0];
-  assert(ride.schemaVersion === 2, 'the ride record itself is bumped to v2');
-  const crossings = ride.crossings as Record<string, unknown>[];
-  const sectors = ride.sectors as Record<string, unknown>[];
-  assert(crossings[0].wayId === 'Morning' && !('routeId' in crossings[0]), 'crossings[].routeId -> wayId');
-  assert(sectors[0].wayId === 'Morning' && !('routeId' in sectors[0]), 'sectors[].routeId -> wayId');
+  assert(ride.schemaVersion === 3, 'the ride record itself is bumped to v3');
+  assert(ride.rideId === 'free:1' && ride.startedAtMs === 1000, 'identity kept');
+  assert(ride.durationS === null && ride.sportId === null && !('crossings' in ride) && !('sectors' in ride), 'gate data dropped (virgin-cycle16 02)');
 
   const v2Raw = {
     schemaVersion: 2,
@@ -342,9 +340,15 @@ test('migrations 9: upgradeFreeRidesCache renames crossings/sectors routeId -> w
       sectors: [{ wayId: 'X', index: 1, rawS: 5 }],
     }],
   };
-  const asIs = upgradeFreeRidesCache(v2Raw);
-  assert(asIs === v2Raw.rides, 'a v2 file returns its rides array as-is (same reference)');
-  assert(upgradeFreeRidesCache({ schemaVersion: 3, rides: [] }) === null, 'a future schemaVersion is refused');
+  const fromV2 = upgradeFreeRidesCache(v2Raw) as unknown as Record<string, unknown>[];
+  assert(fromV2 !== null && fromV2[0].schemaVersion === 3 && !('crossings' in fromV2[0]), 'a v2 file is migrated the same way');
+
+  const v3Raw = {
+    schemaVersion: 3,
+    rides: [{ kind: 'freeRide', schemaVersion: 3, rideId: 'r', startedAtMs: 3000, durationS: 42, sportId: null }],
+  };
+  assert(upgradeFreeRidesCache(v3Raw) === v3Raw.rides, 'a v3 file returns its rides array as-is (same reference)');
+  assert(upgradeFreeRidesCache({ schemaVersion: 4, rides: [] }) === null, 'a future schemaVersion is refused');
   assert(upgradeFreeRidesCache({ schemaVersion: 1 }) === null, 'a missing rides array is refused');
 
   // isValidFreeRideRecord accepts the upgraded shape end to end.
@@ -357,7 +361,7 @@ test('migrations 9: upgradeFreeRidesCache renames crossings/sectors routeId -> w
     fs.files.set(freeRidesMod.FREE_RIDES_CACHE_FILE, v1Text);
     await freeRidesMod.initFreeRidePersistence(fs);
     const rides = freeRidesMod.freeRideResults();
-    assert(rides.length === 1 && rides[0].crossings[0].wayId === 'Morning', 'the v1 cache loads, upgraded, into memory');
+    assert(rides.length === 1 && rides[0].rideId === 'free:1' && !('crossings' in rides[0]), 'the v1 cache loads, upgraded (identity only), into memory');
     assert(fs.files.get(freeRidesMod.FREE_RIDES_CACHE_FILE) === v1Text, 'no write at init: the v1 cache file is untouched on disk');
   } finally {
     freeRidesMod.resetFreeRides();

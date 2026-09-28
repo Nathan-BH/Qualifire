@@ -85,73 +85,6 @@ export function gatesFeatureCollection(
   };
 }
 
-export interface AllGateProperties {
-  name: string;
-  wayId: string;
-  colour?: string;
-}
-
-/**
- * WP-B (Nathan's free-ride "gates only" map): one Point feature per gate of
- * every route in `routeIds` (or every asset in `assets` when `routeIds` is
- * omitted/null — the full 20-route catalog, the deliberately-unfiltered
- * both-ends-unknown free ride). `colour` is set ONLY for a gate that appears
- * in `crossed` (the same `['has','colour']` paint convention as
- * gatesFeatureCollection above), to `crossedColour` — kept a caller-supplied
- * string so this module stays colour-agnostic (it has no theme import).
- * Dedupes nothing: two overlapping routes legitimately draw two gates a few
- * metres apart (accepted, per the brief's pre-resolved ambiguities).
- */
-export function allGatesFeatureCollection(
-  assets: Record<string, WayAsset>,
-  crossed: { wayId: string; gateIndex: number }[] | undefined,
-  crossedColour: string,
-  wayIds?: string[] | null,
-): GeoFeatureCollection<PointGeometry, AllGateProperties> {
-  const crossedSet = new Set((crossed ?? []).map((c) => `${c.wayId}:${c.gateIndex}`));
-  const ids = wayIds ?? Object.keys(assets);
-  const features: GeoFeature<PointGeometry, AllGateProperties>[] = [];
-  for (const wayId of ids) {
-    const asset = assets[wayId];
-    if (!asset) continue; // defensive: an id with no asset (should not happen post-WP-D1/build) is just skipped
-    asset.gates.forEach((g, i) => {
-      const properties: AllGateProperties = crossedSet.has(`${wayId}:${i}`)
-        ? { name: g.name, wayId, colour: crossedColour }
-        : { name: g.name, wayId };
-      features.push({
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: [g.lon, g.lat] },
-        properties,
-      });
-    });
-  }
-  return { type: 'FeatureCollection', features };
-}
-
-/** Bounding box over every gate of every route in `routeIds` (or every asset
- * when omitted/null) — the gates-only map's FIT target, since there is no
- * single route's `routeBounds()` to fit to. Null only when nothing matched
- * (an empty/all-unresolved `routeIds`). */
-export function allGatesBounds(
-  assets: Record<string, WayAsset>, wayIds?: string[] | null,
-): LonLatBoundsBox | null {
-  const ids = wayIds ?? Object.keys(assets);
-  let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity;
-  let any = false;
-  for (const wayId of ids) {
-    const asset = assets[wayId];
-    if (!asset) continue;
-    for (const g of asset.gates) {
-      any = true;
-      if (g.lon < minLon) minLon = g.lon;
-      if (g.lon > maxLon) maxLon = g.lon;
-      if (g.lat < minLat) minLat = g.lat;
-      if (g.lat > maxLat) maxLat = g.lat;
-    }
-  }
-  return any ? { minLon, minLat, maxLon, maxLat } : null;
-}
-
 export function riderFeature(lat: number, lon: number): GeoFeature<PointGeometry> {
   return {
     type: 'Feature',
@@ -511,31 +444,6 @@ export function cameraTargetFor(input: {
     };
   }
   return {};
-}
-
-// ============================================================ virgin-cycle15 06 (cross-ride gate leak)
-
-/** Which way ids the LIVE MAP may draw gates for on a free ride. Takes the
- * candidate list RecordScreen FROZE AT START (`rideFreeWayIds`, the value
- * `freeRideWayIds` returned for the setup endpoints the ride was actually
- * started with) and nothing else. That value is `null` — freeRideWayIds'
- * documented "unfiltered" contract — exactly when the ride was NEW>>NEW at
- * START, and every consumer downstream (allGatesFeatureCollection /
- * allGatesBounds' `wayIds ?? Object.keys(assets)` fallback) read that null as
- * "every way in the catalog": a way saved that same morning painted its gates
- * onto an unrelated NEW>>NEW ride later the same day, and FIT framed those
- * gates instead of the trail actually ridden (virgin-cycle15 06). This is the
- * one place that turns that null into an explicit empty list. A partial free
- * ride's (one end known) list passes through unchanged.
- *
- * Inspect 2026-09-28: the first cut took the LIVE `fromId`/`to` as well and
- * emptied the list when both read '~new' — but `fromId` drifts mid-ride in
- * auto start mode (the detected landmark goes null once you leave its disc),
- * so a ride started Home>>NEW lost its gates, and FIT its target, a few
- * hundred metres in. The frozen list already encodes the START-time answer;
- * the live endpoints only added the drift. */
-export function liveMapGateWayIds(rideFreeWayIds: readonly string[] | null): string[] {
-  return rideFreeWayIds === null ? [] : [...rideFreeWayIds];
 }
 
 /** WP-M (Nathan Q3, 2026-09-05): two-finger rotation is on everywhere except

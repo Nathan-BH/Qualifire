@@ -23,7 +23,6 @@ import type { RefLine } from '../core/src/index.ts';
 import {
   allWayAssets, resetWayAssetCacheForTests, resolveWayAsset, type WayAssetDeps,
 } from '../src/ui/wayAssetRuntime.ts';
-import { allGatesBounds, allGatesFeatureCollection } from '../src/ui/wayMapGeo.ts';
 import { positionAtTime, type WayAsset } from '../src/ui/wayMapMath.ts';
 import { emptyCatalog } from '../src/store/catalog.ts';
 import { CATALOG_SCHEMA_VERSION } from '../src/store/types.ts';
@@ -70,6 +69,13 @@ function gateSet(wayId: string, version: number, chainageM: number[]): GateSet {
   return { wayId, version, chainageM, createdAtMs: 0 };
 }
 
+/** virgin-cycle16 04: allGatesFeatureCollection/allGatesBounds (the retired
+ * gates-only free-ride field) are gone — this is the local stand-in for
+ * "how many gates are there across a drawable-way set", used only to keep
+ * this suite's "a virgin build has nothing to draw" checks meaningful. */
+const gateCount = (assets: Record<string, { gates: readonly unknown[] }>): number =>
+  Object.values(assets).reduce((n, a) => n + a.gates.length, 0);
+
 // ------------------------------------------------------------ real manifest
 
 interface Manifest { schemaVersion: number; projection: string; ways: Record<string, WayAsset> }
@@ -115,7 +121,7 @@ test('virgin resolver: no manifest key resolves, no catalog -> nothing drawable'
 
 // ---------------------------------------------------------------- 4
 
-test('virgin gates-only field is empty on both builders, unfiltered and filtered', () => {
+test('virgin gates-only field is empty: a virgin build has zero gates across every drawable way', () => {
   resetWayAssetCacheForTests();
   const deps: WayAssetDeps = {
     manifest: bundledForSeedMode('empty', ways),
@@ -123,25 +129,19 @@ test('virgin gates-only field is empty on both builders, unfiltered and filtered
     refFor: () => null,
   };
   const drawable = allWayAssets(deps);
-  assert(
-    allGatesFeatureCollection(drawable, undefined, '#000', null).features.length === 0,
-    'unfiltered gates-only field must have zero features on a virgin build',
-  );
-  assert(allGatesBounds(drawable, null) === null, 'unfiltered gates-only bounds must be null on a virgin build');
-  assert(
-    allGatesFeatureCollection(drawable, undefined, '#000', ['Morning']).features.length === 0,
-    "filtered (routeIds=['Morning']) gates-only field must have zero features on a virgin build",
-  );
-  assert(allGatesBounds(drawable, ['Morning']) === null, 'filtered gates-only bounds must be null on a virgin build');
+  assert(gateCount(drawable) === 0, 'a virgin build with no catalog must have zero total gates across every way');
 });
 
 // ---------------------------------------------------------------- 5
 
-test('the pre-WP-E hole, documented: raw shipped manifest handed unfiltered to the gates builders draws 20 routes’ gates', () => {
-  const shippedFC = allGatesFeatureCollection(bundledForSeedMode('shipped', ways), undefined, '#000', null);
-  assert(shippedFC.features.length > 0, 'the raw shipped manifest handed directly to allGatesFeatureCollection must draw gates');
-  assert(allGatesBounds(bundledForSeedMode('shipped', ways), null) !== null, 'and must produce non-null bounds');
-
+test('bundledForSeedMode: a shipped manifest still resolves to zero routes through a catalog-only allWayAssets() call', () => {
+  // virgin-cycle16 04: this used to also document "the pre-WP-E hole" (the
+  // raw shipped manifest handed unfiltered to the now-retired gates-only
+  // builders drew all 20 routes' gates) — that hole was in machinery this
+  // cycle deletes outright, so there is nothing left there to demonstrate.
+  // The still-live regression this test guards is WP-C's own: a full
+  // manifest injected alongside an empty catalog must still resolve to zero
+  // drawable routes through the catalog-only call.
   resetWayAssetCacheForTests();
   const catalogOnly = allWayAssets({ manifest: ways, catalog: emptyCatalog(), refFor: () => null });
   assert(
@@ -174,8 +174,8 @@ test('virgin + one phone-made route: still drawable, built at runtime, never fro
     `expected allRouteAssets() to have exactly the key 'route:r1', got [${Object.keys(all)}]`,
   );
   assert(
-    allGatesFeatureCollection(all, undefined, '#000', null).features.length === 3,
-    'the phone-made route’s 3 gates must appear in the gates-only field',
+    gateCount(all) === 3,
+    'the phone-made route’s 3 gates must appear across the drawable-way set',
   );
 });
 

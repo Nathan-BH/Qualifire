@@ -201,18 +201,16 @@ test('B-39 VIRGIN install: empty seed + nothing added => zero catalog, zero live
 
     // The module-scope engine shape: NO injected specs, resolved at start().
     const f = loadFixture('clean_morning');
-    for (const mode of ['route', 'free'] as const) {
-      const engine = new LiveEngine();
-      engine.start(mode === 'free' ? { mode: 'free', wayIds: null } : undefined);
-      for (let i = 0; i < f.fixes.t.length; i += 10) {
-        engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
-      }
-      engine.finalize();
-      const st = engine.getState();
-      assert(st.track === null && st.lap === null, `${mode}: a real Morning ride on an empty catalog locks nothing, scores nothing`);
-      assert(st.gateFires === 0, `${mode}: no gate can fire with no candidates`);
-      assert(st.fixesFed > 0, `${mode}: fixes were still counted (the ride records; D-023)`);
+    const engine = new LiveEngine();
+    engine.start();
+    for (let i = 0; i < f.fixes.t.length; i += 10) {
+      engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
     }
+    engine.finalize();
+    const st = engine.getState();
+    assert(st.track === null && st.lap === null, 'a real Morning ride on an empty catalog locks nothing, scores nothing');
+    assert(st.gateFires === 0, 'no gate can fire with no candidates');
+    assert(st.fixesFed > 0, 'fixes were still counted (the ride records; D-023)');
   } finally {
     store.resetCatalogStoreForTests();
     assert(catalogTrackSpecs().length === 20, 'restored: the shipped seed is back for every later suite');

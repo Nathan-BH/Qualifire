@@ -81,33 +81,11 @@
  * D-023 (raw forever): everything here is DERIVED and in-memory only; nothing
  * is persisted. The ride JSONL stays untouched.
  *
- * FREE MODE (WP-B, Nathan's 2026-08-20 notes; cycle 024): `start({mode:
- * 'free'})` turns off the whole lock state machine — phase stays 'detecting'
- * for the entire ride, lockKind stays 'none', `locked` stays null, no lock
- * events, finalize() is a no-op. Instead EVERY candidate's gate fires are
- * appended to `freeCrossings` and emitted (not just the eventual winner's —
- * there is no winner), each `GateDetector` runs with `armWithinM=0` (a free
- * ride can start anywhere; "you were already past this gate" must never
- * invent a fire), and a same-candidate consecutive, both-non-estimated
- * crossing pair derives one `freeSectors` entry (raw only — D-013: a free
- * ride has no comparable history by construction, so it is never coloured).
- * `sectors`/`lap`/`currentSector` stay in their idle shapes the whole ride.
- * Free-ride times are persisted by store/freeRides.ts, a module structurally
- * isolated from every fixed-route comparison path (D-025 mode-consistency) —
- * this file never imports it and never needs to: free state lives entirely in
- * LiveEngineState for the UI to read and hand off at ride end.
- *
- * WP-B coordinator addendum (Nathan, 2026-08-24): `EngineStartOptions.routeIds`
- * restricts which TrackSpecs this ride builds candidates for at all (not just
- * a free-mode concept, but only ever populated by RecordScreen for a free
- * ride with exactly one known endpoint — see store/catalog.ts's
- * `freeRideRouteIds`). `undefined`/`null` = every spec (today's behaviour,
- * and the deliberately-unfiltered both-ends-unknown free ride); an array
- * (even empty) restricts `cands` to exactly those ids. This is the natural
- * generalisation of the existing pick-hint mechanism (`pickId`) to "which
- * routes are even in the race" rather than "which one is favoured" — no new
- * per-candidate machinery, `this.specs` is just filtered before the same
- * `cands` construction that already runs.
+ * FREE MODE — retired (virgin-cycle16 04, Nathan 2026-09-28). WP-B's
+ * start({mode:'free'}) — every candidate armed at 0, every fire collected
+ * into freeCrossings/freeSectors for a gates-only live map — is gone: a
+ * "free ride" is now a post-ride label (store/freeRides.ts), never an
+ * engine mode. One mode remains: the lock/verify machinery below.
  */
 import {
   DEFAULT_LIVE_OPTIONS,
@@ -224,13 +202,8 @@ export interface EngineStartOptions {
    * settle on, once its own 400 m of corridor evidence exists (see the file
    * header). */
   pickId?: string | null;
-  /** 'route' (default) = today's lock/verify machinery. 'free' (WP-B) = every
-   * gate crossed by any candidate fires and counts, no lock ever settles —
-   * see the file header's FREE MODE section. */
-  mode?: 'route' | 'free';
   /** WP-B coordinator addendum: restricts `cands` to specs whose id is in
-   * this list. `undefined`/`null` = every spec (today's behaviour). See the
-   * file header. */
+   * this list. `undefined`/`null` = every spec (today's behaviour). */
   wayIds?: string[] | null;
 }
 
@@ -317,16 +290,6 @@ export interface LiveEngineState {
   /** true once the locked candidate's track equals `pick` (the pick turned
    * out to be the ridden route); always false while pick is null */
   pickHonoured: boolean;
-  /** WP-B: 'route' (default) = today's lock/verify ride. 'free' = every
-   * candidate's gate fires count, no lock, sectors/lap stay idle forever. */
-  mode: 'route' | 'free';
-  /** WP-B, free mode only (empty in route mode): every gate any candidate
-   * crossed, in the order fired. */
-  freeCrossings: { wayId: string; gateIndex: number; t: number; estimated: boolean }[];
-  /** WP-B, free mode only (empty in route mode): one entry per consecutive,
-   * both-non-estimated crossing pair on the SAME candidate — raw only, never
-   * coloured (D-013: no comparable history for a free ride by construction). */
-  freeSectors: { wayId: string; index: number; rawS: number }[];
   /** true once ANY still-running candidate has anchored (joined at its own
    * start — see ANCHOR_M). Display-only: RecordScreen's status line says
    * "writing history" instead of "detecting route…" while this is false —
@@ -334,7 +297,7 @@ export interface LiveEngineState {
   anyAnchored: boolean;
   /** virgin-cycle6 (self racing): epoch SECONDS the displayed candidate
    * (`track`) crossed gate 0, estimated crossings included; null before
-   * that crossing, in free mode, and whenever `track` is null. Read-only
+   * that crossing, and whenever `track` is null. Read-only
    * mirror of that candidate's own gate-0 event — never feeds any timing
    * arithmetic. */
   startGateT: number | null;
@@ -386,14 +349,6 @@ export class LiveEngine {
   private pickHonoured = false;
   private sectors: LiveSector[] = pendingSectors(N_SECTORS_DEFAULT);
   private lap: LiveLap | null = null;
-  private mode: 'route' | 'free' = 'route';
-  private freeCrossings: LiveEngineState['freeCrossings'] = [];
-  private freeSectors: LiveEngineState['freeSectors'] = [];
-  /** WP-B free-sector derivation: the last crossing seen per candidate (by
-   * track id) this ride, regardless of whether it ended up bounding a
-   * freeSectors entry — an estimated crossing still updates this so the NEXT
-   * pair correctly sees "previous was estimated" and refuses to bound. */
-  private lastFreeCrossing = new Map<TrackId, { gateIndex: number; t: number; estimated: boolean }>();
   private fixesFed = 0;
   private onWay = false;
   private tBuf: number[] = [];
@@ -412,7 +367,6 @@ export class LiveEngine {
   start(opts?: EngineStartOptions): void {
     this.phase = 'detecting';
     this.pick = opts?.pickId ?? null;
-    this.mode = opts?.mode ?? 'route';
     this.locked = null;
     this.lockKind = 'none';
     this.pickHonoured = false;
@@ -420,9 +374,6 @@ export class LiveEngine {
     const pickSpec = this.pick !== null ? allSpecs.find((s) => s.id === this.pick) : undefined;
     this.sectors = pendingSectors(pickSpec ? pickSpec.gates.length - 1 : N_SECTORS_DEFAULT);
     this.lap = null;
-    this.freeCrossings = [];
-    this.freeSectors = [];
-    this.lastFreeCrossing = new Map();
     this.fixesFed = 0;
     this.onWay = false;
     this.tBuf = [];
@@ -437,10 +388,7 @@ export class LiveEngine {
       ref: spec.ref,
       gates: spec.gates,
       proj: new LiveProjector(spec.ref),
-      // WP-B: free mode arms nothing (D-016(b) arming disabled) — a free
-      // ride can begin anywhere, so "you were already past this gate" must
-      // never invent a fire (see the file header's FREE MODE section).
-      det: new GateDetector(spec.gates, this.mode === 'free' ? 0 : undefined),
+      det: new GateDetector(spec.gates),
       events: [],
       baseS: null,
       adv: 0,
@@ -460,10 +408,6 @@ export class LiveEngine {
     this.lockKind = 'none';
     this.pick = null;
     this.pickHonoured = false;
-    this.mode = 'route';
-    this.freeCrossings = [];
-    this.freeSectors = [];
-    this.lastFreeCrossing = new Map();
     this.emit();
   }
 
@@ -491,19 +435,6 @@ export class LiveEngine {
     this.fixesFed += 1;
 
     let lockedFired = false;
-
-    // WP-B free mode: no lock state machine at all — every candidate keeps
-    // running for the whole ride, every fire counts (see feedFree()). Kept as
-    // an early branch rather than threaded through the route-mode machinery
-    // below: 'verified'/'finalized' fast-path and the whole lock/switch
-    // evaluation are concepts that free mode never enters (lockKind stays
-    // 'none' the entire ride — start() never sets it otherwise), so folding
-    // free mode into that branching would only obscure both.
-    if (this.mode === 'free') {
-      this.feedFree(lat, lon, tSec);
-      this.emit();
-      return;
-    }
 
     if (this.lockKind === 'verified' || this.lockKind === 'finalized') {
       // Today's exact fast path: only the winner is fed once verified — and
@@ -580,45 +511,12 @@ export class LiveEngine {
     this.emit();
   }
 
-  /** WP-B free mode's whole per-fix rule: EVERY candidate keeps running for
-   * the whole ride (no lock, so nothing is ever dropped from `this.cands`),
-   * every gate any of them crosses fires and is emitted (a free ride's whole
-   * point is "gates from your known routes fire as you cross them" — not
-   * just the fires of whichever route would have won a race that never
-   * happens here), and a same-candidate consecutive non-estimated crossing
-   * pair derives one raw freeSectors entry. `onRoute` is true when ANY
-   * candidate is currently on its own corridor (there is no single "the"
-   * route to be on/off in free mode — routeMapView's gatesOnly rung has no
-   * off-route badge for the same reason). */
-  private feedFree(lat: number, lon: number, tSec: number): void {
-    for (const c of this.cands) {
-      const evs = this.feedCandidate(c, lat, lon, tSec);
-      for (const e of evs) {
-        this.freeCrossings.push({ wayId: c.track, gateIndex: e.gateIndex, t: e.time, estimated: e.estimated });
-        this.emitEvent({ type: 'gate', track: c.track, gateIndex: e.gateIndex, t: e.time, estimated: e.estimated });
-        const prev = this.lastFreeCrossing.get(c.track);
-        if (
-          e.gateIndex >= 1 && !e.estimated &&
-          prev && prev.gateIndex === e.gateIndex - 1 && !prev.estimated
-        ) {
-          this.freeSectors.push({ wayId: c.track, index: e.gateIndex, rawS: e.time - prev.t });
-        }
-        this.lastFreeCrossing.set(c.track, { gateIndex: e.gateIndex, t: e.time, estimated: e.estimated });
-      }
-    }
-    this.onWay = this.cands.some((c) => c.onWay);
-  }
-
   /** Called once when the ride ends (src/location/index.ts's stopTracking(),
    * and defensively again from RecordScreen's onEnd before it). Recovers a
    * route from the FINISH gate for a ride that never cleared a verified (or
    * even soft) lock, and promotes a still-soft lock that never got the
-   * chance to clear its margin. Idempotent — safe to call more than once.
-   * WP-B: a no-op in free mode — there is no lock to recover or promote (see
-   * the file header's FREE MODE section); free-ride persistence reads
-   * getState() directly, not a settled `locked` candidate. */
+   * chance to clear its margin. Idempotent — safe to call more than once. */
   finalize(): void {
-    if (this.mode === 'free') return; // nothing to do — see the file header
     if (this.lockKind === 'verified') return; // nothing to do
     // N9: captured up front (before either branch below reassigns
     // this.lockKind) so both can report the transition they actually made.
@@ -726,20 +624,11 @@ export class LiveEngine {
         if (e.gateIndex >= 1) lastDone = Math.max(lastDone ?? 0, e.gateIndex);
       }
     }
-    // WP-B: in free mode gateFires is the TOTAL count of everything ever
-    // fired by ANY candidate (freeCrossings.length) — the buzz's "one physical
-    // crossing, one buzz" contract (see the file header) depends on this
-    // number counting every fire, not (as route mode's unlocked case does)
-    // the single busiest candidate's own count.
-    const gateFires = this.mode === 'free'
-      ? this.freeCrossings.length
-      : this.locked
-        ? this.locked.events.length
-        : this.cands.reduce((m, c) => Math.max(m, c.events.length), 0);
+    const gateFires = this.locked
+      ? this.locked.events.length
+      : this.cands.reduce((m, c) => Math.max(m, c.events.length), 0);
     // virgin-cycle6 (self racing): the displayed candidate's own gate-0
-    // event, if it has fired one yet. Free mode never has `this.locked`
-    // (no lock ever settles there), so this is null there too, same as
-    // `track`.
+    // event, if it has fired one yet.
     let startGateT: number | null = null;
     if (this.locked) {
       const g0 = this.locked.events.find((e) => e.gateIndex === 0);
@@ -758,9 +647,6 @@ export class LiveEngine {
       lockKind: this.lockKind,
       pick: this.pick,
       pickHonoured: this.pickHonoured,
-      mode: this.mode,
-      freeCrossings: [...this.freeCrossings],
-      freeSectors: [...this.freeSectors],
       anyAnchored: this.cands.some((c) => c.anchored),
       startGateT,
       chainageM: this.locked ? this.locked.proj.chainage : null,

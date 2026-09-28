@@ -5,7 +5,7 @@
  * Principle: migrate on READ, in memory; never write at init. A v1 file is
  * upgraded every time it is loaded and is left byte-identical on disk. It
  * reaches v2 only through the write path that already rewrites that file
- * kind routinely (saveUserCatalog, saveResult, rememberFreeRide). No new
+ * kind routinely (saveUserCatalog, saveResult, markRideFree). No new
  * write path, no torn-write window, no backup file, nothing to delete — and
  * a reset (SETTINGS -> DATA -> "Reset to virgin") makes all of it moot.
  *
@@ -90,26 +90,28 @@ export function upgradeResult(raw: unknown): Record<string, unknown> | null {
 }
 
 /** raw must be an object with array `rides` — else null. File-level
- * schemaVersion === 2 -> raw.rides as-is. 1 or undefined -> each ride's
- * crossings[]/sectors[] mapped through renameKey(routeId, wayId) and the
- * ride's own schemaVersion set to 2. Other -> null. isValidFreeRideRecord
- * still filters afterwards, as today. */
+ * schemaVersion === 3 -> raw.rides as-is. 1, 2 or undefined -> each ride
+ * reduced to its v3 identity shape (virgin-cycle16 02: kind, rideId,
+ * startedAtMs, durationS null, sportId null) — crossings/sectors are dropped, the free-gates
+ * idea being retired. Other -> null. isValidFreeRideRecord still filters
+ * afterwards, as today. */
 export function upgradeFreeRidesCache(raw: unknown): unknown[] | null {
   if (!isNonNullObject(raw)) return null;
   if (!Array.isArray(raw.rides)) return null;
 
   const sv = raw.schemaVersion;
-  if (sv === 2) return raw.rides;
-  if (sv === 1 || sv === undefined) {
+  if (sv === 3) return raw.rides;
+  if (sv === 1 || sv === 2 || sv === undefined) {
     return raw.rides.map((ride) => {
       if (!isNonNullObject(ride)) return ride;
-      const crossings = Array.isArray(ride.crossings)
-        ? ride.crossings.map((c) => (isNonNullObject(c) ? renameKey(c, 'routeId', 'wayId') : c))
-        : ride.crossings;
-      const sectors = Array.isArray(ride.sectors)
-        ? ride.sectors.map((s) => (isNonNullObject(s) ? renameKey(s, 'routeId', 'wayId') : s))
-        : ride.sectors;
-      return { ...ride, schemaVersion: 2, crossings, sectors };
+      return {
+        kind: ride.kind,
+        schemaVersion: 3,
+        rideId: ride.rideId,
+        startedAtMs: ride.startedAtMs,
+        durationS: null,
+        sportId: null,
+      };
     });
   }
   return null;

@@ -681,128 +681,89 @@ test('live: unanchored shadow never blocks — clean_eveninga, no pick, full cat
   for (let i = 0; i < 4; i++) assertDoneReal(`S${i + 1}`, final.sectors[i], f.expected.offline[i]);
 });
 
-// ================================================================ WP-B (free ride)
-
-test('live: free mode: clean_morning fixes, full catalog — crossings, no lock, no arming fires', () => {
-  const f = loadFixture('clean_morning');
-  const engine = new LiveEngine(catalogTrackSpecs());
-  const stateEmits: LiveEngineState[] = [];
-  const evts: EngineEvent[] = [];
-  const u1 = engine.subscribe((s) => stateEmits.push(s));
-  const u2 = engine.subscribeEvents((e) => evts.push(e));
-  engine.start({ mode: 'free' });
-  for (let i = 0; i < f.fixes.t.length; i++) engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
-  u1(); u2();
-
-  const final = engine.getState();
-  assert(final.mode === 'free', `mode ${final.mode}, want free`);
-  assert(stateEmits.every((s) => s.phase !== 'locked'), 'free mode must never reach phase "locked"');
-  assert(final.phase === 'detecting', `final phase ${final.phase}, want detecting (free mode never locks)`);
-  assert(final.lockKind === 'none', `lockKind ${final.lockKind}, want none`);
-  const locks = evts.filter((e) => e.type === 'lock');
-  assert(locks.length === 0, `${locks.length} lock events emitted in free mode, want 0`);
-
-  const morningCrossings = final.freeCrossings.filter((c) => c.wayId === 'Morning');
-  assert(morningCrossings.length === 5, `${morningCrossings.length} Morning crossings, want 5 (all gates, no arming skip)`);
-  assert(morningCrossings.every((c) => !c.estimated),
-    'armWithinM=0 must never arm-fire a gate as estimated at ride start (a free ride can start anywhere)');
-  const hspCrossings = final.freeCrossings.filter((c) => c.wayId === 'HomeStationPreferred');
-  assert(hspCrossings.length > 0,
-    'HomeStationPreferred (measured 98% corridor overlap with Morning) should also fire gates in free mode');
-
-  const morningSectors = final.freeSectors.filter((s) => s.wayId === 'Morning').sort((a, b) => a.index - b.index);
-  assert(morningSectors.length === 4, `${morningSectors.length} Morning freeSectors, want 4 (S1..S4)`);
-  const byGate = new Map(morningCrossings.map((c) => [c.gateIndex, c.t]));
-  for (const sec of morningSectors) {
-    const expected = byGate.get(sec.index)! - byGate.get(sec.index - 1)!;
-    assert(numEq(sec.rawS, expected, 2e-6),
-      `Morning S${sec.index} rawS ${sec.rawS} != crossing-time difference ${expected}`);
-  }
-  // No freeSectors entry anywhere is bounded by an estimated crossing.
-  for (const sec of final.freeSectors) {
-    const rcs = final.freeCrossings.filter((c) => c.wayId === sec.wayId);
-    const a = rcs.find((c) => c.gateIndex === sec.index - 1);
-    const b = rcs.find((c) => c.gateIndex === sec.index);
-    assert(a !== undefined && !a.estimated && b !== undefined && !b.estimated,
-      `freeSectors ${sec.wayId} S${sec.index} bounded by a missing or estimated crossing`);
-  }
-  assert(final.gateFires === final.freeCrossings.length,
-    `gateFires ${final.gateFires} != freeCrossings.length ${final.freeCrossings.length}`);
-});
-
-test('live: free mode: stationary doorstep ride (real export) — zero crossings, zero events', () => {
-  const gpx = nodeFs.readFileSync(path.join(FIXTURES_DIR, 'qualifire-20260815-0024.gpx'), 'utf8');
-  const p = parseGpx(gpx, 'qualifire-20260815-0024');
-  const order = Array.from(p.t.keys()).sort((a, b) => p.t[a] - p.t[b]); // F-2 sorted view
-  const engine = new LiveEngine(fixtureSpecs());
-  const evts: unknown[] = [];
-  const unsub = engine.subscribeEvents((e) => evts.push(e));
-  engine.start({ mode: 'free' });
-  for (const i of order) engine.feed(p.lat[i], p.lon[i], p.t[i] * 1000);
-  unsub();
-  const final = engine.getState();
-  assert(final.freeCrossings.length === 0, `${final.freeCrossings.length} free crossings on a stationary doorstep ride, want 0`);
-  assert(evts.length === 0, `${evts.length} engine events emitted on a stationary doorstep ride, want 0`);
-  assert(final.freeSectors.length === 0, `${final.freeSectors.length} freeSectors, want 0`);
-});
-
-test('live: free mode: sectors/lap stay idle the whole ride, finalize() is a complete no-op', () => {
-  const f = loadFixture('clean_morning');
-  const engine = new LiveEngine(catalogTrackSpecs());
-  engine.start({ mode: 'free' });
-  for (let i = 0; i < f.fixes.t.length; i++) engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
-  const before = engine.getState();
-  assert(before.lap === null, `lap ${JSON.stringify(before.lap)}, want null`);
-  assert(before.sectors.every((s) => s.kind === 'pending'), 'every sector must stay pending in free mode');
-  assert(before.currentSector === null, `currentSector ${before.currentSector}, want null`);
-  assert(before.track === null, `track ${before.track}, want null (free mode never locks a displayed track)`);
-  engine.finalize();
-  const after = engine.getState();
-  assert(JSON.stringify(after) === JSON.stringify(before), 'finalize() must be a complete no-op in free mode');
-});
+/** The set of track ids the engine actually built candidates for: the
+ * `wayMatchAttempt` 'anchor' diagnostic fires once per candidate on its first
+ * fed fix (engine.ts feed(): baseS null -> set, unconditionally), for EVERY
+ * candidate, never just the displayed one — so this is the candidate list
+ * itself, observed through existing surface. */
+function candidateTracks(diag: readonly DiagnosticEvent[]): string[] {
+  return [...new Set(diag.filter((d) => d.phase === 'anchor').map((d) => d.track))].sort();
+}
 
 test('live: WP-B coordinator addendum — start({routeIds}) restricts candidates, not just which fires get shown', () => {
-  // A directional filter that excludes every route anywhere near a real
-  // Morning ride (EveningA/EveningB run work<->home, nowhere near home<->work
-  // Morning territory at these chainages) must produce zero crossings at all
-  // — proving routeIds restricts which TrackSpecs even become candidates,
-  // not merely which of their fires get surfaced.
+  // A filter that excludes every route anywhere near a real Morning ride
+  // (EveningA/EveningB run work<->home, nowhere near home<->work Morning
+  // territory at these chainages) must leave the engine with exactly those
+  // two candidates and nothing else: no Morning anchor, no lock, no fires —
+  // proving routeIds restricts which TrackSpecs even become candidates, not
+  // merely which of their fires get surfaced.
   const f = loadFixture('clean_morning');
   const engine = new LiveEngine(catalogTrackSpecs());
-  engine.start({ mode: 'free', wayIds: ['EveningA', 'EveningB'] });
+  const diag: DiagnosticEvent[] = [];
+  const events: EngineEvent[] = [];
+  engine.subscribeDiagnostics((e) => diag.push(e));
+  engine.subscribeEvents((e) => events.push(e));
+  engine.start({ wayIds: ['EveningA', 'EveningB'] });
   for (let i = 0; i < f.fixes.t.length; i++) engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
   const final = engine.getState();
-  assert(final.freeCrossings.length === 0,
-    `${final.freeCrossings.length} crossings fired against a routeIds filter excluding every nearby route`);
-  assert(final.freeSectors.length === 0, `${final.freeSectors.length} freeSectors derived, want 0`);
+  const cands = candidateTracks(diag);
+  assert(cands.join(',') === 'EveningA,EveningB',
+    `candidates were [${cands.join(', ')}], want exactly [EveningA, EveningB] — a routeIds filter must restrict the candidate set itself`);
+  assert(final.track === null && final.lockKind === 'none',
+    `track ${final.track}, lockKind ${final.lockKind} — Morning must not lock when the filter excluded it`);
+  assert(!final.anyAnchored, 'a work<->home candidate anchored on a home->work ride');
+  assert(final.gateFires === 0, `${final.gateFires} gate fires against a routeIds filter excluding every nearby route`);
+  assert(events.filter((e) => e.type === 'gate').length === 0, 'gate events emitted with no candidate near the ride');
 });
 
 test('live: WP-B coordinator addendum — start({routeIds}) filtered to the ridden route(s) still fires normally', () => {
   const f = loadFixture('clean_morning');
-  const engine = new LiveEngine(catalogTrackSpecs());
-  engine.start({ mode: 'free', wayIds: ['Morning', 'MorningB'] });
+  const specs = catalogTrackSpecs();
+  const nGates = specs.find((s) => s.id === 'Morning')!.gates.length;
+  const engine = new LiveEngine(specs);
+  const diag: DiagnosticEvent[] = [];
+  const events: EngineEvent[] = [];
+  engine.subscribeDiagnostics((e) => diag.push(e));
+  engine.subscribeEvents((e) => events.push(e));
+  engine.start({ wayIds: ['Morning', 'MorningB'] });
   for (let i = 0; i < f.fixes.t.length; i++) engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
   const final = engine.getState();
-  const wayIdsFired = new Set(final.freeCrossings.map((c) => c.wayId));
-  for (const id of wayIdsFired) {
-    assert(id === 'Morning' || id === 'MorningB', `crossing fired for ${id}, outside the routeIds filter`);
+  for (const id of candidateTracks(diag)) {
+    assert(id === 'Morning' || id === 'MorningB', `candidate ${id} built outside the routeIds filter`);
   }
-  const morningCrossings = final.freeCrossings.filter((c) => c.wayId === 'Morning');
-  assert(morningCrossings.length === 5, `${morningCrossings.length} Morning crossings under a routeIds filter that includes it, want 5`);
+  assert(final.track === 'Morning' && final.lockKind === 'verified',
+    `track ${final.track}, lockKind ${final.lockKind} — the ridden route inside the filter must still verified-lock`);
+  assert(final.gateFires === nGates, `${final.gateFires} Morning gate fires under a routeIds filter that includes it, want ${nGates}`);
+  const gateEvents = events.filter((e) => e.type === 'gate');
+  assert(gateEvents.length === nGates && gateEvents.every((e) => e.track === 'Morning'),
+    `${gateEvents.length} gate events (${[...new Set(gateEvents.map((e) => e.track))].join(', ')}), want ${nGates} all on Morning`);
 });
 
 test('live: WP-B coordinator addendum — routeIds omitted/undefined is unfiltered, identical to the full catalog', () => {
   const f = loadFixture('clean_morning');
+  const allIds = catalogTrackSpecs().map((s) => s.id).sort();
   const withUndefined = new LiveEngine(catalogTrackSpecs());
-  withUndefined.start({ mode: 'free', wayIds: undefined });
   const omitted = new LiveEngine(catalogTrackSpecs());
-  omitted.start({ mode: 'free' });
+  const diagU: DiagnosticEvent[] = [];
+  const diagO: DiagnosticEvent[] = [];
+  withUndefined.subscribeDiagnostics((e) => diagU.push(e));
+  omitted.subscribeDiagnostics((e) => diagO.push(e));
+  withUndefined.start({ wayIds: undefined });
+  omitted.start();
   for (let i = 0; i < f.fixes.t.length; i++) {
     withUndefined.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
     omitted.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
   }
+  const candsU = candidateTracks(diagU);
+  const candsO = candidateTracks(diagO);
+  assert(candsU.join(',') === allIds.join(','),
+    `routeIds:undefined built ${candsU.length} candidates, want every catalog route (${allIds.length})`);
+  assert(candsO.join(',') === allIds.join(','),
+    `omitted routeIds built ${candsO.length} candidates, want every catalog route (${allIds.length})`);
+  const u = withUndefined.getState();
+  const o = omitted.getState();
   assert(
-    withUndefined.getState().freeCrossings.length === omitted.getState().freeCrossings.length,
+    u.track === o.track && u.lockKind === o.lockKind && u.gateFires === o.gateFires && u.anyAnchored === o.anyAnchored,
     'passing routeIds:undefined and omitting it entirely must behave identically (both = unfiltered, every catalog route a candidate)',
   );
 });
@@ -1375,34 +1336,20 @@ test('live N9 L4: routeCompleted lockChange — picked-prefix (soft->finalized, 
   }
 });
 
-test('live N9 L5: a ride that never locks, and a free ride, both emit zero lockChanges', () => {
+test('live N9 L5: a ride that never locks emits zero lockChanges', () => {
   // never-locked (the tail-ride fixture: T/L tie, neither had 400 m before its own FINISH)
-  {
-    const engine = new LiveEngine([SYN_T, SYN_L]);
-    const evts: EngineEvent[] = [];
-    const unsub = engine.subscribeEvents((e) => evts.push(e));
-    let t = 1755167000;
-    for (let s = 2550; s <= 3000; s += 5) {
-      const [lat, lon] = xyToLatLon(s, 0, 0, 0);
-      engine.feed(lat, lon, t * 1000);
-      t += 1;
-    }
-    engine.finalize();
-    unsub();
-    assert(changes(evts).length === 0, `never-locked ride emitted a lockChange, want 0 — got ${JSON.stringify(changes(evts))}`);
+  const engine = new LiveEngine([SYN_T, SYN_L]);
+  const evts: EngineEvent[] = [];
+  const unsub = engine.subscribeEvents((e) => evts.push(e));
+  let t = 1755167000;
+  for (let s = 2550; s <= 3000; s += 5) {
+    const [lat, lon] = xyToLatLon(s, 0, 0, 0);
+    engine.feed(lat, lon, t * 1000);
+    t += 1;
   }
-  // free ride (clean_morning fixture, mode: 'free')
-  {
-    const f = loadFixture('clean_morning');
-    const engine = new LiveEngine(catalogTrackSpecs());
-    const evts: EngineEvent[] = [];
-    const unsub = engine.subscribeEvents((e) => evts.push(e));
-    engine.start({ mode: 'free' });
-    for (let i = 0; i < f.fixes.t.length; i++) engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
-    engine.finalize(); // no-op in free mode
-    unsub();
-    assert(changes(evts).length === 0, `free ride emitted a lockChange, want 0 — got ${JSON.stringify(changes(evts))}`);
-  }
+  engine.finalize();
+  unsub();
+  assert(changes(evts).length === 0, `never-locked ride emitted a lockChange, want 0 — got ${JSON.stringify(changes(evts))}`);
 });
 
 // --------------------------------------------------------------------------

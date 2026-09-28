@@ -64,7 +64,7 @@ test('ridedetail: rideDetailFor — no result, no free → kind none, empty rows
 });
 
 test('ridedetail: rideDetailFor — result with routeId null but a free record → kind free, free carried through', () => {
-  const free: FreeRideRecord = { kind: 'freeRide', schemaVersion: 2, rideId: 'free:1000', startedAtMs: 1000, crossings: [], sectors: [] };
+  const free: FreeRideRecord = { kind: 'freeRide', schemaVersion: 3, rideId: 'free:1000', startedAtMs: 1000, durationS: null, sportId: null };
   const m = rideDetailFor('free:1000', 1000, { ...NOOP_DEPS, result: mkResult({ rideId: 'free:1000', startedAtMs: 1000, wayId: null }), free });
   assert(m.kind === 'free', `expected kind free, got ${m.kind}`);
   assert(m.free === free, 'free record carried through unchanged');
@@ -177,7 +177,7 @@ test('ridedetail: rideDetailFor — promoteTarget: user-owned unreferenced route
   const freeCase = rideDetailFor('r11', 10_300, {
     ...NOOP_DEPS,
     result: mkResult({ rideId: 'r11', startedAtMs: 10_300, wayId: null }),
-    free: { kind: 'freeRide', schemaVersion: 2, rideId: 'r11', startedAtMs: 10_300, crossings: [], sectors: [] },
+    free: { kind: 'freeRide', schemaVersion: 3, rideId: 'r11', startedAtMs: 10_300, durationS: null, sportId: null },
     ways: [userA], userWays: [userA],
   });
   assert(freeCase.promoteTarget === null, 'a free ride (no routeId) has no promote target');
@@ -190,7 +190,7 @@ test('ridedetail: rideDetailFor — promoteTarget: user-owned unreferenced route
 
 test('freerides: freeRideNear — exact id hit wins; nearest-within-tolerance otherwise; null beyond tolerance; null on empty', () => {
   const mk = (startedAtMs: number): FreeRideRecord =>
-    ({ kind: 'freeRide', schemaVersion: 2, rideId: `free:${startedAtMs}`, startedAtMs, crossings: [], sectors: [] });
+    ({ kind: 'freeRide', schemaVersion: 3, rideId: `free:${startedAtMs}`, startedAtMs, durationS: null, sportId: null });
   const records = [mk(1_000_000), mk(1_000_050), mk(2_000_000)];
   assert(freeRideNear(records, 1_000_050)?.rideId === 'free:1000050', 'exact id hit must win');
   assert(freeRideNear(records, 1_000_045)?.rideId === 'free:1000050', 'nearest within tolerance');

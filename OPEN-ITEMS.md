@@ -257,3 +257,14 @@ Nathan answered most of `deployment/QUESTIONS-FOR-NATHAN.md` on 2026-09-09; fold
   of scope for the first build: no settings toggle for the reveal, no earcon/haptic at the
   landing cut (the reference animation's green chime has no in-app analogue yet), no
   reduced-motion handling for the tower.
+
+- **virgin-cycle16 (2026-09-29) — "Save as free ride" isn't offered at the natural
+  moment brief 02 described.** Brief 02's Goal says the choice appears "instead of a
+  saved known or new route" right on STOP; in the landed code, RECORD's `RouteNamingCard`
+  still shows first for an unmatched ride (Skip or Save), and only AFTER that does the
+  ride-detail overlay offer "Save as free ride" on the resulting unnamed card. So the
+  free-ride choice still works, it's just one extra Skip tap away from the moment Nathan
+  will actually be looking at it. Flagged by the Opus Inspect pass on cycle16 groups
+  01-04, not blocking (nothing is broken, on-device checklists just undersell the extra
+  tap). Open question for Nathan/a fresh Fable: should `RouteNamingCard` on RECORD get its
+  own "Save as free ride" exit alongside Skip/Save, so it's offered in one step?

@@ -260,10 +260,11 @@ test('routemap: every MapLibre GeoJSONSource carries key === id (frozen-id crash
   // cannot be rendered headlessly). MapLibre freezes a child's `id` prop on
   // first render (useFrozenId) and throws "`id` cannot be changed" if a
   // later render hands the same mounted element a different id — which is
-  // exactly what the gatesOnly ternary did when a free (new-landmark) ride
-  // ended: id="gates" reconciled in place into id="gate-ticks" and the whole
-  // map tree crashed. key === id on EVERY source makes React unmount/remount
-  // across any such swap instead of rebinding the id.
+  // exactly what happened when a free (new-landmark) ride ended and the
+  // map's id assignment flipped between frames: id="gates" reconciled in
+  // place into id="gate-ticks" and the whole map tree crashed. key === id on
+  // EVERY source makes React unmount/remount across any such swap instead of
+  // rebinding the id.
   const src = fs.readFileSync(
     path.join(TESTS_DIR, '..', 'src', 'ui', 'wayMapView.tsx'), 'utf8');
   const tags = src.match(/<M\.GeoJSONSource[^>]*>/g) ?? [];
@@ -345,7 +346,7 @@ test('routemap: map credits are an "i" button, never an always-visible label, an
   assert(src.includes('accessibilityLabel={`Map data sources: ${label}`}'), 'the "i" button must carry the full credit as its accessibility label');
   assert(src.includes('CREDIT_AUTO_HIDE_MS'), 'the opened card must auto-hide');
   assert((src.match(/<Credit rung="maplibre"/g) ?? []).length === 1, 'MapLibre rung must mount exactly one <Credit>');
-  assert((src.match(/<Credit rung="png"/g) ?? []).length === 3, 'PNG rung must mount <Credit> in its gatesOnly frame, its place frame (virgin-cycle15 brief 12), and its image frame');
+  assert((src.match(/<Credit rung="png"/g) ?? []).length === 2, 'PNG rung must mount <Credit> in its place frame (virgin-cycle15 brief 12) and its image frame');
   const mapStart = src.indexOf('<M.Map');
   const openTag = src.slice(mapStart, src.indexOf('<M.Camera', mapStart));
   assert(/attribution=\{false\}/.test(openTag) && /logo=\{false\}/.test(openTag),

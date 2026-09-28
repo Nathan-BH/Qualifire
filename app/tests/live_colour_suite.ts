@@ -37,7 +37,7 @@ const { LiveEngine } = await import('../src/live/engine.ts');
 const { catalogTrackSpecs } = await import('../src/live/tracks.ts');
 const {
   FREE_RIDES_CACHE_FILE, decodeFreeRidesCache, flushFreeRideWrites, freeRideResults,
-  initFreeRidePersistence, lastFreeRide, rememberFreeRide, resetFreeRidesForTests,
+  initFreeRidePersistence, lastFreeRide, markRideFree, unmarkRideFree, resetFreeRidesForTests,
 } = await import('../src/store/freeRides.ts');
 const { createMemoryFsAdapter } = await import('../src/storage/fsAdapter.ts');
 
@@ -418,15 +418,7 @@ test('WP-B: free rides never pollute route history (D-025 mode-consistency)', ()
   const priorGhostCount = ghostsFor('Morning').length;
   const priorLaps = lapValues('Morning');
 
-  const freeState = stateWith({
-    mode: 'free', track: null, lap: null, sectors: [], currentSector: null, lastDone: null,
-    freeCrossings: [
-      { wayId: 'Morning', gateIndex: 0, t: 1000, estimated: false },
-      { wayId: 'Morning', gateIndex: 1, t: 1100, estimated: false },
-    ],
-    freeSectors: [{ wayId: 'Morning', index: 1, rawS: 100 }],
-  } as Partial<LiveEngineState>);
-  rememberFreeRide(freeState);
+  markRideFree('ride-free-1', 1000, 123, null);
 
   assert(ghostsFor('Morning').length === priorGhostCount,
     'a free ride must never enter Morning\'s ghost window');
@@ -435,8 +427,8 @@ test('WP-B: free rides never pollute route history (D-025 mode-consistency)', ()
   assert(recordedResults().length === 0, 'a free ride must never enter recordedResults()');
   assert(freeRideResults().length === 1, `freeRideResults().length = ${freeRideResults().length}, want 1`);
   const saved = freeRideResults()[0];
-  assert(saved.sectors.length === 1 && saved.sectors[0].wayId === 'Morning' && saved.sectors[0].rawS === 100,
-    'the free ride\'s own sector must be stored verbatim');
+  assert(saved.rideId === 'ride-free-1' && saved.durationS === 123 && saved.sportId === null && saved.schemaVersion === 3,
+    'the record is identity only: rideId, startedAtMs, durationS, sportId');
 
   resetRecordedForTests();
   resetFreeRidesForTests();
@@ -448,17 +440,9 @@ test('WP-B: free-ride cache round-trip — persist/rehydrate, corrupt-entry tole
   await initFreeRidePersistence(fs); // no file yet
   assert(freeRideResults().length === 0, 'arming on an empty disk must not create rides');
 
-  const freeState = stateWith({
-    mode: 'free', track: null, lap: null,
-    freeCrossings: [
-      { wayId: 'Morning', gateIndex: 0, t: 10, estimated: false },
-      { wayId: 'Morning', gateIndex: 1, t: 130, estimated: false },
-    ],
-    freeSectors: [{ wayId: 'Morning', index: 1, rawS: 120 }],
-  } as Partial<LiveEngineState>);
-  rememberFreeRide(freeState);
+  markRideFree('ride-free-2', 5000, 60, 'cycling');
   const saved = lastFreeRide();
-  assert(saved !== null, 'rememberFreeRide should have recorded a free ride');
+  assert(saved !== null, 'markRideFree should have recorded a free ride');
   const rideId = saved!.rideId;
 
   await flushFreeRideWrites();
@@ -488,6 +472,8 @@ test('WP-B: free-ride cache round-trip — persist/rehydrate, corrupt-entry tole
   const decoded = decodeFreeRidesCache(mixed);
   assert(decoded !== null && decoded.length === 1 && decoded[0].rideId === 'free:1',
     `expected exactly the one valid entry to survive, got ${JSON.stringify(decoded)}`);
+  assert(decoded![0].schemaVersion === 3 && decoded![0].durationS === null && !('crossings' in decoded![0]),
+    'a v1 entry migrates to the v3 identity shape');
 
   const fs2 = createMemoryFsAdapter();
   fs2.files.set(FREE_RIDES_CACHE_FILE, mixed);
@@ -495,5 +481,23 @@ test('WP-B: free-ride cache round-trip — persist/rehydrate, corrupt-entry tole
   results = freeRideResults();
   assert(results.length === 1 && results[0].rideId === 'free:1',
     'a corrupt entry alongside a valid one on disk must drop only the corrupt one');
+  resetFreeRidesForTests();
+});
+
+test('virgin-cycle16 02: unmarkRideFree removes exactly that record and persists the removal', async () => {
+  resetFreeRidesForTests();
+  const fs = createMemoryFsAdapter();
+  await initFreeRidePersistence(fs);
+  markRideFree('r-a', 1000, 10, null);
+  markRideFree('r-b', 2000, 20, 'cycling');
+  markRideFree('r-a', 1000, 10, null); // idempotent
+  assert(freeRideResults().length === 2, 'two distinct records, no duplicate');
+  unmarkRideFree('r-a');
+  assert(freeRideResults().length === 1 && freeRideResults()[0].rideId === 'r-b', 'only r-b remains');
+  unmarkRideFree('nope'); // no-op
+  await flushFreeRideWrites();
+  resetFreeRidesForTests();
+  await initFreeRidePersistence(fs);
+  assert(freeRideResults().length === 1 && freeRideResults()[0].rideId === 'r-b', 'the removal reached disk');
   resetFreeRidesForTests();
 });

@@ -7,7 +7,7 @@
  * Delete/Ignore/Set-as-reference all live there now.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, SectionList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { listRides } from '../storage';
 import type { PickEvent, RideMeta } from '../storage/types';
 import { decodeIndex } from '../storage/rideIndex';
@@ -19,7 +19,7 @@ import { activeSportId, currentSports } from '../store/sportStore';
 import { wayLabelIn } from '../store/defaultWay';
 import { createExpoFsAdapter } from '../storage/expoFsAdapter';
 import { decodeEventsFile } from '../storage/eventsJsonl';
-import { buildRideRows } from './rideHistoryModel';
+import { FREE_RIDE_ROW_NAME, buildRideRows, type RideRowModel } from './rideHistoryModel';
 import { lapValues } from './colourModel';
 import { useTabNav } from './tabNav';
 import { PaddockTheme, radius } from './theme';
@@ -172,6 +172,18 @@ export default function RidesScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rides, resultsTick, pickLabels],
   );
+  // virgin-cycle16 03 (Nathan 2026-09-28): free rides sit in their own
+  // FREE RIDES section under the list, not inline. A row is free iff
+  // buildRideRows named it FREE_RIDE_ROW_NAME (decision 2). Empty sections
+  // are not rendered, so a rider with no free rides sees the list as before.
+  const sections = useMemo(() => {
+    const main = rows.filter((r) => r.wayName !== FREE_RIDE_ROW_NAME);
+    const free = rows.filter((r) => r.wayName === FREE_RIDE_ROW_NAME);
+    const out: { title: string | null; data: RideRowModel[] }[] = [];
+    if (main.length > 0) out.push({ title: null, data: main });
+    if (free.length > 0) out.push({ title: 'FREE RIDES', data: free });
+    return out;
+  }, [rows]);
   const sportLabel = currentSports().sports.find((sp) => sp.id === activeSportId())?.label ?? null;
   return (
     <View style={styles.container}>
@@ -191,9 +203,13 @@ export default function RidesScreen() {
       ) : rides.length === 0 ? (
         <Text style={styles.sub}>No rides yet. Record one on the Record tab.</Text>
       ) : (
-        <FlatList
-          data={rows}
+        <SectionList
+          sections={sections}
           keyExtractor={(r) => r.rideId}
+          stickySectionHeadersEnabled={false}
+          renderSectionHeader={({ section }) => (
+            section.title !== null ? <Text style={styles.sectionHead}>{section.title}</Text> : null
+          )}
           renderItem={({ item }) => (
             <View style={styles.row}>
               <Pressable
@@ -271,4 +287,7 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
   // D-013: rank is a fact, never coloured — dim ink only.
   rank: { color: t.textDim, fontSize: 15, fontWeight: '700', fontVariant: ['tabular-nums'] },
   chev: { color: t.textDim, fontSize: 16 },
+  // virgin-cycle16 03: the FREE RIDES section header — same small-caps
+  // register as the ride detail's ACTIONS / ON THIS WAY headings.
+  sectionHead: { color: t.textDim, fontSize: 12, letterSpacing: 1.5, marginTop: 12, marginBottom: 6 },
 });

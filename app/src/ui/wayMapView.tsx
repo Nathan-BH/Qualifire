@@ -88,9 +88,9 @@ import { cropFor, gateTickPx, offWayM, projectToPixel, type WayAsset } from './w
 import { currentCatalog } from '../store/catalogStore.ts';
 import { SEED_MODE, bundledForSeedMode } from '../store/seed.ts';
 import { refFor } from '../live/refs.ts';
-import { allWayAssets, resolveWayAsset, type WayAssetDeps } from './wayAssetRuntime.ts';
+import { resolveWayAsset, type WayAssetDeps } from './wayAssetRuntime.ts';
 import {
-  allGatesBounds, allGatesFeatureCollection, bearingBetween, cameraTargetFor,
+  bearingBetween, cameraTargetFor,
   gateHalfLenM, gateTicksFeatureCollection, metresBetween, nearestOnPath, riderFeature, rotateEnabledFor, wayBounds,
   wayLineFeature, sectorSpansFeatureCollection, trailBounds, placeFeatureCollection, placeBounds,
 } from './wayMapGeo.ts';
@@ -207,8 +207,7 @@ type WayMapProps = {
    * skip the id -> asset lookup entirely — neither the bundled manifest nor
    * the runtime resolver is consulted, and `routeId` is used only as the
    * zoom-reset/PNG key. Only DemoScreen passes it (its scripted fixture is
-   * not a catalog route and must never be resolvable as one). Ignored when
-   * `gatesOnly`. */
+   * not a catalog route and must never be resolvable as one). */
   asset?: WayAsset;
   lat: number | null;
   lon: number | null;
@@ -249,28 +248,12 @@ type WayMapProps = {
   /** Default true. false skips the rider dot/source and the waiting-for-GPS
    * badge — browse surfaces have no rider by contract. */
   showRider?: boolean;
-  /** WP-B free-ride map: draws every gate of every route in `gateRouteIds`
-   * (or the full catalog when omitted/null) instead of one route's line +
-   * gates — no route line, no per-route OFF ROUTE badge (there is no single
-   * route to be off), camera FIT fits all the gates instead of one route's
-   * bounds. `routeId` is ignored on this rung. */
-  gatesOnly?: boolean;
-  /** gatesOnly only: which gate a fix has crossed, `{routeId, gateIndex}` —
-   * mirrors LiveEngineState.freeCrossings. Gets `colors.neutral`, the same
-   * "crossed" convention gateColours uses elsewhere. */
-  crossedGates?: { wayId: string; gateIndex: number }[];
-  /** gatesOnly only: restricts which routes' gates are drawn/fit — the WP-B
-   * coordinator addendum's directional filter (store/catalog.ts's
-   * freeRideRouteIds()). undefined/null = every catalog route (the
-   * deliberately-unfiltered both-ends-unknown free ride). */
-  gateWayIds?: string[] | null;
   /** virgin-cycle15 brief 12 (Nathan 2026-09-27): a PLACE surface — the
    * ROUTES-tab place detail. Draws one yellow disc of `radiusM` real metres
    * (the landmark's arrival radius, catalog.ts landmarkAt) at lat/lon, an
    * outline and a centre dot; no route line, no gates, no rider. Camera fits
-   * the disc. Only meaningful with `wayId` null and `gatesOnly` false — a
-   * caller passing both is a bug. MapLibre rung only; the PNG rung shows a
-   * degraded frame like gatesOnly. */
+   * the disc. Only meaningful with `wayId` null. MapLibre rung only; the PNG
+   * rung shows a degraded frame. */
   place?: { lat: number; lon: number; radiusM: number } | null;
   /** WP-J (breadcrumb trail): the rider's own ridden line, decimated GPS
    * fixes accumulated by RecordScreen (trailModel.ts). Rendered behind the
@@ -374,9 +357,8 @@ function MapLibreWayMap(props: WayMapProps & {
   const { maplibre: M, onMapFailed } = props;
   const { t, mode: themeMode } = useTheme();
   const styleUrl = themeMode === 'night' ? MAP_STYLE_NIGHT : MAP_STYLE_DAY;
-  const gatesOnly = props.gatesOnly ?? false;
   const id = props.wayId;
-  const asset = !gatesOnly ? props.asset ?? assetFor(id) ?? undefined : undefined;
+  const asset = props.asset ?? assetFor(id) ?? undefined;
   const h = props.height ?? 190;
 
   const variant = props.variant ?? 'live';
@@ -525,13 +507,13 @@ function MapLibreWayMap(props: WayMapProps & {
   // file just no longer calls it. Self-contained (does not read the
   // `here`/`off` consts below, which are declared after the early-return
   // guard) so this hook keeps a stable call order regardless of
-  // gatesOnly/asset on any render — Rules of Hooks: it must run
+  // asset on any render — Rules of Hooks: it must run
   // unconditionally, before the guard below.
   const wayFC = useMemo(() => {
-    if (gatesOnly || !asset) return null;
+    if (!asset) return null;
     const feature = wayLineFeature(asset);
     return feature ? { type: 'FeatureCollection' as const, features: [feature] } : null;
-  }, [asset, gatesOnly]);
+  }, [asset]);
 
   // WP-J (breadcrumb trail): always mounted, possibly-empty FeatureCollection
   // — computed unconditionally, same Rules-of-Hooks reason as routeFC above
@@ -578,45 +560,27 @@ function MapLibreWayMap(props: WayMapProps & {
     };
   }, [asset, props.gateSelect?.selected]);
 
-  // WP-D: gatesOnly has no single route asset to bail out on (unchanged). A
-  // live surface (showRider) with no asset is now "rider-only" — real tiles
+  // A live surface (showRider) with no asset is "rider-only" — real tiles
   // + the dot, no route line/ticks — instead of blank; a browse surface (no
   // rider) with no asset still has nothing useful to show and stays null.
   // WP-H: a browse surface with a ridden TRAIL but no asset (the ride-detail
-  // trace view for an unmatched/free ride) is not "nothing to show" either.
+  // trace view for an unmatched ride) is not "nothing to show" either.
   const hasTrail = !!props.trail && props.trail.length > 1;
   // virgin-cycle15 brief 12: a PLACE surface (props.place) is drawable
   // content just like an asset/trail — it must survive this early return
-  // even with no asset, no rider and no trail. gatesOnly wins if somehow
-  // both are passed (a caller bug per the prop's own doc comment).
-  const place = !gatesOnly ? props.place ?? null : null;
-  const riderOnly = !gatesOnly && !asset;
+  // even with no asset, no rider and no trail.
+  const place = props.place ?? null;
+  const riderOnly = !asset;
   if (riderOnly && !showRider && !hasTrail && !place) return null;
 
   const here = props.lat !== null && props.lon !== null;
   // D-025: off-route reads from the TRUE fix, same call the PNG rung makes.
-  // gatesOnly / riderOnly: no single route to be off (the OFF ROUTE badge
-  // below is suppressed the same way — there is nothing honest to measure
-  // against).
-  const off = !gatesOnly && here && asset
+  // riderOnly: no single route to be off (the OFF ROUTE badge below is
+  // suppressed the same way — there is nothing honest to measure against).
+  const off = here && asset
     ? offWayM(asset, props.lat as number, props.lon as number) > OFF_WAY_M
     : false;
 
-  // gatesOnly (WP-B, postdates this WP's brief): still one gate-rings circle
-  // layer, drawing every route's gates at once via allGatesFeatureCollection
-  // — a per-route tick heading doesn't generalize cleanly across a mixed
-  // multi-route field, so this rung is deliberately left as circles rather
-  // than guessing at a multi-route tick design (flagged in the handoff
-  // notes). The single-route rung below gets the WP-E tick treatment.
-  // WP-C: the gates-only field must also include user routes' (runtime-built)
-  // gates — allRouteAssets() enumerates the whole catalog through the same
-  // resolver assetFor() uses, seed routes included (manifest wins on those
-  // by identity); on a virgin build the manifest is `{}` (WP-E). Only built
-  // when gatesOnly is actually true.
-  const drawable = gatesOnly ? allWayAssets(assetDeps()) : null;
-  const gatesFC = gatesOnly && drawable
-    ? allGatesFeatureCollection(drawable, props.crossedGates, colors.neutral, props.gateWayIds)
-    : null;
   // Cycle virgin-cycle10: halfLenM is now zoom-aware (gateHalfLenM) instead
   // of the function's fixed 15 m default, so a tick stays a visible line
   // (not a collapsed dot) at whole-ride 'fit' zoom levels — see
@@ -625,14 +589,14 @@ function MapLibreWayMap(props: WayMapProps & {
   // above, so a hook here would break the Rules of Hooks; kept as the
   // existing unmemoized-per-render pattern (cheap, one tick per gate).
   const gateHalfLen = asset ? gateHalfLenM(asset.gates[0]?.lat ?? 0, liveZoom ?? camZoom) : 15;
-  const gateTicksFC = !gatesOnly && asset
+  const gateTicksFC = asset
     ? gateTicksFeatureCollection(asset, props.gateColours, gateHalfLen)
     : null;
   // WP-sector-coloured-trail P1: null unless the caller supplied sector
   // colours AND the asset can honestly be split (path + matching gateIdx —
   // sectorSpansFeatureCollection's own null rule); the plain base line
   // alone then remains, exactly as today.
-  const sectorSpansFC = !gatesOnly && asset && props.sectorColours
+  const sectorSpansFC = asset && props.sectorColours
     ? sectorSpansFeatureCollection(asset, props.sectorColours, props.leadColour)
     : null;
   // virgin-cycle15 brief 12: the place disc. Pure builder, one 64-point
@@ -640,18 +604,9 @@ function MapLibreWayMap(props: WayMapProps & {
   // riderOnly early return above (Rules of Hooks), same reasoning as the
   // other unmemoized builders in this block.
   const placeFC = place ? placeFeatureCollection(place.lat, place.lon, place.radiusM) : null;
-  // virgin-cycle15 06: an empty gate selection (e.g. a NEW>>NEW free ride,
-  // via liveMapGateWayIds) must fall through to the trail actually ridden,
-  // not stay stuck at a null gates-only bounds — `asset` is always undefined
-  // whenever `gatesOnly` is true (see its definition above), so this ??
-  // reaches straight past it to `hasTrail` exactly as intended.
-  const gatesOnlyBounds = gatesOnly && drawable
-    ? allGatesBounds(drawable, props.gateWayIds)
-    : null;
-  const bounds = gatesOnlyBounds
-    ?? (asset ? wayBounds(asset)
+  const bounds = asset ? wayBounds(asset)
     : place ? placeBounds(place.lat, place.lon, place.radiusM)
-    : hasTrail ? trailBounds(props.trail!) : null);
+    : hasTrail ? trailBounds(props.trail!) : null;
 
   // WP-D §3.1c: the camera-target rule itself lives in routeMapGeo.ts
   // (headlessly testable) — this is just wiring the live inputs through.
@@ -821,17 +776,6 @@ function MapLibreWayMap(props: WayMapProps & {
               layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
           </M.GeoJSONSource>
         ) : null}
-        {/* Cycle 025: every source carries key === id. MapLibre freezes a child's
-            `id` on first render (useFrozenId) and throws "`id` cannot be changed"
-            if the same mounted element later gets a different id. The ternary
-            below swaps id="gates" <-> id="gate-ticks" at ONE React position when
-            RecordScreen's gatesOnly (live.mode === 'free') flips while the map is
-            mounted — proven at free-ride END (engine.stop() resets mode to 'route'
-            and emits before RecordScreen leaves phase 'running'), killing the whole
-            map tree on new-landmark rides. Distinct keys make React unmount/remount
-            the source (and its layers) instead of rebinding the id. Sources only:
-            <M.Map>'s own key={styleUrl} (cycle 023) is left alone — a whole-map
-            remount here would pay B-71's camera-state cost for nothing. */}
         {placeFC ? (
           <M.GeoJSONSource key="place" id="place" data={placeFC}>
             <M.Layer id="place-disc-fill" type="fill"
@@ -850,16 +794,7 @@ function MapLibreWayMap(props: WayMapProps & {
               }} />
           </M.GeoJSONSource>
         ) : null}
-        {gatesOnly ? (
-          <M.GeoJSONSource key="gates" id="gates" data={gatesFC!}>
-            <M.Layer id="gate-rings" type="circle" paint={{
-              'circle-radius': 6,
-              'circle-color': ['case', ['has', 'colour'], ['get', 'colour'], 'rgba(0,0,0,0)'],
-              'circle-stroke-color': CASING,
-              'circle-stroke-width': 2,
-            }} />
-          </M.GeoJSONSource>
-        ) : gateTicksFC ? (
+        {gateTicksFC ? (
           // WP-E: circles replaced with a short tick perpendicular to the
           // route (gateTicksFeatureCollection). Casing+core like the route
           // line so a tick is never invisible on the night basemap (Nathan
@@ -1038,33 +973,10 @@ function PngWayMap(props: WayMapProps) {
   const locked = variant === 'live' && (liveState === 'moving' || liveState === 'stopped');
   const dimmed = variant === 'live' && liveState === 'stopped';
 
-  // WP-B: this rung is a single pre-rendered PNG per route (see the file
-  // header) — it cannot honestly draw a 20-route (or filtered-but-still-
-  // multi-route) gate field. Say so plainly rather than drawing one route's
-  // PNG and pretending it is the whole gates-only picture. The phone runs
-  // MapLibre since build 4, so this degraded frame is the fallback rung's
-  // fallback — reachable only when the native module truly is not there.
-  const gatesOnly = props.gatesOnly ?? false;
-  if (gatesOnly) {
-    return (
-      <View style={[
-        st.frame,
-        props.fill ? { flex: 1, alignSelf: 'stretch' } : { height: h },
-        { backgroundColor: t.race.bg, borderColor: t.cardBorder },
-        dimmed && st.dimmedFrame,
-      ]}>
-        <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card }]}>
-          gates map needs the tile map
-        </Text>
-        <Credit rung="png" locked={locked} />
-      </View>
-    );
-  }
-
-  // virgin-cycle15 brief 12: mirror the gatesOnly degraded frame above —
-  // this rung is one pre-rendered PNG per route and has no way to draw a
-  // metres-accurate disc without tiles, same honesty rule as gatesOnly.
-  if (props.place && !gatesOnly) {
+  // virgin-cycle15 brief 12: this rung is one pre-rendered PNG per route and
+  // has no way to draw a metres-accurate disc without tiles — say so plainly
+  // rather than drawing nothing.
+  if (props.place) {
     return (
       <View style={[
         st.frame,
@@ -1080,8 +992,8 @@ function PngWayMap(props: WayMapProps) {
     );
   }
 
-  // WP-D §3.3: mirror the gatesOnly degraded frame above instead of
-  // returning null, for a live surface (showRider) with no route asset —
+  // WP-D §3.3: a degraded frame instead of returning null, for a live
+  // surface (showRider) with no route asset —
   // this rung genuinely cannot draw a basemap without a per-route PNG (no
   // tiles, no path to project the dot onto), so there is nothing to show but
   // the frame + a message. Browse surfaces (no rider) still render nothing —

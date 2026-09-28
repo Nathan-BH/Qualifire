@@ -301,18 +301,6 @@ test('selfrace: engine — startGateT is null before gate 0 fires and equals its
     `startGateT ${final.startGateT} != the offline-derived gate-0 crossing ${startS}`);
 });
 
-test('selfrace: engine — free mode never sets startGateT', () => {
-  const f = loadFixture('clean_morning');
-  const engine = new LiveEngine(fixtureSpecs());
-  engine.start({ mode: 'free' });
-  for (let i = 0; i < f.fixes.t.length; i++) {
-    engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
-  }
-  const final = engine.getState();
-  assert(final.mode === 'free', `expected free mode, got ${final.mode}`);
-  assert(final.startGateT === null, `free mode must never set startGateT (no lock ever settles), got ${final.startGateT}`);
-});
-
 // ============================================================ engine field (chainageM, follow-up)
 
 test('selfrace: engine — chainageM is null exactly while track === null, non-decreasing once locked', () => {
@@ -343,18 +331,6 @@ test('selfrace: engine — chainageM is null exactly while track === null, non-d
   assert(!badMonotonic, 'chainageM must never decrease across emissions once locked');
   const final = engine.getState();
   assert(final.chainageM !== null, 'expected a non-null chainageM in the final locked state');
-});
-
-test('selfrace: engine — free mode never sets chainageM', () => {
-  const f = loadFixture('clean_morning');
-  const engine = new LiveEngine(fixtureSpecs());
-  engine.start({ mode: 'free' });
-  for (let i = 0; i < f.fixes.t.length; i++) {
-    engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
-  }
-  const final = engine.getState();
-  assert(final.mode === 'free', `expected free mode, got ${final.mode}`);
-  assert(final.chainageM === null, `free mode must never set chainageM (no lock ever settles), got ${final.chainageM}`);
 });
 
 // ============================================================ chainageM (Task A/B.7)

@@ -12,6 +12,12 @@
  * and they only ever call the functions below, never reach into the fixed
  * stores with free-ride data.
  *
+ * virgin-cycle16 02 (Nathan 2026-09-28): a free ride is a POST-RIDE LABEL on
+ * an ordinary recorded ride, chosen on the ride-detail overlay ("Save as free
+ * ride"), never a live mode — free mode, freeCrossings/freeSectors and the
+ * gates-only map are retired ("this idea needs complete removal"). The record
+ * is identity only: rideId, startedAtMs, durationS, sportId. No crossings, no sectors.
+ *
  * Persistence pattern: this brief's own "Current state" section (2026-08-20)
  * described mirroring B-40's disposable results-cache.json via lastRide.ts's
  * old FsAdapter/write-tail plumbing — that module was rewritten this session
@@ -24,20 +30,26 @@
  * index) so — like B-40's original results-cache.json — this is ONE flat
  * cache file holding every free ride, not one file per ride.
  */
-import type { LiveEngineState } from '../live/engine.ts';
 import type { FsAdapter } from '../storage/fsAdapter.ts';
 import { upgradeFreeRidesCache } from './migrations.ts';
 
 export const FREE_RIDES_CACHE_FILE = 'free-rides-cache.json';
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 export interface FreeRideRecord {
   kind: 'freeRide';
-  schemaVersion: 2;
+  schemaVersion: 3;
+  /** The raw ride's own id (storage/index.json) — since v3. Migrated v1/v2
+   * records keep their historical `free:<startedAtMs>` id. */
   rideId: string;
   startedAtMs: number;
-  crossings: { wayId: string; gateIndex: number; t: number; estimated: boolean }[];
-  sectors: { wayId: string; index: number; rawS: number }[];
+  /** Wall-clock ride length in seconds from RideMeta (endMs - startMs), or
+   * null when unknown (migrated record, or meta not loaded at save time). */
+  durationS: number | null;
+  /** The ride's own sport (RideMeta.sportId through effectiveRideSportId), or
+   * null when unknown (migrated record). RESULTS scopes its free-ride section
+   * by this; a null record shows under every sport. */
+  sportId: string | null;
 }
 
 let rides: FreeRideRecord[] = [];
@@ -50,21 +62,6 @@ function isNonNullObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null;
 }
 
-function isValidCrossing(v: unknown): v is FreeRideRecord['crossings'][number] {
-  return isNonNullObject(v)
-    && typeof v.wayId === 'string'
-    && typeof v.gateIndex === 'number'
-    && typeof v.t === 'number'
-    && typeof v.estimated === 'boolean';
-}
-
-function isValidFreeSector(v: unknown): v is FreeRideRecord['sectors'][number] {
-  return isNonNullObject(v)
-    && typeof v.wayId === 'string'
-    && typeof v.index === 'number'
-    && typeof v.rawS === 'number';
-}
-
 /** Structural guard for one stored free ride — every field a reader actually
  * uses must be present and of the right shape, or the entry is dropped
  * (mirrors resultsStore.ts's isValidRideResult). */
@@ -73,8 +70,8 @@ export function isValidFreeRideRecord(v: unknown): v is FreeRideRecord {
   if (v.kind !== 'freeRide') return false;
   if (typeof v.rideId !== 'string') return false;
   if (typeof v.startedAtMs !== 'number' || !Number.isFinite(v.startedAtMs)) return false;
-  if (!Array.isArray(v.crossings) || !v.crossings.every(isValidCrossing)) return false;
-  if (!Array.isArray(v.sectors) || !v.sectors.every(isValidFreeSector)) return false;
+  if (!(v.durationS === null || (typeof v.durationS === 'number' && Number.isFinite(v.durationS)))) return false;
+  if (!(v.sportId === null || typeof v.sportId === 'string')) return false;
   return true;
 }
 
@@ -108,28 +105,29 @@ function enqueueWrite(fn: (fs: FsAdapter) => Promise<void>): Promise<void> {
   return turn.catch(() => {});
 }
 
-/** Hands a finished free ride to the store. No-op unless the ride actually
- * was a free ride that crossed at least one gate (an aborted free ride with
- * zero crossings has nothing honest to save — same "never invent a fire"
- * spirit as the engine's own armWithinM=0 rule).
- *
- * M1 fix: this is called from RecordScreen's onEnd, i.e. at ride-STOP, so
- * `Date.now()` alone would record the ride's END time as its start time.
- * `meta.startedAtMs` (the ride's real start, already in scope at the call
- * site — the same value passed to lastRide.ts's rememberRide) overrides it
- * when given; mirrors rememberRide(state, meta?)'s own shape. */
-export function rememberFreeRide(st: LiveEngineState, meta?: { startedAtMs: number }): void {
-  if (st.mode !== 'free' || st.freeCrossings.length === 0) return;
-  const startedAtMs = meta?.startedAtMs ?? Date.now();
-  const record: FreeRideRecord = {
-    kind: 'freeRide',
-    schemaVersion: 2,
-    rideId: `free:${startedAtMs}`,
-    startedAtMs,
-    crossings: st.freeCrossings.map((c) => ({ ...c })),
-    sectors: st.freeSectors.map((s) => ({ ...s })),
-  };
+/** Labels an ordinary recorded ride a free ride (virgin-cycle16 02). Called
+ * from RideDetailScreen's "Save as free ride"; idempotent by rideId. The raw
+ * JSONL stays the real record of the ride (D-023) — this cache only says
+ * "Nathan filed it as free". */
+export function markRideFree(
+  rideId: string, startedAtMs: number, durationS: number | null, sportId: string | null,
+): void {
+  if (rides.some((r) => r.rideId === rideId)) return;
+  const record: FreeRideRecord = { kind: 'freeRide', schemaVersion: 3, rideId, startedAtMs, durationS, sportId };
   rides = [...rides, record];
+  const text = encodeCache(rides);
+  void enqueueWrite(async (fs) => {
+    await fs.writeText(FREE_RIDES_CACHE_FILE, text);
+  });
+}
+
+/** Undoes markRideFree ("Not a free ride"). Takes the record's own rideId
+ * (RideDetailScreen passes `model.free.rideId`, which for a migrated v1/v2
+ * record is the historical `free:<ms>` id, not the raw ride's). No-op when
+ * absent. */
+export function unmarkRideFree(rideId: string): void {
+  if (!rides.some((r) => r.rideId === rideId)) return;
+  rides = rides.filter((r) => r.rideId !== rideId);
   const text = encodeCache(rides);
   void enqueueWrite(async (fs) => {
     await fs.writeText(FREE_RIDES_CACHE_FILE, text);
@@ -158,7 +156,9 @@ export function lastFreeRide(): FreeRideRecord | null {
  * index.ts:329) is taken AFTER `await startRide()` stamped the raw index's
  * startMs (storage/core.ts:142) — a few ms apart, never equal. Exact id hit
  * first (post-stop passes the session's own value); else the nearest record
- * within `tolMs`, so RIDES (raw startMs) resolves the same ride. Pure. */
+ * within `tolMs`, so RIDES (raw startMs) resolves the same ride. Pure. Since
+ * v3 the id is the raw ride's own, and the exact startedAtMs hit is the
+ * normal case. */
 export const FREE_RIDE_MATCH_TOL_MS = 10_000;
 export function freeRideNear(
   records: readonly FreeRideRecord[],

@@ -22,8 +22,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { activeCatalog, activeSportId, currentSports } from '../store/sportStore';
 import { storedResultsForWay } from '../store/resultsStore';
-import { allTimeBestLapS } from './colourModel';
+import { allTimeBestLapS, fmt } from './colourModel';
 import { buildResultsRoutes, type ResultsRoute } from './resultsListModel';
+import { freeRideResults, type FreeRideRecord } from '../store/freeRides';
+import { dateTimeLabel } from './rideHistoryModel';
 import ResultsWayList from './resultsWayList';
 import { useTabNav } from './tabNav';
 import { PaddockTheme, radius } from './theme';
@@ -50,6 +52,18 @@ export default function ResultsScreen({ openRouteId }: { openRouteId: string | n
     () => buildResultsRoutes(CATALOG, storedResultsForWay, allTimeBestLapS),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [CATALOG, tick],
+  );
+
+  // virgin-cycle16 03 (Nathan 2026-09-28): the FREE RIDES section — a
+  // separate population, never a route card (decision 3). Sport-scoped by the
+  // record's own sportId; a migrated record (sportId null) shows everywhere.
+  // Newest first. `tick` re-reads the store after mount, same as `routes`.
+  const freeRides: FreeRideRecord[] = useMemo(
+    () => freeRideResults()
+      .filter((r) => r.sportId === null || r.sportId === sportId)
+      .sort((a, b) => b.startedAtMs - a.startedAtMs),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [sportId, tick],
   );
 
   const openRoute = openRouteId !== null ? routes.find((r) => r.routeId === openRouteId) ?? null : null;
@@ -111,6 +125,32 @@ export default function ResultsScreen({ openRouteId }: { openRouteId: string | n
           ))}
         </View>
       )}
+      {freeRides.length > 0 ? (
+        <View>
+          <Text style={styles.sectionHead}>FREE RIDES</Text>
+          {freeRides.map((r) => {
+            // decision 5: a migrated v1/v2 record keeps its `free:<ms>` id,
+            // which is not a raw ride — no detail to open.
+            const openable = !r.rideId.startsWith('free:');
+            return (
+              <Pressable
+                key={r.rideId}
+                style={styles.card}
+                disabled={!openable}
+                onPress={() => tabNav.openRide({ rideId: r.rideId, source: 'results', startedAtMs: r.startedAtMs })}
+              >
+                <View style={styles.cardRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.cardTitle}>{dateTimeLabel(r.startedAtMs)}</Text>
+                    <Text style={styles.cardSub}>{r.durationS !== null ? fmt(r.durationS) : '–'} · free ride</Text>
+                  </View>
+                  {openable ? <Text style={styles.chev}>›</Text> : null}
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
     </ScrollView>
   );
 }
@@ -140,4 +180,6 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
   cardTitle: { color: t.text, fontSize: 15 },
   cardSub: { color: t.textDim, fontSize: 11.5 },
   chev: { color: t.textDim, fontSize: 16 },
+  // virgin-cycle16 03: FREE RIDES header, same register as RidesScreen's.
+  sectionHead: { color: t.textDim, fontSize: 12, letterSpacing: 1.5, marginTop: 4, marginBottom: 6 },
 });

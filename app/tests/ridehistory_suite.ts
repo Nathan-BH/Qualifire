@@ -27,6 +27,7 @@ registerHooks({
 });
 const {
   buildRideRows, buildSectorRows, buildPbRows, buildPbDetail, dateTimeLabel, lapCellLabel,
+  FREE_RIDE_ROW_NAME,
 } = await import('../src/ui/rideHistoryModel.ts');
 const { fmt } = await import('../src/ui/colourModel.ts');
 
@@ -189,35 +190,35 @@ test('virgin-cycle13: buildRideRows — a MATCHED ride never consults referenceW
 // ride already in the list; `freeFor(startMs)` labels it. Fixture record has
 // the FreeRideRecord shape (store/freeRides.ts) — built inline, not imported,
 // so this suite stays free of that module's persistence imports.
-function makeFree(startedAtMs: number, nGates: number) {
+function makeFree(startedAtMs: number, durationS: number | null = null) {
   return {
     kind: 'freeRide' as const,
-    schemaVersion: 2 as const,
+    schemaVersion: 3 as const,
     rideId: `free:${startedAtMs}`,
     startedAtMs,
-    crossings: Array.from({ length: nGates }, (_, i) => ({ wayId: 'w', gateIndex: i, t: i * 10, estimated: false })),
-    sectors: [],
+    durationS,
+    sportId: null,
   };
 }
 
-test('virgin-cycle15 §1: buildRideRows — an unnamed free ride with a record on file reads "Free ride" + its gate count, not the START pick', () => {
+test('virgin-cycle15 §1 / cycle16 02: buildRideRows — an unnamed free ride with a record on file reads "Free ride" + its duration, not the START pick', () => {
   const metas: RideMeta[] = [{ rideId: 'r1', startMs: 1000, endMs: 2000, nFixes: 10 }];
   const rows = buildRideRows(
     metas, () => null, () => [], undefined,
     () => null,
     () => 'new → new',
-    (startMs) => (startMs === 1000 ? makeFree(1000, 3) : null),
+    (startMs) => (startMs === 1000 ? makeFree(1000) : null),
   );
   assert(rows[0].wayName === 'Free ride', `expected "Free ride", got ${rows[0].wayName}`);
-  assert(rows[0].lapLabel === '3 gates', `the lap slot carries the gate count, got ${rows[0].lapLabel}`);
+  assert(rows[0].lapLabel === '0:01', `the lap slot carries the ride's duration, got ${rows[0].lapLabel}`);
   assert(rows[0].wayId === null && rows[0].lapS === null && rows[0].rank === null,
     'a free ride has no way, no derived lap and no rank (D-025)');
 });
 
-test('virgin-cycle15 §1: buildRideRows — one crossing reads "1 gate" (singular)', () => {
+test('virgin-cycle16 02: buildRideRows — lapLabel comes from the ride\'s own duration (meta), not the free record\'s durationS field', () => {
   const metas: RideMeta[] = [{ rideId: 'r1', startMs: 1000, endMs: 2000, nFixes: 10 }];
-  const rows = buildRideRows(metas, () => null, () => [], undefined, () => null, () => null, () => makeFree(1000, 1));
-  assert(rows[0].lapLabel === '1 gate', `got ${rows[0].lapLabel}`);
+  const rows = buildRideRows(metas, () => null, () => [], undefined, () => null, () => null, () => makeFree(1000, 999));
+  assert(rows[0].lapLabel === '0:01', `got ${rows[0].lapLabel} - must come from meta (1s), not the free record's durationS (999s)`);
 });
 
 test('virgin-cycle15 §1: buildRideRows — a reference way still wins over a free record (a named free ride became a route\'s reference)', () => {
@@ -244,6 +245,13 @@ test('virgin-cycle15 §1: buildRideRows — a MATCHED ride never consults freeFo
   const rows = buildRideRows(metas, () => result, () => [], undefined, () => null, () => null,
     () => { throw new Error('freeFor must not be called for a matched ride'); });
   assert(rows[0].wayName === 'Home Work Dry', `got ${rows[0].wayName}`);
+});
+
+test('virgin-cycle16 03: FREE_RIDE_ROW_NAME is exactly the wayName buildRideRows gives a free ride', () => {
+  const metas: RideMeta[] = [{ rideId: 'r1', startMs: 1000, endMs: 2000, nFixes: 10 }];
+  const rows = buildRideRows(metas, () => null, () => [], undefined, () => null, () => null, () => makeFree(1000));
+  assert(rows[0].wayName === FREE_RIDE_ROW_NAME, 'the section partition key must be the row name');
+  assert(FREE_RIDE_ROW_NAME === 'Free ride', 'the literal is pinned — RidesScreen partitions on it');
 });
 
 // ============================================================ lapCellLabel

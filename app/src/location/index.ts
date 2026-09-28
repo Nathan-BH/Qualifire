@@ -70,7 +70,7 @@ let sessionLoaded = false; // whether we've consulted the disk marker yet
 // `!hadLiveSession` branch, that branch would already see a populated
 // `session` by the time it ran and skip re-arming entirely — leaving
 // liveEngine to auto-start itself via feed()'s idle check with NO options
-// (mode:'route', arming on), silently resuming a free ride as a route ride.
+// (arming on), silently re-arming with the wrong options.
 // Living inside ensureSession() itself means every caller — the task
 // handler, getRecoveryState(), a future caller — shares one launch-scoped
 // re-arm, no matter which one restores the session first.
@@ -154,7 +154,7 @@ async function ensureSession(): Promise<ActiveSession | null> {
         kind: 'relaunch', tUnixMs: nowMs,
         ...(downS !== undefined ? { downS } : {}),
       });
-      liveEngine.start({ pickId: null, mode: session.mode ?? 'route', wayIds: session.wayIds ?? null });
+      liveEngine.start({ pickId: null, wayIds: session.wayIds ?? null });
     }
   }
   return session;
@@ -249,7 +249,7 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
       // On a headless relaunch mid-ride the engine is explicitly re-armed in
       // this ride's own mode above (WP-B fix B1) before this first feed() —
       // a route ride re-locks with earlier sectors surfacing as
-      // estimated/missed (honest, D-016(b)); a free ride stays in free mode.
+      // estimated/missed (honest, D-016(b)).
       try {
         liveEngine.feed(loc.coords.latitude, loc.coords.longitude, loc.timestamp, loc.coords.accuracy ?? undefined, flagged);
       } catch {
@@ -309,12 +309,9 @@ export interface StartContext {
 
 export async function startTracking(opts?: {
   wayPick?: string | null;
-  /** WP-B: 'route' (default) or 'free' — threaded straight to
-   * liveEngine.start(); see live/engine.ts's file header. */
-  mode?: 'route' | 'free';
   /** WP-B coordinator addendum: restricts which catalog routes the engine
-   * builds candidates for this ride — see live/engine.ts's file header and
-   * store/catalog.ts's freeRideRouteIds(). */
+   * builds candidates for this ride. `undefined`/omitted = every catalog
+   * route (see live/engine.ts's `EngineStartOptions.wayIds`). */
   wayIds?: string[] | null;
   /** N9: the RECORD tab's from/to/labels/pickSource at the moment START was
    * pressed — logged as the sidecar's one `pick` event. Omitted (no pick
@@ -333,7 +330,7 @@ export async function startTracking(opts?: {
   const existing = await ensureSession();
   if (existing) return existing; // already recording; be idempotent
 
-  const rideId = await startRide(opts?.mode, opts?.sportId);
+  const rideId = await startRide('route', opts?.sportId);
   const startedAtMs = Date.now();
   const s: ActiveSession = {
     rideId,
@@ -342,9 +339,9 @@ export async function startTracking(opts?: {
     // HEARTBEAT_EVERY_N_FIXES fixes by the task handler above.
     lastAliveAtMs: startedAtMs,
     // WP-B fix B1/B2: persisted so a headless relaunch can re-arm the engine
-    // in the same mode (session.ts) and so a completed ride's index entry
-    // carries its mode (storage/core.ts's startRide) — see both files' headers.
-    mode: opts?.mode ?? 'route',
+    // and so a completed ride's index entry carries its mode (storage/core.ts's
+    // startRide) — see both files' headers.
+    mode: 'route',
     wayIds: opts?.wayIds ?? null,
     // WP-1: the ride's own sport, stamped once and never changed mid-ride.
     sportId: opts?.sportId,
@@ -390,7 +387,6 @@ export async function startTracking(opts?: {
   warmupState = newWarmupState();
   liveEngine.start({
     pickId: opts?.wayPick ?? null,
-    mode: opts?.mode ?? 'route',
     wayIds: opts?.wayIds ?? null,
   }); // fresh live-sector state for this ride
   logEvent(rideId, {
@@ -405,7 +401,7 @@ export async function startTracking(opts?: {
   const ctx = opts?.startContext;
   logEvent(rideId, {
     kind: 'pick', tUnixMs: pressedAtMs,
-    mode: opts?.mode ?? 'route',
+    mode: 'route',
     wayId: opts?.wayPick ?? null,
     ...(ctx ? { from: ctx.from, to: ctx.to, fromLabel: ctx.fromLabel, toLabel: ctx.toLabel, pickSource: ctx.pickSource } : {}),
     ...(opts?.wayIds ? { wayIds: opts.wayIds } : {}),

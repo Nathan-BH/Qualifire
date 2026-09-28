@@ -57,6 +57,11 @@ export function dateTimeLabel(ms: number): string {
 
 // ------------------------------------------------------------------- RIDES
 
+/** The `wayName` buildRideRows gives a free ride, and the ONLY way a row is
+ * free (virgin-cycle16 03): RidesScreen partitions its FREE RIDES section on
+ * this exact literal. Four ridehistory_suite tests pin the text. */
+export const FREE_RIDE_ROW_NAME = 'Free ride';
+
 export interface RideRowModel {
   rideId: string;
   startMs: number;
@@ -105,9 +110,9 @@ export interface RideRowModel {
  * construction — slots in between the two fallbacks above: a ride that
  * founded a way is still "<way name> — ref" (a named free ride became a
  * route's reference; that wins), an unnamed free ride with a record on
- * file is "Free ride" with its gate-crossing count in the lap slot ("3
- * gates" — the only honest figure a free record carries; D-025: no lap was
- * ever derived), and everything else falls through to the pick label as
+ * file is "Free ride" with the ride's own wall-clock duration in the lap
+ * slot (virgin-cycle16 02 — a free ride carries no gates; D-025: no lap was ever derived),
+ * and everything else falls through to the pick label as
  * before. Default "nothing on file", like the other two.
  *
  * `laps(routeId, excl)` must exclude the ride's own rideId from its history
@@ -138,15 +143,14 @@ export function buildRideRows(
         const refWay = referenceWayFor(m.rideId);
         const free = refWay === null ? freeFor(m.startMs) : null;
         if (free !== null) {
-          const n = free.crossings.length;
           return {
             rideId: m.rideId,
             startMs: m.startMs,
             dateLabel,
             wayId: null,
-            wayName: 'Free ride',
+            wayName: FREE_RIDE_ROW_NAME,
             lapS: null,
-            lapLabel: `${n} gate${n === 1 ? '' : 's'}`,
+            lapLabel: fmt(Math.max(0, (m.endMs - m.startMs) / 1000)),
             quality: null,
             rank: null,
           };

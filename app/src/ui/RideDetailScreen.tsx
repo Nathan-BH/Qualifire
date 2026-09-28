@@ -33,7 +33,7 @@ import { appendTrailPoint, type TrailPoint } from './trailModel.ts';
 import { chipColors } from './chips.tsx';
 import { dateTimeLabel, buildPbDetail } from './rideHistoryModel.ts';
 import {
-  fmt, lapValues, ownLapBarredFromRanking, rankingPoolFor, sectorValues, type UiTier,
+  lapValues, ownLapBarredFromRanking, rankingPoolFor, sectorValues, type UiTier,
 } from './colourModel.ts';
 import { rideDetailFor } from './rideDetailModel.ts';
 import ReplayScreen from './ReplayScreen.tsx';
@@ -45,7 +45,7 @@ import { wayLabelIn } from '../store/defaultWay.ts';
 import {
   getStoredResult, removeStoredResult, setIgnoredFromRanking, storedResultsForWay,
 } from '../store/resultsStore.ts';
-import { freeRideNear, freeRideResults } from '../store/freeRides.ts';
+import { freeRideNear, freeRideResults, markRideFree, unmarkRideFree } from '../store/freeRides.ts';
 import {
   clearLastRide, dropRecorded, getLastRide, replaceRecorded,
 } from './lastRide.ts';
@@ -291,6 +291,25 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
     }
   }
 
+  // virgin-cycle16 02 (Nathan 2026-09-28): a free ride is a post-ride label.
+  // meta (listRides, read on mount) gives the wall-clock duration; null if it
+  // has not arrived yet — the record is identity, the raw JSONL is the ride.
+  function onSaveFree() {
+    markRideFree(
+      request.rideId,
+      request.startedAtMs,
+      meta ? Math.max(0, (meta.endMs - meta.startMs) / 1000) : null,
+      effectiveRideSportId(meta?.sportId, currentSports()),
+    );
+    setNaming(false);
+    setTick((v) => v + 1); // model re-reads: free = the new record → kind 'free'
+  }
+  function onUnsaveFree() {
+    if (model.free === null) return;
+    unmarkRideFree(model.free.rideId);
+    setTick((v) => v + 1); // model re-reads: free = null → kind 'none', offer back
+  }
+
   async function onAdjustSave(chainageM: number[]) {
     if (adjust === null) return;
     setBusy(true);
@@ -355,6 +374,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
               await deleteRide(meta.rideId);
               await removeStoredResult(meta.rideId);
               dropRecorded(meta.rideId);
+              if (model.free !== null) unmarkRideFree(model.free.rideId); // virgin-cycle16 02: no orphan free record
               // RidesScreen remounts on close and refreshes itself; from
               // 'post-stop' the rider lands back on RECORD setup — same as
               // discard-after-the-fact; from 'routes' the way detail
@@ -516,17 +536,9 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
         <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder, alignItems: 'center' }]}>
           <Text style={{ color: t.textDim }}>FREE RIDE</Text>
           <Text style={{ color: t.textDim, fontSize: 12.5, marginTop: 4 }}>
-            {model.free.crossings.length} gates crossed
+            {pickLabel ?? 'saved as a free ride'}
           </Text>
-          {model.free.sectors.length > 0 ? (
-            <View style={{ alignSelf: 'stretch', marginTop: 8 }}>
-              {model.free.sectors.map((sec, i) => (
-                <Text key={i} style={[st.freeSectorRow, { color: t.text }]}>
-                  {wayLabelIn(currentCatalog(), sec.wayId)} S{sec.index} — {fmt(sec.rawS, 1)} raw
-                </Text>
-              ))}
-            </View>
-          ) : null}
+          <Text style={{ color: t.textDim, marginTop: 4 }}>no lap, no sectors — a free ride is not compared to anything</Text>
           <View style={{ alignSelf: 'stretch', marginTop: 10 }}>
             <WayMapView
               variant="browse"
@@ -596,13 +608,31 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
             <Text style={styles.deleteText}>Make this the reference of this way</Text>
           </Pressable>
         ) : null}
-        {offer !== null && !naming && adjust === null ? (
+        {offer !== null && !naming && adjust === null && model.kind !== 'free' ? (
           <Pressable
             style={[styles.deleteBtn, styles.promoteBtn, busy && styles.busy]}
             disabled={busy}
             onPress={() => setNaming(true)}
           >
             <Text style={styles.deleteText}>{offerLabel}</Text>
+          </Pressable>
+        ) : null}
+        {model.kind === 'none' && model.referenceOf === null && !naming && adjust === null ? (
+          <Pressable
+            style={[styles.deleteBtn, styles.promoteBtn, busy && styles.busy]}
+            disabled={busy}
+            onPress={onSaveFree}
+          >
+            <Text style={styles.deleteText}>Save as free ride</Text>
+          </Pressable>
+        ) : null}
+        {model.kind === 'free' ? (
+          <Pressable
+            style={[styles.deleteBtn, styles.promoteBtn, busy && styles.busy]}
+            disabled={busy}
+            onPress={onUnsaveFree}
+          >
+            <Text style={styles.deleteText}>Not a free ride</Text>
           </Pressable>
         ) : null}
       </View>
@@ -688,7 +718,6 @@ const st = StyleSheet.create({
     borderRadius: radius.btn,
   },
   slimBtnText: { fontSize: 12.5, fontWeight: '800', letterSpacing: 1 },
-  freeSectorRow: { fontSize: 14, fontVariant: ['tabular-nums'], textAlign: 'center', paddingVertical: 2 },
   pbDetail: { paddingBottom: 10 },
   hint: { fontSize: 11.5, marginBottom: 2 },
   pbRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 3 },
