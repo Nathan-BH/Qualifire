@@ -22,6 +22,26 @@ import type { Tier } from './chips.tsx';
 /** Ride-seconds per real second. Nathan/LBH: 10 first, tweak later. ONE constant. */
 export const REPLAY_RATE_DEFAULT = 10;
 export const REPLAY_RATES: readonly number[] = [5, 10, 25];
+/** dp-to-ride-seconds scrub gain, per unit rate (cycle15 brief 08 decision 4). On a ~240 dp
+ * bar this makes one full-width swipe move rate*96 ride-seconds: 8 min at 5x, 16 min at 10x,
+ * 40 min at 25x — a fine nudge at low speed, a whole commute in one swipe at high speed. */
+export const SCRUB_S_PER_DP_PER_RATE = 0.4;
+/** Cycles the replay speed dial 5 -> 10 -> 25 -> 5 (wraps). A rate not in REPLAY_RATES
+ * (shouldn't happen) falls back to REPLAY_RATES[0] rather than throwing. */
+export function nextReplayRate(rate: number): number {
+  const i = REPLAY_RATES.indexOf(rate);
+  if (i === -1) return REPLAY_RATES[0];
+  return REPLAY_RATES[(i + 1) % REPLAY_RATES.length];
+}
+/** Relative scrub-bar drag -> ride-seconds moved, scaled by the selected rate (decision 4):
+ * dx * rate * SCRUB_S_PER_DP_PER_RATE. Sign follows dx (right = forward). */
+export function scrubDeltaS(dx: number, rate: number): number {
+  return dx * rate * SCRUB_S_PER_DP_PER_RATE;
+}
+/** Clamp a ride-second value to [0, max(endS, 0)]. */
+export function clampClockS(v: number, endS: number): number {
+  return Math.min(Math.max(v, 0), Math.max(endS, 0));
+}
 /** Redraw cadence — 20 fps; see brief decision 5. */
 export const REPLAY_TICK_MS = 50;
 /** Ride-seconds the clock keeps running past the FINISH crossing before auto-pause (1 real s at 10x). */

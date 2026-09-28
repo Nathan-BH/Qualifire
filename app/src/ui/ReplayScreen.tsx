@@ -3,17 +3,18 @@
  * all logic lives in the pure `replayModel.ts`. Looks like the DEMO tab's
  * SECOND/TENTH RIDE run: live-variant map, the rider's dot on its own
  * recorded fixes, its own trace drawn thin beneath the way line (cycle15 07), prior rides racing as self dots, the shared
- * LiveSectorPane, a status line, and PAUSE/PLAY, RESTART, a speed pill
- * (5x / 10x / 25x), BACK. Mounted by RideDetailScreen.tsx in place of its
- * scroll view while `replaying`.
+ * LiveSectorPane, a status line, and one control row: speed dial, scrub
+ * bar, play/pause (long-press = restart). Mounted by RideDetailScreen.tsx
+ * in place of its scroll view while `replaying`.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTheme } from './themeContext.tsx';
 import { useSettings } from './settings.tsx';
 import { colors, radius, type PaddockTheme } from './theme.ts';
 import WayMapView from './wayMapView.tsx';
 import { LiveSectorPane } from './liveView.tsx';
+import { PlayIcon, PauseIcon } from './replayIcons.tsx';
 import type { RideDetailModel } from './rideDetailModel.ts';
 import { ALL_YELLOW } from './sectorTrailModel.ts';
 import { currentCatalog } from '../store/catalogStore.ts';
@@ -25,9 +26,10 @@ import {
   loadSelfTracksFor, selfDotsAt, selfLivePosition, type SelfTrack,
 } from './selfRaceModel.ts';
 import {
-  loadReplayRider, replayClockS, replayEndS, replayGatesDone, replayLiveViewModel,
-  replaySectorColours, replayTimebase, riderPositionAt, type ReplayAnchor, type ReplayRider,
-  REPLAY_RATE_DEFAULT, REPLAY_RATES, REPLAY_TICK_MS,
+  clampClockS, loadReplayRider, nextReplayRate, replayClockS, replayEndS, replayGatesDone,
+  replayLiveViewModel, replaySectorColours, replayTimebase, riderPositionAt, scrubDeltaS,
+  type ReplayAnchor, type ReplayRider,
+  REPLAY_RATE_DEFAULT, REPLAY_TICK_MS,
 } from './replayModel.ts';
 
 export default function ReplayScreen(props: {
@@ -167,6 +169,36 @@ export default function ReplayScreen(props: {
     setAnchor({ clockS, realMs: Date.now(), rate: r, playing: anchor.playing });
   }
 
+  function cycleRate() {
+    setRate(nextReplayRate(anchor.rate));
+  }
+
+  // Scrub bar — a relative jog, not an absolute seek (brief 08 decision 4).
+  // Reads anchor/endS/setClockS/setAnchor through a ref so the PanResponder,
+  // created once, always sees the latest render's values/closures.
+  const scrubRef = useRef({ anchor, endS, setClockS, setAnchor });
+  scrubRef.current = { anchor, endS, setClockS, setAnchor };
+  const startS = useRef(0);
+  const pan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        const p = scrubRef.current;
+        const now = replayClockS(p.anchor, Date.now());
+        startS.current = now;
+        p.setClockS(now);
+        p.setAnchor({ clockS: now, realMs: Date.now(), rate: p.anchor.rate, playing: false });
+      },
+      onPanResponderMove: (_e, gs) => {
+        const p = scrubRef.current;
+        const next = clampClockS(startS.current + scrubDeltaS(gs.dx, p.anchor.rate), p.endS);
+        p.setClockS(next);
+        p.setAnchor({ clockS: next, realMs: Date.now(), rate: p.anchor.rate, playing: false });
+      },
+    }),
+  ).current;
+
   if (rider === 'loading') {
     return (
       <View style={styles.raceColumn}>
@@ -193,6 +225,9 @@ export default function ReplayScreen(props: {
     ? `replay over · ${detail.rankLine || detail.lapLabel}`
     : `replay · ${anchor.rate}x · ${wayLabelIn(currentCatalog(), wayId)}`;
 
+  const progressPct = endS > 0 ? 100 * Math.min(Math.max(clockS / endS, 0), 1) : 0;
+  const scrubEnabled = !!vm && endS > 0;
+
   return (
     <View style={styles.raceColumn}>
       {settings.liveMap ? (
@@ -216,30 +251,30 @@ export default function ReplayScreen(props: {
         <View style={{ flex: 1 }} />
       )}
 
-      {vm ? <LiveSectorPane vm={vm} showLap /> : null}
+      {vm ? <LiveSectorPane vm={vm} showLap clockSize={56} /> : null}
 
       <Text style={styles.trackLine}>{statusLine}</Text>
 
-      <View style={styles.pillRow}>
-        {REPLAY_RATES.map((r) => (
-          <Pressable
-            key={r}
-            style={[styles.pill, r === anchor.rate ? styles.pillSelected : styles.pillOutline]}
-            onPress={() => setRate(r)}
-          >
-            <Text style={r === anchor.rate ? styles.pillTextSelected : styles.pillText}>{r}x</Text>
-          </Pressable>
-        ))}
+      <View style={styles.ctlRow}>
+        <Pressable style={styles.dial} hitSlop={8} onPress={cycleRate} accessibilityLabel="replay speed">
+          <Text style={styles.dialText}>{anchor.rate}×</Text>
+        </Pressable>
+        <View style={styles.scrubWrap} {...(scrubEnabled ? pan.panHandlers : {})}>
+          <View style={styles.scrubTrack}>
+            <View style={[styles.scrubFill, { width: `${progressPct}%` }]} />
+          </View>
+          <View style={[styles.scrubKnob, { left: `${progressPct}%` }]} />
+        </View>
+        <Pressable
+          style={styles.ctlBtn}
+          hitSlop={8}
+          onPress={togglePlay}
+          onLongPress={restart}
+          accessibilityLabel={anchor.playing ? 'pause' : 'play'}
+        >
+          {anchor.playing ? <PauseIcon color={t.text} /> : <PlayIcon color={t.text} />}
+        </Pressable>
       </View>
-
-      <Pressable style={styles.stopSlim} onPress={togglePlay}>
-        <Text style={styles.stopSlimText}>
-          {anchor.playing ? 'PAUSE' : isOver ? 'REPLAY AGAIN' : 'PLAY'}
-        </Text>
-      </Pressable>
-      <Pressable style={styles.stopSlim} onPress={restart}>
-        <Text style={styles.stopSlimText}>RESTART</Text>
-      </Pressable>
       <Pressable onPress={onClose} hitSlop={8}>
         <Text style={[styles.backText, { color: t.textDim }]}>‹ BACK</Text>
       </Pressable>
@@ -259,28 +294,39 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
     letterSpacing: 1.5,
     textTransform: 'uppercase',
     textAlign: 'center',
-    marginTop: 10,
   },
-  pillRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  pill: {
-    flex: 1, borderRadius: radius.btn, paddingVertical: 10, borderWidth: 2, alignItems: 'center',
+  ctlRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  dial: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: t.accent,
+    backgroundColor: t.race.card,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  pillSelected: { backgroundColor: t.accent, borderColor: t.accent },
-  pillOutline: { backgroundColor: 'transparent', borderColor: t.race.border },
-  pillText: { color: t.textDim, fontSize: 13, fontWeight: '800', letterSpacing: 1 },
-  pillTextSelected: { color: t.onAccent, fontSize: 13, fontWeight: '800', letterSpacing: 1 },
-  stopSlim: {
-    alignSelf: 'stretch',
-    height: 56,
+  dialText: { color: t.accent, fontSize: 15, fontWeight: '800' },
+  scrubWrap: { flex: 1, height: 44, justifyContent: 'center' },
+  scrubTrack: { height: 6, borderRadius: 3, overflow: 'hidden', backgroundColor: t.race.card },
+  scrubFill: { height: '100%', backgroundColor: t.accent },
+  scrubKnob: {
+    position: 'absolute',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: t.accent,
+    marginLeft: -8,
+  },
+  ctlBtn: {
+    width: 44,
+    height: 44,
     borderRadius: radius.btn,
     borderWidth: 2,
     borderColor: colors.amber,
     backgroundColor: t.race.card,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
   },
-  stopSlimText: { color: colors.amber, fontSize: 18, fontWeight: '800', letterSpacing: 4, flexShrink: 1 },
   backText: { fontSize: 13, fontWeight: '700', letterSpacing: 1, textAlign: 'center', marginTop: 4 },
 });

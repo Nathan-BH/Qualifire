@@ -26,6 +26,7 @@ registerHooks({
 const {
   buildReplayRider, replayEndS, replayClockS, replayTimebase, riderPositionAt,
   replayGatesDone, replaySectorColours, replayLiveViewModel, loadReplayRider,
+  nextReplayRate, scrubDeltaS, clampClockS,
   REPLAY_RATE_DEFAULT, REPLAY_RATES, REPLAY_TICK_MS, REPLAY_ROLL_OUT_S, REPLAY_EDGE_PAD_MS,
 } = await import('../src/ui/replayModel.ts');
 const { deriveGateCrossings } = await import('../src/store/derive.ts');
@@ -394,4 +395,29 @@ test('replay: loadReplayRider — memory fs round trip, and null on a missing/un
   await corruptFs.writeText(`rides/${rideId}.jsonl`, 'not json\n');
   const corrupt = await loadReplayRider(rideId, 'Morning', corruptFs);
   assert(corrupt === null, 'a corrupt ride file must yield null, never throw');
+});
+
+// ============================================================ cycle15 brief 08 — speed dial / scrub bar
+
+test('replay: nextReplayRate cycles 5 -> 10 -> 25 -> 5 and falls back on an unknown rate', () => {
+  assert(nextReplayRate(5) === 10, `expected 10, got ${nextReplayRate(5)}`);
+  assert(nextReplayRate(10) === 25, `expected 25, got ${nextReplayRate(10)}`);
+  assert(nextReplayRate(25) === 5, `expected wrap to 5, got ${nextReplayRate(25)}`);
+  assert(nextReplayRate(7) === REPLAY_RATES[0], `unknown rate must fall back to REPLAY_RATES[0], got ${nextReplayRate(7)}`);
+});
+
+test('replay: scrubDeltaS scales linearly with dx and rate, sign follows dx', () => {
+  assert(scrubDeltaS(0, 25) === 0, `expected 0 dp to move 0s, got ${scrubDeltaS(0, 25)}`);
+  assert(scrubDeltaS(240, 5) === 480, `expected 480 (8 min at 5x), got ${scrubDeltaS(240, 5)}`);
+  assert(scrubDeltaS(240, 25) === 2400, `expected 2400 (40 min at 25x), got ${scrubDeltaS(240, 25)}`);
+  assert(scrubDeltaS(-100, 10) === -400, `expected negative dx to move backward, got ${scrubDeltaS(-100, 10)}`);
+  const ratio = scrubDeltaS(240, 25) / scrubDeltaS(240, 5);
+  assert(ratio === 5, `25x must move 5x as far as 5x for the same drag, got ratio ${ratio}`);
+});
+
+test('replay: clampClockS clamps to [0, endS]', () => {
+  assert(clampClockS(-5, 100) === 0, `expected 0, got ${clampClockS(-5, 100)}`);
+  assert(clampClockS(150, 100) === 100, `expected 100, got ${clampClockS(150, 100)}`);
+  assert(clampClockS(42, 100) === 42, `expected 42 unchanged, got ${clampClockS(42, 100)}`);
+  assert(clampClockS(42, 0) === 0, `expected 0 when endS is 0, got ${clampClockS(42, 0)}`);
 });

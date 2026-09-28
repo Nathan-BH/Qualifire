@@ -215,7 +215,7 @@ export function viewModelFromEngine(
 
 /** The big ticking lap counter. 10 Hz re-render — digits are the only thing
  * moving on the whole surface (§2 rule 2). Ink, never a tier colour. */
-function LapClock({ tb }: { tb: Timebase | null }) {
+function LapClock({ tb, clockSize }: { tb: Timebase | null; clockSize?: number }) {
   const { t } = useTheme();
   const [, tick] = useState(0);
   const running = tb?.running ?? false;
@@ -225,7 +225,13 @@ function LapClock({ tb }: { tb: Timebase | null }) {
     return () => clearInterval(id);
   }, [running, tb?.anchorRealMs, tb?.rate]);
   return (
-    <Text style={[clockStyles.clock, { color: tb ? t.text : t.textDim }]}>
+    <Text
+      style={[
+        clockStyles.clock,
+        clockSize != null ? { fontSize: clockSize } : null,
+        { color: tb ? t.text : t.textDim },
+      ]}
+    >
       {tb ? fmtClock(clockMsAt(tb, Date.now())) : '0:00.0'}
     </Text>
   );
@@ -246,7 +252,9 @@ const clockStyles = StyleSheet.create({
 /** The pane. `showLap` gates the lap result so callers can honour the §2a
  * sequencing (~1.1 s after the final gate, with the lap earcon); when it
  * lands it cuts any running sector flash short (§2a.1) and is terminal. */
-export function LiveSectorPane({ vm, showLap = true }: { vm: LiveViewModel; showLap?: boolean }) {
+export function LiveSectorPane({
+  vm, showLap = true, clockSize,
+}: { vm: LiveViewModel; showLap?: boolean; clockSize?: number }) {
   const { t } = useTheme();
   const [flashOn, setFlashOn] = useState(false);
 
@@ -295,7 +303,7 @@ export function LiveSectorPane({ vm, showLap = true }: { vm: LiveViewModel; show
             pb={vm.flash.pb}
           />
         ) : (
-          <LapClock tb={vm.clock} />
+          <LapClock tb={vm.clock} clockSize={clockSize} />
         )}
       </View>
       <View style={paneStyles.strip}>
