@@ -17,7 +17,7 @@
  *   routeMapView.tsx no longer has any catalog-wide fallback to avoid).
  *
  * Both modes drive the SAME pane as the Record screen (§17's
- * shared-render-path rule): a scripted ride replayed at 25x by default (5x/15x
+ * shared-render-path rule): a scripted ride replayed at 25x by default (5x/15x/25x on
  * pills since virgin-cycle15 brief 03). Nothing here
  * writes to storage and nothing here is a ride — the Rides tab and the
  * Result tab never see it.
@@ -36,9 +36,10 @@
  * and the map/pane only appear once a run starts. The run itself takes
  * over the whole tab (`onFullscreenChange`, the same mechanism RecordScreen
  * uses) and mirrors RecordScreen's real running column: live-variant map on
- * top, the shared LiveSectorPane, a status line, STOP. The scripted clock
+ * top, the shared LiveSectorPane, a status line, REPLAY's control row (speed
+ * dial · scrub bar · play/pause — virgin-cycle16 brief 07). The scripted clock
  * rolls past the lap by `DEMO_ROLL_OUT_S` sim-seconds and then auto-STOPs
- * into an 'ending' screen. Lap chip is neutral before STOP, exactly as the
+ * into an 'ending' screen. Lap chip is neutral before the run ends, exactly as the
  * real screen since the ranking reveal. FIRST RIDE's SAVE now continues into
  * the real `GateAdjustCard` on a reference line built from the demo path
  * (brief D); KEEP/SAVE GATES are theatre too, nothing is written.
@@ -47,7 +48,7 @@
  * virgin-cycle11 brief B: a third mode, TENTH RIDE (now the default) —
  * SECOND RIDE is an honest ride 2 (one prior lap, purple/yellow only);
  * TENTH RIDE judges today against the last WINDOW_PREV pinned laps, the
- * real app's whole ranking pool. After STOP, SECOND/TENTH mount the real
+ * real app's whole ranking pool. Once the run ends, SECOND/TENTH mount the real
  * `TimingTower` in reveal mode over a board built by the real
  * `buildRankingReveal` (an injected synthetic window, no store reads) and,
  * after the hold, the real `RouteNamingCard` in its WP-G "new way on this
@@ -60,7 +61,7 @@
  * component, same tones, same caption; today's dot pre-selected; nothing stored.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BackHandler, Pressable, ScrollView, StyleSheet, Text, Vibration, View } from 'react-native';
+import { BackHandler, PanResponder, Pressable, ScrollView, StyleSheet, Text, Vibration, View } from 'react-native';
 import { tierLineColour } from './chips';
 import {
   buildDemoReveal,
@@ -116,14 +117,56 @@ import { appendTrailPoint, type TrailPoint } from './trailModel.ts';
 import WayMapView from './wayMapView';
 import { positionAtTime } from './wayMapMath';
 
+// virgin-cycle16 07 (Nathan 2026-09-28): the running-phase controls are
+// REPLAY's control row (cycle15 brief 08) — speed dial, scrub bar,
+// play/pause — with the play/pause glyphs drawn from plain Views exactly as
+// replayIcons.tsx draws them (no icon library, no font glyph). Kept local to
+// this file: REPLAY is the reference pattern only; nothing there is shared,
+// imported or edited.
+/** Play: a right-pointing triangle (border trick). Props: color only. */
+function DemoPlayIcon({ color }: { color: string }) {
+  return <View style={[iconStyles.triangle, { borderLeftColor: color }]} />;
+}
+/** Pause: two bars. Props: color only. */
+function DemoPauseIcon({ color }: { color: string }) {
+  return (
+    <View style={iconStyles.pauseWrap}>
+      <View style={[iconStyles.bar, { backgroundColor: color }]} />
+      <View style={[iconStyles.bar, { backgroundColor: color }]} />
+    </View>
+  );
+}
+const iconStyles = StyleSheet.create({
+  triangle: {
+    width: 0,
+    height: 0,
+    borderTopWidth: 10,
+    borderBottomWidth: 10,
+    borderLeftWidth: 17,
+    borderTopColor: 'transparent',
+    borderBottomColor: 'transparent',
+    marginLeft: 3,
+  },
+  pauseWrap: { flexDirection: 'row', gap: 4 },
+  bar: { width: 4, height: 18, borderRadius: 1 },
+});
+
 // WP-E: the scripted lap is DemoScreen's own frozen fixture
 // (demoRouteFixture.ts), not a manifest or catalog route — it renders
 // identically on every build, virgin included, and never touches the
 // bundled route manifest.
 // virgin-cycle15 brief 03: the fixed 25x RATE became a movable clock anchor
-// (demoModel.reanchorDemo) so the DEMO speed pills can change speed mid-ride
+// (demoModel.reanchorDemo) so the speed dial can change speed mid-ride
 // with no jump/pause/restart — see anchorRef below.
 const TICK_MS = 33;           // ~30 fps redraw; sim time is wall-clock anchored so the rate is exact
+// virgin-cycle16 07: scrub-bar gain, dp → sim-seconds per unit rate — the
+// same value as replayModel.SCRUB_S_PER_DP_PER_RATE (cycle15 brief 08
+// decision 4), by value: this file never imports from REPLAY. On a ~240 dp
+// bar one full-width swipe moves rate × 96 sim-seconds (8 min at 5x, 40 min
+// at 25x) against a run of about 15 min (demoRunEndS).
+const DEMO_SCRUB_S_PER_DP_PER_RATE = 0.4;
+/** Clamp a demo clock value to [0, endS] (replayModel.clampClockS, by value). */
+const clampDemoClockS = (v: number, endS: number): number => Math.min(Math.max(v, 0), endS);
 // virgin-cycle15 brief 03 fix-up: the picked speed lives for the app session,
 // not the mount — App.tsx renders one tab at a time, so leaving DEMO unmounts
 // this screen; without this the pick fell back to 25x on every tab hop.
@@ -153,12 +196,13 @@ export default function DemoScreen({ onFullscreenChange }: {
   const [trail, setTrail] = useState<readonly TrailPoint[]>([]);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   // virgin-cycle15 brief 03: playback speed is a movable clock anchor, not a
-  // constant — see demoModel.reanchorDemo. `rate` is the rendered pill state,
+  // constant — see demoModel.reanchorDemo. `rate` is the rendered dial label,
   // anchorRef is what the tick reads (the tick is a timer callback and must
   // not close over a stale render).
   const [rate, setRate] = useState<DemoRate>(demoSessionRate);
   const anchorRef = useRef<DemoClockAnchor>({ simS: 0, wallMs: 0, rate: demoSessionRate });
-  const skippingRef = useRef(false);
+  // virgin-cycle16 07: endRun's once-only latch (tick vs scrub-release race).
+  const endedRef = useRef(false);
   // Nathan (2026-09-19): after a full run -> ending -> reverse-launch -> idle -> re-run
   // cycle, the map sometimes came back with no route line/gate ticks (route asset drawn
   // fine on a fresh mount, so this is a native map-view lifecycle issue across a mount
@@ -296,6 +340,61 @@ export default function DemoScreen({ onFullscreenChange }: {
     else exitToIdle();
   }, [gatesDone, enterEnding, exitToIdle]);
 
+  const endS = demoRunEndS(script);
+
+  // virgin-cycle16 07: the ONE completion path — freeze the clock at the
+  // natural end and land on this tab's own 'ending' screen (reveal, naming
+  // card, the RESULTS-style plot), exactly the state a ride left to play out
+  // reaches. Reached by the tick (the ride played out) or by the scrub bar
+  // released at its right edge (Nathan 2026-09-28: the bar reaching the end
+  // IS the old SKIP ▸ RESULTS) — never by a button. It does NOT switch to the
+  // real RESULTS tab: the demo writes no ride, and App.tsx would unmount this
+  // screen on the way (cycle15 brief 03). No `phase` guard here on purpose:
+  // the tick captures this closure inside start(), one render before `phase`
+  // reads 'running'. endedRef makes the tick-vs-release race run it once;
+  // start() re-arms it.
+  const endRun = useCallback(() => {
+    if (endedRef.current) return;
+    endedRef.current = true;
+    anchorRef.current = skipDemoAnchor(anchorRef.current, Date.now(), endS);
+    clearTimer();
+    setRunning(false);
+    setClockS(endS);
+    enterEnding();
+  }, [endS, enterEnding]);
+
+  // PAUSE (the button, or the scrub bar's first touch): read the clock once,
+  // stop the tick, freeze the anchor there. Invariant from here until the next
+  // startTick(): while paused, anchorRef.current.simS IS the demo clock and
+  // wallMs is meaningless — whatever moves the clock while paused (scrub,
+  // speed change) writes simS and leaves the tick alone; resuming re-stamps
+  // wallMs. Already paused → a no-op read. Clamped so a read that lands in
+  // the ≤ TICK_MS window past endS parks at endS (the next PLAY ends the run).
+  const pauseRun = () => {
+    const simS = timer.current
+      ? Math.min(demoSimSAt(anchorRef.current, Date.now()), endS)
+      : anchorRef.current.simS;
+    clearTimer();
+    setRunning(false);
+    anchorRef.current = { simS, wallMs: Date.now(), rate: anchorRef.current.rate };
+    setClockS(simS);
+  };
+
+  // The tick, shared by start(), PLAY (resume) and long-press restart.
+  // Simulated seconds = real elapsed × rate, read off the wall clock anchor
+  // each tick — the tick only sets how OFTEN the dot redraws, never how
+  // fast simulated time advances (setInterval drift cannot slow the ride).
+  // R3: the clock keeps running DEMO_ROLL_OUT_S past the lap (long enough
+  // to read the neutral lap chip) and then ends the run into 'ending'.
+  const startTick = () => {
+    clearTimer();
+    timer.current = setInterval(() => {
+      const next = demoSimSAt(anchorRef.current, Date.now());
+      if (next >= endS) { endRun(); return; }
+      setClockS(next);
+    }, TICK_MS);
+  };
+
   const start = () => {
     runSeq.current += 1;
     clearTimer();
@@ -308,59 +407,96 @@ export default function DemoScreen({ onFullscreenChange }: {
     setPendingNames(null);
     setPhase('running');
     setRunning(true);
-    // Simulated seconds = real elapsed × rate, read off the wall clock anchor
-    // each tick — the tick only sets how OFTEN the dot redraws, never how
-    // fast simulated time advances (setInterval drift cannot slow the ride).
     // virgin-cycle15 brief 03: the rate chosen before/while a previous ride
     // persists for the session (decision 2) — only simS and wallMs reset.
     anchorRef.current = { simS: 0, wallMs: Date.now(), rate: anchorRef.current.rate };
-    skippingRef.current = false;
-    // R3: the clock keeps running DEMO_ROLL_OUT_S past the lap (long enough
-    // to read the neutral lap chip) and then auto-STOPs into 'ending'.
-    const endS = demoRunEndS(script);
-    timer.current = setInterval(() => {
-      const next = demoSimSAt(anchorRef.current, Date.now());
-      if (next >= endS) {
-        clearTimer();
-        setRunning(false);
-        setClockS(endS);
-        enterEnding();
-        return;
-      }
-      setClockS(next);
-    }, TICK_MS);
+    endedRef.current = false;
+    startTick();
   };
+
+  // virgin-cycle16 07: PLAY / PAUSE — REPLAY's togglePlay on the demo's
+  // anchor. `timer.current` is the imperative truth ("is the clock
+  // advancing"), `running` its rendered twin (map liveState, gate buzz, the
+  // glyph). REPLAY's third branch (over → restart from 0) has no equivalent:
+  // reaching endS always leaves the running phase, so a paused run is never
+  // "over".
+  function togglePlay() {
+    if (timer.current) { pauseRun(); return; }
+    anchorRef.current = { simS: anchorRef.current.simS, wallMs: Date.now(), rate: anchorRef.current.rate };
+    setRunning(true);
+    startTick();
+  }
+
+  // Long-press = restart from 0, playing, same rate — REPLAY's restart().
+  // Clears FIRST RIDE's trail as start() does; keeps the map mounted (runSeq
+  // is for the idle → running remount only).
+  function restart() {
+    anchorRef.current = { simS: 0, wallMs: Date.now(), rate: anchorRef.current.rate };
+    prevGates.current = 0;
+    setTrail([]);
+    setClockS(0);
+    setRunning(true);
+    startTick();
+  }
 
   // virgin-cycle15 brief 03: re-anchor the clock at "now" with the new rate
   // (decision 3) — the simulated clock stays continuous, only its slope
-  // changes. reanchorDemo is a no-op on the already-active pill.
+  // changes. virgin-cycle16 07: while paused the anchor is frozen (pauseRun's
+  // invariant), so only the rate swaps — reanchorDemo reads the wall clock and
+  // would add the paused wall-time × rate back into the clock.
   const onPickRate = useCallback((r: DemoRate) => {
-    anchorRef.current = reanchorDemo(anchorRef.current, Date.now(), r);
+    anchorRef.current = timer.current
+      ? reanchorDemo(anchorRef.current, Date.now(), r)
+      : { ...anchorRef.current, rate: r };
     demoSessionRate = r;
     setRate(r);
   }, []);
 
-  // virgin-cycle15 brief 03 (+ fix-up): SKIP ▸ RESULTS — end the demo ride
-  // through the same completion path the auto-stop uses and land on this
-  // tab's own 'ending' screen (reveal, naming card, the RESULTS-style plot),
-  // exactly the state a ride left to play out reaches. It does NOT switch to
-  // the real RESULTS tab: the demo writes no ride, so that tab has nothing
-  // of ours to show, and App.tsx would unmount this screen (losing the
-  // ending state) on the way. Branch (a) per brief 03 decision 4: the tick
-  // is a pure function of simS, so re-anchoring simS to the natural end and
-  // mirroring the auto-stop check below is the whole skip.
-  const onSkip = useCallback(() => {
-    if (phase !== 'running' || skippingRef.current) return;
-    skippingRef.current = true;
-    const endS = demoRunEndS(script);
-    anchorRef.current = skipDemoAnchor(anchorRef.current, Date.now(), endS);
-    clearTimer();
-    setRunning(false);
-    setClockS(endS);
-    enterEnding();
-    // skippingRef stays true until the next start() — by the time this
-    // returns, phase is no longer 'running' and the SKIP button is gone.
-  }, [phase, script, enterEnding]);
+  // virgin-cycle16 07: one speed dial instead of three pills — each tap moves
+  // to the next DEMO_RATES entry and wraps (5 → 15 → 25 → 5), the same shape
+  // as replayModel.nextReplayRate. Goes through onPickRate so the clock
+  // re-anchors exactly as a pill tap did.
+  const cycleRate = useCallback(() => {
+    const i = DEMO_RATES.indexOf(rate);
+    onPickRate(DEMO_RATES[(i + 1) % DEMO_RATES.length]);
+  }, [rate, onPickRate]);
+
+  // virgin-cycle16 07: the scrub bar — REPLAY's mechanics (cycle15 brief 08
+  // decision 4: a relative jog, dx × rate × gain, clamped to [0, endS]) on
+  // the demo's own anchor. First touch pauses, as REPLAY, and the run stays
+  // paused after the finger lifts (PLAY resumes). Releasing with the knob at
+  // the right edge ends the run (Nathan 2026-09-28) — on release, not mid-
+  // drag, so an overshoot can be dragged back, and because endRun unmounts
+  // this very view. The responder is created once and reads the latest
+  // render's closures through scrubRef; anchorRef/setClockS are stable.
+  const scrubRef = useRef({ pauseRun, endRun, endS });
+  scrubRef.current = { pauseRun, endRun, endS };
+  const scrubStartS = useRef(0);
+  const pan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        scrubRef.current.pauseRun();
+        scrubStartS.current = anchorRef.current.simS;
+      },
+      onPanResponderMove: (_e, gs) => {
+        const a = anchorRef.current;
+        const next = clampDemoClockS(
+          scrubStartS.current + gs.dx * a.rate * DEMO_SCRUB_S_PER_DP_PER_RATE,
+          scrubRef.current.endS,
+        );
+        anchorRef.current = { simS: next, wallMs: Date.now(), rate: a.rate };
+        setClockS(next);
+      },
+      onPanResponderRelease: () => {
+        if (anchorRef.current.simS >= scrubRef.current.endS) scrubRef.current.endRun();
+      },
+      onPanResponderTerminate: () => {
+        if (anchorRef.current.simS >= scrubRef.current.endS) scrubRef.current.endRun();
+      },
+    }),
+  ).current;
 
   // Switching mode stops any run in progress and resets every piece of
   // scripted state — the three modes never share a run. Only reachable from
@@ -384,7 +520,7 @@ export default function DemoScreen({ onFullscreenChange }: {
   }, [phase, showAnim, onFullscreenChange]);
 
   // Hardware back — RecordScreen's pattern: idle falls through to Shell
-  // (other tab → RECORD); running treats back like STOP; ending leaves
+  // (other tab → RECORD); running treats back as ending the run; ending leaves
   // without the reverse-mark ceremony.
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -455,6 +591,7 @@ export default function DemoScreen({ onFullscreenChange }: {
   }, []);
 
   if (phase === 'running') {
+    const progressPct = 100 * Math.min(Math.max(clockS / endS, 0), 1);
     return (
       <View style={styles.raceColumn}>
         {settings.liveMap ? (
@@ -474,35 +611,34 @@ export default function DemoScreen({ onFullscreenChange }: {
         )}
         {mode === 'first'
           ? <Text style={styles.trackLine}>{FIRST_RIDE_STATUS} · {demoFmtMS(clockS)}</Text>
-          : <LiveSectorPane vm={vm} showLap />}
+          : <LiveSectorPane vm={vm} showLap clockSize={56} />}
         <Text style={styles.trackLine}>demo · nothing is recorded</Text>
-        {/* virgin-cycle15 brief 03: speed pills (DEMO_RATES, not REPLAY's) +
-            SKIP ▸ RESULTS, which jumps to this tab's own ending screen (the
-            post-ride reveal + RESULTS-style plot) without waiting a demo lap
-            out. Running phase only. */}
-        <View style={styles.demoCtl}>
-          <View style={styles.pillRow}>
-            {DEMO_RATES.map((r) => (
-              <Pressable
-                key={r}
-                style={[styles.pill, r === rate ? styles.pillSelected : styles.pillOutline]}
-                onPress={() => onPickRate(r)}
-                accessibilityLabel={`Demo speed ${r}x`}
-              >
-                <Text style={r === rate ? styles.pillTextSelected : styles.pillText}>{r}x</Text>
-              </Pressable>
-            ))}
+        {/* virgin-cycle16 07 (Nathan 2026-09-28): REPLAY's control row, exactly —
+            speed dial (taps cycle DEMO_RATES), the scrub bar, play/pause with
+            long-press restart. No SKIP, no STOP: the run ends when the clock
+            reaches the end, by playing or by the scrub knob released at the
+            right edge; abandoning a run is the hardware back button (onStop),
+            as before. Running phase only. */}
+        <View style={styles.ctlRow}>
+          <Pressable style={styles.dial} hitSlop={8} onPress={cycleRate} accessibilityLabel={`Demo speed ${rate}x`}>
+            <Text style={styles.dialText}>{rate}×</Text>
+          </Pressable>
+          <View style={styles.scrubWrap} {...pan.panHandlers}>
+            <View style={styles.scrubTrack}>
+              <View style={[styles.scrubFill, { width: `${progressPct}%` }]} />
+            </View>
+            <View style={[styles.scrubKnob, { left: `${progressPct}%` }]} />
           </View>
-          <Pressable style={styles.stopSlim} onPress={onSkip} accessibilityLabel="Skip to results">
-            <Text style={styles.stopSlimText}>SKIP ▸ RESULTS</Text>
+          <Pressable
+            style={styles.ctlBtn}
+            hitSlop={8}
+            onPress={togglePlay}
+            onLongPress={restart}
+            accessibilityLabel={running ? 'pause' : 'play'}
+          >
+            {running ? <DemoPauseIcon color={t.text} /> : <DemoPlayIcon color={t.text} />}
           </Pressable>
         </View>
-        <Pressable style={styles.stopSlim} onPress={onStop}>
-          <Text style={styles.stopSlimText}>STOP</Text>
-          <Text style={styles.stopSlimSub}>
-            {demoStopOutcome(gatesDone) === 'ending' ? 'end the demo ride' : 'skips the demo · nothing is recorded'}
-          </Text>
-        </Pressable>
       </View>
     );
   }
@@ -654,21 +790,39 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
     textAlign: 'center',
     marginTop: 10,
   },
-  stopSlim: {
-    alignSelf: 'stretch',
-    height: 56,
+  // virgin-cycle16 07: REPLAY's control-row vocabulary (ReplayScreen.tsx
+  // ctlRow/dial/dialText/scrub*/ctlBtn), by value — same sizes, same tokens.
+  ctlRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  dial: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: t.accent,
+    backgroundColor: t.race.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dialText: { color: t.accent, fontSize: 15, fontWeight: '800' },
+  scrubWrap: { flex: 1, height: 44, justifyContent: 'center' },
+  scrubTrack: { height: 6, borderRadius: 3, overflow: 'hidden', backgroundColor: t.race.card },
+  scrubFill: { height: '100%', backgroundColor: t.accent },
+  scrubKnob: {
+    position: 'absolute',
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: t.accent,
+    marginLeft: -8,
+  },
+  ctlBtn: {
+    width: 44,
+    height: 44,
     borderRadius: radius.btn,
     borderWidth: 2,
     borderColor: colors.amber,
     backgroundColor: t.race.card,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
   },
-  stopSlimText: { color: colors.amber, fontSize: 18, fontWeight: '800', letterSpacing: 4, flexShrink: 1 },
-  stopSlimSub: { color: t.textDim, fontSize: 11, letterSpacing: 1 },
-  // virgin-cycle15 brief 03: wraps the DEMO speed pills + SKIP ▸ RESULTS,
-  // running phase only.
-  demoCtl: { gap: 8, marginTop: 8 },
 });

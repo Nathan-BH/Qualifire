@@ -8,7 +8,7 @@
  * pixel comes from resultsPlotModel.ts's buildPlotModel — this component
  * only measures its own width (onLayout, same idiom as wayMapView.tsx's
  * PngWayMap) and lays out plain Views from what the model already computed.
- * No arithmetic here — the caption's date/time are formatted directly off
+ * No model arithmetic here (only label-box layout) — the caption's date/time are formatted directly off
  * the selected point's own raw fields via colourModel.ts's fmt and
  * towerModel.ts's towerDate (the same formatters resultsPlotModel.ts uses
  * internally), never a recomputation; the all-time position segment
@@ -24,7 +24,11 @@
  * are pure time comparisons, not a rank — the switch only drops the
  * position segment from the selection caption below (the screen passes an
  * empty `selectedPosLabel` in that case). Tones are still computed by the
- * model; the dots are drawn neutral (virgin-cycle15 brief 04).
+ * model; the dots are NOT tone-coloured (virgin-cycle15 brief 04 retired the
+ * three-tone code with its legend). virgin-cycle16 brief 08: the newest
+ * ride's dot (last point, rightmost slot) is the brand yellow `t.accent`,
+ * every other dot is `t.textDim` — the same grey as the ticks and the
+ * average line — so the only colour on the plot marks "this ride".
  */
 import { useMemo, useState } from 'react';
 import {
@@ -43,7 +47,6 @@ const DASH_W = 2;
 const DASH_GAP = 4;
 const X_AXIS_H = 16;
 const Y_TICK_LABEL_W = 36;
-const AVG_LABEL_W = 44; // avg label needs more room than a bare tick ("avg 42:07" vs "42:07")
 const X_TICK_LABEL_W = 80;
 const RING_R = 8;
 
@@ -118,17 +121,6 @@ export default function ResultsPlot({
                   </Text>
                 )
               ))}
-              {model.meanY !== null && model.meanS !== null ? (
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    styles.avgLabel,
-                    { color: t.textDim, top: model.meanY - 7, width: AVG_LABEL_W },
-                  ]}
-                >
-                  {`avg ${fmt(model.meanS)}`}
-                </Text>
-              ) : null}
             </View>
             {/* plot area */}
             <View style={{ width: plotW, height: PLOT_H }}>
@@ -166,8 +158,12 @@ export default function ResultsPlot({
                   ]}
                 />
               ) : null}
-              {model.points.map((p) => {
+              {model.points.map((p, i) => {
                 const r = POINT_R;
+                // virgin-cycle16 brief 08: the newest ride (the window is
+                // ascending startedAtMs, so the last point) is the brand
+                // yellow; the rest are the plot's own grey (Decisions 1–3).
+                const newest = i === model.points.length - 1;
                 return (
                   <Pressable
                     key={p.rideId}
@@ -181,7 +177,7 @@ export default function ResultsPlot({
                         width: r * 2,
                         height: r * 2,
                         borderRadius: r,
-                        backgroundColor: t.text,
+                        backgroundColor: newest ? t.accent : t.textDim,
                       },
                     ]}
                   />
@@ -195,16 +191,31 @@ export default function ResultsPlot({
         <View style={{ flexDirection: 'row' }}>
           <View style={{ width: GUTTER_W }} />
           <View style={{ width: plotW, height: X_AXIS_H }}>
-            {xTicksToRender.map((tick, i) => (
-              <Text
-                // eslint-disable-next-line react/no-array-index-key
-                key={`${tick.at}-${i}`}
-                numberOfLines={1}
-                style={[styles.xTickLabel, { color: t.textDim, left: tick.at - X_TICK_LABEL_W / 2 }]}
-              >
-                {tick.label}
-              </Text>
-            ))}
+            {xTicksToRender.map((tick, i) => {
+              // virgin-cycle16 brief 08: a label is an 80px box centred on its
+              // tick; the newest tick sits PAD_R (12px) from the plot's right
+              // edge, so a centred box ran 28px past it, out of the card. Clamp
+              // the box inside the plot width and right-align a clamped label so
+              // its text hugs the tick. The left is not clamped: the oldest
+              // label's overhang lands in the empty gutter spacer and fits.
+              const centred = tick.at - X_TICK_LABEL_W / 2;
+              const maxLeft = plotW - X_TICK_LABEL_W;
+              const atEnd = centred > maxLeft;
+              return (
+                <Text
+                  // eslint-disable-next-line react/no-array-index-key
+                  key={`${tick.at}-${i}`}
+                  numberOfLines={1}
+                  style={[
+                    styles.xTickLabel,
+                    atEnd ? styles.xTickLabelEnd : null,
+                    { color: t.textDim, left: atEnd ? maxLeft : centred },
+                  ]}
+                >
+                  {tick.label}
+                </Text>
+              );
+            })}
           </View>
         </View>
       ) : null}
@@ -243,10 +254,10 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
   },
   emptyWrap: { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center' },
   yTickLabel: { position: 'absolute', fontSize: 10, textAlign: 'right' },
-  avgLabel: { position: 'absolute', fontSize: 10, fontWeight: '600', textAlign: 'right' },
   xTickLabel: {
     position: 'absolute', top: 0, fontSize: 10, width: X_TICK_LABEL_W, textAlign: 'center',
   },
+  xTickLabelEnd: { textAlign: 'right' },
   dashRow: {
     position: 'absolute', left: 0, right: 0, flexDirection: 'row', height: 2, overflow: 'hidden',
   },

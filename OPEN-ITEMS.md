@@ -278,3 +278,30 @@ Nathan answered most of `deployment/QUESTIONS-FOR-NATHAN.md` on 2026-09-09; fold
   the on-device pass. If it looks cramped, a small `marginTop`/reflow on `appTitle`
   would fix it; that's a new call for Nathan/a fresh Fable, not something brief 06
   pre-resolved.
+
+- **virgin-cycle16 (2026-09-29) — brief 07's "drag slider to the end" isn't
+  literal at low speeds.** Demo's new scrub gesture is a relative jog ported
+  byte-for-byte from Replay (`DEMO_SCRUB_S_PER_DP_PER_RATE`), not an absolute
+  seek. At the 5x default rate, one full-width drag on a normal phone screen
+  covers roughly 650 of the run's ~896 sim-seconds — it takes two drags to
+  reach the end, not one, even dragging edge-to-edge. At 25x a small nudge
+  ends it. Flagged by the Opus Inspect pass on cycle16 Group C; matches the
+  brief exactly (it's a faithful Replay port) but the on-device checklist's
+  "drag to the end ends the run" item may feel inconsistent at low speed.
+  Open question for Nathan/a fresh Fable: keep the Replay-identical relative
+  jog, or make Demo's scrub an absolute seek (knob position = fraction of
+  endS) so "drag to the edge = end" is literal regardless of rate? The two
+  screens would then differ in scrub feel even though they look identical.
+- **virgin-cycle16 (2026-09-29) — brief 08's "lighter in day mode" landed as
+  written but also dims the night-mode dots, and yellow-on-white contrast is
+  worth a look.** Nathan asked for lighter dots specifically because day-mode
+  black dots felt too strong; night mode wasn't part of the complaint. The
+  brief (and the landed code) applies `t.textDim` to non-today dots in BOTH
+  themes, which also dims night's dots from `t.text` (#F4F2EC) to `t.textDim`
+  (#9a978f) — a change nobody asked for. Separately, theme.ts already notes
+  the brand yellow (`t.accent`, #F5C542) has poor contrast on the white card
+  background (~1.6:1, vs ~3.7:1 for the grey dots) — worth checking on-device
+  whether "today's dot" is actually the easiest one to see or the hardest.
+  Flagged by the Opus Inspect pass on cycle16 Group C, not blocking (matches
+  the brief). Open question for Nathan: night mode too, or day-only? And does
+  the yellow dot need a thin border/outline to read clearly on light mode?
