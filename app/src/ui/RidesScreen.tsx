@@ -12,6 +12,7 @@ import { listRides } from '../storage';
 import type { PickEvent, RideMeta } from '../storage/types';
 import { decodeIndex } from '../storage/rideIndex';
 import { backfillMissingResults, getStoredResult } from '../store/resultsStore';
+import { freeRideNear, freeRideResults } from '../store/freeRides';
 import { currentCatalog } from '../store/catalogStore';
 import { effectiveRideSportId, wayIdsOfSport } from '../store/sports';
 import { activeSportId, currentSports } from '../store/sportStore';
@@ -158,10 +159,16 @@ export default function RidesScreen() {
     // virgin-cycle13: referenceWayFor/pickLabelFor are the "no way" fallback
     // chain (buildRideRows doc comment) — reference ride first, then this
     // effect's sidecar-derived pick label, then plain null (unchanged).
+    // virgin-cycle15 brief 13 §1: freeFor sits between the two — a free ride
+    // was always in this list (it is a raw ride like any other); this labels
+    // it "Free ride" + gate count instead of the generic "new → new · no
+    // lap". Same freeRideNear tolerance match RideDetailScreen uses, so the
+    // row's label and the detail's free view can never disagree.
     () => buildRideRows(rides ?? [], getStoredResult, (wayId, excl) => lapValues(wayId, excl),
       (id) => wayLabelIn(currentCatalog(), id),
       (rideId) => currentCatalog().ways.find((w) => w.referenceRideId === rideId) ?? null,
-      (rideId) => pickLabels.get(rideId) ?? null),
+      (rideId) => pickLabels.get(rideId) ?? null,
+      (startMs) => freeRideNear(freeRideResults(), startMs)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rides, resultsTick, pickLabels],
   );

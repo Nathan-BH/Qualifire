@@ -185,6 +185,67 @@ test('virgin-cycle13: buildRideRows — a MATCHED ride never consults referenceW
   assert(rows[0].wayName === 'Home Work Dry', `a matched ride keeps its normal labelFor result, got ${rows[0].wayName}`);
 });
 
+// virgin-cycle15 brief 13 §1 (Fable ruling 2026-09-28): a free ride is a raw
+// ride already in the list; `freeFor(startMs)` labels it. Fixture record has
+// the FreeRideRecord shape (store/freeRides.ts) — built inline, not imported,
+// so this suite stays free of that module's persistence imports.
+function makeFree(startedAtMs: number, nGates: number) {
+  return {
+    kind: 'freeRide' as const,
+    schemaVersion: 2 as const,
+    rideId: `free:${startedAtMs}`,
+    startedAtMs,
+    crossings: Array.from({ length: nGates }, (_, i) => ({ wayId: 'w', gateIndex: i, t: i * 10, estimated: false })),
+    sectors: [],
+  };
+}
+
+test('virgin-cycle15 §1: buildRideRows — an unnamed free ride with a record on file reads "Free ride" + its gate count, not the START pick', () => {
+  const metas: RideMeta[] = [{ rideId: 'r1', startMs: 1000, endMs: 2000, nFixes: 10 }];
+  const rows = buildRideRows(
+    metas, () => null, () => [], undefined,
+    () => null,
+    () => 'new → new',
+    (startMs) => (startMs === 1000 ? makeFree(1000, 3) : null),
+  );
+  assert(rows[0].wayName === 'Free ride', `expected "Free ride", got ${rows[0].wayName}`);
+  assert(rows[0].lapLabel === '3 gates', `the lap slot carries the gate count, got ${rows[0].lapLabel}`);
+  assert(rows[0].wayId === null && rows[0].lapS === null && rows[0].rank === null,
+    'a free ride has no way, no derived lap and no rank (D-025)');
+});
+
+test('virgin-cycle15 §1: buildRideRows — one crossing reads "1 gate" (singular)', () => {
+  const metas: RideMeta[] = [{ rideId: 'r1', startMs: 1000, endMs: 2000, nFixes: 10 }];
+  const rows = buildRideRows(metas, () => null, () => [], undefined, () => null, () => null, () => makeFree(1000, 1));
+  assert(rows[0].lapLabel === '1 gate', `got ${rows[0].lapLabel}`);
+});
+
+test('virgin-cycle15 §1: buildRideRows — a reference way still wins over a free record (a named free ride became a route\'s reference)', () => {
+  const metas: RideMeta[] = [{ rideId: 'r1', startMs: 1000, endMs: 2000, nFixes: 10 }];
+  const rows = buildRideRows(
+    metas, () => null, () => [],
+    (id) => (id === 'way:gymhome' ? 'Gym → Home' : id),
+    () => ({ id: 'way:gymhome' }),
+    () => null,
+    () => { throw new Error('freeFor must not be consulted once a reference way has claimed the ride'); },
+  );
+  assert(rows[0].wayName === 'Gym → Home — ref', `got ${rows[0].wayName}`);
+});
+
+test('virgin-cycle15 §1: buildRideRows — no free record (freeFor null) keeps the virgin-cycle13 pick-label fallback exactly', () => {
+  const metas: RideMeta[] = [{ rideId: 'r1', startMs: 1000, endMs: 2000, nFixes: 10 }];
+  const rows = buildRideRows(metas, () => null, () => [], undefined, () => null, () => 'new → new', () => null);
+  assert(rows[0].wayName === 'new → new' && rows[0].lapLabel === 'no lap', `got ${rows[0].wayName} / ${rows[0].lapLabel}`);
+});
+
+test('virgin-cycle15 §1: buildRideRows — a MATCHED ride never consults freeFor', () => {
+  const metas: RideMeta[] = [{ rideId: 'r1', startMs: 1000, endMs: 2000, nFixes: 10 }];
+  const result = makeResult('r1', 'Morning', 1000, { movingS: 500, rawS: 500, quality: 'clean' }, []);
+  const rows = buildRideRows(metas, () => result, () => [], undefined, () => null, () => null,
+    () => { throw new Error('freeFor must not be called for a matched ride'); });
+  assert(rows[0].wayName === 'Home Work Dry', `got ${rows[0].wayName}`);
+});
+
 // ============================================================ lapCellLabel
 
 test('ridehistory: lapCellLabel — the RIDES/RESULT shared rule: real time, ~raw when estimated, else "no lap"', () => {

@@ -20,6 +20,7 @@
  */
 import type { RideMeta } from '../storage/types.ts';
 import type { RideResult } from '../store/types.ts';
+import type { FreeRideRecord } from '../store/freeRides.ts';
 import { wayLabel } from '../store/defaultWay.ts';
 import { MIN_HISTORY, fmt, positionAmong, tierFor, type UiTier } from './colourModel.ts';
 import { towerDate } from './towerModel.ts';
@@ -94,6 +95,21 @@ export interface RideRowModel {
  * Both are optional and default to "nothing on file" so every existing
  * caller/test is unaffected.
  *
+ * virgin-cycle15 brief 13 §1 (Nathan 2026-09-27, Fable ruling 2026-09-28):
+ * a free ride is NOT a separate population to merge in — it is a raw ride
+ * like any other (startRide('free'), same index.json, same listRides()),
+ * so it was already in this list in its chronological place, just labelled
+ * by fallback 2 as "new → new · no lap". `freeFor(startMs)` — the caller
+ * passes freeRideNear(freeRideResults(), startMs), the SAME tolerance match
+ * RideDetailScreen resolves the free view with, so row and detail agree by
+ * construction — slots in between the two fallbacks above: a ride that
+ * founded a way is still "<way name> — ref" (a named free ride became a
+ * route's reference; that wins), an unnamed free ride with a record on
+ * file is "Free ride" with its gate-crossing count in the lap slot ("3
+ * gates" — the only honest figure a free record carries; D-025: no lap was
+ * ever derived), and everything else falls through to the pick label as
+ * before. Default "nothing on file", like the other two.
+ *
  * `laps(routeId, excl)` must exclude the ride's own rideId from its history
  * (mockup's `rankInTower` in-place semantics, colourModel's own contract) —
  * the caller passes lapValues(routeId, rideId), which already does this.
@@ -111,6 +127,7 @@ export function buildRideRows(
   labelFor: (id: string) => string = wayLabel,
   referenceWayFor: (rideId: string) => { id: string } | null = () => null,
   pickLabelFor: (rideId: string) => string | null = () => null,
+  freeFor: (startMs: number) => FreeRideRecord | null = () => null,
 ): RideRowModel[] {
   return [...metas]
     .sort((a, b) => b.startMs - a.startMs)
@@ -119,6 +136,21 @@ export function buildRideRows(
       const result = resultFor(m.rideId);
       if (result === null || result.wayId === null) {
         const refWay = referenceWayFor(m.rideId);
+        const free = refWay === null ? freeFor(m.startMs) : null;
+        if (free !== null) {
+          const n = free.crossings.length;
+          return {
+            rideId: m.rideId,
+            startMs: m.startMs,
+            dateLabel,
+            wayId: null,
+            wayName: 'Free ride',
+            lapS: null,
+            lapLabel: `${n} gate${n === 1 ? '' : 's'}`,
+            quality: null,
+            rank: null,
+          };
+        }
         const wayName = refWay !== null ? `${labelFor(refWay.id)} — ref` : pickLabelFor(m.rideId);
         return {
           rideId: m.rideId,
