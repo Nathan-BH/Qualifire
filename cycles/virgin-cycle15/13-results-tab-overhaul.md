@@ -699,3 +699,62 @@ holds by construction. Add **11.** open a route's way list, switch to RIDES, swi
 RESULTS → the way list is still open (`‹ ROUTES` returns to the cards); and **12.** with a way
 list open, switch sport in SETTINGS, return to RESULTS → the route list of the new sport, no
 stale `‹ ROUTES` row.
+
+## Ruling 2026-09-28 (Plan tier, Fable — Group 5 Inspect fix-up)
+
+A fresh-context Opus Inspect pass on commits 8e853f9 / d1ae13c / 3f0838c / 9627fcd
+passed briefs 12, 04, 13 §1 and the Shell-owned route-list navigation, and flagged
+six items in 13 §2-§5. All six are landed (uncommitted, app/ only); the two that
+matter are documented here, the rest were comment fixes.
+
+**D1 — the RESULTS route list could not scroll (regression).** The brief's route-card
+register was rendered as `routes.map(...)` inside a `flex: 1` View; the old flat list was a
+FlatList and RoutesScreen wraps the same register in a ScrollView. Past ~10 ridden routes
+the least-used ones (bottom of most-used-first) were unreachable. Fix: `ResultsScreen.tsx`
+now wraps title/badge/cards in `<ScrollView style={{ flex: 1 }} contentContainerStyle=...>`
+with RoutesScreen's `padding: 16, paddingBottom: 40`; the cards sit in their own `<View>` so
+the container's `gap: 14` spaces title/badge/block and the cards keep RoutesScreen's 10 px
+`marginBottom` between each other (they were 24 px apart before — gap + margin — which
+the wrap fixes as a side effect).
+
+**D2 — grouping by `route.wayIds` instead of `way.routeId` (medium; premise confirmed
+in code).** `store/routeCreation.ts` (existing-route path) appends a new way to
+`userCat.routes` only, so a SEED route's `wayIds` never learns about a user-recorded extra
+way; `mergeCatalogs` is seed-wins so the user copy cannot repair it; `validateCatalog` never
+requires the inverse link; the comment there says consumers resolve by `way.routeId`, and
+`RoutesScreen.tsx`, `catalogDetailModel.ts` and `routesForWay` all do. `resultsListModel.ts`
+was the odd one out, so on any curated-seed build such a way silently vanished from
+RESULTS (the empty virgin Preview seed never shows it). **Ruling:** membership is
+`way.routeId`, full stop — `route.wayIds` is not consulted anywhere in this model any more.
+`rideCountForRoute` now takes `(route, catalog, resultsFor)` and sums over
+`catalog.ways.filter(w => w.routeId === route.id)`; it stays exported as the one-line
+definition the tests pin, unused by the screen. New test:
+`buildResultsRoutes — a way linked only by way.routeId (not in route.wayIds) still groups
+under its route` (way `way:extra` with `routeId: 'rt:AB'`, absent from `rt:AB.wayIds` —
+asserted as a precondition — shows under rt:AB with its rides counted, ordered and
+`lastRiddenAtMs` propagated). The `rideCountForRoute` test was rewritten to the same
+convention (its stray way now also has a sibling way on another route, to pin "other
+route's way does not count").
+
+**D5 — doc comment vs. implementation.** The header claimed "not a re-implementation of
+the way-level sort" while the code re-sorted each route's ways with a copy of the
+comparator. Taking the doc at its word turned out to be the cleanest D2 fix as well:
+`buildResultsRoutes` now walks `buildResultsList`'s already-sorted rows ONCE, bucketing
+each row into `waysByRouteId` via a `wayId → routeId` map built from `catalog.ways`;
+buckets inherit the flat list's relative order, which is the way-level order by
+construction (identical comparator), so the per-route re-sort is gone. Route order is
+still catalog order → sort (rides desc, last desc, label asc). The `Internal.lastMs`
+duplicate of `lastRiddenAtMs` was dropped in the same pass (the route sort reads
+`lastRiddenAtMs` directly). A ridden way whose `routeId` names no catalog route is dropped
+(nowhere to show it; validateCatalog rejects that shape).
+
+**D3 / D4 / D6 — stale comments only.** `tower.tsx` header + `reveal` prop doc + the
+`setLanded` line: since brief 04 the row's only tier colour is the left bar, which fades in
+with the existing 200 ms `arrive` (its opacity IS `arrive`); pos + gap are still the hard
+cut. `resultsPlot.tsx` header: x is the slot index (brief 04), not proportional time.
+`tabNav.tsx` header: now lists `openResultsRoute: setResultsRoute` / `closeResultsRoute`.
+
+**Verification (this fix-up):** `tsc --noEmit` exit 0; `tests/run.ts` **750 / 747 / 0 / 3**
+(was 749 / 746 / 0 / 3 going in — +1 = the D2 test). Files: `app/src/ui/ResultsScreen.tsx`,
+`app/src/ui/resultsListModel.ts`, `app/src/ui/tower.tsx`, `app/src/ui/resultsPlot.tsx`,
+`app/src/ui/tabNav.tsx`, `app/tests/resultsmodel_suite.ts`. Nothing under `store/`.

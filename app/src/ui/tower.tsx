@@ -9,9 +9,11 @@
  * out — nothing here knows where rows came from (one render path, LAYOUT
  * §3.8).
  *
- * Row: P# · tier-coloured time (+ PB ●) · gap to P1 · date. Today ≈1.5× row
- * height, time at display size, accent-yellow left bar (identity chrome,
- * never a tier). Estimated lap = unranked "NO TIME" (dashed-grey time, sits
+ * Row: P# · time (+ PB ●) · gap to P1 · date. Today ≈1.5× row height, time
+ * at display size in plain ink, and a TIER-COLOURED left bar — since
+ * virgin-cycle15 brief 04 the bar is the only tier colour on the row (it
+ * used to be the time, with a fixed accent-yellow bar). Estimated lap =
+ * unranked "NO TIME" (dashed-grey time, sits
  * last, travels zero rows). Archive-seeded ghosts carry a ○ marker (D-018).
  * Position is a FACT — no failure styling for low positions (D-013).
  *
@@ -24,8 +26,11 @@
  *
  * virgin-cycle11 `reveal` mode: today's row rides up in plain ink with no
  * position/gap, passed rows step down ONE AT A TIME instead of in lockstep,
- * and at the landing instant a hard state flip (never a fade) reveals the
- * tier colour, P<n> and the gap — the emotional payoff Nathan asked for
+ * and at the landing instant a hard state flip (never a fade) reveals P<n>
+ * and the gap; the tier colour — the bar, since brief 04 — fades in with the
+ * ~200 ms arrival, because the bar's opacity IS `arrive` (brief 04 kept that
+ * as-is: the cut is the position, the bar is chrome). The emotional payoff
+ * Nathan asked for
  * (`marketing/silent-studio/ranking/rounds/v7`). Default `reveal = false`
  * preserves every pixel of the original slot-in for the Preview screen, its
  * only other consumer.
@@ -104,8 +109,9 @@ export function TimingTower({
   /** §3a.3: REFERENCE SET frame — collapses to today's all-purple row alone */
   ceremony?: boolean;
   /** virgin-cycle11 ranking reveal: today rides up in plain ink with no P/gap, passed
-   *  rows step down one at a time, and pos + gap + tier colour appear as a HARD CUT at
-   *  the landing instant (never a fade — same rule as the sector strip). Only
+   *  rows step down one at a time, and pos + gap appear as a HARD CUT at the landing
+   *  instant (never a fade — same rule as the sector strip); the tier colour (the
+   *  accent bar only, brief 04) fades in over the ~200 ms `arrive` from that instant. Only
    *  meaningful with `justFinished`. Default false = the Preview's original slot-in. */
   reveal?: boolean;
   /** travel duration; default SLOT_IN_MS. The reveal passes climbMsFor(). */
@@ -158,7 +164,7 @@ export function TimingTower({
       easing: Easing.out(Easing.cubic), useNativeDriver: true,
     }).start(() => {
       if (!mounted.current) return;
-      setLanded(true); // the hard cut: pos, gap, tier colour appear this frame
+      setLanded(true); // the hard cut: pos and gap appear this frame; the tier bar fades in via `arrive` below
       Animated.timing(arrive, { toValue: 1, duration: ARRIVE_MS, useNativeDriver: true })
         .start(() => onPlayed?.());
     });

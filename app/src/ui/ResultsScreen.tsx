@@ -19,7 +19,7 @@
  * not `currentCatalog()` — and carries the same bare sport-name badge line.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { activeCatalog, activeSportId, currentSports } from '../store/sportStore';
 import { storedResultsForWay } from '../store/resultsStore';
 import { allTimeBestLapS } from './colourModel';
@@ -71,8 +71,12 @@ export default function ResultsScreen({ openRouteId }: { openRouteId: string | n
     );
   }
 
+  // Group 5 Inspect fix-up (2026-09-28): a ScrollView, like RoutesScreen's
+  // card register -- a plain flex:1 View clipped the least-used routes once
+  // the ridden list outgrew the screen. The cards sit in their own View so
+  // the container's `gap` spaces the title/badge/block, not every card.
   return (
-    <View style={styles.container}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.container}>
       <Text style={styles.title}>Results</Text>
       {/* Q5/WP-1: bare sport-name badge, same convention as ROUTES/RIDES. */}
       <Text style={styles.sub}>
@@ -82,35 +86,37 @@ export default function ResultsScreen({ openRouteId }: { openRouteId: string | n
         // decision 8: no ridden route at all.
         <Text style={styles.empty}>NO RESULTS YET — RIDE A ROUTE FIRST</Text>
       ) : (
-        routes.map((route) => (
-          <Pressable
-            key={route.routeId}
-            style={styles.card}
-            onPress={() => (
-              route.ways.length === 1
-                // decision 5: a single ridden way skips the way list.
-                ? tabNav.openResults({ wayId: route.ways[0].wayId })
-                : tabNav.openResultsRoute(route.routeId)
-            )}
-          >
-            <View style={styles.cardRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardTitle}>{route.label}</Text>
-                <Text style={styles.cardSub}>
-                  {route.ways.length} way{route.ways.length === 1 ? '' : 's'} · {route.rideCount} ride{route.rideCount === 1 ? '' : 's'}
-                </Text>
+        <View>
+          {routes.map((route) => (
+            <Pressable
+              key={route.routeId}
+              style={styles.card}
+              onPress={() => (
+                route.ways.length === 1
+                  // decision 5: a single ridden way skips the way list.
+                  ? tabNav.openResults({ wayId: route.ways[0].wayId })
+                  : tabNav.openResultsRoute(route.routeId)
+              )}
+            >
+              <View style={styles.cardRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitle}>{route.label}</Text>
+                  <Text style={styles.cardSub}>
+                    {route.ways.length} way{route.ways.length === 1 ? '' : 's'} · {route.rideCount} ride{route.rideCount === 1 ? '' : 's'}
+                  </Text>
+                </View>
+                <Text style={styles.chev}>›</Text>
               </View>
-              <Text style={styles.chev}>›</Text>
-            </View>
-          </Pressable>
-        ))
+            </Pressable>
+          ))}
+        </View>
       )}
-    </View>
+    </ScrollView>
   );
 }
 
 const makeStyles = (t: PaddockTheme) => StyleSheet.create({
-  container: { flex: 1, padding: 16, gap: 14 },
+  container: { padding: 16, paddingBottom: 40, gap: 14 },
   title: {
     color: t.text,
     fontSize: 26,

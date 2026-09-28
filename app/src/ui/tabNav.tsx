@@ -6,7 +6,9 @@
  * — screens depend on this module, App owns the implementation (`go:
  * setTab`, `openRide: setRideDetail`, `closeRide`, `openGateAdjust:
  * setGateAdjust`, `closeGateAdjust`, `openCatalog: setCatalogDetail`,
- * `closeCatalog`, `openResults: setResultsDetail`, `closeResults`).
+ * `closeCatalog`, `openResults: setResultsDetail`, `closeResults`,
+ * `openResultsRoute: setResultsRoute`, `closeResultsRoute` — the last two
+ * from virgin-cycle15 brief 13's RESULTS route -> way drill-down).
  *
  * `Tab` is exported from here (not App.tsx) precisely so a screen can import
  * the type without creating a screen -> App -> screen import cycle.

@@ -205,15 +205,42 @@ test('resultsmodel: buildResultsRoutes — empty catalog returns []', () => {
   assert(routes.length === 0, `expected [], got ${JSON.stringify(routes)}`);
 });
 
-test('resultsmodel: rideCountForRoute — sums over the route\'s own wayIds only, ignoring a stray way', () => {
+test('resultsmodel: rideCountForRoute — sums over the ways whose routeId is this route, ignoring a stray way', () => {
   const resultsFor = (wayId: string): RideResult[] => {
     if (wayId === 'Morning') return [mk('m1', 100, 600), mk('m2', 200, 610)];
     if (wayId === 'route:abc') return [mk('a1', 300, 700)];
+    if (wayId === 'way:def') return [mk('d1', 350, 500)];
     if (wayId === 'not-in-any-route') return [mk('x1', 400, 800), mk('x2', 500, 810)];
     return [];
   };
-  const total = rideCountForRoute(routeAB, resultsFor);
-  assert(total === 3, `expected 3 (2 + 1, stray way ignored), got ${total}`);
+  const total = rideCountForRoute(routeAB, CATALOG, resultsFor);
+  assert(total === 3, `expected 3 (2 + 1; way:def is rt:AC's, stray way is nobody's), got ${total}`);
+});
+
+// Group 5 Inspect fix-up (2026-09-28): membership is `way.routeId`, not
+// `route.wayIds`. store/routeCreation.ts's existing-route path cannot update
+// a SEED route's wayIds (seed wins in mergeCatalogs), so on a curated-seed
+// build a user-recorded extra way on a seed route is linked ONLY by its own
+// routeId -- and must still show under that route in RESULTS.
+test('resultsmodel: buildResultsRoutes — a way linked only by way.routeId (not in route.wayIds) still groups under its route', () => {
+  const wayOrphanLink: Way = { id: 'way:extra', routeId: 'rt:AB', refLineId: 'ref:extra', gateSetVersion: 1, seeded: false, specs: ['Extra'] };
+  const catalog: Catalog = { ...CATALOG, ways: [...CATALOG.ways, wayOrphanLink] };
+  assert(!routeAB.wayIds.includes('way:extra'), 'fixture precondition: rt:AB.wayIds must NOT list way:extra');
+  const resultsFor = (wayId: string): RideResult[] => {
+    if (wayId === 'Morning') return [mk('m1', 100, 600)];
+    if (wayId === 'way:extra') return [mk('e1', 900, 650, 'clean', { wayId: 'way:extra' }), mk('e2', 950, 640, 'clean', { wayId: 'way:extra' })];
+    return [];
+  };
+  const routes = buildResultsRoutes(catalog, resultsFor, () => null);
+  assert(routes.length === 1 && routes[0].routeId === 'rt:AB', `expected only rt:AB, got ${JSON.stringify(routes.map((r) => r.routeId))}`);
+  assert(routes[0].rideCount === 3, `expected rt:AB rideCount 3 (1 + 2 via way.routeId), got ${routes[0].rideCount}`);
+  assert(routes[0].ways.length === 2, `expected 2 ridden ways under rt:AB, got ${routes[0].ways.length}`);
+  // way-level order is the flat list's: way:extra (2 rides) before Morning (1).
+  assert(routes[0].ways[0].wayId === 'way:extra' && routes[0].ways[1].wayId === 'Morning',
+    `expected [way:extra, Morning], got ${JSON.stringify(routes[0].ways.map((w) => w.wayId))}`);
+  assert(routes[0].lastRiddenAtMs === 950, `expected route lastRiddenAtMs 950, got ${routes[0].lastRiddenAtMs}`);
+  // rideCountForRoute agrees with the grouped model.
+  assert(rideCountForRoute(routeAB, catalog, resultsFor) === 3, 'rideCountForRoute must agree with buildResultsRoutes');
 });
 
 test('resultsmodel: routeLabel — From → To via landmark lookup; missing landmark renders as \'?\'', () => {

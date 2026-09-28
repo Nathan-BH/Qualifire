@@ -1,7 +1,9 @@
 /**
  * WP-2 Phase C: the RESULTS detail's scatterplot (§3.3-§3.7) — the last
- * PLOT_N ranked rides on a way, x = time (proportional, no panning — the
- * whole window always fits, never a ScrollView, never PX_PER_DAY), y =
+ * PLOT_N ranked rides on a way, x = slot index (a fixed PLOT_N-slot grid,
+ * newest at the right edge — virgin-cycle15 brief 04; not proportional to
+ * time any more; no panning — the whole window always fits, never a
+ * ScrollView, never PX_PER_DAY), y =
  * scored seconds with faster-at-the-top orientation (Nathan, Q3). Every
  * pixel comes from resultsPlotModel.ts's buildPlotModel — this component
  * only measures its own width (onLayout, same idiom as wayMapView.tsx's
