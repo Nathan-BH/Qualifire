@@ -570,11 +570,8 @@ export default function DemoScreen({ onFullscreenChange }: {
               buttons stay put). Nothing here is read from or written to storage. */}
           {revealDone && plotResults !== null ? (
             <View>
-              <Text style={[styles.h2, { marginTop: 8 }]}>
+              <Text style={[styles.h2, { marginTop: 8, marginBottom: 10 }]}>
                 {demoPlotCaption(plotResults)} · AS ON THE RESULTS TAB
-              </Text>
-              <Text style={[styles.sub, { marginBottom: 10 }]}>
-                purple = fastest of these · green / yellow = faster / slower than their average
               </Text>
               <ResultsPlot
                 results={plotResults}

@@ -21,7 +21,8 @@
  * Rankings-off (SETTINGS s.tower) leaves the plot itself untouched — tones
  * are pure time comparisons, not a rank — the switch only drops the
  * position segment from the selection caption below (the screen passes an
- * empty `selectedPosLabel` in that case).
+ * empty `selectedPosLabel` in that case). Tones are still computed by the
+ * model; the dots are drawn neutral (virgin-cycle15 brief 04).
  */
 import { useMemo, useState } from 'react';
 import {
@@ -29,12 +30,11 @@ import {
 } from 'react-native';
 import type { RideResult } from '../store/types.ts';
 import {
-  buildPlotModel, GUTTER_W, PLOT_H, POINT_R, FASTEST_R, type PointTone,
+  buildPlotModel, GUTTER_W, PLOT_H, POINT_R,
 } from './resultsPlotModel.ts';
-import { YELLOW_TIER } from './tierColour.ts';
 import { fmt } from './colourModel.ts';
 import { towerDate } from './towerModel.ts';
-import { PaddockTheme, colors, radius } from './theme.ts';
+import { PaddockTheme, radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
 
 const DASH_W = 2;
@@ -44,12 +44,6 @@ const Y_TICK_LABEL_W = 36;
 const AVG_LABEL_W = 44; // avg label needs more room than a bare tick ("avg 42:07" vs "42:07")
 const X_TICK_LABEL_W = 80;
 const RING_R = 8;
-
-function toneColour(tone: PointTone): string {
-  if (tone === 'fastest') return colors.purple;
-  if (tone === 'faster') return colors.green;
-  return YELLOW_TIER;
-}
 
 export default function ResultsPlot({
   results, selectedRideId, selectedPosLabel, onSelect, onOpenRide,
@@ -171,7 +165,7 @@ export default function ResultsPlot({
                 />
               ) : null}
               {model.points.map((p) => {
-                const r = p.tone === 'fastest' ? FASTEST_R : POINT_R;
+                const r = POINT_R;
                 return (
                   <Pressable
                     key={p.rideId}
@@ -185,7 +179,7 @@ export default function ResultsPlot({
                         width: r * 2,
                         height: r * 2,
                         borderRadius: r,
-                        backgroundColor: toneColour(p.tone),
+                        backgroundColor: t.text,
                       },
                     ]}
                   />

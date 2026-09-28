@@ -86,9 +86,6 @@ export default function ResultsDetailScreen({ request }: { request: ResultsDetai
       <Text style={[styles.wayName, { color: t.text }]}>{label}</Text>
 
       <Text style={[st.h2, { color: t.textDim }]}>{windowCaption(windowN)}</Text>
-      <Text style={[styles.hint, { color: t.textDim }]}>
-        purple = fastest of these · green / yellow = faster / slower than their average
-      </Text>
       <ResultsPlot
         results={results}
         selectedRideId={selectedRideId}
@@ -191,7 +188,6 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
   topTitle: { fontSize: 15, fontWeight: '800', letterSpacing: 2 },
   topDate: { fontSize: 12 },
   wayName: { fontSize: 22, fontWeight: '800', marginTop: 4 },
-  hint: { fontSize: 12, marginTop: -4, marginBottom: 10 },
   notRanked: { fontSize: 11, letterSpacing: 1, marginTop: 8, marginBottom: 2 },
   histRow: {
     height: 38,

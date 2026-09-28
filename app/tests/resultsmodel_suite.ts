@@ -31,9 +31,11 @@ const {
 } = await import('../src/ui/resultsListModel.ts');
 const {
   plotWindow, fitDomain, toneFor, buildPlotModel, mean,
-  PAD_L, PAD_R, MAX_Y_TICKS, MAX_X_TICKS, LABEL_COLLISION_PX,
+  PAD_L, PAD_R, MAX_Y_TICKS, LABEL_COLLISION_PX,
+  xAtSlot, slotIndex, PLOT_N, X_TICK_MIN_GAP_PX,
 } = await import('../src/ui/resultsPlotModel.ts');
 const { WINDOW_PREV } = await import('../src/ui/colourModel.ts');
+const { towerDate } = await import('../src/ui/towerModel.ts');
 
 // ------------------------------------------------------------------ fixture
 
@@ -260,20 +262,24 @@ test('resultsmodel: toneFor — two times: exactly one fastest', () => {
 
 // buildPlotModel
 
-test('resultsmodel: buildPlotModel — pixel positions proportional to time, tone extremes, meanY between them', () => {
+test('resultsmodel: buildPlotModel — x is the slot, newest at the right, gaps independent of time', () => {
   const results = [
     mk('q0', 0, 650), // slowest, oldest
-    mk('q1', 100, 600), // fastest, at 1/3
-    mk('q2', 200, 620), // at 2/3
+    mk('q1', 100, 600), // fastest
+    mk('q2', 200, 620),
     mk('q3', 300, 610), // newest
   ];
   const model = buildPlotModel(results, 300);
   const byId = new Map(model.points.map((p) => [p.rideId, p]));
 
-  assert(Math.abs(byId.get('q0')!.x - PAD_L) < 1e-9, `expected oldest x===PAD_L, got ${byId.get('q0')!.x}`);
   assert(Math.abs(byId.get('q3')!.x - (300 - PAD_R)) < 1e-9, `expected newest x===plotW-PAD_R, got ${byId.get('q3')!.x}`);
-  assert(Math.abs(byId.get('q1')!.x - 104) < 1e-6, `expected q1 (1/3) x≈104, got ${byId.get('q1')!.x}`);
-  assert(Math.abs(byId.get('q2')!.x - 196) < 1e-6, `expected q2 (2/3) x≈196, got ${byId.get('q2')!.x}`);
+  assert(Math.abs(byId.get('q0')!.x - xAtSlot(PLOT_N - 4, 300)) < 1e-9, `expected oldest x===xAtSlot(PLOT_N-4,300), got ${byId.get('q0')!.x}`);
+  const q0x = byId.get('q0')!.x;
+  const q1x = byId.get('q1')!.x;
+  const q2x = byId.get('q2')!.x;
+  const q3x = byId.get('q3')!.x;
+  assert(Math.abs((q1x - q0x) - (q2x - q1x)) < 1e-6, `expected equal slot spacing (q1-q0 vs q2-q1), got ${q1x - q0x} vs ${q2x - q1x}`);
+  assert(Math.abs((q2x - q1x) - (q3x - q2x)) < 1e-6, `expected equal slot spacing (q2-q1 vs q3-q2), got ${q2x - q1x} vs ${q3x - q2x}`);
 
   const fastest = model.points.find((p) => p.tone === 'fastest')!;
   assert(fastest.rideId === 'q1', `expected q1 (600s) to be fastest, got ${fastest.rideId}`);
@@ -285,6 +291,45 @@ test('resultsmodel: buildPlotModel — pixel positions proportional to time, ton
   for (let i = 1; i < model.yTicks.length; i++) {
     assert(model.yTicks[i].at > model.yTicks[i - 1].at, 'yTicks must ascend (a slower time has a larger at)');
   }
+});
+
+test('resultsmodel: buildPlotModel — two rides one slot apart whatever their time gap', () => {
+  const DAY_MS = 86_400_000;
+  const oneDayApart = [mk('a0', 0, 600), mk('a1', DAY_MS, 610)];
+  const twoHundredDaysApart = [mk('b0', 0, 600), mk('b1', 200 * DAY_MS, 610)];
+  const expectedGap = xAtSlot(1, 300) - xAtSlot(0, 300);
+  for (const rides of [oneDayApart, twoHundredDaysApart]) {
+    const model = buildPlotModel(rides, 300);
+    assert(model.points.length === 2, `expected 2 points, got ${model.points.length}`);
+    const gap = model.points[1].x - model.points[0].x;
+    assert(Math.abs(gap - expectedGap) < 1e-6, `expected slot gap ${expectedGap}, got ${gap}`);
+    assert(Math.abs(model.points[1].x - (300 - PAD_R)) < 1e-9, `expected newest x===plotW-PAD_R, got ${model.points[1].x}`);
+  }
+});
+
+test('resultsmodel: buildPlotModel — full window spans PAD_L to plotW - PAD_R', () => {
+  const rides = Array.from({ length: PLOT_N }, (_, i) => mk(`f${i}`, (i + 1) * 10_000, 600 + i));
+  const model = buildPlotModel(rides, 300);
+  assert(model.points.length === PLOT_N, `expected ${PLOT_N} points, got ${model.points.length}`);
+  assert(Math.abs(model.points[0].x - PAD_L) < 1e-9, `expected first point x===PAD_L, got ${model.points[0].x}`);
+  assert(Math.abs(model.points[PLOT_N - 1].x - (300 - PAD_R)) < 1e-9, `expected last point x===plotW-PAD_R, got ${model.points[PLOT_N - 1].x}`);
+});
+
+test('resultsmodel: buildPlotModel — xTicks: one label for n=1, one for n=2 at 300px, two for a full window', () => {
+  const one = buildPlotModel([mk('o0', 1000, 600)], 300);
+  assert(one.xTicks.length === 1, `expected 1 xTick for n=1, got ${one.xTicks.length}`);
+  assert(Math.abs(one.xTicks[0].at - (300 - PAD_R)) < 1e-9, `expected the n=1 tick at plotW-PAD_R, got ${one.xTicks[0].at}`);
+
+  const two = buildPlotModel([mk('t0', 0, 600), mk('t1', 1000, 610)], 300);
+  assert(two.xTicks.length === 1, `expected 1 xTick for n=2 at 300px (gap below X_TICK_MIN_GAP_PX), got ${two.xTicks.length}`);
+
+  const full = Array.from({ length: PLOT_N }, (_, i) => mk(`w${i}`, (i + 1) * 10_000, 600 + i));
+  const model = buildPlotModel(full, 300);
+  assert(model.xTicks.length === 2, `expected 2 xTicks for a full window, got ${model.xTicks.length}`);
+  assert(Math.abs(model.xTicks[0].at - PAD_L) < 1e-9, `expected first tick at PAD_L, got ${model.xTicks[0].at}`);
+  assert(Math.abs(model.xTicks[1].at - (300 - PAD_R)) < 1e-9, `expected second tick at plotW-PAD_R, got ${model.xTicks[1].at}`);
+  assert(model.xTicks[0].label === towerDate(model.points[0].startedAtMs), `expected oldest label to be towerDate(oldest), got ${model.xTicks[0].label}`);
+  assert(model.xTicks[1].label === towerDate(model.points[model.points.length - 1].startedAtMs), `expected newest label to be towerDate(newest), got ${model.xTicks[1].label}`);
 });
 
 test('resultsmodel: buildPlotModel — single ranked ride: one fastest dot at the right edge, colliding tick label is null', () => {
@@ -314,30 +359,37 @@ test('resultsmodel: buildPlotModel — 0 ranked results ⇒ empty "no-ranked", n
   assert(model.windowN === 0, `expected windowN 0, got ${model.windowN}`);
 });
 
-test('resultsmodel: buildPlotModel — x-ticks: monthly for 200 days, weekly for 20 days, end-labelled under 7 days', () => {
-  const monthly = buildPlotModel(ridesOverDays(200, 7), 300);
-  assert(monthly.xTicks.length > 0 && monthly.xTicks.length <= MAX_X_TICKS, `expected 1..${MAX_X_TICKS} monthly x ticks, got ${monthly.xTicks.length}`);
-  assert(monthly.xTicks.every((tk) => tk.label !== null && /^[A-Z][a-z]{2}( \d{2})?$/.test(tk.label)), `expected month-style labels, got ${JSON.stringify(monthly.xTicks)}`);
-
-  const weekly = buildPlotModel(ridesOverDays(20, 7), 300);
-  assert(weekly.xTicks.length > 0, 'expected at least one weekly tick for a 20-day span');
-  assert(weekly.xTicks.every((tk) => tk.label !== null && /^\d{2} [A-Z][a-z]{2}$/.test(tk.label)), `expected 'dd Mon' labels, got ${JSON.stringify(weekly.xTicks)}`);
-
-  // Wed 04 Jun 2025 -> Fri 06 Jun 2025: a 2-day span with no Monday in it.
-  const short = buildPlotModel([mk('sh0', new Date(2025, 5, 4).getTime(), 600), mk('sh1', new Date(2025, 5, 6).getTime(), 610)], 300);
-  assert(short.xTicks.length === 2, `expected end-labelled (2 ticks) for a span with no Monday, got ${short.xTicks.length}`);
-});
-
-test('resultsmodel: buildPlotModel — 9 rides spanning ~1 year: capped at MAX_X_TICKS, newest month boundary (Jan, year-labelled) present', () => {
-  const dates = [
+test('resultsmodel: buildPlotModel — xTicks ignore the calendar: 200-day, 20-day, 2-day and ~1-year spans all label the occupied end slots with towerDate()', () => {
+  // D7/D8 (cycle15 brief 04): x is a slot index, so Monday / month-boundary
+  // ticks are gone for good — whatever the span, the only ticks are
+  // towerDate(oldest) / towerDate(newest) at the end slots (oldest dropped
+  // under X_TICK_MIN_GAP_PX). These spans used to drive the weekly/monthly/
+  // year-labelled tick paths; they must now all come out identical in shape.
+  const yearDates = [
     new Date(2025, 0, 15), new Date(2025, 1, 15), new Date(2025, 2, 15), new Date(2025, 3, 15),
     new Date(2025, 4, 15), new Date(2025, 5, 15), new Date(2025, 6, 15), new Date(2025, 7, 15),
     new Date(2026, 0, 15),
   ];
-  const results = dates.map((d, i) => mk(`y${i}`, d.getTime(), 600 + i));
-  const model = buildPlotModel(results, 300);
-  assert(model.windowN === 9, `expected windowN 9, got ${model.windowN}`);
-  assert(model.xTicks.length > 0 && model.xTicks.length <= MAX_X_TICKS, `expected 1..${MAX_X_TICKS} x ticks, got ${model.xTicks.length}`);
-  const last = model.xTicks[model.xTicks.length - 1];
-  assert(last.label === 'Jan 26', `expected the newest month boundary labelled 'Jan 26', got ${JSON.stringify(model.xTicks)}`);
+  const spans: [string, RideResult[], number][] = [
+    ['200 days / 7 rides', ridesOverDays(200, 7), 2],
+    ['20 days / 7 rides', ridesOverDays(20, 7), 2],
+    // Wed 04 Jun 2025 -> Fri 06 Jun 2025: two adjacent slots, 34.5px apart at 300px.
+    ['2 days / 2 rides', [mk('sh0', new Date(2025, 5, 4).getTime(), 600), mk('sh1', new Date(2025, 5, 6).getTime(), 610)], 1],
+    ['~1 year / 9 rides', yearDates.map((d, i) => mk(`y${i}`, d.getTime(), 600 + i)), 2],
+  ];
+  for (const [name, rides, expectedTicks] of spans) {
+    const model = buildPlotModel(rides, 300);
+    const oldest = model.points[0];
+    const newest = model.points[model.points.length - 1];
+    assert(model.xTicks.length === expectedTicks, `${name}: expected ${expectedTicks} xTicks, got ${JSON.stringify(model.xTicks)}`);
+    const last = model.xTicks[model.xTicks.length - 1];
+    assert(Math.abs(last.at - newest.x) < 1e-9, `${name}: expected the newest tick at ${newest.x}, got ${last.at}`);
+    assert(last.label === towerDate(newest.startedAtMs), `${name}: expected newest label ${towerDate(newest.startedAtMs)}, got ${last.label}`);
+    if (expectedTicks === 2) {
+      const first = model.xTicks[0];
+      assert(Math.abs(first.at - oldest.x) < 1e-9, `${name}: expected the oldest tick at ${oldest.x}, got ${first.at}`);
+      assert(first.label === towerDate(oldest.startedAtMs), `${name}: expected oldest label ${towerDate(oldest.startedAtMs)}, got ${first.label}`);
+      assert(first.at + X_TICK_MIN_GAP_PX <= last.at, `${name}: two ticks must be >= X_TICK_MIN_GAP_PX apart, got ${last.at - first.at}`);
+    }
+  }
 });

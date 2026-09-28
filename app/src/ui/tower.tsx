@@ -47,7 +47,7 @@ export interface TowerRowModel {
   pos: number | null;
   /** 'm:ss', or 'NO TIME' for an unranked estimated lap */
   time: string;
-  /** colours the TIME only — position/gap/date stay ink (§3b) */
+  /** colours the TODAY row's accent bar only — every text cell, the time included, stays ink (virgin-cycle15 brief 04) */
   tier: Tier;
   /** signed gap to P1; '—' for P1; '' when unranked */
   gap: string;
@@ -193,11 +193,11 @@ export function TimingTower({
               style={[s.todayBlock, { height: todayBlockH, transform: [{ translateY: todayShift }] }]}
             >
               <View style={[s.row, s.todayRow]}>
-                <Animated.View style={[s.accentBar, { opacity: arrive }]} />
+                <Animated.View style={[s.accentBar, { backgroundColor: timeColor(r.tier, t), opacity: arrive }]} />
                 <Text style={[s.pos, s.posToday, { color: t.text }]}>
                   {reveal && !landed ? '' : r.pos !== null ? `P${r.pos}` : '—'}
                 </Text>
-                <Text style={[s.time, s.timeToday, { color: reveal && !landed ? t.text : timeColor(r.tier, t) }]}>
+                <Text style={[s.time, s.timeToday, { color: t.text }]}>
                   {r.time}
                   {r.pb ? <Text style={{ color: colors.purple }}> ●</Text> : null}
                 </Text>
@@ -235,7 +235,7 @@ export function TimingTower({
             style={[s.row, { height: PAST_H }, passed && { transform: [{ translateY: rowShift }] }]}
           >
             <Text style={[s.pos, { color: t.textDim }]}>{r.pos !== null ? `P${r.pos}` : '—'}</Text>
-            <Text style={[s.time, { color: timeColor(r.tier, t) }]}>
+            <Text style={[s.time, { color: t.textDim }]}>
               {r.time}
               {r.pb ? <Text style={{ color: colors.purple }}> ●</Text> : null}
             </Text>
@@ -269,12 +269,12 @@ const makeTowerStyles = (t: PaddockTheme) =>
       borderRadius: radius.btn,
       alignItems: 'center',
     },
+    // colour set per row: today's tier via timeColor() (brief 04) — was a fixed t.accent
     accentBar: {
       width: 4,
       alignSelf: 'stretch',
       marginVertical: 6,
       borderRadius: 2,
-      backgroundColor: t.accent, // identity chrome — which row is YOU — never a tier
     },
     pos: { width: 40, fontSize: 15, fontWeight: '700', letterSpacing: 1.5, fontVariant: ['tabular-nums'] },
     posToday: { fontSize: 17, fontWeight: '800' },

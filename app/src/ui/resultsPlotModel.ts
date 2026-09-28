@@ -1,9 +1,10 @@
 /**
  * Pure layout model for the RESULTS detail's scatterplot (WP-2 §3.3-§3.7):
- * the last WINDOW_PREV ranked rides on a way, laid out in time (x) against
- * scored seconds (y, faster = up), against the window's own average. No
- * React, no native module — every pixel the component draws comes from
- * here, so `resultsPlot.tsx` never does arithmetic of its own.
+ * the last WINDOW_PREV ranked rides on a way, laid out by slot (x) — the
+ * ride's position in a fixed PLOT_N-slot grid, newest at the right edge —
+ * against scored seconds (y, faster = up), against the window's own
+ * average. No React, no native module — every pixel the component draws
+ * comes from here, so `resultsPlot.tsx` never does arithmetic of its own.
  *
  * The window is exactly `ghostsFor()`'s shape (colourModel.ts): the same
  * `ranks()` filter, the same `WINDOW_PREV` constant, re-exported as PLOT_N
@@ -27,14 +28,9 @@ export const MIN_SPAN_FRAC = 0.05;
 export const PAD_FRAC = 0.10;
 export const TICK_STEPS_S = [5, 10, 15, 20, 30, 60, 120, 300, 600, 900];
 export const MAX_Y_TICKS = 5;
-export const MAX_X_TICKS = 6;
-export const WEEKLY_TICKS_UNDER_DAYS = 45;
 export const LABEL_COLLISION_PX = 12;
-export const POINT_R = 4;
-export const FASTEST_R = 5;
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const DAY_MS = 86_400_000;
+export const POINT_R = 5;
+export const X_TICK_MIN_GAP_PX = 84; // X_TICK_LABEL_W (component) is 80; two centred labels need at least that plus a hair
 
 export type PointTone = 'fastest' | 'faster' | 'slower';
 
@@ -127,10 +123,16 @@ export function toneFor(times: number[], meanS: number): PointTone[] {
   });
 }
 
-function xAt(ms: number, tOldest: number, tNewest: number, plotW: number): number {
-  const denom = tNewest - tOldest;
-  if (denom === 0) return plotW - PAD_R;
-  return PAD_L + ((ms - tOldest) / denom) * (plotW - PAD_L - PAD_R);
+/** D6: slot k of a PLOT_N-slot grid, k = 0 leftmost. PLOT_N === 1 is not a
+ * real configuration (WINDOW_N is 10) but must not divide by zero. */
+export function xAtSlot(k: number, plotW: number): number {
+  if (PLOT_N <= 1) return plotW - PAD_R;
+  return PAD_L + (k / (PLOT_N - 1)) * (plotW - PAD_L - PAD_R);
+}
+/** D6: the i-th of n window rides (chronological, 0 = oldest) fills the
+ * rightmost n slots. */
+export function slotIndex(i: number, n: number): number {
+  return PLOT_N - n + i;
 }
 
 function yAt(timeS: number, yMin: number, yMax: number): number {
@@ -163,72 +165,14 @@ function buildYTicks(yMin: number, yMax: number, meanY: number): PlotTick[] {
   return ticks;
 }
 
-/** the 1st of every month whose timestamp falls within [fromMs, toMs]. */
-function monthBoundariesInRange(fromMs: number, toMs: number): number[] {
-  const out: number[] = [];
-  const start = new Date(fromMs);
-  let d = new Date(start.getFullYear(), start.getMonth(), 1);
-  if (d.getTime() < fromMs) d = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-  while (d.getTime() <= toMs) {
-    out.push(d.getTime());
-    d = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+function buildSlotXTicks(points: PlotPoint[]): PlotTick[] {
+  const newest = points[points.length - 1];
+  const oldest = points[0];
+  const ticks: PlotTick[] = [{ at: newest.x, label: towerDate(newest.startedAtMs) }];
+  if (points.length > 1 && newest.x - oldest.x >= X_TICK_MIN_GAP_PX) {
+    ticks.unshift({ at: oldest.x, label: towerDate(oldest.startedAtMs) });
   }
-  return out;
-}
-
-/** every Monday whose timestamp falls within [fromMs, toMs]. */
-function mondaysInRange(fromMs: number, toMs: number): number[] {
-  const out: number[] = [];
-  const start = new Date(fromMs);
-  const d = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-  const untilMonday = (1 - d.getDay() + 7) % 7;
-  d.setDate(d.getDate() + untilMonday);
-  while (d.getTime() <= toMs) {
-    if (d.getTime() >= fromMs) out.push(d.getTime());
-    d.setDate(d.getDate() + 7);
-  }
-  return out;
-}
-
-/** keep every n-th element, counting BACK from the newest (last) — the
- * newest candidate always survives. */
-function keepEveryNth<T>(arr: T[], n: number): T[] {
-  const out: T[] = [];
-  for (let i = arr.length - 1; i >= 0; i -= n) out.unshift(arr[i]);
-  return out;
-}
-
-function monthLabel(ms: number, isFirst: boolean): string {
-  const d = new Date(ms);
-  const mon = MONTHS[d.getMonth()];
-  const withYear = isFirst || d.getMonth() === 0; // every January carries the year too
-  return withYear ? `${mon} ${String(d.getFullYear()).slice(-2)}` : mon;
-}
-
-function mondayLabel(ms: number): string {
-  const d = new Date(ms);
-  const day = String(d.getDate());
-  return `${day.length < 2 ? '0' : ''}${day} ${MONTHS[d.getMonth()]}`;
-}
-
-function buildXTicks(tOldest: number, tNewest: number, plotW: number): PlotTick[] {
-  const spanDays = (tNewest - tOldest) / DAY_MS;
-  const weekly = spanDays < WEEKLY_TICKS_UNDER_DAYS;
-  let candidates = weekly ? mondaysInRange(tOldest, tNewest) : monthBoundariesInRange(tOldest, tNewest);
-
-  if (candidates.length === 0) {
-    return [
-      { at: xAt(tOldest, tOldest, tNewest, plotW), label: towerDate(tOldest) },
-      { at: xAt(tNewest, tOldest, tNewest, plotW), label: towerDate(tNewest) },
-    ];
-  }
-  if (candidates.length > MAX_X_TICKS) {
-    candidates = keepEveryNth(candidates, Math.ceil(candidates.length / MAX_X_TICKS));
-  }
-  return candidates.map((ms, i) => ({
-    at: xAt(ms, tOldest, tNewest, plotW),
-    label: weekly ? mondayLabel(ms) : monthLabel(ms, i === 0),
-  }));
+  return ticks;
 }
 
 // -------------------------------------------------------------- the model
@@ -249,21 +193,19 @@ export function buildPlotModel(results: RideResult[], plotW: number): PlotModel 
   const times = window.map((r) => scoredS(r.lap) as number);
   const { yMin, yMax, meanS } = fitDomain(times);
   const tones = toneFor(times, meanS);
-  const tOldest = window[0].startedAtMs;
-  const tNewest = window[windowN - 1].startedAtMs;
 
   const points: PlotPoint[] = window.map((r, i) => ({
     rideId: r.rideId,
     startedAtMs: r.startedAtMs,
     timeS: times[i],
-    x: xAt(r.startedAtMs, tOldest, tNewest, plotW),
+    x: xAtSlot(slotIndex(i, windowN), plotW),
     y: yAt(times[i], yMin, yMax),
     tone: tones[i],
   }));
 
   const meanY = yAt(meanS, yMin, yMax);
   const yTicks = buildYTicks(yMin, yMax, meanY);
-  const xTicks = buildXTicks(tOldest, tNewest, plotW);
+  const xTicks = buildSlotXTicks(points);
 
   return { points, plotW, plotH: PLOT_H, yMin, yMax, meanS, meanY, yTicks, xTicks, windowN, empty: 'none' };
 }
