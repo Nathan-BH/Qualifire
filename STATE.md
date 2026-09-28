@@ -428,6 +428,24 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   rulings on executor escalations (results-screen navigation redesign; free-ride labeling).
   676 -> 750 tests, `tsc` clean throughout, 4 Opus Inspect passes finding and fixing 5 real
   defects total, none blocking.
+- `cycles/virgin-cycle16/README.md` — 2026-09-29: 8 briefs Nathan fed one at a time, run
+  in 3 groups by which files they touch (per his own end-of-session instruction to
+  minimize agent spawning), each group inspected fresh. Group A fixes the root cause of
+  the black-circles-on-the-map bug — "new" on RECORD's from/to no longer triggers a
+  free-mode engine path that scattered other routes' gates; free ride becomes a post-ride
+  save choice (RIDES/RESULTS FREE RIDES sections) instead of a record-time mode, and the
+  whole free-gate engine path/map rendering/catalog filter is deleted as dead code (`342db81`).
+  Group B: GPS-off warning moves from an invisible above-the-fold banner into a 2s flash
+  inside the yellow button itself; the big Q logo on RECORD is retired in favour of
+  QUALIFIRE text alone, map grown 200->330 (`0175398`). Group C: DEMO's controls redesigned
+  to mirror REPLAY's dial/scrub/play-pause row exactly (no skip, no stop — reaching the end
+  by drag or by play advances to the next animation); scatterplot gets a yellow "today" dot,
+  lighter other dots, the "avg + time" label dropped, and the clipped rightmost date label
+  fixed (`63e3ad4`). One Fable ruling on an executor escalation (3 tests with no mechanical
+  route-mode equivalent after the free-gate deletion). 750 -> 734 tests (net -16, entirely
+  from pruning the deleted free-gate machinery's own tests), `tsc` clean throughout, 3 Opus
+  Inspect passes finding and fixing 1 real defect plus assorted cosmetic nits, and logging 4
+  non-blocking design observations for Nathan's on-device pass (see `OPEN-ITEMS.md`).
 
 ## Nathan's own files (unmanaged by any agent)
 
