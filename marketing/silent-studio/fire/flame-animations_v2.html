@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Qualifire flame — animation tests v2</title>
+<style>
+  :root { --bg:#0e0e11; --panel:#17171b; --line:#2c2c33; --text:#F4F2EC; --dim:#9a978f; --yel:#F5C542; }
+  body.day { --bg:#efe9d8; --panel:#FAF7EE; --line:#E0D9C4; --text:#201F24; --dim:#6D6759; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 "Segoe UI", system-ui, sans-serif; }
+  header { padding:24px 24px 8px; max-width:1300px; margin:0 auto; }
+  h1 { margin:0 0 4px; font-size:22px; font-weight:800; letter-spacing:.02em; }
+  header p { margin:0; color:var(--dim); max-width:70ch; }
+  .bar { display:flex; gap:8px; margin-top:14px; }
+  button { font:inherit; font-weight:600; color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:7px 14px; cursor:pointer; }
+  button.on { background:var(--yel); color:#17171b; border-color:var(--yel); }
+  main { max-width:1300px; margin:0 auto; padding:16px 24px 48px; display:grid; grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); gap:18px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px 14px 16px; }
+  .card .stage { border-radius:12px; overflow:hidden; aspect-ratio:1/1; }
+  .card svg { display:block; width:100%; height:100%; }
+  .row { display:flex; align-items:center; justify-content:space-between; margin:12px 2px 4px; }
+  .row h2 { margin:0; font-size:16px; }
+  .tag { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:3px 8px; border-radius:99px; border:1px solid var(--line); color:var(--dim); white-space:nowrap; }
+  .tag.ok { color:#17171b; background:var(--yel); border-color:var(--yel); }
+  .card p { margin:4px 2px 0; color:var(--dim); font-size:14px; }
+  .phone { display:flex; justify-content:center; padding:0; }
+</style>
+</head>
+<body class="night">
+<header>
+  <h1>Flame animation tests <span style="color:var(--yel)">v2</span></h1>
+  <p>Live in your browser (no video render). Each card loops. v2 after your feedback: growth now starts from the smallest flame, the shiver now reshapes the spikes then locks back to the fixed flame, and B is gone (every animation ends on the exact chosen flame). Tags say what it would take to use in the app.</p>
+  <div class="bar">
+    <button id="bNight" class="on">Night</button><button id="bDay">Day</button>
+  </div>
+</header>
+<main id="grid"></main>
+
+<script>
+/* ---- palette (theme.ts tokens) ---- */
+const MODES = {
+  night:{bg:"#17171b", ink:"#F4F2EC", yel:"#F5C542"},
+  day:  {bg:"#FAF7EE", ink:"#201F24", yel:"#F5C542"},
+};
+let mode = "night";
+
+/* ---- flame geometry (400-unit box) mapped to an 800 canvas ---- */
+const START=[200,382];
+const SEGS=[[[118,382],[78,322],[84,255]],[[88,205],[120,172],[134,92]],[[150,132],[164,154],[172,176]],
+            [[166,112],[196,66],[210,12]],[[236,74],[302,134],[316,232]],[[324,322],[272,382],[200,382]]];
+const K=1.5, TX=400-204*K, TY=400-197*K, AX=200, AY=382;
+const BX=K*AX+TX, BY=K*AY+TY, H=555;
+const cl=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
+const eoc=x=>1-Math.pow(1-cl(x),3);
+const eob=(x,c=1.7)=>{x=cl(x);return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2)};
+const sc=s=>Math.max(s,0.02);
+function cv(p,s){const x=AX+s*(p[0]-AX), y=AY+s*(p[1]-AY);return [K*x+TX,K*y+TY];}
+/* path for layer scale s; warp(x,y)->[x,y] optional */
+function pathD(s,warp){
+  s=sc(s); const f=p=>{let q=cv(p,s); if(warp) q=warp(q[0],q[1]); return q[0].toFixed(1)+" "+q[1].toFixed(1);};
+  let d="M"+f(START); for(const [a,b,e] of SEGS) d+=" C"+f(a)+" "+f(b)+" "+f(e); return d+"Z";
+}
+const layer=(s,col,extra="",warp)=>`<g ${extra}><path d="${pathD(s,warp)}" fill="${col}"/></g>`;
+const rot=(deg)=>`transform="rotate(${deg.toFixed(2)} ${BX} ${BY})"`;
+
+
+/* ---- shape morph: displace the flame's control points (400-unit space) BEFORE scaling,
+        so all three layers stay nested. Tips, left tongue and notch each move on their own. ---- */
+const TIPM=[210,12], TIPL=[134,92], NOTCH=[172,176];
+const g2=(p,c,s)=>Math.exp(-((p[0]-c[0])**2+(p[1]-c[1])**2)/(2*s*s));
+function perturb(p,q){                     // q = [lean, mainDx, mainDy, leftDx, leftDy, notchDy]
+  const h=cl((382-p[1])/370);
+  const wM=g2(p,TIPM,80), wL=g2(p,TIPL,38), wN=g2(p,NOTCH,35);
+  return [p[0]+q[0]*45*Math.pow(h,1.6)+q[1]*wM+q[3]*wL, p[1]+q[2]*wM+q[4]*wL+q[5]*wN];
+}
+function pathQ(s,q){
+  s=sc(s); const f=p=>{const r=cv(perturb(p,q),s);return r[0].toFixed(1)+" "+r[1].toFixed(1);};
+  let d="M"+f(START); for(const [a,b,e] of SEGS) d+=" C"+f(a)+" "+f(b)+" "+f(e); return d+"Z";
+}
+const layerQ=(s,col,q,extra="")=>`<g ${extra}><path d="${pathQ(s,q)}" fill="${col}"/></g>`;
+
+/* gust poses [lean, mainDx, mainDy, leftDx, leftDy, notchDy]; V0 = the fixed flame */
+const V0=[0,0,0,0,0,0], V1=[.55,30,8,-16,-10,10], V2=[-.65,-34,-16,22,14,-8], V3=[.30,20,20,-26,-20,6], V4=[-.40,-22,6,12,-8,-6], V1s=[.25,12,4,-6,-4,4];
+const lerpQ=(a,b,u)=>a.map((v,i)=>v+(b[i]-v)*u);
+function hermite(keys,t,wrap,period){                 // smooth pass through poses, no stop at each one
+  const n=keys.length; let i=0; while(i<n-2 && t>=keys[i+1][0]) i++;
+  const [t0,P0]=keys[i],[t1,P1]=keys[i+1]; const u=(t-t0)/(t1-t0), dt=t1-t0;
+  const tan=(k)=>{ if(!wrap && (k===0||k===n-1)) return P0.map(()=>0);
+    const a=keys[(k-1+n)%n], b=keys[(k+1)%n]; let da=b[0]-a[0]; if(wrap&&da<=0) da+=period;
+    return keys[k][1].map((_,j)=>(b[1][j]-a[1][j])/da); };
+  const m0=tan(i), m1=tan(i+1), u2=u*u, u3=u2*u;
+  return P0.map((_,j)=>(2*u3-3*u2+1)*P0[j]+(u3-2*u2+u)*dt*m0[j]+(-2*u3+3*u2)*P1[j]+(u3-u2)*dt*m1[j]);
+}
+const GUST=[[0,V0],[.5,V1],[1.1,V2],[1.7,V3],[2.3,V4],[2.85,V1s]];
+const spring=(P,tau)=>{const e=Math.exp(-5*tau), w=2*Math.PI*1.7; return P.map(v=>v*e*(Math.cos(w*tau)+(5/w)*Math.sin(w*tau)));}; // to V0 with one overshoot, then locked
+function gustPose(t){ if(t<=0) return V0; if(t<2.85) return hermite(GUST,t,false); return spring(V1s,t-2.85); }
+/* loading-style: keeps gusting (periodic) until Ts, then settles and locks */
+const LOOPG=[[0,V1s],[.6,V2],[1.2,V3],[1.8,V4],[2.4,V1],[3.0,V1s]];
+function loopPose(c,Ts){ const e=(x=>x*x*(3-2*x))(cl(c/0.6));
+  if(c<Ts) return hermite(LOOPG,c%3.0,true,3.0).map(v=>v*e);
+  const P=hermite(LOOPG,Ts%3.0,true,3.0).map(v=>v*e); return spring(P,c-Ts); }
+
+const hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+const mix=(a,b,u)=>{const A=hex(a),B=hex(b);return "#"+A.map((v,i)=>Math.round(v+(B[i]-v)*u).toString(16).padStart(2,"0")).join("");};
+
+/* ---- grow outwards, smallest flame first ---- */
+function growA2a(t,m){          // the smallest flame is a seed; yellow grows around it, then the outer flame; the seed hollows out at the end
+  const seed=0.42*eob(t/0.6,1.2), y=0.42+0.32*eoc((t-0.5)/0.9), o=0.74+0.26*eoc((t-1.3)/1.0), hol=cl((t-2.35)/0.6);
+  return (t>1.3?layer(o,m.ink):"")+(t>0.5?layer(y,m.yel):"")+layer(seed,mix(m.ink,m.bg,hol));
+}
+function growA2b(t,m){          // the smallest flame is traced as an outline; rings then grow outward from it
+  const y=0.42+0.32*eoc((t-0.75)/0.9), o=0.74+0.26*eoc((t-1.6)/1.0), tr=eoc(t/0.7);
+  const trace=(t<1.2)?`<path d="${pathQ(0.42,V0)}" pathLength="1" fill="none" stroke="${m.yel}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="${tr.toFixed(3)} 2"/>`:"";
+  return (t>1.6?layer(o,m.ink):"")+(t>0.75?layer(y,m.yel):"")+layer(0.42,m.bg)+trace;
+}
+
+const LAGS=[0,0.04,0.08];   // outer, middle, core: each layer follows a beat later, so the wind travels inward
+const scales=[1.0,0.74,0.42];
+const cols=m=>[m.ink,m.yel,m.bg];
+
+const ANIMS=[
+ {id:"A2a", title:"A2a · Grow outwards, seed hollows", tag:"zero-dependency", ok:true, loop:4.6,
+  note:"Starts with the smallest flame (the seed), yellow grows around it, then the outer flame. At the end the seed hollows out into the core.",
+  draw:growA2a},
+ {id:"A2b", title:"A2b · Grow outwards, core traced first", tag:"zero-dependency*", ok:true, loop:4.6,
+  note:"Starts by tracing the smallest flame's outline; yellow then grows out from it, then the outer flame. Ends identical to the chosen flame. (*outline draw-on needs SVG, or a few pre-cut frames.)",
+  draw:growA2b},
+ {id:"C", title:"C · Breathe (unchanged)", tag:"zero-dependency", ok:true, loop:2.4,
+  note:"Calm idle: layers gently swell and lean, out of phase. No comment yet.",
+  draw:(t,m)=>{
+    const w=2*Math.PI*t/2.4; let out="";
+    for(const [b,col,ph,a] of [[1.0,m.ink,0,.6],[.74,m.yel,.7,1.4],[.42,m.bg,1.4,2.4]]){
+      const s=b*(1+.025*a*Math.sin(w+ph)+.012*a*Math.sin(2*w+2*ph)); out+=layer(s,col,rot(1.28*a*Math.sin(w-ph)));
+    } return out;
+  }},
+ {id:"D2", title:"D2 · Wind shiver: spikes reshape, then lock", tag:"needs react-native-svg or video", ok:false, loop:6.0,
+  note:"The tips, left tongue and notch bend through several gust shapes, then it settles with one small overshoot and locks back into the exact chosen flame.",
+  draw:(t,m)=>{const c=cols(m);return [0,1,2].map(i=>layerQ(scales[i],c[i],gustPose(t-LAGS[i]))).join("");}},
+ {id:"E2", title:"E2 · Same shiver from pre-cut shapes", tag:"zero-dependency*", ok:true, loop:6.0,
+  note:"Approximation of D2 using only 6 pre-rendered flame shapes crossfaded (no springy overshoot). It shows what plain RN Animated could do with image layers. Compare with D2.",
+  draw:(t,m)=>{
+    const K=[[0,V0],[.5,V1],[1.1,V2],[1.7,V3],[2.3,V4],[2.85,V1s],[3.5,V0]], c=cols(m); let out="";
+    const tt=t>=3.5?3.5:t; let i=0; while(i<K.length-2 && tt>=K[i+1][0]) i++;
+    const lagT=(l)=>Math.max(0,Math.min(3.5,t-LAGS[l]));
+    return [0,1,2].map(l=>{ const x=lagT(l); let j=0; while(j<K.length-2 && x>=K[j+1][0]) j++;
+      const u=cl((x-K[j][0])/(K[j+1][0]-K[j][0])); const uu=u*u*(3-2*u);
+      const aA=uu<0.5?1:2*(1-uu);
+      return `<g opacity="${aA.toFixed(3)}"><path d="${pathQ(scales[l],K[j][1])}" fill="${c[l]}"/></g><g opacity="${uu.toFixed(3)}"><path d="${pathQ(scales[l],K[j+1][1])}" fill="${c[l]}"/></g>`; }).join("");
+  }},
+ {id:"F2", title:"F2 · Grow, then wind shiver until ready, then lock", tag:"needs react-native-svg or video", ok:false, loop:12.6,
+  note:"A2b growth from the smallest flame, then continuous wind shiver (as long as loading takes), then it settles and locks on the chosen flame.",
+  draw:(t,m)=>{
+    const c=cols(m), Ts=6.0, c0=t-3.0;
+    const y=0.42+0.32*eoc((t-0.75)/0.9), o=0.74+0.26*eoc((t-1.6)/1.0), tr=eoc(t/0.7);
+    const S=[o,y,0.42], on=[t>1.6,t>0.75,true];
+    const q=i=>c0<=0?V0:loopPose(c0-LAGS[i],Ts);
+    const trace=(t<1.2)?`<path d="${pathQ(0.42,V0)}" pathLength="1" fill="none" stroke="${m.yel}" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="${tr.toFixed(3)} 2"/>`:"";
+    return [0,1,2].map(i=>on[i]?layerQ(S[i],c[i],q(i)):"").join("")+trace;
+  }},
+];
+
+/* ---- build cards ---- */
+const grid=document.getElementById("grid");
+const cards=ANIMS.map(a=>{
+  const el=document.createElement("div"); el.className="card";
+  el.innerHTML=`<div class="stage"><svg viewBox="0 0 800 800"></svg></div>
+    <div class="row"><h2>${a.title}</h2><span class="tag ${a.ok?'ok':''}">${a.tag}</span></div><p>${a.note}</p>`;
+  grid.appendChild(el); return {a, svg:el.querySelector("svg"), stage:el.querySelector(".stage"), t0:performance.now()};
+});
+function frame(now){
+  const m=MODES[mode];
+  for(const c of cards){
+    const FZ=new URLSearchParams(location.search).get('t'); const t=(FZ!==null?+FZ:((now-c.t0)/1000))%c.a.loop;
+    c.stage.style.background=m.bg;
+    c.svg.innerHTML=c.a.draw(t,m);
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+function setMode(x){mode=x;document.body.className=x;bNight.classList.toggle("on",x==="night");bDay.classList.toggle("on",x==="day");}
+bNight.onclick=()=>setMode("night"); bDay.onclick=()=>setMode("day");
+</script>
+</body>
+</html>

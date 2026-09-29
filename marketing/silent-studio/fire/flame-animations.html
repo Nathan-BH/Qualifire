@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Qualifire flame — animation tests</title>
+<style>
+  :root { --bg:#0e0e11; --panel:#17171b; --line:#2c2c33; --text:#F4F2EC; --dim:#9a978f; --yel:#F5C542; }
+  body.day { --bg:#efe9d8; --panel:#FAF7EE; --line:#E0D9C4; --text:#201F24; --dim:#6D6759; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.45 "Segoe UI", system-ui, sans-serif; }
+  header { padding:24px 24px 8px; max-width:1300px; margin:0 auto; }
+  h1 { margin:0 0 4px; font-size:22px; font-weight:800; letter-spacing:.02em; }
+  header p { margin:0; color:var(--dim); max-width:70ch; }
+  .bar { display:flex; gap:8px; margin-top:14px; }
+  button { font:inherit; font-weight:600; color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:7px 14px; cursor:pointer; }
+  button.on { background:var(--yel); color:#17171b; border-color:var(--yel); }
+  main { max-width:1300px; margin:0 auto; padding:16px 24px 48px; display:grid; grid-template-columns:repeat(auto-fill,minmax(360px,1fr)); gap:18px; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:14px 14px 16px; }
+  .card .stage { border-radius:12px; overflow:hidden; aspect-ratio:1/1; }
+  .card svg { display:block; width:100%; height:100%; }
+  .row { display:flex; align-items:center; justify-content:space-between; margin:12px 2px 4px; }
+  .row h2 { margin:0; font-size:16px; }
+  .tag { font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:3px 8px; border-radius:99px; border:1px solid var(--line); color:var(--dim); white-space:nowrap; }
+  .tag.ok { color:#17171b; background:var(--yel); border-color:var(--yel); }
+  .card p { margin:4px 2px 0; color:var(--dim); font-size:14px; }
+  .phone { display:flex; justify-content:center; padding:0; }
+</style>
+</head>
+<body class="night">
+<header>
+  <h1>Flame animation tests</h1>
+  <p>Live in your browser (no video render). Each card loops. Same flame, same three layers, same night/day colours as the chosen design. Tags say what it would take to use in the app.</p>
+  <div class="bar">
+    <button id="bNight" class="on">Night</button><button id="bDay">Day</button>
+  </div>
+</header>
+<main id="grid"></main>
+
+<script>
+/* ---- palette (theme.ts tokens) ---- */
+const MODES = {
+  night:{bg:"#17171b", ink:"#F4F2EC", yel:"#F5C542"},
+  day:  {bg:"#FAF7EE", ink:"#201F24", yel:"#F5C542"},
+};
+let mode = "night";
+
+/* ---- flame geometry (400-unit box) mapped to an 800 canvas ---- */
+const START=[200,382];
+const SEGS=[[[118,382],[78,322],[84,255]],[[88,205],[120,172],[134,92]],[[150,132],[164,154],[172,176]],
+            [[166,112],[196,66],[210,12]],[[236,74],[302,134],[316,232]],[[324,322],[272,382],[200,382]]];
+const K=1.5, TX=400-204*K, TY=400-197*K, AX=200, AY=382;
+const BX=K*AX+TX, BY=K*AY+TY, H=555;
+const cl=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
+const eoc=x=>1-Math.pow(1-cl(x),3);
+const eob=(x,c=1.7)=>{x=cl(x);return 1+(c+1)*Math.pow(x-1,3)+c*Math.pow(x-1,2)};
+const sc=s=>Math.max(s,0.02);
+function cv(p,s){const x=AX+s*(p[0]-AX), y=AY+s*(p[1]-AY);return [K*x+TX,K*y+TY];}
+/* path for layer scale s; warp(x,y)->[x,y] optional */
+function pathD(s,warp){
+  s=sc(s); const f=p=>{let q=cv(p,s); if(warp) q=warp(q[0],q[1]); return q[0].toFixed(1)+" "+q[1].toFixed(1);};
+  let d="M"+f(START); for(const [a,b,e] of SEGS) d+=" C"+f(a)+" "+f(b)+" "+f(e); return d+"Z";
+}
+const layer=(s,col,extra="",warp)=>`<g ${extra}><path d="${pathD(s,warp)}" fill="${col}"/></g>`;
+const rot=(deg)=>`transform="rotate(${deg.toFixed(2)} ${BX} ${BY})"`;
+
+/* ---- shiver signal: quasi-random but periodic over 4 s ---- */
+const wave=(t,ph)=>(Math.sin(2*Math.PI*1.5*t+ph)+0.55*Math.sin(2*Math.PI*2.75*t+1.7*ph+0.6)+0.5*Math.sin(2*Math.PI*0.5*t+0.4*ph))/2.05;
+function warpFor(t,amp,ph){
+  return (x,y)=>{const h=cl((BY-y)/H); const dx=amp*Math.pow(h,1.5)*wave(t,ph);
+                 const y2=BY-(BY-y)*(1+0.035*wave(t,ph+1.1)*h); return [x+dx,y2];};
+}
+
+/* ---- the animations: each returns svg markup for time t (s) ---- */
+const ANIMS=[
+ {id:"A", title:"A · Grow outwards", tag:"zero-dependency", ok:true, loop:4.2,
+  note:"Yellow seed springs up, the ink flame grows around it, the core opens last. Plays once per loop. Suits the launch animation.",
+  draw:(t,m)=>{
+    const y=0.74*eob(t/0.7), i=eob((t-0.3)/0.9), c=0.42*eoc((t-0.85)/0.6);
+    return (t>0.3?layer(i,m.ink):"")+layer(y,m.yel)+(c>0.03?layer(c,m.bg):"");
+  }},
+ {id:"B", title:"B · Ride by ride (tree rings)", tag:"zero-dependency", ok:true, loop:7.0,
+  note:"Your growth story: each 'ride' adds a new outer ring while older rings settle inside. Starts as one seed, ends with four layers.",
+  draw:(t,m)=>{
+    const cols=[m.yel,m.ink,m.yel,m.ink], step=1.25, R=0.70, rings=[];
+    for(let k=0;k<4;k++){ if(t<k*step) continue; let s=eob((t-k*step)/0.7);
+      for(let j=k+1;j<4;j++) s*=Math.pow(R,eoc((t-j*step)/0.7)); rings.push([k,s]); }
+    return rings.sort((a,b)=>b[0]-a[0]).map(([k,s])=>layer(s,cols[k])).join("");
+  }},
+ {id:"C", title:"C · Breathe", tag:"zero-dependency", ok:true, loop:2.4,
+  note:"Calm idle: layers gently swell and lean, out of phase with each other. Good for a waiting state or the hero.",
+  draw:(t,m)=>{
+    const w=2*Math.PI*t/2.4; let out="";
+    for(const [b,col,ph,a] of [[1.0,m.ink,0,.6],[.74,m.yel,.7,1.4],[.42,m.bg,1.4,2.4]]){
+      const s=b*(1+.025*a*Math.sin(w+ph)+.012*a*Math.sin(2*w+2*ph)); out+=layer(s,col,rot(1.28*a*Math.sin(w-ph)));
+    } return out;
+  }},
+ {id:"D", title:"D · Shiver — real flame wobble", tag:"needs react-native-svg or video", ok:false, loop:4.0,
+  note:"The tip whips side to side while the base stays planted, each layer at its own timing. Best-looking version; the shape itself bends.",
+  draw:(t,m)=>[[1.0,m.ink,30,0],[.74,m.yel,34,.9],[.42,m.bg,30,1.8]].map(([s,c,a,ph])=>layer(s,c,"",warpFor(t,a,ph))).join("")},
+ {id:"E", title:"E · Shiver — layers only", tag:"zero-dependency", ok:true, loop:4.0,
+  note:"Same shiver but each whole layer just leans (skew) and stretches from the base, no bending. This is what plain RN Animated on 3 tinted images can do.",
+  draw:(t,m)=>[[1.0,m.ink,0],[.74,m.yel,.9],[.42,m.bg,1.8]].map(([s,c,ph])=>{
+      const w=wave(t,ph); return layer(s,c,`transform="translate(${BX+4*w} ${BY}) skewX(${(-9*w).toFixed(2)}) scale(1 ${(1+.03*wave(t,ph+1.1)).toFixed(3)}) translate(${-BX} ${-BY})"`);
+    }).join("")},
+ {id:"F", title:"F · Ignite, then shiver (loading screen)", tag:"needs react-native-svg or video", ok:false, loop:8.0,
+  note:"A grows the flame, then it shivers until the app is ready, then settles (last second). A loading screen for as long as it takes.",
+  draw:(t,m)=>{
+    const tt=Math.max(0,t-2.0);
+    const env=cl((t-1.8)/0.8)*(1-cl((t-7.0)/1.0));       // shiver envelope: fades in, settles at the end
+    const i=eob((t-0.3)/0.9), c=0.42*eoc((t-0.85)/0.6);
+    const w=(amp,ph)=>warpFor(tt,amp*env,ph);
+    return (t>0.3?layer(i,m.ink,"",w(30,0)):"")+layer(0.74*eob(t/0.7),m.yel,"",w(34,.9))+(c>0.03?layer(c,m.bg,"",w(30,1.8)):"");
+  }},
+];
+
+/* ---- build cards ---- */
+const grid=document.getElementById("grid");
+const cards=ANIMS.map(a=>{
+  const el=document.createElement("div"); el.className="card";
+  el.innerHTML=`<div class="stage"><svg viewBox="0 0 800 800"></svg></div>
+    <div class="row"><h2>${a.title}</h2><span class="tag ${a.ok?'ok':''}">${a.tag}</span></div><p>${a.note}</p>`;
+  grid.appendChild(el); return {a, svg:el.querySelector("svg"), stage:el.querySelector(".stage"), t0:performance.now()};
+});
+function frame(now){
+  const m=MODES[mode];
+  for(const c of cards){
+    const t=((now-c.t0)/1000)%c.a.loop;
+    c.stage.style.background=m.bg;
+    c.svg.innerHTML=c.a.draw(t,m);
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+function setMode(x){mode=x;document.body.className=x;bNight.classList.toggle("on",x==="night");bDay.classList.toggle("on",x==="day");}
+bNight.onclick=()=>setMode("night"); bDay.onclick=()=>setMode("day");
+</script>
+</body>
+</html>
