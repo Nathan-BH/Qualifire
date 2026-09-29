@@ -446,6 +446,18 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   from pruning the deleted free-gate machinery's own tests), `tsc` clean throughout, 3 Opus
   Inspect passes finding and fixing 1 real defect plus assorted cosmetic nits, and logging 4
   non-blocking design observations for Nathan's on-device pass (see `OPEN-ITEMS.md`).
+- `cycles/virgin-cycle17/README.md` — 2026-09-29: 3 follow-up briefs from Nathan's own
+  review of cycle16's landed work, same session. DEMO's post-ride mark was still playing
+  reversed (cycle15 brief 15 only reached RecordScreen's copy, not DEMO's own render site)
+  — now forward in both. DEMO's SECOND/TENTH ride always showed the WP-G "new way on this
+  route?" card; the real app shows no card at all for a well-established route (cycle15
+  brief 05's quiet-offer flow) — TENTH now mirrors that by value, SECOND still shows the
+  card. The WP-G card's "no — it was Home->Work" skip copy is now "keep it as Home->Work"
+  (Nathan: the old text was "bullshit"). One Opus Inspect defect fixed: DEMO uniquely
+  allows hardware back during the ending screen, and a stale post-reveal timer could fire
+  the end mark while idle after backing out mid-TENTH-run, hiding the tab bar and
+  corrupting the next run — fixed with a phaseRef guard. Landed as `1eca811`. 734 -> 735
+  tests (one new test for the TENTH/SECOND post-reveal split), `tsc` clean.
 
 ## Nathan's own files (unmanaged by any agent)
 
