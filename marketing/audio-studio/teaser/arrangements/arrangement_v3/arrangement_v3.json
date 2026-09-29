@@ -1,0 +1,153 @@
+{
+  "format": "teaser-lanes-arrangement",
+  "version": 1,
+  "kit": "teaser-full-v2",
+  "video": {
+    "file": "teaser-full_v2-proxy.mp4",
+    "name": "teaser-full_v2.mp4",
+    "fps": 30,
+    "duration_s": 46.5,
+    "frames": 1395
+  },
+  "created": "2026-09-26",
+  "note": "Rides + Ranking v3, revised 2026-09-26 (round 1, take 2, per Nathan's listening feedback). 0-31.26s is still option-A-piano-then-bed.json's clips, byte-for-byte unchanged. From 31.26s: b-piano continues as one unbroken 12.26s-trim loop clear through to past the render's end (unchanged from take 1). b-drums and b-bass now get the SAME post-31.26s clip as b-piano (at 31.26, out 12.26, in 0, same 0.15s fades) instead of a separate 33.9-42.5 window with a gap before it -- Nathan heard the gap and asked for drums/bass to loop uninterrupted together with the piano, clipped identically so they stay in sync the way they do in the original recording (same underlying song, same slice boundaries -- 'if the piano is clipped in a way, clip the drums in the same way'). They get only ONE such loop (not a second, to-the-end segment like the piano's), so they disappear after it, landing at 43.52s -- during/around the ranking animation, not carried to the render's end (Nathan's explicit call: 'I don't want them until the end, they can disappear during the ranking animation'). b-other still does not resume after 31.26s (per FEEDBACK-v1.md's ruling: drums+piano+bass only). e5 (gate chimes) removed entirely, also per Nathan's explicit instruction 2026-09-26 ('already remove the E5 chimes as they are outdated, I don't want them anymore') -- this settles the 'drop the chimes' half of cycle 25's open Q2; whether/how gate crossings get re-timed to land on piano notes visually is still open and belongs to round 2 (the render-timing pass), not this file.",
+  "muted": {
+    "logo": true,
+    "bed": true,
+    "a-strings": true,
+    "a-other": true,
+    "b-piano": false,
+    "b-drums": false,
+    "b-bass": false,
+    "b-other": false,
+    "e5": false
+  },
+  "clips": [
+    {
+      "track": "logo",
+      "in": 0,
+      "out": 6.2,
+      "at": 0,
+      "gain": 0.85,
+      "fade_in": 0,
+      "fade_out": 0.5
+    },
+    {
+      "track": "b-piano",
+      "in": 0,
+      "out": 9.4,
+      "at": 0,
+      "gain": 0.45,
+      "fade_in": 0,
+      "fade_out": 0
+    },
+    {
+      "track": "b-piano",
+      "in": 0,
+      "out": 15.0465,
+      "at": 9.2,
+      "gain": 0.45,
+      "fade_in": 0,
+      "fade_out": 0
+    },
+    {
+      "track": "b-piano",
+      "in": 0,
+      "out": 9.76,
+      "at": 21.5,
+      "gain": 0.45,
+      "fade_in": 2.5,
+      "fade_out": 1
+    },
+    {
+      "track": "b-piano",
+      "in": 0,
+      "out": 12.26,
+      "at": 31.26,
+      "gain": 0.45,
+      "fade_in": 0.15,
+      "fade_out": 0.15
+    },
+    {
+      "track": "b-piano",
+      "in": 0,
+      "out": 15,
+      "at": 43.52,
+      "gain": 0.45,
+      "fade_in": 0.15,
+      "fade_out": 0
+    },
+    {
+      "track": "b-drums",
+      "in": 0,
+      "out": 15.0465,
+      "at": 9.2,
+      "gain": 0.3,
+      "fade_in": 0,
+      "fade_out": 0
+    },
+    {
+      "track": "b-drums",
+      "in": 0,
+      "out": 9.76,
+      "at": 21.5,
+      "gain": 0.3,
+      "fade_in": 2.5,
+      "fade_out": 1
+    },
+    {
+      "track": "b-drums",
+      "in": 0,
+      "out": 12.26,
+      "at": 31.26,
+      "gain": 0.3,
+      "fade_in": 0.15,
+      "fade_out": 0.15
+    },
+    {
+      "track": "b-bass",
+      "in": 0,
+      "out": 15.0465,
+      "at": 9.2,
+      "gain": 0.3,
+      "fade_in": 0,
+      "fade_out": 0
+    },
+    {
+      "track": "b-bass",
+      "in": 0,
+      "out": 9.76,
+      "at": 21.5,
+      "gain": 0.3,
+      "fade_in": 2.5,
+      "fade_out": 1
+    },
+    {
+      "track": "b-bass",
+      "in": 0,
+      "out": 12.26,
+      "at": 31.26,
+      "gain": 0.3,
+      "fade_in": 0.15,
+      "fade_out": 0.15
+    },
+    {
+      "track": "b-other",
+      "in": 0,
+      "out": 15.0465,
+      "at": 9.2,
+      "gain": 0.3,
+      "fade_in": 0,
+      "fade_out": 0
+    },
+    {
+      "track": "b-other",
+      "in": 0,
+      "out": 9.76,
+      "at": 21.5,
+      "gain": 0.3,
+      "fade_in": 2.5,
+      "fade_out": 1
+    }
+  ]
+}

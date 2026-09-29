@@ -20,7 +20,7 @@ closing text/slogan lands on a note. Two ways to close the 31.26-33.9s gap:
 *Default if unanswered:* (A) - keeps the documented alignment, still closes the gap,
 never has the piano stop.
 
-*answer:
+*answer: Here is the reality; we have absolutely freedom with the render so if the animation does not land on a note we change the render timing easily. So this problem is nonexistent. Just loop it properly and then we figure out how to build the animation around it!
 
 **Q2 - e5 (gate chimes) gain for 0-31.26s.** Keeping `option-A-piano-then-bed.json`'s
 clips untouched there means e5 stays at its original gain of 1.0 for that whole
@@ -30,4 +30,4 @@ forward into v3?
 *Default if unanswered:* 0.3 - it's a real note you gave previously, not a
 speculative addition.
 
-*answer:
+*answer: I am actually leaning towards removing the chimes and have the  gates land on piano notes instead. In this setup it would also only be for the middle gates not necesarilly the start and end gates. Whats the current gates spacing, and whats the piano spacing so I have an idea of what adapting it would need?
