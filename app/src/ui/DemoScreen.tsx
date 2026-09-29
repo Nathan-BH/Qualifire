@@ -54,6 +54,13 @@
  * after the hold, the real `RouteNamingCard` in its WP-G "new way on this
  * route" variant — FIRST RIDE still mounts the both-endpoints-unknown card
  * straight away. Every SAVE/ADD WAY here is theatre: nothing is written.
+ * virgin-cycle17 brief 02 (Nathan 2026-09-29): TENTH RIDE no longer mounts that
+ * card by itself — a tenth ride is on a route the rider chose on RECORD long ago,
+ * so it ends as the real screen does since cycle15 brief 05: a dim `not Home →
+ * Work?` link through the tower's climb + hold, then the end mark with no tap;
+ * the WP-G card opens only from the link (`demoPostReveal`, `postRevealRef`,
+ * `namingExpanded` — RecordScreen's own names, by value). SECOND RIDE keeps the
+ * card after the hold: the one ending with something to fill in.
  *
  * virgin-cycle14 brief 08 (Nathan #11): every mode's ending screen closes with the real
  * RESULTS-tab scatterplot (`ResultsPlot`) over this mode's synthetic priors plus today's
@@ -74,6 +81,7 @@ import {
   demoPlotCaption,
   demoPlotPosLabel,
   demoPlotResults,
+  demoPostReveal,
   demoRunEndS,
   demoSavedLine,
   demoSectorColours,
@@ -97,6 +105,7 @@ import {
   type DemoGatesOutcome,
   type DemoMode,
   type DemoPhase,
+  type DemoPostReveal,
   type DemoRate,
   type RouteNames,
 } from './demoModel.ts';
@@ -203,7 +212,7 @@ export default function DemoScreen({ onFullscreenChange }: {
   const anchorRef = useRef<DemoClockAnchor>({ simS: 0, wallMs: 0, rate: demoSessionRate });
   // virgin-cycle16 07: endRun's once-only latch (tick vs scrub-release race).
   const endedRef = useRef(false);
-  // Nathan (2026-09-19): after a full run -> ending -> reverse-launch -> idle -> re-run
+  // Nathan (2026-09-19): after a full run -> ending -> end-mark -> idle -> re-run
   // cycle, the map sometimes came back with no route line/gate ticks (route asset drawn
   // fine on a fresh mount, so this is a native map-view lifecycle issue across a mount
   // that survived a much longer unmount than STOP-before-the-line's immediate one, not a
@@ -214,6 +223,18 @@ export default function DemoScreen({ onFullscreenChange }: {
   const runSeq = useRef(0);
   // virgin-cycle11 (brief A): which screen of the DEMO tab is showing.
   const [phase, setPhase] = useState<DemoPhase>('idle');
+  // Inspect fix (virgin-cycle17 brief 02 follow-up): DEMO, unlike RecordScreen, allows
+  // hardware back during the ending screen, so the tower's onPlayed can still fire after
+  // exitToIdle unmounts it (RN detaches the Animated value, which completes the callback
+  // with finished:false rather than dropping it) — onRevealPlayed checks this ref, not
+  // `phase` itself, since it's read inside a setTimeout closure that must see the latest
+  // value, not the one captured at scheduling time.
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+  // 'rev' = the end-of-run mark (onDone = exitToIdle). It plays the SAME forward
+  // draw as boot/ride-start since virgin-cycle17 brief 01 (Nathan 2026-09-29),
+  // mirroring cycle15 brief 15 on RecordScreen; 'rev' is a historical name from
+  // cycle 024 WP-A2, when the end mark undrew itself.
   const [showAnim, setShowAnim] = useState<'rev' | null>(null);
   const [busy, setBusy] = useState(false);                          // R7 fake save
   const [savedLine, setSavedLine] = useState<string | null>(null);  // R6/R7 confirmation line
@@ -226,6 +247,17 @@ export default function DemoScreen({ onFullscreenChange }: {
   const [reveal, setReveal] = useState<RankingReveal | null>(null);
   const [revealDone, setRevealDone] = useState(true);
   const revealHoldRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // virgin-cycle17 brief 02: what the ending screen does once the reveal has played —
+  // mount the WP-G card, or start the end mark (demoPostReveal, set in enterEnding).
+  // A ref, not a closure over `mode` — the tower's onPlayed fires from an animation
+  // callback captured at mount, exactly RecordScreen.tsx's postRevealRef.
+  const postRevealRef = useRef<DemoPostReveal>('card');
+  // TENTH RIDE's quiet offer: tapping the `not Home → Work?` link sets this, which
+  // (1) renders the WP-G card and (2) makes the post-reveal hold keep the screen up
+  // instead of playing the end mark. Ref for the [] timeout closure, as above.
+  const [namingExpanded, setNamingExpanded] = useState(false);
+  const namingExpandedRef = useRef(false);
+  namingExpandedRef.current = namingExpanded;
   // virgin-cycle14 brief 08 (Nathan #11): the RESULTS scatterplot on the ending screen.
   // `endedAtMs` is the one Date.now() enterEnding took — reveal and plot share it, so tower
   // dates and plot dates agree. Today's dot starts SELECTED (ring + caption without a tap —
@@ -308,6 +340,7 @@ export default function DemoScreen({ onFullscreenChange }: {
     const next = buildDemoReveal(mode, now);
     setReveal(next);
     setRevealDone(next === null);
+    postRevealRef.current = demoPostReveal(mode);   // brief 02: TENTH → 'rev', else 'card'
     setEndedAtMs(now);            // brief 08: dates the plot (same instant as the reveal)
     setPlotSel(DEMO_TODAY_RIDE_ID);
     setPhase('ending');
@@ -331,6 +364,8 @@ export default function DemoScreen({ onFullscreenChange }: {
     setEndedAtMs(null);
     setAdjust(null);
     setPendingNames(null);
+    setNamingExpanded(false);
+    postRevealRef.current = 'card'; // Inspect fix: belt-and-braces against the guard above
     setPhase('idle');
   }, []);
 
@@ -512,7 +547,7 @@ export default function DemoScreen({ onFullscreenChange }: {
   };
 
   // virgin-cycle11 (brief A): report fullscreen for every phase but idle, or
-  // while the reverse launch mark is still playing on the way out of it —
+  // while the end mark is still playing on the way out of it —
   // same shape as RecordScreen's own effect.
   useEffect(() => {
     onFullscreenChange?.(phase !== 'idle' || showAnim != null);
@@ -521,7 +556,7 @@ export default function DemoScreen({ onFullscreenChange }: {
 
   // Hardware back — RecordScreen's pattern: idle falls through to Shell
   // (other tab → RECORD); running treats back as ending the run; ending leaves
-  // without the reverse-mark ceremony.
+  // without the end-mark ceremony.
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       if (phase === 'idle') return false;
@@ -586,8 +621,36 @@ export default function DemoScreen({ onFullscreenChange }: {
   }, []);
   // R6: the reveal's hold timer — after onPlayed, the card/line appears
   // REVEAL_HOLD_MS later, exactly RecordScreen.tsx's revealHoldRef.
+  // virgin-cycle17 brief 02: with postRevealRef 'rev' (TENTH RIDE) the end mark starts
+  // instead of the card, unless the link was tapped — namingExpandedRef is the live
+  // escape hatch the frozen baseline can't see (RecordScreen.tsx's onRevealPlayed, by value).
   const onRevealPlayed = useCallback(() => {
-    revealHoldRef.current = setTimeout(() => { revealHoldRef.current = null; setRevealDone(true); }, REVEAL_HOLD_MS);
+    // Inspect fix: the tower may fire this after we've already left the ending screen
+    // (hardware back unmounts it mid-animation) — stale, ignore it.
+    if (phaseRef.current !== 'ending') return;
+    // The link was tapped during the climb — nothing to hold for, the card is due now.
+    if (namingExpandedRef.current) {
+      setRevealDone(true);
+      return;
+    }
+    revealHoldRef.current = setTimeout(() => {
+      revealHoldRef.current = null;
+      // Inspect fix: re-check — back could have been pressed during the hold itself.
+      if (phaseRef.current !== 'ending') return;
+      setRevealDone(true);
+      if (postRevealRef.current === 'rev' && !namingExpandedRef.current) setShowAnim('rev');
+    }, REVEAL_HOLD_MS);
+  }, []);
+  // brief 02: the `not Home → Work?` tap. Expands the offer and, if the post-landing hold
+  // is running, ends it now — the card shows at once and the cleared timer can never start
+  // the end mark later. During the climb (no timer yet) onRevealPlayed handles the landing.
+  const onNotThisWay = useCallback(() => {
+    setNamingExpanded(true);
+    if (revealHoldRef.current) {
+      clearTimeout(revealHoldRef.current);
+      revealHoldRef.current = null;
+      setRevealDone(true);
+    }
   }, []);
 
   if (phase === 'running') {
@@ -684,8 +747,9 @@ export default function DemoScreen({ onFullscreenChange }: {
                 onSave={onDemoNamingSave}
                 onSkip={onDemoNamingSkip}
               />
-            ) : (
-              // R6: SECOND/TENTH RIDE's after-reveal card — WP-G "new way on this route".
+            ) : mode === 'tenth' && !namingExpanded ? null : (
+              // R6: SECOND RIDE's after-reveal card — WP-G "new way on this route". Brief 02:
+              // TENTH RIDE reaches it only through the `not Home → Work?` link (namingExpanded).
               <RouteNamingCard
                 startExistingLabel={DEMO_ROUTE_START}
                 endExistingLabel={DEMO_ROUTE_END}
@@ -698,6 +762,19 @@ export default function DemoScreen({ onFullscreenChange }: {
                 onSkip={onDemoNamingSkip}
               />
             )
+          ) : mode === 'tenth' && !namingExpanded ? (
+            /* brief 02: TENTH RIDE's quiet offer — the ride is already "saved" as the
+               scored way; this one dim line is the whole correction affordance. Shown
+               through the tower climb + hold (before revealDone — recordFlow.ts
+               endingSlotFor's 'link' slot, by value); tapping holds the screen. */
+            <Pressable
+              style={styles.notThisWayBtn}
+              disabled={busy || showAnim !== null}
+              onPress={onNotThisWay}
+              accessibilityLabel="This ride was a different way"
+            >
+              <Text style={styles.notThisWayText}>{`not ${DEMO_ROUTE_LABEL}?`}</Text>
+            </Pressable>
           ) : null}
           {/* virgin-cycle14 brief 08 (Nathan #11): the RESULTS tab's scatterplot — the real
               ResultsPlot over this mode's synthetic priors + today's lap (demoPlotResults),
@@ -720,7 +797,7 @@ export default function DemoScreen({ onFullscreenChange }: {
             </View>
           ) : null}
         </ScrollView>
-        {showAnim === 'rev' && <LaunchAnimation reverse onDone={exitToIdle} />}
+        {showAnim === 'rev' && <LaunchAnimation onDone={exitToIdle} />}
       </View>
     );
   }
@@ -790,6 +867,9 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
     textAlign: 'center',
     marginTop: 10,
   },
+  // brief 02: the quiet offer's link — RecordScreen.tsx notThisWayBtn/notThisWayText, by value.
+  notThisWayBtn: { paddingVertical: 10, alignItems: 'center' },
+  notThisWayText: { color: t.textDim, fontSize: 13 },
   // virgin-cycle16 07: REPLAY's control-row vocabulary (ReplayScreen.tsx
   // ctlRow/dial/dialText/scrub*/ctlBtn), by value — same sizes, same tokens.
   ctlRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },

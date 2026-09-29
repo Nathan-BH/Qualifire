@@ -135,6 +135,18 @@ export function demoStopOutcome(gatesDone: number, sectorCount: number = DEMO_SE
   return gatesDone >= sectorCount ? 'ending' : 'skip';
 }
 
+/** virgin-cycle17 brief 02 (Nathan 2026-09-29): what the ending screen does once the tower
+ *  has landed and held — RecordScreen's postRevealRef, decided per mode instead of per draft.
+ *  TENTH RIDE is a ride on a route the rider chose on RECORD long ago, so the real screen
+ *  makes only a quiet offer (a dim "not <way>?" link through climb + hold) and then plays the
+ *  end mark by itself; the WP-G card opens only if the link is tapped. SECOND RIDE keeps
+ *  cycle11 R6's card-after-hold — the one ending with something to fill in. FIRST RIDE has
+ *  no reveal (buildDemoReveal is null there), so its value is never read. */
+export type DemoPostReveal = 'card' | 'rev';
+export function demoPostReveal(mode: DemoMode): DemoPostReveal {
+  return mode === 'tenth' ? 'rev' : 'card';
+}
+
 /** R7: theatre timings for the fake save. */
 export const DEMO_FAKE_SAVE_MS = 600;
 export const DEMO_SAVED_HOLD_MS = 1800;

@@ -305,3 +305,28 @@ Nathan answered most of `deployment/QUESTIONS-FOR-NATHAN.md` on 2026-09-09; fold
   Flagged by the Opus Inspect pass on cycle16 Group C, not blocking (matches
   the brief). Open question for Nathan: night mode too, or day-only? And does
   the yellow dot need a thin border/outline to read clearly on light mode?
+
+- **virgin-cycle17 (2026-09-29) — TENTH RIDE's no-tap path never shows the results
+  plot brief 02 assumed was "invisible in practice."** With the WP-G card gone from
+  TENTH's default (no-tap) path, the cycle14 RESULTS-plot preview and "demo only ·
+  nothing saved" line — gated only on `revealDone && plotResults !== null` — mount in
+  the same tick as the end mark and flash through during its 250ms fade-out, then get
+  swept away when the mark finishes. On the real screen only the tower ever shows during
+  that fade. Flagged by the Opus Inspect pass on cycle17; not broken, just a design gap
+  the brief didn't fully think through (its own Decision 4 called this "invisible in
+  practice", which isn't quite right). Nathan's call: gate the plot out on TENTH's
+  no-tap path too (one added condition) so it matches the real screen exactly, or add a
+  short demo-only hold before the mark so the plot is actually visible if that's worth
+  keeping as a demo nicety.
+- **virgin-cycle17 (2026-09-29) — two small loose ends from cycle17, non-blocking.**
+  (1) The new `demoModel.ts` test only pins `demoPostReveal`'s trivial mode->outcome
+  mapping; the actual ordering logic (link vs. card vs. mark, and what a tap does) lives
+  untested in `DemoScreen.tsx`'s component code. A fresh Fable could design a shared
+  `endingSlotFor`-based test if `recordFlow.ts`'s `endingSlotFor` (which already takes a
+  plain `offer: 'none'|'quiet'|'card'` value, not a store draft as brief 02 assumed) were
+  reused by DEMO's own slot choice instead of parallel logic. (2) `RecordScreen.tsx` still
+  has ~14 stale comments describing the post-ride mark as "reversed" (lines 163, 170,
+  196-197, 208, 217, 221, 230, 428, 649, 651, 703, 842, 1192) — pre-existing since cycle15
+  brief 15 actually landed the forward-mark change there, unrelated to cycle17's own edits
+  (RecordScreen.tsx's diff for this cycle is empty). Purely cosmetic, worth a chore-sized
+  cleanup pass whenever convenient.

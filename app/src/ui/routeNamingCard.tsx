@@ -23,6 +23,9 @@
  * `not <way>?` link and only opens the card on tap. In that case the
  * explanatory body sentence is dropped: the rider already said it was
  * different.
+ * virgin-cycle17 brief 03 (Nathan 2026-09-29): that variant's skip line reads
+ * `keep it as <way>` — it was `no — it was <way>`, which he called out. Same
+ * button, same onSkip: nothing is written on skip either way.
  */
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -211,7 +214,7 @@ export function RouteNamingCard(props: RouteNamingCardProps) {
         <Text style={[st.skipText, { color: t.textDim }]}>
           {existingRoute
             ? props.matchedWayLabel
-              ? `no — it was ${props.matchedWayLabel}`
+              ? `keep it as ${props.matchedWayLabel}`
               : 'skip — keep it as a plain ride'
             : 'skip — keep it as a plain ride'}
         </Text>
