@@ -30,6 +30,8 @@ import './sportstore_suite.ts';
 import './sportswitch_suite.ts';
 import './catalogdelete_suite.ts';
 import './landmarkusage_suite.ts';
+import './placesearch_suite.ts';
+import './catalogmerge_suite.ts';
 import './routecreation_suite.ts';
 import './wayspec_suite.ts';
 import './userrefs_suite.ts';
@@ -40,6 +42,7 @@ import './elevation_suite.ts';
 import './fixflags_suite.ts';
 import './ridehistory_suite.ts';
 import './ridedetail_suite.ts';
+import './ridehomes_suite.ts';
 import './catalogdetail_suite.ts';
 import './resultsmodel_suite.ts';
 
@@ -54,6 +57,8 @@ import './autotheme_suite.ts';
 import './mapcredit_suite.ts';
 import './replay_suite.ts';
 import './replay_drift_suite.ts';
+import './lockscreen_suite.ts';
+import './ridenotification_suite.ts';
 import { runAll } from './lib.ts';
 
 const { fail } = await runAll();

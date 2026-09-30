@@ -9,11 +9,19 @@
  *    fixes at standstill, which destroys stopped-time measurement),
  *  - every fix funnelled to storage via the B-24 interface contract,
  *  - relaunch recovery via a persisted active-ride marker (./session).
+ *  - virgin-cycle18 brief 01 (2026-09-29): show-over-lock-screen flag ON while
+ *    a session exists, re-synced on AppState changes and RECORD mounts, never
+ *    dropped by stopTracking itself (see syncShowWhenLocked).
+ *  - virgin-cycle18 brief 03 (2026-09-29): the foreground-service notification
+ *    gets a SystemUI chronometer (zero = session.startedAtMs) + "S<n>" header
+ *    sub-text, driven by a module-scope liveEngine.subscribe through
+ *    ./rideNotification (no-op on installs without the native module);
+ *    POST_NOTIFICATIONS is requested at START (Android 13+).
  *
  * Storage (../storage) is the Backend Dev's module per the interface
  * contract; it is imported, never implemented here.
  */
-import { Vibration } from 'react-native';
+import { AppState, PermissionsAndroid, Platform, Vibration } from 'react-native';
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import Constants from 'expo-constants'; // [UNTESTED ON DEVICE]
@@ -22,6 +30,10 @@ import { liveEngine } from '../live/engine';
 import { checkElevationOutlier, ELEVATION_OUTLIER_RATE_MPS } from './elevationOutlier';
 import { classifyFix, newWarmupState } from './fixFlags';
 import { ActiveSession, saveSession, loadSession, clearSession } from './session';
+import { setShowWhenLocked } from './lockScreen';
+import { showWhenLockedFor } from './lockScreenPolicy';
+import { pushRideNotification, forceRideNotificationReassert } from './rideNotification';
+import { rideNotificationFor } from './rideNotificationPolicy';
 
 export const LOCATION_TASK = 'qualifire-ride-tracking';
 
@@ -107,6 +119,22 @@ let prevEleTUnixMs: number | null = null;
 // mid-ride relaunch (fresh module state, ride minutes old) from ever
 // re-flagging mid-ride fixes as warm-up.
 let warmupState = newWarmupState();
+
+// virgin-cycle18 brief 01 (tester via Nathan, 2026-09-29): MainActivity may sit
+// on top of the keyguard ONLY while a ride is recording — then the power
+// button wakes the phone onto the live screen (no unlock) and PAUSE → END
+// works there. Keyed on `session` (the module truth), re-synced at every
+// AppState change and every getRecoveryState() (RECORD-tab mount, incl. cold
+// start — which is also what turns the manifest's static ON default OFF for
+// an idle app). Deliberately NOT called from stopTracking(): END is pressed
+// over the lock screen in exactly the tester's scenario, and dropping the
+// flag in that tick would let the keyguard re-cover the ending screen. The
+// next AppState change (home / power) drops it instead. lockScreen.ts no-ops
+// on any install without the native module.
+function syncShowWhenLocked(): void {
+  void setShowWhenLocked(showWhenLockedFor(session != null));
+}
+AppState.addEventListener('change', syncShowWhenLocked);
 
 const listeners = new Set<(s: TrackerStatus) => void>();
 
@@ -285,6 +313,18 @@ export async function ensurePermissions(): Promise<PermissionOutcome> {
   // Step 1: while-in-use (fine) location.
   const fg = await Location.requestForegroundPermissionsAsync();
   if (!fg.granted) return 'denied';
+  // virgin-cycle18 brief 03: POST_NOTIFICATIONS is a RUNTIME permission on
+  // Android 13+ and nothing ever asked for it — without it the "recording
+  // ride" notification (and its new timer/sector) never appears in the shade,
+  // only in the OS task manager. Asked here, at START, once; the answer never
+  // gates recording (a denial only hides the notification, as before).
+  if (Platform.OS === 'android' && typeof Platform.Version === 'number' && Platform.Version >= 33) {
+    try {
+      await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+    } catch {
+      /* never blocks recording */
+    }
+  }
   // Step 2: background ("Allow all the time"). On Android 11+ this sends the
   // user to the app's settings page rather than showing a dialog.
   const bg = await Location.requestBackgroundPermissionsAsync();
@@ -371,6 +411,7 @@ export async function startTracking(opts?: {
     throw e;
   }
   session = s;
+  syncShowWhenLocked();
   sessionLoaded = true;
   fixesThisLaunch = 0;
   fixesSinceHeartbeat = 0;
@@ -506,6 +547,29 @@ liveEngine.subscribe((st) => {
   buzzedFires = st.gateFires;
 });
 
+// virgin-cycle18 brief 03 (testers via Nathan, 2026-09-29): keep the
+// foreground-service notification's header showing a live elapsed stopwatch
+// (SystemUI chronometer, zero = startedAtMs — no per-second work) and the
+// current sector ("S2"; "finished" after the last gate). Subscribed at module
+// scope for the same headless-relaunch reason as the buzz above: the task
+// handler feeds the engine with the screen off, so a gate fire here reaches
+// the notification within a tick. `session` is the module truth (set before
+// liveEngine.start() in startTracking and ensureSession; null before
+// liveEngine.stop() in stopTracking, which resets the planner). Everything
+// after this line is display-only: the wrapper never throws, the policy is
+// pure (rideNotificationPolicy.ts), and installs without the native module
+// no-op.
+liveEngine.subscribe((st) => {
+  pushRideNotification(rideNotificationFor(session ? session.startedAtMs : null, st));
+});
+// A foreground cold start makes expo-location re-post its PLAIN notification
+// over ours (LocationTaskConsumer.maybeStartForegroundService on task
+// re-registration); force the next engine tick to re-apply instead of
+// waiting for the 30-tick re-assert.
+AppState.addEventListener('change', (next) => {
+  if (next === 'active') forceRideNotificationReassert();
+});
+
 // ---------------------------------------------------------------------------
 // GPX+ button log. The UI layer calls noteButtonPress on PAUSE/RESUME taps;
 // START/END are logged internally by startTracking/stopTracking above.
@@ -587,6 +651,7 @@ export async function getRecoveryState(): Promise<{
   restoration: 'relaunch' | 'remount';
 } | null> {
   const s = await ensureSession();
+  syncShowWhenLocked();
   if (!s) return null;
   let tracking = false;
   try {

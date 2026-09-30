@@ -23,10 +23,14 @@ import { addGateSet, gateSetFor, waysForRoute } from './catalog.ts';
 import { currentCatalog, saveUserCatalog, userCatalog } from './catalogStore.ts';
 import { scopeCatalog } from './sports.ts';
 import { activeSportId, currentSports } from './sportStore.ts';
-import { backfillMissingResults, getStoredResult, removeStoredResult, storedResultsForWay } from './resultsStore.ts';
-import type { Catalog } from './types.ts';
 import {
-  buildRouteCreationCatalog, draftRouteCreation, type RouteCreationDraft, type RouteNames,
+  BACKFILL_ENGINE_VERSION, backfillMissingResults, clearUnmatched, getStoredResult,
+  removeStoredResult, saveResult, storedResultsForWay,
+} from './resultsStore.ts';
+import { deriveRideResult } from './derive.ts';
+import type { Catalog, RideResult } from './types.ts';
+import {
+  buildRouteCreationCatalog, draftRouteCreation, newPlaceLabelErrors, type RouteCreationDraft, type RouteNames,
 } from './routeCreation.ts';
 
 export type RideFix = { lat: number; lon: number; [k: string]: unknown };
@@ -129,6 +133,7 @@ export async function promoteRideToReference(
   const clearedRideIds = storedResultsForWay(wayId).map((r) => r.rideId);
   for (const id of clearedRideIds) await removeStoredResult(id);
   const candidates = clearedRideIds.includes(rideId) ? clearedRideIds : [rideId, ...clearedRideIds];
+  await clearUnmatched(rideId); // virgin-cycle18 brief 02: a marker from before this way existed must not defeat the re-time
   await backfillMissingResults(fs, candidates);
   const retimed = candidates.filter((id) => getStoredResult(id)?.wayId === wayId);
 
@@ -203,7 +208,12 @@ export interface GateAdjustDraft {
 }
 
 export type CreateRouteOutcome =
-  | { ok: true; wayId: string; adjust: GateAdjustDraft | null }
+  | {
+      ok: true; wayId: string; adjust: GateAdjustDraft | null;
+      /** virgin-cycle18 brief 04: true iff the founding ride's own result is
+       * now stored on this way (any lap quality — see timeReferenceAt). */
+      referenceTimed: boolean;
+    }
   | { ok: false; errors: string[] };
 
 /** RecordScreen.tsx's onNamingSave try-body. Builds the route's real
@@ -219,6 +229,11 @@ export type CreateRouteOutcome =
 export async function createRouteFromDraft(
   draft: RouteCreationDraft, names: RouteNames, fs: FsAdapter,
 ): Promise<CreateRouteOutcome> {
+  // virgin-cycle18 brief 05 (decision 1): belt to the card's braces — a new
+  // place may not take an existing place's name (Nathan's two "Work"s).
+  // Judged on the merged catalog, the one the rider sees. No writes on refusal.
+  const nameErrs = newPlaceLabelErrors(currentCatalog(), draft, names);
+  if (nameErrs.length > 0) return { ok: false, errors: nameErrs };
   const fixes = await readRideFixes(draft.rideId, fs);
   const builtRef = fixes ? buildRefFromRideFixes(fixes) : null;
   const seed = builtRef
@@ -229,20 +244,62 @@ export async function createRouteFromDraft(
   if (errs.length > 0) return { ok: false, errors: errs };
   const wayId = `way:${draft.rideId}`;
   if (builtRef) await saveUserRef(wayId, builtRef.ref);
+  // virgin-cycle18 brief 02 (decision 3) + brief 04 (decision 8): the
+  // founding ride matched nothing when it ended — a backfill since (RIDES
+  // visit, restart) may have left a permanent unmatched marker. Clear it,
+  // then store this ride's OWN result against the way it just founded, at
+  // the v1 gates, so RESULTS lists the route from this moment (no backfill
+  // needed) and a second ride this session already races it. Any lap
+  // quality is stored (a missed sector = NO TIME under the way, never a
+  // rank — D-028), exactly as rememberRide stores a live ride.
+  // saveAdjustedGates re-times it if the gates move a moment later.
+  await clearUnmatched(draft.rideId);
+  let referenceTimed = false;
+  if (builtRef && seed) {
+    const own = await timeReferenceAt(draft.rideId, wayId, builtRef.ref, seed.chainageM, 1, fs);
+    if (own !== null) {
+      await saveResult(own);
+      referenceTimed = true;
+    }
+  }
+  // virgin-cycle18 brief 06 (decision 6): this ride is now the reference of
+  // `wayId`. A result it still holds on ANOTHER way (the engine scored it as
+  // X, the rider re-pointed the endpoints on the card: "not X") would be a
+  // second home. timeReferenceAt above overwrote it when it could time the
+  // ride (results are keyed by rideId); when it could not, drop the stale one.
+  if (!referenceTimed) {
+    const stale = getStoredResult(draft.rideId);
+    if (stale && stale.wayId !== wayId) await removeStoredResult(draft.rideId);
+  }
   return {
     ok: true,
     wayId,
     adjust: builtRef && seed ? { wayId, ref: builtRef.ref, refLengthM: builtRef.ref.length, chainageM: seed.chainageM } : null,
+    referenceTimed,
   };
 }
 
-export type AdjustOutcome = { ok: true; moved: boolean } | { ok: false; errors: string[] };
+export type AdjustOutcome =
+  | { ok: true; moved: false }
+  | {
+      ok: true; moved: true;
+      /** virgin-cycle18 brief 04: true iff the reference ride's result was
+       * re-derived at the minted v2 and stored; false = its v1 result was
+       * removed (a stale-chainage result must not survive) and the way has
+       * no reference result until the next gate save. */
+      referenceRetimed: boolean;
+    }
+  | { ok: false; errors: string[] };
 
 /** RecordScreen.tsx's onAdjustSave decision + try-body. KEEP costs nothing
  * (the seeded v1 set was already saved by CREATE WAY): unmoved gates return
  * `{ ok:true, moved:false }` with no write. Moved gates mint VERSION 2
- * through addGateSet ("history is never deleted", store/catalog.ts). */
-export async function saveAdjustedGates(a: GateAdjustDraft, chainageM: number[]): Promise<AdjustOutcome> {
+ * through addGateSet ("history is never deleted", store/catalog.ts).
+ * virgin-cycle18 brief 04: the founding ride's v1 result (stored by
+ * createRouteFromDraft) is re-timed against the moved gates right here, so
+ * it never sits under chainages that are no longer the way's. `fs` is
+ * required, as everywhere else in this module (readRideFixes' note). */
+export async function saveAdjustedGates(a: GateAdjustDraft, chainageM: number[], fs: FsAdapter): Promise<AdjustOutcome> {
   const moved = chainageM.some((v, i) => Math.abs(v - a.chainageM[i]) > 1e-6);
   if (!moved) return { ok: true, moved: false };
   const errs = await saveUserCatalog(
@@ -255,7 +312,16 @@ export async function saveAdjustedGates(a: GateAdjustDraft, chainageM: number[])
       note: 'adjusted at save (tap-then-nudge) from the seeded proposal',
     }),
   );
-  return errs.length > 0 ? { ok: false, errors: errs } : { ok: true, moved: true };
+  if (errs.length > 0) return { ok: false, errors: errs };
+  const refRideId = userCatalog().ways.find((w) => w.id === a.wayId)?.referenceRideId ?? null;
+  if (refRideId === null) return { ok: true, moved: true, referenceRetimed: false };
+  const own = await timeReferenceAt(refRideId, a.wayId, a.ref, chainageM, 2, fs);
+  if (own !== null) {
+    await saveResult(own);
+    return { ok: true, moved: true, referenceRetimed: true };
+  }
+  await removeStoredResult(refRideId);
+  return { ok: true, moved: true, referenceRetimed: false };
 }
 
 // ============================================================ WP-I
@@ -280,6 +346,98 @@ export function gateEditDraftFor(wayId: string): GateAdjustDraft | null {
   return { wayId, ref, refLengthM: ref.length, chainageM: [...gates.chainageM] };
 }
 
+/** virgin-cycle18 brief 02: the reference ride's result against `gates`, or
+ * null with a reason. Reads the recording exactly as backfillMissingResults
+ * does (readRideFixes = chronologicalFixes over every fix, flags included),
+ * derives against THIS way's ref (no candidate loop, no corridor test — the
+ * ref line IS this recording), and accepts the same qualities the backfill
+ * accepts (clean | interrupted). `reason` is human copy for an Alert.
+ * `readable` is false only when the recording is absent/unreadable/too short
+ * — the caller must not block a gate edit on a ride it could never time. */
+export async function deriveReferenceAgainst(
+  rideId: string, wayId: string, ref: RefLine, gates: number[], gateSetVersion: number, fs: FsAdapter,
+): Promise<{ result: RideResult | null; readable: boolean; reason: string | null }> {
+  const fixes = await readRideFixes(rideId, fs);
+  if (fixes === null || fixes.length < 2) {
+    return { result: null, readable: false, reason: 'the reference recording is missing or unreadable' };
+  }
+  const t = fixes.map((f) => f.tUnixMs / 1000);
+  const lat = fixes.map((f) => f.lat);
+  const lon = fixes.map((f) => f.lon);
+  const result = deriveRideResult({
+    rideId, t, lat, lon, ref, gates, wayId, gateSetVersion,
+    engineVersion: BACKFILL_ENGINE_VERSION, source: 'app',
+  });
+  if (result.wayId === wayId && (result.lap.quality === 'clean' || result.lap.quality === 'interrupted')) {
+    return { result, readable: true, reason: null };
+  }
+  const missed = result.sectors.filter((s) => s.quality === 'missed').map((s) => s.index);
+  const which = missed.length > 0
+    ? `sector ${missed.join(' and ')} (between gate ${missed.map((i) => `${i - 1}→${i}`).join(', ')}) is not timed in its recording`
+    : `its lap comes out '${result.lap.quality}'`;
+  return { result: null, readable: true, reason: `the reference ride cannot be timed against these gates: ${which}` };
+}
+
+/** virgin-cycle18 brief 04 (decision 8): the reference ride's result against
+ * `gates` at ANY lap quality — the "does this ride have a home" question,
+ * where deriveReferenceAgainst above answers "would this edit lose a TIMED
+ * reference" (it returns null for missed/estimated laps on purpose). null
+ * only when the recording is absent/unreadable/too short, or when derive
+ * itself disowns the way (missed sectors AND no lap bounds — derive.ts:110).
+ * Same reader, same engine version, same `source` as the backfill, so the
+ * stored result is byte-compatible with a loop-derived one. */
+export async function timeReferenceAt(
+  rideId: string, wayId: string, ref: RefLine, gates: number[], gateSetVersion: number, fs: FsAdapter,
+): Promise<RideResult | null> {
+  const fixes = await readRideFixes(rideId, fs);
+  if (fixes === null || fixes.length < 2) return null;
+  const result = deriveRideResult({
+    rideId,
+    t: fixes.map((f) => f.tUnixMs / 1000),
+    lat: fixes.map((f) => f.lat),
+    lon: fixes.map((f) => f.lon),
+    ref, gates, wayId, gateSetVersion,
+    engineVersion: BACKFILL_ENGINE_VERSION, source: 'app',
+  });
+  return result.wayId === wayId ? result : null;
+}
+
+/** virgin-cycle18 brief 04 follow-up (Inspect finding 1, 2026-09-30): a way
+ * whose reference ride has NO stored result never appears in RESULTS —
+ * buildResultsList walks stored results only. That is every way created
+ * retroactively from RIDES before brief 02 (its marker was never cleared,
+ * so backfillMissingResults skips the reference forever) and every
+ * reference whose v1 lap came out `missed` (the candidate loop refuses it
+ * and marks it). Time the reference against its OWN way at the way's
+ * CURRENT gate set, any lap quality (exactly what createRouteFromDraft does
+ * at creation), store it, and only then drop the marker (a marker is only
+ * dropped when a result replaces it, so an unreadable recording is not
+ * re-run through the candidate loop on every mount). Returns true iff a
+ * result was stored this call. false — and no write — when the way is not
+ * user-owned, has no referenceRideId, already has a stored reference
+ * result, has no resolvable ref line or gate set, or its recording is
+ * absent/unreadable/too short/disowned by derive. Never throws. Called by
+ * ui/rideHomes.ts settleRideHomes between its backfill and free-filing
+ * steps. */
+export async function timeMissingReference(wayId: string, fs: FsAdapter): Promise<boolean> {
+  try {
+    const user = userCatalog();
+    const way = user.ways.find((w) => w.id === wayId);
+    const refRideId = way?.referenceRideId ?? null;
+    if (!way || refRideId === null || getStoredResult(refRideId) !== null) return false;
+    const ref = userRefFor(way.refLineId);
+    const gates = gateSetFor(user, wayId, way.gateSetVersion);
+    if (!ref || !gates) return false;
+    const own = await timeReferenceAt(refRideId, wayId, ref, gates.chainageM, gates.version, fs);
+    if (own === null) return false;
+    await saveResult(own);
+    await clearUnmatched(refRideId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export type EditGatesOutcome =
   | { ok: true; moved: false }
   | {
@@ -289,8 +447,15 @@ export type EditGatesOutcome =
       gateSetVersion: number;
       /** every rideId whose stored result on this route was removed */
       clearedRideIds: string[];
-      /** of clearedRideIds, the ones the immediate re-derive scored on THIS route again */
+      /** the ones the immediate re-derive scored on THIS route again — every
+       * clearedRideIds entry that came back, PLUS the reference ride when it
+       * was re-timed (virgin-cycle18 brief 02: it may not have had a result
+       * to clear). */
       retimed: string[];
+      /** Way.referenceRideId, or null for a way without one */
+      referenceRideId: string | null;
+      /** true iff referenceRideId is set AND its fresh result is stored on this way */
+      referenceRetimed: boolean;
     }
   | { ok: false; errors: string[] };
 
@@ -335,6 +500,22 @@ export async function editWayGates(
   if (!moved) return { ok: true, moved: false };
 
   const version = current.version + 1;
+  // virgin-cycle18 brief 02: never lose a reference self to a gate edit.
+  // Refuse, with no writes, when the reference times against the CURRENT
+  // gates but would not against the new ones (decision 2). A reference that
+  // already does not time (or has no readable recording) never blocks.
+  const refRideId = way.referenceRideId ?? null;
+  let refNext: RideResult | null = null;
+  if (refRideId !== null) {
+    const next = await deriveReferenceAgainst(refRideId, wayId, ref, chainageM, version, fs);
+    if (next.result === null && next.readable) {
+      const now = await deriveReferenceAgainst(refRideId, wayId, ref, current.chainageM, current.version, fs);
+      if (now.result !== null) {
+        return { ok: false, errors: [`${next.reason} — move that gate somewhere the reference ride actually passed`] };
+      }
+    }
+    refNext = next.result;
+  }
   const errs = await saveUserCatalog(
     addGateSet(user, {
       wayId,
@@ -347,10 +528,28 @@ export async function editWayGates(
   );
   if (errs.length > 0) return { ok: false, errors: errs };
 
-  // The reset, then the immediate re-derive — promoteRideToReference's exact loop.
+  // The reset, then the immediate re-derive — promoteRideToReference's loop,
+  // with the reference handled FIRST and directly (virgin-cycle18 brief 02,
+  // decisions 1+3): its marker is cleared, its fresh result (derived above
+  // against this way's own ref) is stored, and the general backfill then
+  // skips it (store.has) instead of re-matching it across every catalog way.
   const clearedRideIds = storedResultsForWay(wayId).map((r) => r.rideId);
   for (const id of clearedRideIds) await removeStoredResult(id);
+  if (refRideId !== null) await clearUnmatched(refRideId);
+  if (refNext !== null) {
+    await saveResult(refNext);
+  } else if (refRideId !== null) {
+    // virgin-cycle18 brief 04: no TIMED result under the new gates (brief 02's
+    // decision 2 let this through: it was not timed before either) — store
+    // whatever this way's own reference derives to, so it keeps its home
+    // under the way as NO TIME instead of becoming an orphan.
+    const own = await timeReferenceAt(refRideId, wayId, ref, chainageM, version, fs);
+    if (own !== null) await saveResult(own);
+  }
   await backfillMissingResults(fs, clearedRideIds);
-  const retimed = clearedRideIds.filter((id) => getStoredResult(id)?.wayId === wayId);
-  return { ok: true, moved: true, gateSetVersion: version, clearedRideIds, retimed };
+  const candidates = refRideId !== null && !clearedRideIds.includes(refRideId)
+    ? [...clearedRideIds, refRideId] : clearedRideIds;
+  const retimed = candidates.filter((id) => getStoredResult(id)?.wayId === wayId);
+  const referenceRetimed = refRideId !== null && getStoredResult(refRideId)?.wayId === wayId;
+  return { ok: true, moved: true, gateSetVersion: version, clearedRideIds, retimed, referenceRideId: refRideId, referenceRetimed };
 }

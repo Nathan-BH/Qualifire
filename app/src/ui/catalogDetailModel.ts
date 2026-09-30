@@ -28,6 +28,8 @@ export interface PlaceDetailModel {
   id: string; label: string; coordsLabel: string; radiusLabel: string;
   lat: number; lon: number; radiusM: number;
   dormant: boolean; offerAtStart: boolean; seedOwned: boolean; deletable: boolean;
+  /** virgin-cycle18 brief 05: a user place can be renamed; merged only when another place exists */
+  renamable: boolean; mergeable: boolean;
   routes: TouchingRouteModel[]; touchingWayIds: string[];
 }
 export interface GateRowModel { name: string; chainageLabel: string }
@@ -100,6 +102,8 @@ export function placeDetailFor(id: string, deps: CatalogDetailDeps): PlaceDetail
   const touchingRoutes = c.routes.filter((w) => w.startLandmarkId === id || w.endLandmarkId === id);
   const seedOwned = isSeedOwned(seed, 'landmark', id);
   const deletable = !seedOwned && touchingRoutes.length === 0;
+  const renamable = !seedOwned;
+  const mergeable = !seedOwned && c.landmarks.length > 1;
   const routes: TouchingRouteModel[] = touchingRoutes.map((w) => {
     const direction: TouchingRouteModel['direction'] =
       w.startLandmarkId === id && w.endLandmarkId === id ? 'loop'
@@ -127,6 +131,8 @@ export function placeDetailFor(id: string, deps: CatalogDetailDeps): PlaceDetail
     offerAtStart: l.offerAtStart,
     seedOwned,
     deletable,
+    renamable,
+    mergeable,
     routes,
     touchingWayIds,
   };

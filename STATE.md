@@ -458,6 +458,15 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   the end mark while idle after backing out mid-TENTH-run, hiding the tab bar and
   corrupting the next run — fixed with a phaseRef guard. Landed as `1eca811`. 734 -> 735
   tests (one new test for the TENTH/SECOND post-reveal split), `tsc` clean.
+- `cycles/virgin-cycle18/README.md` — 2026-09-30: 6 briefs from Nathan's own test rides and tester
+  feedback, all landed uncommitted and Opus-inspected PASS (738->784 tests, tsc clean). JS chain:
+  02 gate edits keep the reference self; 04 every ride has exactly one home in RESULTS (no more
+  "plain ride", free-ride post-ride option, `rideHomes.ts` settle); 05 no duplicate places
+  (typeahead + refusal + rename/merge, shared place picker); 06 post-ride From/To editable. Native
+  pair: 01 recording screen over the lock screen; 03 running notification with live timer +
+  sector + flame icon. Needs ONE build7 rebuild for 01+03 (they move the OTA fingerprint);
+  nothing is on a phone yet. Brief 06's file is truncated (fixer 06b supplies tests); brief 05
+  decision 6 amended (route that already pointed at the kept place survives a merge).
 
 ## Nathan's own files (unmanaged by any agent)
 

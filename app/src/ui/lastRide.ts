@@ -239,7 +239,15 @@ export function clearLastRide(): void {
  * recorded before this store existed, and recovery for anything that failed
  * to lock live) in the background — never blocks boot — then merges any
  * newly-stored rankable results into `recorded`. */
-export async function initRideHistory(fs: FsAdapter): Promise<void> {
+export async function initRideHistory(
+  fs: FsAdapter,
+  // virgin-cycle18 brief 04 (decision 5): App.tsx passes "this ride carries a
+  // free-ride record" — a callback, because this module must not import
+  // store/freeRides (that store's structural-isolation rule). Skipped rides
+  // are never derived against the catalog; ui/rideHomes.ts applies the
+  // identical rule on RIDES/RESULTS.
+  skipBackfill: (rideId: string, startMs: number) => boolean = () => false,
+): Promise<void> {
   let results: RideResult[] = [];
   try {
     results = await resultsStore.initResultsStore(fs);
@@ -266,7 +274,7 @@ export async function initRideHistory(fs: FsAdapter): Promise<void> {
       // backfillMissingResults — a free ride that happens to trace a clean
       // lap of a known route must not get silently derived and saved as a
       // real route PB (D-025). Mirrors RidesScreen.tsx's identical filter.
-      const endedEntries = rideIndex.rides.filter((r) => r.status === 'ended' && r.mode !== 'free');
+      const endedEntries = rideIndex.rides.filter((r) => r.status === 'ended' && r.mode !== 'free' && !skipBackfill(r.rideId, r.startMs));
       const endedIds = endedEntries.map((r) => r.rideId);
       // WP-1: scope backfill candidates to each ride's OWN effective sport —
       // per-ride-sport, not per-active-sport, so switching the active sport

@@ -21,7 +21,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { activeCatalog, activeSportId, currentSports } from '../store/sportStore';
-import { storedResultsForWay } from '../store/resultsStore';
+import { getStoredResult, storedResultsForWay } from '../store/resultsStore';
 import { allTimeBestLapS, fmt } from './colourModel';
 import { buildResultsRoutes, type ResultsRoute } from './resultsListModel';
 import { freeRideResults, type FreeRideRecord } from '../store/freeRides';
@@ -30,6 +30,8 @@ import ResultsWayList from './resultsWayList';
 import { useTabNav } from './tabNav';
 import { PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
+import { createExpoFsAdapter } from '../storage/expoFsAdapter';
+import { settleRideHomes } from './rideHomes';
 
 export default function ResultsScreen({ openRouteId }: { openRouteId: string | null }) {
   const { t } = useTheme();
@@ -40,8 +42,20 @@ export default function ResultsScreen({ openRouteId }: { openRouteId: string | n
   // whatever async hydration RIDES' own backfill pass may still be doing —
   // same idiom as RidesScreen's resultsTick, CatalogDetailScreen's tick.
   const [tick, setTick] = useState(0);
+  // virgin-cycle18 brief 04: RESULTS settles homes itself (backfill what can
+  // be timed, file the rest as free rides — ui/rideHomes.ts), so a ride is
+  // never "only in RIDES": Nathan's pre-brief plain rides appear here the
+  // first time this tab opens, and a route created at END shows its
+  // reference without a RIDES visit in between. The tick then re-reads.
   useEffect(() => {
-    setTick((v) => v + 1);
+    let cancelled = false;
+    (async () => {
+      await settleRideHomes(createExpoFsAdapter());
+      if (!cancelled) setTick((v) => v + 1);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const CATALOG = activeCatalog();
@@ -61,6 +75,8 @@ export default function ResultsScreen({ openRouteId }: { openRouteId: string | n
   const freeRides: FreeRideRecord[] = useMemo(
     () => freeRideResults()
       .filter((r) => r.sportId === null || r.sportId === sportId)
+      // brief 04 table row 7: route wins — same precedence as rideDetailFor/buildRideRows.
+      .filter((r) => getStoredResult(r.rideId)?.wayId == null)
       .sort((a, b) => b.startedAtMs - a.startedAtMs),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [sportId, tick],
@@ -96,7 +112,7 @@ export default function ResultsScreen({ openRouteId }: { openRouteId: string | n
       <Text style={styles.sub}>
         {sportLabel !== null ? sportLabel.toUpperCase() : 'NO SPORT YET — ADD ONE IN SETTINGS'}
       </Text>
-      {routes.length === 0 ? (
+      {routes.length === 0 && freeRides.length === 0 ? (
         // decision 8: no ridden route at all.
         <Text style={styles.empty}>NO RESULTS YET — RIDE A ROUTE FIRST</Text>
       ) : (

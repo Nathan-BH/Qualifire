@@ -410,6 +410,32 @@ async function appendUnmatched(rideId: string): Promise<void> {
   });
 }
 
+/** virgin-cycle18 brief 02 (Nathan 2026-09-29): drop every unmatched marker
+ * for `rideId`, at ANY engine version. Until this existed no code path ever
+ * cleared a marker, so a ride that matched nothing BEFORE its way was minted
+ * from it (createRouteFromDraft / promoteRideToReference), or that failed to
+ * re-time under a gate edit (editWayGates), stayed unmatched forever — no
+ * result, no self dot, no sector colours, and nudging the gates back could
+ * not restore it. Callers that designate a ride as a way's reference call
+ * this before re-deriving it. No-op (no write) when nothing is listed. */
+export async function clearUnmatched(rideId: string): Promise<void> {
+  const next = unmatched.filter((u) => u.rideId !== rideId);
+  if (next.length === unmatched.length) return;
+  unmatched = next;
+  const text = encodeUnmatchedFile(unmatched);
+  await enqueueWrite(async (fs) => {
+    await fs.ensureDir(RESULTS_DIR);
+    await fs.writeText(UNMATCHED_FILE, text);
+  });
+}
+
+/** virgin-cycle18 brief 02: true when `rideId` carries a marker at the
+ * current BACKFILL_ENGINE_VERSION — the exact test backfillMissingResults
+ * applies before skipping a ride. Read-only; for callers and tests. */
+export function isUnmatched(rideId: string): boolean {
+  return unmatched.some((u) => u.rideId === rideId && u.engineVersion === BACKFILL_ENGINE_VERSION);
+}
+
 /** Offline migration/recovery: derives a RideResult from raw JSONL for every
  * rideId that has neither a stored result nor an unmatched marker at
  * BACKFILL_ENGINE_VERSION. Sequential, awaited one at a time; never throws —

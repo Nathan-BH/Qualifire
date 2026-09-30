@@ -39,7 +39,7 @@ import { PaddockTheme } from './src/ui/theme';
 import { ThemeProvider, useTheme } from './src/ui/themeContext';
 import { AutoThemeScheduler } from './src/ui/autoThemeScheduler';
 import { initRideHistory } from './src/ui/lastRide';
-import { initFreeRidePersistence } from './src/store/freeRides';
+import { freeRideNear, freeRideResults, initFreeRidePersistence } from './src/store/freeRides';
 import { initCatalogStore } from './src/store/catalogStore';
 import { initSportStore } from './src/store/sportStore';
 import { initUserRefs } from './src/live/userRefs';
@@ -167,15 +167,17 @@ function Shell() {
     initSportStore(fs)
       .then(() => initCatalogStore(fs))
       .then(() => initUserRefs(fs))
-      .then(() => initRideHistory(fs))
+      // virgin-cycle18 brief 04: the free-ride cache hydrates BEFORE the ride
+      // history, whose boot backfill must skip free rides (decision 5) — the
+      // callback below reads the store, so it has to be loaded first. Same
+      // no-throw contract (D-023) as everything else in this chain; it used
+      // to run fire-and-forget beside the chain (WP-B).
+      .then(() => initFreeRidePersistence(fs))
+      .then(() => initRideHistory(fs, (_rideId, startMs) => freeRideNear(freeRideResults(), startMs) !== null))
       .then(
         () => setWindowHydrated(true),
         () => {},
       );
-    // WP-B: the free-ride cache rehydrates the same way, alongside the
-    // fixed-route store above — same fire-and-forget shape, same file (D-023:
-    // both are derived conveniences, never load-bearing for boot).
-    void initFreeRidePersistence(createExpoFsAdapter());
   }, []);
 
   // Cycle 024 (WP-A2, Nathan 2026-08-19): "when you press record but are on

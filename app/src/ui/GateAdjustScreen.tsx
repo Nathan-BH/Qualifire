@@ -55,14 +55,14 @@ export default function GateAdjustScreen({ request }: { request: GateAdjustReque
   function confirmEditGates(chainageM: number[]) {
     const n = storedResultsForWay(request.wayId).length;
     const ghosts = n === 0
-      ? 'There are no past results on this way yet.'
-      : `Its ${n} past result${n === 1 ? ' is' : 's are'} discarded and re-timed from the recordings against the new gates — old times and ranks do not survive.`;
+      ? 'There are no timed rides on this way yet.'
+      : `Its ${n} timed ride${n === 1 ? ' is' : 's are'} re-timed from the recordings against the new gates — old times and ranks do not survive, the rides do.`;
     Alert.alert(
       `Move the gates of "${wayLabelIn(currentCatalog(), request.wayId)}"?`,
-      `This way's history will be reset and past ghosts will be lost.\n\n${ghosts} The reference ride and all ride recordings are kept.`,
+      `${ghosts} The reference ride is kept and re-timed too, so it still races you as a dot. Recordings are never touched.`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Save & reset', style: 'destructive', onPress: () => void onEditGates(chainageM) },
+        { text: 'Save & re-time', style: 'destructive', onPress: () => void onEditGates(chainageM) },
       ],
     );
   }
@@ -78,9 +78,17 @@ export default function GateAdjustScreen({ request }: { request: GateAdjustReque
       if (out.moved) {
         for (const id of out.clearedRideIds) dropRecorded(id);
         if (getLastRide()?.wayId === request.wayId) clearLastRide();
-        for (const id of out.clearedRideIds) {
+        // virgin-cycle18 brief 02: mirror every re-timed result, the
+        // reference included — it may not have been in clearedRideIds.
+        for (const id of new Set([...out.clearedRideIds, ...out.retimed])) {
           const r = getStoredResult(id);
           if (r) replaceRecorded(r);
+        }
+        if (out.referenceRideId !== null && !out.referenceRetimed) {
+          Alert.alert(
+            'Gates saved — reference not re-timed',
+            'The gates are saved, but this way\'s reference ride could not be timed against them (its recording is missing or unreadable), so it will not race you as a dot.',
+          );
         }
       }
       tabNav.closeGateAdjust();
@@ -114,7 +122,7 @@ export default function GateAdjustScreen({ request }: { request: GateAdjustReque
           busy={busy}
           mapHeight={mapHeight}
           title={`Sector gates — ${label}`}
-          subtitle="Tap a gate on the map or below to nudge it — start and finish too. Saving moved gates resets this way's history: past results are re-timed from their recordings against the new gates, old times and ranks do not survive."
+          subtitle="Tap a gate on the map or below to nudge it — start and finish too. Saving moved gates re-times this way's rides — the reference ride included — against the new gates; old times and ranks do not survive, recordings and rides do."
           discardLabel="discard nudges — keep the current gates"
           onKeep={() => tabNav.closeGateAdjust()}
           onSave={(ch) => confirmEditGates(ch)}

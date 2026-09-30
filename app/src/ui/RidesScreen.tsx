@@ -10,17 +10,17 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, SectionList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { listRides } from '../storage';
 import type { PickEvent, RideMeta } from '../storage/types';
-import { decodeIndex } from '../storage/rideIndex';
-import { backfillMissingResults, getStoredResult } from '../store/resultsStore';
+import { getStoredResult } from '../store/resultsStore';
 import { freeRideNear, freeRideResults } from '../store/freeRides';
 import { currentCatalog } from '../store/catalogStore';
-import { effectiveRideSportId, wayIdsOfSport } from '../store/sports';
+import { effectiveRideSportId } from '../store/sports';
 import { activeSportId, currentSports } from '../store/sportStore';
 import { wayLabelIn } from '../store/defaultWay';
 import { createExpoFsAdapter } from '../storage/expoFsAdapter';
 import { decodeEventsFile } from '../storage/eventsJsonl';
 import { FREE_RIDE_ROW_NAME, buildRideRows, type RideRowModel } from './rideHistoryModel';
 import { lapValues } from './colourModel';
+import { settleRideHomes } from './rideHomes';
 import { useTabNav } from './tabNav';
 import { PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
@@ -84,26 +84,10 @@ export default function RidesScreen() {
     let cancelled = false;
     (async () => {
       setBackfilling(true);
-      try {
-        const fs = createExpoFsAdapter();
-        const text = await fs.readText('index.json');
-        const rideIndex = text !== null ? decodeIndex(text) : null;
-        if (rideIndex !== null) {
-          // WP-B fix B2: exclude free rides from the same backfill — a free
-          // ride must never get silently re-derived as a route PB (D-025).
-          // Mirrors lastRide.ts's initRideHistory identical filter.
-          const endedEntries = rideIndex.rides.filter((r) => r.status === 'ended' && r.mode !== 'free');
-          const endedIds = endedEntries.map((r) => r.rideId);
-          // WP-1: per-ride-sport scoping, not per-active-sport — backfill
-          // must derive every sport's rides regardless of which is active
-          // (mirrors lastRide.ts's initRideHistory identical callback).
-          const sportByRideId = new Map(endedEntries.map((r) => [r.rideId, r.sportId]));
-          await backfillMissingResults(fs, endedIds, (rideId) => {
-            const f = currentSports();
-            return wayIdsOfSport(currentCatalog(), effectiveRideSportId(sportByRideId.get(rideId), f), f);
-          });
-        }
-      } catch { /* best-effort — the row still renders off whatever is already stored */ }
+      // virgin-cycle18 brief 04: the inline backfill moved to ui/rideHomes.ts
+      // (same pass, minus free rides) and is followed there by the orphan
+      // filing — a ride this list shows is, after this, always in RESULTS too.
+      await settleRideHomes(createExpoFsAdapter());
       if (!cancelled) {
         setBackfilling(false);
         setResultsTick((v) => v + 1);

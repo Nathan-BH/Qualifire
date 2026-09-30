@@ -39,11 +39,11 @@ import { rideDetailFor } from './rideDetailModel.ts';
 import ReplayScreen from './ReplayScreen.tsx';
 import { ALL_YELLOW } from './sectorTrailModel.ts';
 import { currentCatalog, userCatalog } from '../store/catalogStore.ts';
-import { effectiveRideSportId } from '../store/sports.ts';
+import { effectiveRideSportId, scopeCatalog } from '../store/sports.ts';
 import { activeCatalog, currentSports } from '../store/sportStore.ts';
 import { wayLabelIn } from '../store/defaultWay.ts';
 import {
-  getStoredResult, removeStoredResult, setIgnoredFromRanking, storedResultsForWay,
+  clearUnmatched, getStoredResult, removeStoredResult, setIgnoredFromRanking, storedResultsForWay,
 } from '../store/resultsStore.ts';
 import { freeRideNear, freeRideResults, markRideFree, unmarkRideFree } from '../store/freeRides.ts';
 import {
@@ -53,7 +53,11 @@ import {
   createRouteFromDraft, draftRouteFromRide, existingLandmarkLabel, existingRouteProps,
   promoteRideToReference, readRideFixes, saveAdjustedGates, type GateAdjustDraft,
 } from '../store/routeFromRide.ts';
-import { findWayWithSpecs, type RouteCreationDraft, type RouteNames } from '../store/routeCreation.ts';
+import {
+  applyEndpointChoices, findWayWithSpecs, type EndpointChoices, type RouteCreationDraft, type RouteNames,
+} from '../store/routeCreation.ts';
+import { landmarkUsageCounts } from '../store/landmarkUsage.ts';
+import { placeOptions } from '../store/placeSearch.ts';
 import { specVocabulary } from '../store/waySpecs.ts';
 import { RouteNamingCard } from './routeNamingCard.tsx';
 import { GateAdjustCard } from './gateAdjustCard.tsx';
@@ -266,23 +270,32 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
     ? `Save as a new way on ${offerRoute?.label ?? 'this route'}`
     : 'Make this the reference of a new route';
 
-  async function onNamingSave(names: RouteNames) {
+  async function onNamingSave(names: RouteNames, choices: EndpointChoices) {
     if (offer === null) return;
+    // brief 05; 06b (Inspect finding 3): resolved in the RIDE's sport, as the draft was
+    const rideCatalog = scopeCatalog(currentCatalog(), offer.sportId, currentSports());
+    const draft = applyEndpointChoices(rideCatalog, offer, choices);
     // WP-G: belt to the card's own braces (RecordScreen's onNamingSave, verbatim).
-    if (offer.existingRouteId && findWayWithSpecs(activeCatalog(), offer.existingRouteId, names.specs ?? [])) {
+    if (draft.existingRouteId && findWayWithSpecs(rideCatalog, draft.existingRouteId, names.specs ?? [])) {
       Alert.alert('That way already exists', 'Pick it on RECORD next time instead of adding it again.');
       return;
     }
     setBusy(true);
     try {
-      const out = await createRouteFromDraft(offer, names, createExpoFsAdapter());
+      const out = await createRouteFromDraft(draft, names, createExpoFsAdapter());
       if (!out.ok) {
         Alert.alert('Could not create the route', out.errors.join('\n'));
         return;
       }
+      // virgin-cycle18 brief 04 (decision 6): a free ride that just became a
+      // route's reference is not free any more — route wins, one home.
+      if (model.free !== null) unmarkRideFree(model.free.rideId);
+      const founding = getStoredResult(request.rideId);
+      if (founding) replaceRecorded(founding); // §5 stored it; the RECORD window sees it now
+      else dropRecorded(request.rideId); // brief 06: a stale result on another way was dropped — leave the window too
       setNaming(false);
       setDraft(null);
-      setTick((v) => v + 1); // model re-reads: referenceOf = the new route
+      setTick((v) => v + 1); // model re-reads: kind 'route', referenceOf = the new route
       if (out.adjust) setAdjust(out.adjust);
     } catch (e) {
       Alert.alert('Could not create the route', e instanceof Error ? e.message : String(e));
@@ -295,6 +308,14 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
   // meta (listRides, read on mount) gives the wall-clock duration; null if it
   // has not arrived yet — the record is identity, the raw JSONL is the ride.
   function onSaveFree() {
+    // virgin-cycle18 06b (one home): reached from the naming card on a ride
+    // the engine scored (WP-F / an endpoint changed) — drop that result, store
+    // and window, before filing the free record. From the plain "Save as free
+    // ride" button (kind 'none') there is no result and this is a no-op.
+    if (getStoredResult(request.rideId) !== null) {
+      void removeStoredResult(request.rideId);
+      dropRecorded(request.rideId);
+    }
     markRideFree(
       request.rideId,
       request.startedAtMs,
@@ -307,19 +328,27 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
   function onUnsaveFree() {
     if (model.free === null) return;
     unmarkRideFree(model.free.rideId);
-    setTick((v) => v + 1); // model re-reads: free = null → kind 'none', offer back
+    // virgin-cycle18 brief 04 (decision 7): also drop the ride's permanent
+    // unmatched marker so the next settleRideHomes/boot backfill re-matches
+    // it against today's ways. Matches nothing → filed free again by that pass.
+    void clearUnmatched(request.rideId);
+    setTick((v) => v + 1); // model re-reads: free = null → kind 'none', offer + "Save as free ride" back
   }
 
   async function onAdjustSave(chainageM: number[]) {
     if (adjust === null) return;
     setBusy(true);
     try {
-      const out = await saveAdjustedGates(adjust, chainageM);
+      const out = await saveAdjustedGates(adjust, chainageM, createExpoFsAdapter());
       if (!out.ok) {
         Alert.alert('Could not save the gates', out.errors.join('\n'));
         return;
       }
       setAdjust(null);
+      const refRide = getStoredResult(request.rideId); // virgin-cycle18 brief 04: the v2 re-time
+      if (refRide) replaceRecorded(refRide);
+      else dropRecorded(request.rideId); // its v1 result was removed — no stale in-session copy (Inspect follow-up 2026-09-30)
+      setTick((v) => v + 1); // sectors/lap re-read at the minted gates
     } catch (e) {
       Alert.alert('Could not save the gates', e instanceof Error ? e.message : String(e));
     } finally {
@@ -608,7 +637,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
             <Text style={styles.deleteText}>Make this the reference of this way</Text>
           </Pressable>
         ) : null}
-        {offer !== null && !naming && adjust === null && model.kind !== 'free' ? (
+        {offer !== null && !naming && adjust === null ? (
           <Pressable
             style={[styles.deleteBtn, styles.promoteBtn, busy && styles.busy]}
             disabled={busy}
@@ -647,8 +676,16 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
             matchedWayLabel={offer.matchedWayId ? wayLabelIn(currentCatalog(), offer.matchedWayId) : null}
             existingRoute={offerRoute}
             vocabulary={specVocabulary(activeCatalog().ways)}
-            onSave={(names) => void onNamingSave(names)}
+            places={placeOptions(activeCatalog(), landmarkUsageCounts(activeCatalog()))}
+            startProposedId={offer.start.kind === 'existing' ? offer.start.landmarkId : null}
+            endProposedId={offer.end.kind === 'existing' ? offer.end.landmarkId : null}
+            routeForPair={(ch) => {
+              const d = applyEndpointChoices(scopeCatalog(currentCatalog(), offer.sportId, currentSports()), offer, ch);
+              return d.existingRouteId ? existingRouteProps(d.existingRouteId) : null;
+            }}
+            onSave={(names, choices) => void onNamingSave(names, choices)}
             onSkip={() => setNaming(false)}
+            onSaveFree={onSaveFree}
           />
         </View>
       ) : null}

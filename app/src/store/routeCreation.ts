@@ -35,6 +35,7 @@
  * Pure — no fs, no Date.now(); the caller supplies every fact.
  */
 import { landmarkAt, metresBetween } from './catalog.ts';
+import { placeByLabel } from './placeSearch.ts';
 import type { Catalog, GateSet, Landmark, Way, Route } from './types.ts';
 
 /** Default disc for a landmark born from a single visit. The measured seed
@@ -158,6 +159,14 @@ function newLandmark(
   };
 }
 
+/** WP-G's pair → route rule: the first route linking these two EXISTING
+ * landmarks in this direction, else null (a 'new' endpoint never matches). */
+export function existingRouteFor(c: Pick<Catalog, 'routes'>, start: EndpointResolution, end: EndpointResolution): Route | null {
+  return start.kind === 'existing' && end.kind === 'existing'
+    ? c.routes.find((w) => w.startLandmarkId === start.landmarkId && w.endLandmarkId === end.landmarkId) ?? null
+    : null;
+}
+
 /**
  * Should STOP offer to name this ride's endpoints, and as what?
  *
@@ -266,13 +275,9 @@ export function draftRouteCreation(c: Catalog, ride: RideFacts): RouteCreationDr
   // WP-G: an existing directed way is no longer a refusal — it is the
   // variant case (a second Route on the same Way). First match wins; only
   // loops can have several ways on one pair (loopDiscriminator) and then
-  // any of them is an equally good home for the new route.
-  const existingRoute =
-    start.kind === 'existing' && end.kind === 'existing'
-      ? c.routes.find(
-          (w) => w.startLandmarkId === start.landmarkId && w.endLandmarkId === end.landmarkId,
-        ) ?? null
-      : null;
+  // any of them is an equally good home for the new route. Rule extracted
+  // (virgin-cycle18 brief 05) so applyEndpointChoices re-applies it verbatim.
+  const existingRoute = existingRouteFor(c, start, end);
 
   return {
     rideId: ride.rideId,
@@ -290,6 +295,61 @@ export function draftRouteCreation(c: Catalog, ride: RideFacts): RouteCreationDr
 /** WP-G: what the naming card hands back. `specs` in the rider's order; the
  * builder trims and drops empties, so ['', ' Dry '] stores ['Dry']. */
 export interface RouteNames { start: string; end: string; specs?: readonly string[] }
+
+/** virgin-cycle18 brief 05: what the naming card decided about one endpoint.
+ * 'proposed' = keep what draftRouteCreation resolved (a 'new' place named by
+ * RouteNames, or the existing place it matched); 'existing' = the rider
+ * pointed this end at an existing place instead (typeahead pick, brief 05;
+ * the change picker, brief 06). No 'new' override exists: a new disc can
+ * never be minted at a fix that resolved to an existing place (it would
+ * overlap that disc — validateCatalog), and a 'new' endpoint is already new. */
+export type EndpointChoice = { kind: 'proposed' } | { kind: 'existing'; landmarkId: string };
+export interface EndpointChoices { start: EndpointChoice; end: EndpointChoice }
+export const PROPOSED: EndpointChoices = { start: { kind: 'proposed' }, end: { kind: 'proposed' } };
+
+/** The draft with the rider's choices applied — pure, same rules as
+ * draftRouteCreation for what follows from the endpoints: `loop` is
+ * start === end, `existingRouteId` is existingRouteFor on the effective pair
+ * (so two existing places that already have a route flip the offer into the
+ * WP-G variant). A loop draft (end resolved onto the start's own new disc,
+ * `end.draft` absent) follows the start's choice. matchedWayId, sportId,
+ * trackLengthM, rideId, startedAtMs are carried unchanged. Both 'proposed'
+ * returns the input draft itself. */
+export function applyEndpointChoices(c: Pick<Catalog, 'routes'>, draft: RouteCreationDraft, choices: EndpointChoices): RouteCreationDraft {
+  if (choices.start.kind === 'proposed' && choices.end.kind === 'proposed') return draft;
+  const start: EndpointResolution =
+    choices.start.kind === 'existing' ? { kind: 'existing', landmarkId: choices.start.landmarkId } : draft.start;
+  let end: EndpointResolution;
+  if (choices.end.kind === 'existing') end = { kind: 'existing', landmarkId: choices.end.landmarkId };
+  else if (draft.loop && draft.end.kind === 'new' && !draft.end.draft) end = start; // loop onto the start's draft follows the start
+  else end = draft.end;
+  const loop = start.landmarkId === end.landmarkId;
+  return { ...draft, start, end, loop, existingRouteId: existingRouteFor(c, start, end)?.id ?? null };
+}
+
+/** virgin-cycle18 brief 05 (decision 1): the names a build would give to
+ * NEW places must not already name a landmark (case-insensitive, trimmed),
+ * and start/end may not share one. Checked against the MERGED catalog
+ * (seed + user) by createRouteFromDraft; the card enforces the same rule
+ * live. Empty names are not judged here (the caller requires them). */
+export function newPlaceLabelErrors(c: Pick<Catalog, 'landmarks'>, draft: RouteCreationDraft, names: RouteNames): string[] {
+  const errs: string[] = [];
+  const startNew = draft.start.kind === 'new' && !!draft.start.draft;
+  const endNew = !draft.loop && draft.end.kind === 'new' && !!draft.end.draft;
+  const taken = (label: string) => placeByLabel(c, label);
+  if (startNew) {
+    const t = taken(names.start);
+    if (t) errs.push(`A place called "${t.label}" already exists — use it instead of naming it again`);
+  }
+  if (endNew) {
+    const t = taken(names.end);
+    if (t) errs.push(`A place called "${t.label}" already exists — use it instead of naming it again`);
+  }
+  if (startNew && endNew && names.start.trim().length > 0 && names.start.trim().toLowerCase() === names.end.trim().toLowerCase()) {
+    errs.push('start and end cannot share a name');
+  }
+  return errs;
+}
 
 /** WP-G: trimmed, non-empty, order-preserving; [] when nothing survives. */
 export function cleanSpecs(specs: readonly string[] | undefined): string[] {

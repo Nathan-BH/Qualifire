@@ -211,6 +211,17 @@ Nathan answered most of `deployment/QUESTIONS-FOR-NATHAN.md` on 2026-09-09; fold
 
 ## Parked (scoped, not urgent)
 
+- **(cycle18, 2026-09-30) reference ride can be re-stored on the engine-scored way.** A reference
+  ride with `referenceTimed === false` is still a step-1 backfill candidate in `ui/rideHomes.ts`
+  and boot `initRideHistory`; a later settle could re-store it there. Fix when next touched:
+  exclude any user way's `referenceRideId` from step-1 candidates in both paths (step 1b already
+  times references on their own way).
+- **(cycle18) ride-notification foreground-service match.** If expo-audio lock-screen controls
+  are ever used during a ride, the notification module should also match the channel id ending
+  `:qualifire-ride-tracking` (native change, needs a rebuild).
+- **(cycle18) on-device checks pending** for all six briefs after the build7 rebuild; nothing
+  from cycle18 is committed yet.
+
 - **`design/` empty-state mockups (D4, virgin-cycle5).** `BRIEF-design-folder-plan.md` D4 —
   one mockup each for ROUTES/RIDES/RESULTS/RECORD-setup's zero-data state, now that the
   default install is `EXPO_PUBLIC_SEED_MODE=empty`. The brief's own recommendation: only worth

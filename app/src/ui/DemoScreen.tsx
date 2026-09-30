@@ -746,6 +746,7 @@ export default function DemoScreen({ onFullscreenChange }: {
                 vocabulary={[]}
                 onSave={onDemoNamingSave}
                 onSkip={onDemoNamingSkip}
+                onSaveFree={onDemoNamingSkip}
               />
             ) : mode === 'tenth' && !namingExpanded ? null : (
               // R6: SECOND RIDE's after-reveal card — WP-G "new way on this route". Brief 02:
@@ -760,6 +761,7 @@ export default function DemoScreen({ onFullscreenChange }: {
                 vocabulary={[...DEMO_SPEC_VOCABULARY]}
                 onSave={onDemoAddWaySave}
                 onSkip={onDemoNamingSkip}
+                onSaveFree={onDemoNamingSkip}
               />
             )
           ) : mode === 'tenth' && !namingExpanded ? (

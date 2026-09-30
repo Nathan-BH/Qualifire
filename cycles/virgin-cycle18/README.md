@@ -1,4 +1,4 @@
-# virgin-cycle18 — 6 briefs written, NOT executed (2026-09-29)
+# virgin-cycle18 — 6 briefs written 2026-09-29, ALL EXECUTED + inspected PASS 2026-09-30 (uncommitted; see OVERNIGHT-REPORT.md)
 
 Nathan fed ideas from his own test rides and tester feedback; each went through Haiku Digest ->
 Fable Plan. Nothing here has been implemented; every brief is self-contained for a Sonnet
@@ -8,12 +8,12 @@ executor (stop-on-ambiguity), then a fresh Opus Inspect.
 
 | # | file | idea | ships as | status |
 | --- | --- | --- | --- | --- |
-| 01 | `01-app-over-lock-screen.md` | show the app over the lock screen so a ride can be stopped without unlocking | **native rebuild** | briefed |
-| 02 | `02-gate-edit-keeps-reference-self.md` | after editing gates the reference ride gave no dot / no sector colours (real cause: permanent "unmatched" marker, not gate deletion) | JS / OTA | briefed |
-| 03 | `03-ride-running-notification.md` | running notification: live timer + current sector `S1`; **flame icons folded in** (assets in `assets-03/`) | **native rebuild** | briefed |
-| 04 | `04-every-ride-has-a-place-in-results.md` | remove "plain ride"; every ride lands in RESULTS (route > way, or FREE RIDES); free-ride option on the RECORD card | JS / OTA | briefed |
-| 05 | `05-no-duplicate-places.md` | no duplicate places: typeahead + exact-name refusal, plus rename and merge for existing twins (Nathan's two "Work") | JS / OTA | briefed |
-| 06 | `06-post-ride-places-editable.md` | post-ride From/To are editable proposals, never etched (mirrors the auto-detect start pattern) | JS / OTA | briefed |
+| 01 | `01-app-over-lock-screen.md` | show the app over the lock screen so a ride can be stopped without unlocking | **native rebuild** | LANDED, inspected PASS (uncommitted) |
+| 02 | `02-gate-edit-keeps-reference-self.md` | after editing gates the reference ride gave no dot / no sector colours (real cause: permanent "unmatched" marker, not gate deletion) | JS / OTA | LANDED, inspected PASS (uncommitted) |
+| 03 | `03-ride-running-notification.md` | running notification: live timer + current sector `S1`; **flame icons folded in** (assets in `assets-03/`) | **native rebuild** | LANDED, inspected PASS (uncommitted) |
+| 04 | `04-every-ride-has-a-place-in-results.md` | remove "plain ride"; every ride lands in RESULTS (route > way, or FREE RIDES); free-ride option on the RECORD card | JS / OTA | LANDED, inspected PASS (uncommitted) |
+| 05 | `05-no-duplicate-places.md` | no duplicate places: typeahead + exact-name refusal, plus rename and merge for existing twins (Nathan's two "Work") | JS / OTA | LANDED, inspected PASS (uncommitted) |
+| 06 | `06-post-ride-places-editable.md` | post-ride From/To are editable proposals, never etched (mirrors the auto-detect start pattern) | JS / OTA | LANDED, inspected PASS (uncommitted) |
 
 ## Order and dependencies
 
@@ -36,3 +36,6 @@ lock-safe pane; 03 notification card colour (kept red, because expo-location col
 
 Long-ride "still recording" reminder, STOP button in the notification, auto-stop on stillness
 (all from brief 03's out-of-scope list).
+
+## Execution 2026-09-30 (run in-chat, 00:06 onward)
+All six landed; each group inspected by a fresh Opus (A: 02+04, B: 05+06, C: 01+03). Fixers written by Fable and applied by Sonnet: `04b-fixer-inspect-findings.md`, `05b-fixer-m2.md`, `06b-fixer-group-b.md`. Final: 784 tests / 781 pass / 0 fail / 3 skip, tsc clean. Erratum: brief 06's file is truncated after section 5 (06b supplies its tests); brief 05 decision 6 amended (see OVERNIGHT-REPORT.md). Nothing committed/built/published; native 01+03 need one build7 rebuild.

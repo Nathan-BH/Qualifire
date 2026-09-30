@@ -21,6 +21,9 @@ import { assert, loadFixture, loadJson, test, TESTS_DIR } from './lib.ts';
 import { emptyCatalog, mergeCatalogs, metresBetween, waysForRoute, validateCatalog } from '../src/store/catalog.ts';
 import { scopeCatalog, type SportsFile } from '../src/store/sports.ts';
 import {
+  PROPOSED,
+  applyEndpointChoices,
+  newPlaceLabelErrors,
   MATCHED_ENDPOINT_SLACK_M,
   MIN_LANDMARK_RADIUS_M,
   MIN_TRACK_LENGTH_M,
@@ -607,6 +610,64 @@ test('WP-G 10: a loop from and back to an EXISTING landmark with no loop way yet
   assert(errs10.length === 0, `merged result must validate, got: ${errs10.join('; ')}`);
 });
 
+// ---------------------------------------------------------------------------
+// virgin-cycle18 brief 05: applyEndpointChoices / newPlaceLabelErrors (pure).
+
+test('c18-05 rc1: applyEndpointChoices — both proposed is identity; start → existing re-points, loop and existingRouteId recompute', () => {
+  const cat = catWith([lm('X', LAT0 + 0.05, LON0, 120)]);
+  const d = draftRouteCreation(cat, { ...RIDE, fixes: northRide(20) })!;
+  assert(d.start.kind === 'new' && d.end.kind === 'new', 'precondition: two new endpoints');
+  assert(applyEndpointChoices(cat, d, PROPOSED) === d, 'both proposed returns the same draft');
+  const a = applyEndpointChoices(cat, d, { start: { kind: 'existing', landmarkId: 'X' }, end: PROPOSED.end });
+  assert(a.start.kind === 'existing' && a.start.landmarkId === 'X', 'start re-pointed to X');
+  assert(JSON.stringify(a.end) === JSON.stringify(d.end), 'end unchanged');
+  assert(a.loop === false && a.existingRouteId === null, 'not a loop, no route');
+  const both = applyEndpointChoices(cat, d, { start: { kind: 'existing', landmarkId: 'X' }, end: { kind: 'existing', landmarkId: 'X' } });
+  assert(both.loop === true, 'both X is a loop');
+  const loopCat = catWith([lm('X', LAT0 + 0.05, LON0, 120)],
+    [{ id: 'loopX', startLandmarkId: 'X', endLandmarkId: 'X', loopDiscriminator: 'l', wayIds: [] }]);
+  const both2 = applyEndpointChoices(loopCat, d, { start: { kind: 'existing', landmarkId: 'X' }, end: { kind: 'existing', landmarkId: 'X' } });
+  assert(both2.existingRouteId === 'loopX', `existingRouteId should be loopX, got ${both2.existingRouteId}`);
+});
+
+test('c18-05 rc2: applyEndpointChoices — a pair that already has a route flips into the variant', () => {
+  const a = lm('A', LAT0 + 0.5, LON0, 150);
+  const b = lm('B', LAT0 + 0.6, LON0, 150);
+  const rAB: Route = { id: 'rAB', startLandmarkId: 'A', endLandmarkId: 'B', wayIds: ['wAB'] };
+  const wAB: Way = { id: 'wAB', routeId: 'rAB', refLineId: 'wAB', gateSetVersion: 1, seeded: false };
+  const cat = catWith([a, b], [rAB], [wAB]);
+  cat.gateSets = [{ wayId: 'wAB', version: 1, chainageM: [10, 990], createdAtMs: 0 }];
+  const d = draftRouteCreation(emptyCatalog(), { ...RIDE, fixes: northRide(20) })!;
+  const applied = applyEndpointChoices(cat, d, { start: { kind: 'existing', landmarkId: 'A' }, end: { kind: 'existing', landmarkId: 'B' } });
+  assert(applied.existingRouteId === 'rAB', `existingRouteId: ${applied.existingRouteId}`);
+  const built = buildRouteCreationCatalog(cat, applied, { start: '', end: '', specs: ['Alt'] });
+  assert(built.landmarks.length === cat.landmarks.length, 'no landmark minted');
+  assert(built.ways.length === cat.ways.length + 1 && built.ways[built.ways.length - 1].routeId === 'rAB', 'a way added under the existing route');
+});
+
+test('c18-05 rc3: applyEndpointChoices — a loop draft follows the start\'s choice', () => {
+  const out = northRide(6, 0.001);
+  const back = northRide(5, 0.001).reverse().map((p) => ({ lat: p.lat + 0.0005, lon: p.lon + 0.00001 }));
+  const d = draftRouteCreation(emptyCatalog(), { ...RIDE, fixes: [...out, ...back] })!;
+  assert(d.loop === true, 'precondition: a loop draft');
+  const a = applyEndpointChoices(emptyCatalog(), d, { start: { kind: 'existing', landmarkId: 'X' }, end: PROPOSED.end });
+  assert(a.end.kind === 'existing' && a.end.landmarkId === 'X', 'end follows the start to X');
+  assert(a.loop === true, 'still a loop');
+});
+
+test('c18-05 rc4: newPlaceLabelErrors — taken names (any case), shared name, existing endpoints never judged', () => {
+  const cat = catWith([lm('Work', LAT0 + 0.5, LON0, 120)]);
+  const d = draftRouteCreation(emptyCatalog(), { ...RIDE, fixes: northRide(20) })!;
+  const e1 = newPlaceLabelErrors(cat, d, { start: 'work ', end: 'Store' });
+  assert(e1.length === 1 && e1[0].includes('"Work"'), `taken start: ${JSON.stringify(e1)}`);
+  const e2 = newPlaceLabelErrors(cat, d, { start: 'Shop', end: 'shop' });
+  assert(JSON.stringify(e2) === JSON.stringify(['start and end cannot share a name']), `shared: ${JSON.stringify(e2)}`);
+  assert(newPlaceLabelErrors(cat, d, { start: 'A', end: 'B' }).length === 0, 'free names pass');
+  const dExisting: RouteCreationDraft = { ...d, start: { kind: 'existing', landmarkId: 'Work' } };
+  assert(newPlaceLabelErrors(cat, dExisting, { start: 'Work', end: 'Store' }).length === 0, 'an existing start is never judged');
+  assert(newPlaceLabelErrors(cat, d, { start: '', end: '' }).length === 0, 'empty names are not judged here');
+});
+
 // ============================================================ WP-H §3.3b:
 // promoteRideToReference ("make this ride the reference of an EXISTING
 // route" — reset, not remap; Nathan's 2026-09-04 ruling). This needs the
@@ -637,6 +698,8 @@ const wphCatalogStore = await import('../src/store/catalogStore.ts');
 const wphResultsStore = await import('../src/store/resultsStore.ts');
 const wphUserRefs = await import('../src/live/userRefs.ts');
 const wphRouteFromRide = await import('../src/store/routeFromRide.ts');
+const wphRideHomes = await import('../src/ui/rideHomes.ts');
+const wphFreeRides = await import('../src/store/freeRides.ts');
 
 const WPH_LAT0 = 51.30;
 const WPH_LON0 = 4.50;
@@ -921,6 +984,11 @@ test('WP-H 17 (createWayFromDraft): happy path — route:<rideId> with reference
   assert(wphUserRefs.userRefFor('way:create1') !== null, 'the built reference line is registered under the way id');
   const v1 = cat.gateSets.find((g) => g.wayId === 'way:create1' && g.version === 1);
   assert(v1 !== undefined && JSON.stringify(v1.chainageM) === JSON.stringify(out.adjust!.chainageM), 'the v1 gate set is the seeded proposal');
+  // virgin-cycle18 brief 04 (decision 8): the founding ride is stored on its own way at once.
+  assert(out.referenceTimed, 'createRouteFromDraft reports the founding ride timed');
+  const own = wphResultsStore.getStoredResult('create1');
+  assert(own !== null && own.wayId === 'way:create1' && own.lap.quality === 'clean' && own.derivedBy.gateSetVersion === 1,
+    `the founding ride's own result is stored on way:create1 at v1, got ${JSON.stringify(own && { wayId: own.wayId, q: own.lap.quality, v: own.derivedBy.gateSetVersion })}`);
 });
 
 test('WP-H 17b (createWayFromDraft, WP-G variant): adds a Route with specs under the existing way — no new landmark, no new way', async () => {
@@ -943,6 +1011,23 @@ test('WP-H 17b (createWayFromDraft, WP-G variant): adds a Route with specs under
   assert(wphUserRefs.userRefFor('way:variant1') !== null, 'the variant has its own reference line');
 });
 
+test('c18-05 rc5 (createRouteFromDraft): a taken name is refused before any write', async () => {
+  const { fs } = await wphSetup();
+  await wphWriteRideFile(fs, 'create5', wphFixes(200, 0.0002, 1_700_500_000));
+  const d = await wphRouteFromRide.draftRouteFromRide('create5', 1_700_500_000_000, null, fs);
+  assert(d !== null, 'precondition: a draft');
+  const landmarksBefore = wphCatalogStore.userCatalog().landmarks.length;
+  const routesBefore = wphCatalogStore.userCatalog().routes.length;
+  const out = await wphRouteFromRide.createRouteFromDraft(d!, { start: '', end: 'WPH-B' }, fs);
+  assert(!out.ok, 'a taken name must be refused');
+  if (!out.ok) assert(out.errors.join(' ').includes('"wph-b"'), `error names "wph-b", got ${out.errors.join(' ')}`);
+  assert(wphCatalogStore.userCatalog().landmarks.length === landmarksBefore, 'no landmark written');
+  assert(wphCatalogStore.userCatalog().routes.length === routesBefore, 'no route written');
+  assert(wphUserRefs.userRefFor('way:create5') === null, 'no reference line written');
+  const ok = await wphRouteFromRide.createRouteFromDraft(d!, { start: '', end: 'Far' }, fs);
+  assert(ok.ok, `a free name still works, got ${JSON.stringify(ok)}`);
+});
+
 test('WP-H 18 (saveAdjustedGates): unmoved → { ok, moved:false } and no v2; moved → a v2 gate set with the new chainages', async () => {
   const { fs } = await wphSetup();
   await wphWriteRideFile(fs, 'adjust1', wphFixes(200, 0.0002, 1_700_100_000));
@@ -951,18 +1036,40 @@ test('WP-H 18 (saveAdjustedGates): unmoved → { ok, moved:false } and no v2; mo
   assert(out.ok && out.adjust !== null, 'precondition: a created route with an adjust draft');
   if (!out.ok || out.adjust === null) return;
 
-  const same = await wphRouteFromRide.saveAdjustedGates(out.adjust, [...out.adjust.chainageM]);
+  const same = await wphRouteFromRide.saveAdjustedGates(out.adjust, [...out.adjust.chainageM], fs);
   assert(same.ok && same.moved === false, `unmoved gates must be a no-op, got ${JSON.stringify(same)}`);
   assert(wphCatalogStore.userCatalog().gateSets.every((g) => !(g.wayId === out.wayId && g.version === 2)), 'unmoved: no v2 minted');
 
   const nudged = out.adjust.chainageM.map((c, i) => (i === 2 ? c + 25 : c));
-  const moved = await wphRouteFromRide.saveAdjustedGates(out.adjust, nudged);
+  const moved = await wphRouteFromRide.saveAdjustedGates(out.adjust, nudged, fs);
   assert(moved.ok && moved.moved === true, `moved gates must save, got ${JSON.stringify(moved)}`);
   const cat = wphCatalogStore.userCatalog();
   const v2 = cat.gateSets.find((g) => g.wayId === out.wayId && g.version === 2);
   assert(v2 !== undefined && JSON.stringify(v2.chainageM) === JSON.stringify(nudged), 'v2 carries the nudged chainages');
   assert(cat.gateSets.some((g) => g.wayId === out.wayId && g.version === 1), 'v1 survives (history is never deleted)');
   assert(cat.ways.find((r) => r.id === out.wayId)!.gateSetVersion === 2, 'the route points at v2');
+  // virgin-cycle18 brief 04: the founding ride is re-timed at v2, never left under v1 chainages.
+  assert(moved.ok && moved.moved && moved.referenceRetimed, `moved gates re-time the reference, got ${JSON.stringify(moved)}`);
+  const re = wphResultsStore.getStoredResult('adjust1');
+  assert(re !== null && re.wayId === out.wayId && re.derivedBy.gateSetVersion === 2 && re.lap.quality === 'clean',
+    `re-timed at v2 and clean, got ${JSON.stringify(re && { v: re.derivedBy.gateSetVersion, q: re.lap.quality })}`);
+  assert(JSON.stringify(re!.sectors.map((s) => s.toChainageM)) === JSON.stringify(nudged.slice(1)),
+    'the v2 sectors carry the nudged chainages');
+});
+
+test('c18-04 (createRouteFromDraft): a founding ride with a GPS hole is stored as NO TIME under its way — a home, never a rank', async () => {
+  const { fs } = await wphSetup();
+  const f = wphFixes(200, 0.0002, 1_700_100_000);
+  const keep = (i: number) => i < 155 || i > 185;
+  await wphWriteRideFile(fs, 'holed1', { t: f.t.filter((_, i) => keep(i)), lat: f.lat.filter((_, i) => keep(i)), lon: f.lon.filter((_, i) => keep(i)) });
+  const d = await wphRouteFromRide.draftRouteFromRide('holed1', 1_700_100_000_000, null, fs);
+  assert(d !== null, 'precondition: a draft');
+  const out = await wphRouteFromRide.createRouteFromDraft(d!, { start: '', end: 'Far' }, fs);
+  assert(out.ok && out.referenceTimed, `stored at any quality, got ${JSON.stringify(out)}`);
+  const own = wphResultsStore.getStoredResult('holed1');
+  assert(own !== null && own.wayId === 'way:holed1' && own.lap.quality === 'missed', `expected a missed lap on its own way, got ${JSON.stringify(own && own.lap)}`);
+  const { ranks } = await import('../src/store/results.ts');
+  assert(!ranks(own!), 'a missed lap never ranks (D-028)');
 });
 
 // ============================================================ WP-I
@@ -1147,4 +1254,171 @@ test('WP-I 6 (editRouteGates): refusals write nothing at all', async () => {
     assert(!out.ok, 'a chainage beyond the line must refuse');
     assert(JSON.stringify(wphCatalogStore.userCatalog()) === beforeCat, 'beyond-the-line: catalog must be untouched');
   }
+});
+
+// ============================================================ virgin-cycle18
+// brief 02: a gate edit never loses the way's reference self.
+
+/** WphRoute's reference ride 'oldref1' with a real recording = the same track its ref is built from. */
+async function c18Setup(holeFrom?: number, holeTo?: number) {
+  const { fs } = await wphSetup();
+  const f = wphFixes(200, 0.0002, 1_700_100_000);
+  const ref = await wphEstablishRef('WphRoute', f);
+  const keep = (i: number) => holeFrom === undefined || i < holeFrom! || i > holeTo!;
+  const g = { t: f.t.filter((_, i) => keep(i)), lat: f.lat.filter((_, i) => keep(i)), lon: f.lon.filter((_, i) => keep(i)) };
+  await wphWriteRideFile(fs, 'oldref1', g);
+  return { fs, ref };
+}
+
+test('c18-02 1 (editWayGates): a reference ride stuck behind an unmatched marker is cleared and re-timed by a gate edit', async () => {
+  const { fs } = await c18Setup();
+  await fs.ensureDir('results');
+  await fs.writeText('results/unmatched.json', JSON.stringify({
+    schemaVersion: 1, entries: [{ rideId: 'oldref1', engineVersion: wphResultsStore.BACKFILL_ENGINE_VERSION }],
+  }));
+  await wphResultsStore.initResultsStore(fs);
+  await wphResultsStore.backfillMissingResults(fs, ['oldref1']);
+  assert(wphResultsStore.getStoredResult('oldref1') === null, 'precondition: the marker keeps the reference un-timed');
+  const out = await wphRouteFromRide.editWayGates('WphRoute', [50, 650, 1000, 1500, 1950], fs);
+  assert(out.ok && out.moved, `expected a moved save, got ${JSON.stringify(out)}`);
+  if (!out.ok || !out.moved) return;
+  assert(out.referenceRideId === 'oldref1' && out.referenceRetimed, 'the reference must be reported re-timed');
+  assert(out.retimed.includes('oldref1'), 'retimed lists the reference even though it was not cleared');
+  const r = wphResultsStore.getStoredResult('oldref1');
+  assert(r !== null && r.wayId === 'WphRoute' && r.derivedBy.gateSetVersion === out.gateSetVersion,
+    'the reference has a fresh result on its own way at the minted version');
+  assert(!wphResultsStore.isUnmatched('oldref1'), 'the marker is gone');
+  await wphResultsStore.flushResultWrites();
+  assert(!(fs.files.get('results/unmatched.json') ?? '').includes('oldref1'), 'and gone on disk');
+});
+
+test('c18-02 2 (editWayGates): a nudge the reference recording cannot be timed against is refused BEFORE any write', async () => {
+  const { fs } = await c18Setup(100, 145); // ~46 fixes missing around 2200-3200 m
+  await wphResultsStore.backfillMissingResults(fs, ['oldref1']);
+  assert(wphResultsStore.getStoredResult('oldref1')?.lap.quality === 'clean', 'precondition: times clean under v1');
+  const beforeCat = JSON.stringify(wphCatalogStore.userCatalog());
+  const out = await wphRouteFromRide.editWayGates('WphRoute', [50, 500, 1000, 2700, 4300], fs);
+  assert(!out.ok, `a gate in the recording's hole must refuse, got ${JSON.stringify(out)}`);
+  if (out.ok) return;
+  assert(out.errors[0].includes('cannot be timed'), `error names the cause, got: ${out.errors[0]}`);
+  assert(JSON.stringify(wphCatalogStore.userCatalog()) === beforeCat, 'catalog untouched — still v1');
+  assert(wphResultsStore.getStoredResult('oldref1') !== null, 'the v1 result is still stored');
+  assert(!wphResultsStore.isUnmatched('oldref1'), 'no marker was written');
+});
+
+test('c18-02 3 (editWayGates): a reference that already fails under the CURRENT gates never blocks an edit, and a fixing edit re-times it', async () => {
+  const { fs } = await c18Setup(100, 145);
+  // v1 -> a set with gate 3 in the hole, forced in through the catalog directly (as if saved before this brief).
+  const forced = wphCatalogStore.userCatalog();
+  const errs = await wphCatalogStore.saveUserCatalog({
+    ...forced,
+    ways: forced.ways.map((w) => (w.id === 'WphRoute' ? { ...w, gateSetVersion: 2 } : w)),
+    gateSets: [...forced.gateSets, { wayId: 'WphRoute', version: 2, chainageM: [50, 500, 1000, 2700, 4300], createdAtMs: 1 }],
+  });
+  assert(errs.length === 0, `forced v2 must save, got ${errs.join('; ')}`);
+  await wphResultsStore.backfillMissingResults(fs, ['oldref1']);
+  assert(wphResultsStore.getStoredResult('oldref1') === null && wphResultsStore.isUnmatched('oldref1'),
+    'precondition: under the bad v2 the reference is un-timed and marked (Path B state)');
+  const out = await wphRouteFromRide.editWayGates('WphRoute', [50, 500, 1000, 1500, 1950], fs);
+  assert(out.ok && out.moved, `the fixing edit must go through, got ${JSON.stringify(out)}`);
+  if (!out.ok || !out.moved) return;
+  assert(out.gateSetVersion === 3 && out.referenceRetimed, 'v3 minted, reference re-timed');
+  assert(wphResultsStore.getStoredResult('oldref1')?.lap.quality === 'clean', 'and clean again');
+});
+
+test('c18-02 4 (promoteRideToReference / createRouteFromDraft): both clear a pre-existing marker on the ride they make the reference', async () => {
+  {
+    const { fs } = await wphSetup();
+    const f = wphFixes(200, 0.0002, 1_700_100_000);
+    await wphWriteRideFile(fs, 'newref9', f);
+    await fs.ensureDir('results');
+    await fs.writeText('results/unmatched.json', JSON.stringify({
+      schemaVersion: 1, entries: [{ rideId: 'newref9', engineVersion: wphResultsStore.BACKFILL_ENGINE_VERSION }],
+    }));
+    await wphResultsStore.initResultsStore(fs);
+    const out = await wphRouteFromRide.promoteRideToReference('WphRoute', 'newref9', fs);
+    assert(out.ok && out.retimed.includes('newref9'), `promote must re-time a marked ride, got ${JSON.stringify(out)}`);
+    assert(!wphResultsStore.isUnmatched('newref9'), 'promote cleared the marker');
+  }
+  {
+    const { fs } = await wphSetup();
+    await wphWriteRideFile(fs, 'create9', wphFixes(200, 0.0002, 1_700_100_000));
+    await fs.ensureDir('results');
+    await fs.writeText('results/unmatched.json', JSON.stringify({
+      schemaVersion: 1, entries: [{ rideId: 'create9', engineVersion: wphResultsStore.BACKFILL_ENGINE_VERSION }],
+    }));
+    await wphResultsStore.initResultsStore(fs);
+    const d = await wphRouteFromRide.draftRouteFromRide('create9', 1_700_100_000_000, null, fs);
+    assert(d !== null, 'precondition: a draft');
+    const out = await wphRouteFromRide.createRouteFromDraft(d!, { start: '', end: 'Far North' }, fs);
+    assert(out.ok, `create must succeed, got ${JSON.stringify(out)}`);
+    assert(!wphResultsStore.isUnmatched('create9'), 'create cleared the marker (the next backfill can time it)');
+    assert(wphResultsStore.getStoredResult('create9')?.wayId === 'way:create9', 'create derives its founding ride itself (c18-04 decision 8 supersedes 02 decision 4)');
+  }
+});
+
+test('c18-04 follow-up (settleRideHomes / timeMissingReference): a way whose reference ride sits behind an unmatched marker gets its reference result stored by one settle — it appears in RESULTS without a gate re-save', async () => {
+  const { fs } = await c18Setup();
+  await fs.ensureDir('results');
+  await fs.writeText('results/unmatched.json', JSON.stringify({
+    schemaVersion: 1, entries: [{ rideId: 'oldref1', engineVersion: wphResultsStore.BACKFILL_ENGINE_VERSION }],
+  }));
+  await wphResultsStore.initResultsStore(fs);
+  wphFreeRides.resetFreeRidesForTests();
+  await wphFreeRides.initFreeRidePersistence(fs);
+  await fs.writeText('index.json', JSON.stringify({ schemaVersion: 1, rides: [
+    { rideId: 'oldref1', file: 'rides/oldref1.jsonl', startMs: 1_700_100_000_000, endMs: 1_700_100_398_000, nFixes: 200, status: 'ended' },
+  ] }));
+  await wphResultsStore.backfillMissingResults(fs, ['oldref1']);
+  assert(wphResultsStore.getStoredResult('oldref1') === null, 'precondition: the marker keeps the reference un-timed by the backfill');
+
+  const filed = await wphRideHomes.settleRideHomes(fs);
+  assert(filed.length === 0, `a reference ride is never filed free, got ${filed.join()}`);
+  const r = wphResultsStore.getStoredResult('oldref1');
+  assert(r !== null && r.wayId === 'WphRoute' && r.derivedBy.gateSetVersion === 1,
+    `settle stored the reference on its own way at the current gates, got ${JSON.stringify(r && { wayId: r.wayId, v: r.derivedBy.gateSetVersion })}`);
+  assert(wphResultsStore.storedResultsForWay('WphRoute').some((x) => x.rideId === 'oldref1'), 'RESULTS (storedResultsForWay) now lists it under WphRoute');
+  assert(!wphResultsStore.isUnmatched('oldref1'), 'the marker is gone');
+  assert(wphFreeRides.freeRideResults().length === 0, 'no free record was written');
+  assert(await wphRouteFromRide.timeMissingReference('WphRoute', fs) === false, 'idempotent: a stored reference result short-circuits');
+  await wphResultsStore.flushResultWrites();
+  assert(!(fs.files.get('results/unmatched.json') ?? '').includes('oldref1'), 'and the marker is gone on disk');
+});
+
+test('c18-06 rc6: applyEndpointChoices — existing → existing re-point: pair flips variant, loop breaks, matchedWayId carried', () => {
+  const cat = { routes: [
+    { id: 'SH', startLandmarkId: 'S', endLandmarkId: 'H', wayIds: ['wSH'] },
+    { id: 'XX', startLandmarkId: 'X', endLandmarkId: 'X', loopDiscriminator: 'loop:x', wayIds: ['wXX'] },
+  ] } as unknown as Catalog;
+  const d = {
+    rideId: 'r6', startedAtMs: 0, trackLengthM: 1000, sportId: null, matchedWayId: 'wM',
+    start: { kind: 'existing', landmarkId: 'S' }, end: { kind: 'existing', landmarkId: 'W' },
+    loop: false, existingRouteId: null,
+  } as unknown as RouteCreationDraft;
+  const a = applyEndpointChoices(cat, d, { start: { kind: 'proposed' }, end: { kind: 'existing', landmarkId: 'H' } });
+  assert(a.start.kind === 'existing' && a.start.landmarkId === 'S' && a.end.kind === 'existing' && a.end.landmarkId === 'H', 'end re-pointed S → H');
+  assert(a.loop === false && a.existingRouteId === 'SH', `onto a pair with a route → variant, got ${a.existingRouteId}`);
+  assert(a.matchedWayId === 'wM', 'matchedWayId is a fact about the ride — carried');
+  const dl = { ...d, start: { kind: 'existing', landmarkId: 'X' }, end: { kind: 'existing', landmarkId: 'X' }, loop: true, existingRouteId: 'XX' } as unknown as RouteCreationDraft;
+  const b = applyEndpointChoices(cat, dl, { start: { kind: 'existing', landmarkId: 'Y' }, end: { kind: 'proposed' } });
+  assert(b.start.kind === 'existing' && b.start.landmarkId === 'Y' && b.end.kind === 'existing' && b.end.landmarkId === 'X' && b.loop === false && b.existingRouteId === null,
+    `existing loop X→X with start → Y becomes Y→X, no route: ${JSON.stringify(b)}`);
+});
+
+test('c18-06 rc7 (createRouteFromDraft): an untimeable founding ride drops its stale result on another way — one home', async () => {
+  const { fs } = await wphSetup();
+  await wphWriteRideFile(fs, 'onehome1', wphFixes(200, 0.0002, 1_700_600_000));
+  const d = await wphRouteFromRide.draftRouteFromRide('onehome1', 1_700_600_000_000, null, fs);
+  const first = await wphRouteFromRide.createRouteFromDraft(d!, { start: '', end: 'Far' }, fs);
+  assert(first.ok && first.referenceTimed === true, `precondition: a timed route, got ${JSON.stringify(first)}`);
+  const own = wphResultsStore.getStoredResult('onehome1');
+  assert(own !== null, 'precondition: founding result stored');
+  // 'stale1' holds a result on way:onehome1 but has NO recording -> referenceTimed false on its own new way
+  await wphResultsStore.saveResult({ ...own!, rideId: 'stale1' });
+  assert(wphResultsStore.getStoredResult('stale1')?.wayId === 'way:onehome1', 'precondition: stale result on another way');
+  const d2 = await wphRouteFromRide.draftRouteFromRide('onehome1', 1_700_600_000_000, null, fs);
+  const out = await wphRouteFromRide.createRouteFromDraft({ ...d2!, rideId: 'stale1' }, { start: '', end: '', specs: ['Alt'] }, fs);
+  assert(out.ok && out.referenceTimed === false, `untimed creation, got ${JSON.stringify(out)}`);
+  assert(wphResultsStore.getStoredResult('stale1') === null, 'the stale result on way:onehome1 must be dropped (brief 06 decision 6)');
+  assert(wphResultsStore.getStoredResult('onehome1')?.wayId === 'way:onehome1', 'other rides untouched');
 });

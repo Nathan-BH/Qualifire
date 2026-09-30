@@ -532,6 +532,25 @@ test('resultsstore: backfill of a nonsense ride yields no result and one unmatch
   );
 });
 
+test('resultsstore (c18-02): clearUnmatched lets a marked ride be retried; no-op when nothing is marked', async () => {
+  const fs = createMemoryFsAdapter();
+  const fx = loadFixture('clean_morning');
+  const rideId = 'nonsenseride2';
+  await writeRideFile(fs, rideId, fx.fixes.t, fx.fixes.lat.map((v) => v + 0.1), fx.fixes.lon);
+  resultsStore.resetResultsStoreForTests();
+  await resultsStore.initResultsStore(fs);
+  await resultsStore.backfillMissingResults(fs, [rideId]);
+  assert(resultsStore.isUnmatched(rideId), 'precondition: marked');
+  await resultsStore.clearUnmatched(rideId);
+  assert(!resultsStore.isUnmatched(rideId), 'cleared in memory');
+  await resultsStore.flushResultWrites();
+  assert(!(fs.files.get('results/unmatched.json') ?? '').includes(rideId), 'cleared on disk');
+  await resultsStore.clearUnmatched('never-marked'); // must not throw or write
+  // retried: still nonsense, so it is marked again — proof the skip at :444 no longer fires
+  await resultsStore.backfillMissingResults(fs, [rideId]);
+  assert(resultsStore.isUnmatched(rideId), 'a retried nonsense ride is marked again');
+});
+
 test('resultsstore: removeStoredResult deletes the file, the index entry, and the in-memory entry', async () => {
   const fs = createMemoryFsAdapter();
   await resultsStore.initResultsStore(fs);

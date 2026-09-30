@@ -52,8 +52,10 @@ import {
   REVEAL_START_DELAY_MS,
   type RankingReveal,
 } from './rankingRevealModel.ts';
-import { dropRecorded, rememberRide } from './lastRide';
-import { findWayWithSpecs, type RouteCreationDraft, type RouteNames } from '../store/routeCreation';
+import { dropRecorded, rememberRide, replaceRecorded } from './lastRide';
+import {
+  applyEndpointChoices, findWayWithSpecs, type EndpointChoices, type RouteCreationDraft, type RouteNames,
+} from '../store/routeCreation';
 import { hasSpecs, specPickRows, specVocabulary } from '../store/waySpecs';
 import { createExpoFsAdapter } from '../storage/expoFsAdapter';
 // WP-H (§4.9/§4.11): the create-way bodies live in store/wayFromRide.ts now,
@@ -72,14 +74,16 @@ import { GateAdjustCard } from './gateAdjustCard';
 import { RouteNamingCard } from './routeNamingCard';
 import { FirstSportPrompt } from './firstSportPrompt';
 import { deleteRide } from '../storage';
-import { removeStoredResult } from '../store/resultsStore';
+import { getStoredResult, removeStoredResult } from '../store/resultsStore';
+import { markRideFree } from '../store/freeRides';
 import { currentCatalog } from '../store/catalogStore';
 import { gateSetFor, landmarkAt } from '../store/catalog';
-import { addSport, effectiveRideSportId, setActiveSport, showSportPillRow, wayIdsOfSport } from '../store/sports';
+import { addSport, effectiveRideSportId, scopeCatalog, setActiveSport, showSportPillRow, wayIdsOfSport } from '../store/sports';
 import { afterSportSwitch } from '../store/sportSwitch';
 import { activeCatalog, activeSportId, currentSports, saveSports } from '../store/sportStore';
 import { defaultEndpoints, wayLabelIn, wayVariantLabel, sortWaysForDisplay } from '../store/defaultWay';
 import { landmarkUsageCounts, sortLandmarksByUsage } from '../store/landmarkUsage';
+import { placeOptions } from '../store/placeSearch';
 import type { Way } from '../store/types';
 import { PaddockTheme, colors, radius } from './theme';
 import { useTheme } from './themeContext';
@@ -221,7 +225,12 @@ export default function RecordScreen({
   /** WP-H: the finished ride's identity, carried from onEnd to the reversed
    * mark's onDone (a [] closure) so the handoff can open the ride detail for
    * THIS ride instead of the retired RESULT tab. */
-  const endedRef = useRef<{ rideId: string; startedAtMs: number } | null>(null);
+  const endedRef = useRef<{ rideId: string; startedAtMs: number; durationS: number | null; sportId: string | null } | null>(null);
+  // virgin-cycle18 brief 06: the from/to the RECORD tab showed when START was
+  // pressed — landmark ids, null for 'new' — so the naming card can list them
+  // first as "picked at START". Set in onStart, read in 'ending'; never
+  // persisted (the sidecar's pick event already logs it).
+  const ridePickRef = useRef<{ from: string | null; to: string | null }>({ from: null, to: null });
   // virgin-cycle11 ranking reveal — built in onEnd AFTER rememberRide (R5), shown by
   // the 'ending' render; null = no reveal (R4), screen behaves exactly as before.
   const [reveal, setReveal] = useState<RankingReveal | null>(null);
@@ -592,6 +601,11 @@ export default function RecordScreen({
         sportId,
       });
       setRecovered(false);
+      const ctx = startContextRef.current;
+      ridePickRef.current = {
+        from: ctx && ctx.from !== NEW_ID ? ctx.from : null,
+        to: ctx && ctx.to !== NEW_ID ? ctx.to : null,
+      };
       setSession(s);
     } catch (e) {
       Alert.alert('Could not start tracking', e instanceof Error ? e.message : String(e));
@@ -615,7 +629,9 @@ export default function RecordScreen({
       // WP-H: capture the finished ride's identity for the post-STOP handoff
       // to the ride detail — set here (still in scope) rather than at the
       // 'ending' phase flip below, mirroring how `s` itself is read here.
-      endedRef.current = s ? { rideId: s.rideId, startedAtMs: s.startedAtMs } : null;
+      endedRef.current = s
+        ? { rideId: s.rideId, startedAtMs: s.startedAtMs, durationS: null, sportId: effectiveRideSportId(s.sportId, currentSports()) }
+        : null;
       const finalState = liveEngine.getState();
       // An unmatched ride has track===null/lap===null, so rememberRide() harmlessly
       // clears `last` — desired: Result must not show a stale route ride as
@@ -627,6 +643,10 @@ export default function RecordScreen({
       const nextReveal = s ? buildRankingReveal(finalState, s.rideId, s.startedAtMs) : null;
       const sum = await stopTracking();
       setLastSummary(sum);
+      // virgin-cycle18 brief 04: the ride's wall-clock length, for a free-ride
+      // record written from the naming card (onNamingFree) — same value the
+      // ride detail's own "Save as free ride" takes from RideMeta.
+      if (endedRef.current && sum) endedRef.current = { ...endedRef.current, durationS: Math.max(0, (sum.endMs - sum.startMs) / 1000) };
       // Retroactive way creation (OPEN-ITEMS item 2, extended by WP-F): a
       // finished ride may be ride 1 on a brand-new way — compute the naming
       // offer BEFORE the phase flip so 'ending' can show it. WP-F: the offer
@@ -645,6 +665,14 @@ export default function RecordScreen({
       const draft = s
         ? await draftRouteFromRide(s.rideId, s.startedAtMs, finalState.track, createExpoFsAdapter(), s.sportId ?? activeSportId())
         : null;
+      // virgin-cycle18 brief 04 (decision 3): nothing locked AND nothing to
+      // offer (no draft: unreadable / too short) — no card will ask, so the
+      // ride is filed free right here. A locked ride already has a stored
+      // result from rememberRide above; a draftable ride gets the card.
+      if (s && finalState.track === null && draft === null) {
+        const e = endedRef.current;
+        if (e) markRideFree(e.rideId, e.startedAtMs, e.durationS, e.sportId);
+      }
       // Cycle 024 (WP-A2, Nathan 2026-08-19): "at the end when you press
       // stop it would be nice to show the animation again — but reversed."
       // session clears and phase flips to 'ending' TOGETHER, after the ride
@@ -739,13 +767,44 @@ export default function RecordScreen({
     setShowAnim('rev');
   }, []);
 
-  const onNamingSave = useCallback(async (names: RouteNames) => {
-    const draft = namingRef.current;
-    if (!draft) return;
+  // virgin-cycle18 brief 04: SAVE AS FREE RIDE on the naming card. Files the
+  // label from the ended session's identity (endedRef, set in onEnd), then
+  // proceeds exactly as skip did — the post-stop detail opens on the FREE
+  // RIDE card. The ride was saved before the card existed; this only says
+  // where it lives.
+  const onNamingFree = useCallback(() => {
+    const e = endedRef.current;
+    if (e) {
+      // virgin-cycle18 06b (one home): this card can offer SAVE AS FREE RIDE on
+      // a ride the engine scored (WP-F, or `not <way>?` + an endpoint changed
+      // onto a pair with no route). Its stored result would be a second home —
+      // drop it, store and window, before filing the free record. The free
+      // record keeps the settle/boot backfill from re-deriving it.
+      if (getStoredResult(e.rideId) !== null) {
+        void removeStoredResult(e.rideId);
+        dropRecorded(e.rideId);
+      }
+      markRideFree(e.rideId, e.startedAtMs, e.durationS, e.sportId);
+    }
+    setNaming(null);
+    setShowAnim('rev');
+  }, []);
+
+  const onNamingSave = useCallback(async (names: RouteNames, choices: EndpointChoices) => {
+    const drafted = namingRef.current;
+    if (!drafted) return;
+    // virgin-cycle18 brief 05: the rider may have pointed an endpoint at an
+    // existing place on the card — the draft that is built is the one with
+    // those choices applied (pure; identity when both are 'proposed').
+    // 06b (Inspect finding 3): the draft is scoped to the RIDE's sport
+    // (draftRouteFromRide) — a choice must be resolved in that same catalog,
+    // not the global active sport's.
+    const rideCatalog = scopeCatalog(currentCatalog(), drafted.sportId, currentSports());
+    const draft = applyEndpointChoices(rideCatalog, drafted, choices);
     // WP-G: belt to the card's own braces — the card already disables ADD
     // ROUTE on a duplicate, but the pick could have gone stale between
     // renders (another ride landed the same specs in the meantime).
-    if (draft.existingRouteId && findWayWithSpecs(activeCatalog(), draft.existingRouteId, names.specs ?? [])) {
+    if (draft.existingRouteId && findWayWithSpecs(rideCatalog, draft.existingRouteId, names.specs ?? [])) {
       Alert.alert('That way already exists', 'Pick it on RECORD next time instead of adding it again.');
       return;
     }
@@ -764,6 +823,12 @@ export default function RecordScreen({
         return;
       }
       setNaming(null);
+      // virgin-cycle18 brief 04: createRouteFromDraft stored the founding
+      // ride's own result (§5) — mirror it so a second ride in this session
+      // already races it (brief 02's "Nathan's call 2").
+      const founding = getStoredResult(draft.rideId);
+      if (founding) replaceRecorded(founding);
+      else dropRecorded(draft.rideId); // brief 06: no result any more (a stale one on another way was dropped) — leave the window too
       if (out.adjust) {
         // SETUP-UX §4: offer tap-then-nudge before the end mark plays;
         // the card's exits (onAdjustKeep/onAdjustSave) start the animation.
@@ -794,13 +859,22 @@ export default function RecordScreen({
     try {
       // unmoved gates come back { ok:true, moved:false } with no write —
       // the same exit as before (store/wayFromRide.ts, WP-H §4.9).
-      const out = await saveAdjustedGates(a, chainageM);
+      const out = await saveAdjustedGates(a, chainageM, createExpoFsAdapter());
       if (!out.ok) {
         // refused — surface WHY, keep the card up; KEEP remains available.
         Alert.alert('Could not save the gates', out.errors.join('\n'));
         return;
       }
       setAdjust(null);
+      // virgin-cycle18 brief 04: the v2 re-time of the reference is what the
+      // next ride races — mirror it (replaceRecorded drops it if it no longer
+      // ranks). referenceRetimed:false = saveAdjustedGates REMOVED the v1
+      // result: drop the in-session copy too (Inspect follow-up 2026-09-30),
+      // or the next ride this session would race a dot timed at the old gates.
+      const refRideId = a.wayId.startsWith('way:') ? a.wayId.slice('way:'.length) : a.wayId;
+      const refRide = getStoredResult(refRideId);
+      if (refRide) replaceRecorded(refRide);
+      else dropRecorded(refRideId);
       setShowAnim('rev');
     } catch (e) {
       Alert.alert('Could not save the gates', e instanceof Error ? e.message : String(e));
@@ -1246,8 +1320,18 @@ export default function RecordScreen({
               matchedWayLabel={naming.matchedWayId ? wayLabelIn(currentCatalog(), naming.matchedWayId) : null}
               existingRoute={naming.existingRouteId ? existingRouteProps(naming.existingRouteId) : null}
               vocabulary={specVocabulary(activeCatalog().ways)}
+              places={placeOptions(activeCatalog(), landmarkUsageCounts(activeCatalog()))}
+              startProposedId={naming.start.kind === 'existing' ? naming.start.landmarkId : null}
+              endProposedId={naming.end.kind === 'existing' ? naming.end.landmarkId : null}
+              startPickedId={ridePickRef.current.from}
+              endPickedId={ridePickRef.current.to}
+              routeForPair={(ch) => {
+                const d = applyEndpointChoices(scopeCatalog(currentCatalog(), naming.sportId, currentSports()), naming, ch);
+                return d.existingRouteId ? existingRouteProps(d.existingRouteId) : null;
+              }}
               onSave={onNamingSave}
               onSkip={onNamingSkip}
+              onSaveFree={onNamingFree}
             />
           ) : endingSlot === 'link' && naming !== null && naming.matchedWayId ? (
             /* brief 05: quiet offer — the ride is already saved as the scored

@@ -75,6 +75,18 @@ test('catalogdetail: place A — one touching way, direction "from", touchingRou
     `expected [${STD_ID}, ${ALT_ID}], got ${JSON.stringify(p.touchingWayIds)}`);
   assert(p.lat === lmA.lat && p.lon === lmA.lon && p.radiusM === lmA.radiusM,
     `expected lat/lon/radiusM to equal lmA's own fields, got ${p.lat}/${p.lon}/${p.radiusM}`);
+  assert(p.renamable === true && p.mergeable === true, 'a user place with others around is renamable and mergeable');
+});
+
+test('c18-05 cd1: a seed place is neither renamable nor mergeable', () => {
+  const p = placeDetailFor('lm:seed', DEPS)!;
+  assert(p.renamable === false && p.mergeable === false, `seed place: renamable=${p.renamable} mergeable=${p.mergeable}`);
+});
+
+test('c18-05 cd2: the only place is renamable but not mergeable', () => {
+  const only: Catalog = { schemaVersion: 1, landmarks: [lmA], routes: [], ways: [], gateSets: [] };
+  const p = placeDetailFor('lm:a', { ...DEPS, catalog: only, seed: { ...SEED, landmarks: [] } })!;
+  assert(p.renamable === true && p.mergeable === false, `only place: renamable=${p.renamable} mergeable=${p.mergeable}`);
 });
 
 test('catalogdetail: place B — direction "to", dormant by offerAtStart=false', () => {

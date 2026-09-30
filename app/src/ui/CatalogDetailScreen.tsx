@@ -14,7 +14,7 @@
  * variants, so the way body carries one section per route.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { CatalogDetailRequest } from './tabNav.tsx';
 import { useTabNav } from './tabNav.tsx';
 import { useTheme } from './themeContext.tsx';
@@ -22,7 +22,11 @@ import { PaddockTheme, radius } from './theme.ts';
 import WayMapView from './wayMapView.tsx';
 import { dateTimeLabel } from './rideHistoryModel.ts';
 import { rankedCountFor } from './colourModel.ts';
-import { currentCatalog } from '../store/catalogStore.ts';
+import { currentCatalog, saveUserCatalog, userCatalog } from '../store/catalogStore.ts';
+import { mergeLandmarks, renameLandmark } from '../store/catalogMerge.ts';
+import { landmarkUsageCounts } from '../store/landmarkUsage.ts';
+import { placeOptions } from '../store/placeSearch.ts';
+import { PlacePicker } from './placePicker.tsx';
 import { shippedCatalog } from '../store/seed.ts';
 import { refFor } from '../live/refs.ts';
 import { getStoredResult, storedResultsForWay } from '../store/resultsStore.ts';
@@ -103,6 +107,7 @@ export default function CatalogDetailScreen({ request }: { request: CatalogDetai
 
       {request.kind === 'place' ? (
         <PlaceBody
+          key={request.id} // 06b: a merge re-opens the kept place — fresh rename/merge state, not the dropped place's
           model={model as PlaceDetailModel}
           t={t}
           styles={styles}
@@ -110,6 +115,44 @@ export default function CatalogDetailScreen({ request }: { request: CatalogDetai
           onDelete={() => {
             const l = CATALOG.landmarks.find((x) => x.id === request.id);
             if (l) deleteLandmark(SEED, l, bump);
+          }}
+          onRename={async (label) => {
+            const out = renameLandmark(userCatalog(), SEED, request.id, label);
+            if (!out.ok) { Alert.alert('Could not rename', out.errors.join('\n')); return false; }
+            const errs = await saveUserCatalog(out.next);
+            if (errs.length > 0) { Alert.alert('Could not rename', errs.join('\n')); return false; }
+            bump();
+            return true;
+          }}
+          mergeOptions={placeOptions(CATALOG, landmarkUsageCounts(CATALOG), { exclude: [request.id] })}
+          onMergeInto={(keepId) => {
+            const me = CATALOG.landmarks.find((x) => x.id === request.id);
+            const keep = CATALOG.landmarks.find((x) => x.id === keepId);
+            if (!me || !keep) return;
+            const out = mergeLandmarks(userCatalog(), SEED, keepId, request.id);
+            if (!out.ok) { Alert.alert('Could not merge', out.errors.join('\n')); return; }
+            const n = out.repointedRouteIds.length;
+            let body = `${n} route${n === 1 ? '' : 's'} from or to "${me.label}" will use "${keep.label}" instead, and "${me.label}" is removed.`;
+            if (out.folded.length > 0) {
+              body += `\n${out.folded.length} route${out.folded.length === 1 ? '' : 's'} become${out.folded.length === 1 ? 's' : ''} the same as an existing one and fold${out.folded.length === 1 ? 's' : ''} into it — its ways, gates, reference lines and results are kept.`;
+            }
+            if (out.loopedRouteIds.length > 0) body += `\n${out.loopedRouteIds.length} route${out.loopedRouteIds.length === 1 ? '' : 's'} become${out.loopedRouteIds.length === 1 ? 's' : ''} a loop.`;
+            body += '\nRide recordings are never touched.';
+            Alert.alert(`Merge "${me.label}" into "${keep.label}"?`, body, [
+              { text: 'Cancel', style: 'cancel' },
+              {
+                text: 'Merge',
+                style: 'destructive',
+                onPress: () => {
+                  void (async () => {
+                    const errs = await saveUserCatalog(out.next);
+                    if (errs.length > 0) { Alert.alert('Could not merge', errs.join('\n')); return; }
+                    // the page's own place is gone — show the one that absorbed it
+                    tabNav.openCatalog({ kind: 'place', id: keepId });
+                  })();
+                },
+              },
+            ]);
           }}
         />
       ) : (
@@ -142,14 +185,20 @@ export default function CatalogDetailScreen({ request }: { request: CatalogDetai
 // ---------------------------------------------------------------- PlaceBody
 
 function PlaceBody({
-  model, t, styles, onOpenRoute, onDelete,
+  model, t, styles, onOpenRoute, onDelete, onRename, mergeOptions, onMergeInto,
 }: {
   model: PlaceDetailModel;
   t: PaddockTheme;
   styles: ReturnType<typeof makeStyles>;
   onOpenRoute: (routeId: string) => void;
   onDelete: () => void;
+  onRename: (label: string) => Promise<boolean>;
+  mergeOptions: readonly import('../store/placeSearch.ts').PlaceOption[];
+  onMergeInto: (keepId: string) => void;
 }) {
+  const [renaming, setRenaming] = useState(false);
+  const [renameText, setRenameText] = useState(model.label);
+  const [merging, setMerging] = useState(false);
   const fromRoutes = model.routes.filter((w) => w.direction === 'from' || w.direction === 'loop');
   const toRoutes = model.routes.filter((w) => w.direction === 'to');
   const noRoutes = fromRoutes.length === 0 && toRoutes.length === 0;
@@ -198,8 +247,48 @@ function PlaceBody({
 
       <View style={{ marginTop: 16 }}>
         <Text style={[st.h2, { color: t.textDim }]}>ACTIONS</Text>
+        {/* virgin-cycle18 brief 05: rename (inline — Alert.prompt is iOS-only) */}
+        {model.renamable && !renaming ? (
+          <Pressable style={[styles.deleteBtn, { borderColor: t.cardBorder }]} onPress={() => { setRenameText(model.label); setRenaming(true); }}>
+            <Text style={[styles.deleteText, { color: t.textDim }]}>Rename</Text>
+          </Pressable>
+        ) : null}
+        {renaming ? (
+          <View style={st.renameRow}>
+            <TextInput
+              style={[st.renameInput, { color: t.text, borderColor: t.cardBorder, backgroundColor: t.bg }]}
+              value={renameText}
+              onChangeText={setRenameText}
+              maxLength={40}
+              autoFocus
+            />
+            <Pressable
+              style={[styles.deleteBtn, { borderColor: t.cardBorder }]}
+              onPress={() => { void onRename(renameText).then((ok) => { if (ok) setRenaming(false); }); }}
+            >
+              <Text style={[styles.deleteText, { color: t.text }]}>SAVE</Text>
+            </Pressable>
+            <Pressable style={[styles.deleteBtn, { borderColor: t.cardBorder }]} onPress={() => setRenaming(false)}>
+              <Text style={[styles.deleteText, { color: t.textDim }]}>cancel</Text>
+            </Pressable>
+          </View>
+        ) : null}
+        {/* brief 05: merge this place INTO another — every route here uses that one, this one goes */}
+        {model.mergeable && mergeOptions.length > 0 ? (
+          <Pressable style={[styles.deleteBtn, { borderColor: t.cardBorder, marginTop: 8 }]} onPress={() => setMerging((v) => !v)}>
+            <Text style={[styles.deleteText, { color: t.textDim }]}>Merge into another place…</Text>
+          </Pressable>
+        ) : null}
+        {merging ? (
+          <View style={{ marginTop: 6 }}>
+            <Text style={{ color: t.textDim, fontSize: 12.5 }}>
+              {`Pick the place to keep. Every route from or to "${model.label}" will use it instead, and "${model.label}" is removed.`}
+            </Text>
+            <PlacePicker options={mergeOptions} selectedId={null} onPick={onMergeInto} />
+          </View>
+        ) : null}
         {model.deletable ? (
-          <Pressable style={[styles.deleteBtn, { borderColor: t.cardBorder }]} onPress={onDelete}>
+          <Pressable style={[styles.deleteBtn, { borderColor: t.cardBorder, marginTop: 8 }]} onPress={onDelete}>
             <Text style={[styles.deleteText, { color: t.textDim }]}>Delete</Text>
           </Pressable>
         ) : null}
@@ -389,4 +478,6 @@ const st = StyleSheet.create({
   slimBtnText: { fontSize: 12.5, fontWeight: '800', letterSpacing: 1 },
   linkRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6 },
   factRow: { flexDirection: 'row', paddingVertical: 3 },
+  renameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
+  renameInput: { flex: 1, borderWidth: 1, borderRadius: radius.btn, paddingHorizontal: 10, paddingVertical: 8, fontSize: 15 },
 });
