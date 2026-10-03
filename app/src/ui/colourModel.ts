@@ -137,21 +137,25 @@ export function lapValues(wayId: string, excludeRideId?: string): number[] {
 }
 
 /**
- * Sector history for the window. CLEAN ONLY — an interrupted sector carries a
- * red light in it, and letting those into the mean made a sector 26% off the
- * best read green (EveningA S1: best 174.9 s, mean 226.7 s). They still RANK
- * as laps (D-028); they just do not define what "average" means.
+ * Sector history for the window: the store's OWN sectorHistory()
+ * (store/results.ts — "the input every colour model consumes") over the same
+ * ghost window the lap uses. Clean AND interrupted sectors count, each at its
+ * scoredS() (store/timing.ts: raw by default — a stop is the sector's own
+ * luck, exactly as an interrupted LAP already ranks and sits in lapValues());
+ * estimated and missed sectors have no real time and never enter.
+ *
+ * virgin-cycle20 brief 10 (Nathan's ruling, 2026-10): until now this was a
+ * local CLEAN-ONLY lookalike (cycle 009: EveningA S1 best 174.9 s vs mean
+ * 226.7 s read green — a moving-time-era argument). The cost showed up on
+ * every freshly founded route: the founding ride is ride 2's whole window,
+ * gate seeding keeps its stops INSIDE sectors (gateSeeding.ts SIGNAL_CLEAR_M),
+ * so every sector it stopped in had history [] and stayed 'neutral' (grey
+ * strip bar, unpainted line) for the entire second ride — and a sector with
+ * a light the rider always stops at could never earn a colour at all. Same
+ * discipline as rankedFor() above: the store's predicate, not a lookalike.
  */
 export function sectorValues(wayId: string, index: number, excludeRideId?: string): number[] {
-  const out: number[] = [];
-  for (const r of ghostsFor(wayId, excludeRideId)) {
-    const s = r.sectors.find((x) => x.index === index);
-    if (s && s.quality === 'clean') {
-      const v = scoredS(s);
-      if (v !== null) out.push(v);
-    }
-  }
-  return out;
+  return sectorHistory(ghostsFor(wayId, excludeRideId), index);
 }
 
 /**
@@ -171,6 +175,28 @@ export function tierFor(value: number | null, history: number[]): UiTier {
   if (!st || st.n < MIN_HISTORY) return 'neutral';
   if (value < st.best) return 'purple';
   return value < st.mean ? 'green' : 'yellow';
+}
+
+/**
+ * virgin-cycle20 brief 07: the LIVE verdict for the Record screen — sector
+ * `sectorIndex` >= 1, or the whole lap when `sectorIndex` is 0 (liveView.tsx's
+ * convention). One place, headless-testable, used by the lap chip, the sector
+ * flash and the strip, so they can never disagree.
+ *
+ *  - no locked way, or no real time → 'neutral' (D-025: before the lock there is
+ *    nothing honest to compare against; a null time never earns a colour);
+ *  - otherwise tierFor() over lapValues()/sectorValues() for the locked way,
+ *    EXCLUDING the current ride by id (B-44 for the live screen): before STOP the
+ *    exclusion is a no-op, after onEnd's rememberRide() it is what keeps a
+ *    best-of-window lap purple while the 'running' tree is still on screen.
+ *  Ride 1 of a way (no history) lands on 'neutral' through tierFor's own floor.
+ */
+export function liveTierFor(
+  wayId: string | null, sectorIndex: number, timeS: number | null, excludeRideId?: string,
+): UiTier {
+  if (wayId === null || timeS === null) return 'neutral';
+  const history = sectorIndex === 0 ? lapValues(wayId, excludeRideId) : sectorValues(wayId, sectorIndex, excludeRideId);
+  return tierFor(timeS, history);
 }
 
 /** All-time best scored lap (store/timing.ts) for a route — NOT window-limited: every seed and

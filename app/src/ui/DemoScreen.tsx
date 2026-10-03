@@ -657,21 +657,17 @@ export default function DemoScreen({ onFullscreenChange }: {
     const progressPct = 100 * Math.min(Math.max(clockS / endS, 0), 1);
     return (
       <View style={styles.raceColumn}>
-        {settings.liveMap ? (
-          <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch' }}>
-            {mode === 'first' ? (
-              <WayMapView key={`first-${runSeq.current}`} wayId={DEMO_FIRST_RIDE_ID} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
-                zoom={4} trail={trail} variant="live" liveState={running ? 'moving' : 'finished'} fill />
-            ) : (
-              <WayMapView key={`${mode}-${runSeq.current}`} wayId={DEMO_WAY_ID} asset={DEMO_WAY_ASSET} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
-                zoom={4} sectorColours={sectorColours} leadColour={colors.grey}
-                selfs={showSelfs ? selfDots : undefined}
-                variant="live" liveState={running ? 'moving' : 'finished'} fill />
-            )}
-          </View>
-        ) : (
-          <View style={{ flex: 1 }} />
-        )}
+        <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch' }}>
+          {mode === 'first' ? (
+            <WayMapView key={`first-${runSeq.current}`} wayId={DEMO_FIRST_RIDE_ID} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
+              zoom={4} trail={trail} variant="live" liveState={running ? 'moving' : 'finished'} fill />
+          ) : (
+            <WayMapView key={`${mode}-${runSeq.current}`} wayId={DEMO_WAY_ID} asset={DEMO_WAY_ASSET} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
+              zoom={4} sectorColours={sectorColours} leadColour={colors.grey}
+              selfs={showSelfs ? selfDots : undefined}
+              variant="live" liveState={running ? 'moving' : 'finished'} fill />
+          )}
+        </View>
         {mode === 'first'
           ? <Text style={styles.trackLine}>{FIRST_RIDE_STATUS} · {demoFmtMS(clockS)}</Text>
           : <LiveSectorPane vm={vm} showLap clockSize={56} />}
@@ -716,7 +712,7 @@ export default function DemoScreen({ onFullscreenChange }: {
           showsVerticalScrollIndicator={false}
         >
           <Text style={styles.trackLine}>
-            {reveal !== null ? 'Ride saved.' : `Ride saved — ${demoFmtMS(clockS)}.`}
+            {reveal !== null ? 'Activity saved.' : `Activity saved — ${demoFmtMS(clockS)}.`}
           </Text>
           {reveal !== null && (
             <TimingTower model={reveal.model} justFinished reveal climbMs={reveal.climbMs}
@@ -773,7 +769,7 @@ export default function DemoScreen({ onFullscreenChange }: {
               style={styles.notThisWayBtn}
               disabled={busy || showAnim !== null}
               onPress={onNotThisWay}
-              accessibilityLabel="This ride was a different way"
+              accessibilityLabel="This activity was a different way"
             >
               <Text style={styles.notThisWayText}>{`not ${DEMO_ROUTE_LABEL}?`}</Text>
             </Pressable>
@@ -791,7 +787,7 @@ export default function DemoScreen({ onFullscreenChange }: {
               <ResultsPlot
                 results={plotResults}
                 selectedRideId={plotSel}
-                selectedPosLabel={settings.tower ? demoPlotPosLabel(plotResults, plotSel) : ''}
+                selectedPosLabel={demoPlotPosLabel(plotResults, plotSel)}
                 onSelect={setPlotSel}
                 onOpenRide={() => { /* demo: there is no ride to open */ }}
               />
@@ -807,32 +803,32 @@ export default function DemoScreen({ onFullscreenChange }: {
   // phase === 'idle': the chooser. The map/pane live only in the run (R2).
   return (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-      <Text style={styles.h2}>DEMO RIDE</Text>
-      <Text style={styles.sub}>Not part of the final app — use only for testing features.</Text>
+      <Text style={styles.h2}>DEMO ACTIVITY</Text>
+      <Text style={styles.sub}>Not part of the final app · use only for testing features.</Text>
 
       <View style={styles.pillRow}>
         <Pressable
           style={[styles.pill, mode === 'first' ? styles.pillSelected : styles.pillOutline]}
           onPress={() => switchMode('first')}
         >
-          <Text style={[styles.pillText, mode === 'first' && styles.pillTextSelected]}>FIRST RIDE</Text>
+          <Text style={[styles.pillText, mode === 'first' && styles.pillTextSelected]}>FIRST</Text>
         </Pressable>
         <Pressable
           style={[styles.pill, mode === 'second' ? styles.pillSelected : styles.pillOutline]}
           onPress={() => switchMode('second')}
         >
-          <Text style={[styles.pillText, mode === 'second' && styles.pillTextSelected]}>SECOND RIDE</Text>
+          <Text style={[styles.pillText, mode === 'second' && styles.pillTextSelected]}>SECOND</Text>
         </Pressable>
         <Pressable
           style={[styles.pill, mode === 'tenth' ? styles.pillSelected : styles.pillOutline]}
           onPress={() => switchMode('tenth')}
         >
-          <Text style={[styles.pillText, mode === 'tenth' && styles.pillTextSelected]}>TENTH RIDE</Text>
+          <Text style={[styles.pillText, mode === 'tenth' && styles.pillTextSelected]}>TENTH</Text>
         </Pressable>
       </View>
 
       <Pressable style={styles.btn} onPress={start}>
-        <Text style={styles.btnText}>RUN DEMO RIDE</Text>
+        <Text style={styles.btnText}>RUN DEMO ACTIVITY</Text>
       </Pressable>
     </ScrollView>
   );

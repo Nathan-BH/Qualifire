@@ -21,7 +21,6 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { ResultsDetailRequest } from './tabNav.tsx';
 import { useTabNav } from './tabNav.tsx';
 import { useTheme } from './themeContext.tsx';
-import { useSettings } from './settings.tsx';
 import { PaddockTheme, colors, radius } from './theme.ts';
 import { activeCatalog } from '../store/sportStore.ts';
 import { storedResultsForWay } from '../store/resultsStore.ts';
@@ -36,7 +35,6 @@ import ResultsPlot from './resultsPlot.tsx';
 export default function ResultsDetailScreen({ request }: { request: ResultsDetailRequest }) {
   const { t } = useTheme();
   const tabNav = useTabNav();
-  const { s } = useSettings();
   const styles = useMemo(() => makeStyles(t), [t]);
 
   // Which board row is highlighted — wired to the plot's own selection in
@@ -64,12 +62,12 @@ export default function ResultsDetailScreen({ request }: { request: ResultsDetai
   // §3.7/§3.9: the plot's selection caption reads the SAME all-time
   // position the board shows for this ride — computed here from the
   // screen's own board data, never re-derived inside ResultsPlot. Empty
-  // while rankings are off, or the selected ride has no all-time position
+  // when the selected ride has no all-time position
   // (unranked / NO TIME).
   const selectedBoardRow = selectedRideId !== null
     ? board.rows.find((r) => r.rideId === selectedRideId) ?? null
     : null;
-  const selectedPosLabel = s.tower && selectedBoardRow !== null && selectedBoardRow.pos !== null
+  const selectedPosLabel = selectedBoardRow !== null && selectedBoardRow.pos !== null
     ? `P${selectedBoardRow.pos} of ${board.total}`
     : '';
 
@@ -80,7 +78,7 @@ export default function ResultsDetailScreen({ request }: { request: ResultsDetai
           <Text style={[styles.backText, { color: t.textDim }]}>‹ BACK</Text>
         </Pressable>
         <Text style={[styles.topTitle, { color: t.text }]}>RESULTS</Text>
-        <Text style={[styles.topDate, { color: t.textDim }]}>{board.total} ride{board.total === 1 ? '' : 's'}</Text>
+        <Text style={[styles.topDate, { color: t.textDim }]}>{board.total} activit{board.total === 1 ? 'y' : 'ies'}</Text>
       </View>
 
       <Text style={[styles.wayName, { color: t.text }]}>{label}</Text>
@@ -96,7 +94,6 @@ export default function ResultsDetailScreen({ request }: { request: ResultsDetai
 
       <HistoryBoard
         board={board}
-        rankingsOn={s.tower}
         t={t}
         styles={styles}
         selectedRideId={selectedRideId}
@@ -113,25 +110,20 @@ export default function ResultsDetailScreen({ request }: { request: ResultsDetai
 // ------------------------------------------------------------- HistoryBoard
 
 function HistoryBoard({
-  board, rankingsOn, t, styles, selectedRideId, onOpenRide,
+  board, t, styles, selectedRideId, onOpenRide,
 }: {
   board: HistoryBoardModel;
-  rankingsOn: boolean;
   t: PaddockTheme;
   styles: ReturnType<typeof makeStyles>;
   selectedRideId: string | null;
   onOpenRide: (rideId: string, startedAtMs: number) => void;
 }) {
-  let printedNotRanked = false;
   return (
     <View>
-      <Text style={[st.h2, { color: t.textDim }]}>{boardCaption(board.total, rankingsOn)}</Text>
-      {rankingsOn ? board.rows.map((row) => {
-        const showSub = row.pos === null && !printedNotRanked;
-        if (showSub) printedNotRanked = true;
+      <Text style={[st.h2, { color: t.textDim }]}>{boardCaption(board.total, true)}</Text>
+      {board.rows.map((row) => {
         return (
           <View key={row.rideId}>
-            {showSub ? <Text style={[styles.notRanked, { color: t.textDim }]}>not ranked</Text> : null}
             <HistoryRowView
               row={row}
               t={t}
@@ -141,7 +133,7 @@ function HistoryBoard({
             />
           </View>
         );
-      }) : null}
+      })}
     </View>
   );
 }
@@ -188,7 +180,6 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
   topTitle: { fontSize: 15, fontWeight: '800', letterSpacing: 2 },
   topDate: { fontSize: 12 },
   wayName: { fontSize: 22, fontWeight: '800', marginTop: 4 },
-  notRanked: { fontSize: 11, letterSpacing: 1, marginTop: 8, marginBottom: 2 },
   histRow: {
     height: 38,
     flexDirection: 'row',

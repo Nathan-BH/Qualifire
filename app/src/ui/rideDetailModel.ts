@@ -59,15 +59,16 @@ export interface RideDetailDeps {
 
 /** ResultScreen.tsx's rankLineFor, verbatim, plus the WP-H 'ignored' branch
  * FIRST — a rider's own exclusion is the most specific reason and reads as
- * such. */
+ * such. virgin-cycle20 08: bare status words — the explanations were clutter
+ * (Nathan, Q7). */
 export function rankLineFor(
   r: { lapS: number | null; estimated: boolean; ignored: boolean },
   hist: number[],
   barred: boolean,
 ): string {
-  if (r.ignored) return 'not ranked — you excluded this ride from ranking';
+  if (r.ignored) return 'not ranked';
   if (r.lapS !== null) {
-    if (barred) return 'no rank — this lap is excluded from the comparison';
+    if (barred) return 'no rank';
     // D-045 ruling 1 / NW-1 (2026-09-08): rank and colour read the same
     // MIN_HISTORY floor but against different pools. Colour (tierFor)
     // needs MIN_HISTORY PRIOR rides. Rank needs a pool of MIN_HISTORY
@@ -80,9 +81,9 @@ export function rankLineFor(
       const { pos, of } = positionAmong(r.lapS, hist);
       return `P${pos} of ${of} on this way`;
     }
-    return `${hist.length} rides of history — too few to rank`;
+    return 'too few to rank';
   }
-  return r.estimated ? 'no time — an estimated lap never ranks' : 'no lap — a missed gate never ranks';
+  return r.estimated ? 'no time' : 'no lap';
 }
 
 /** WP-K: thin wrapper over sectorTrailModel.storedSectorColours (the ONE

@@ -32,7 +32,7 @@
         "expo-location",
         {
           "locationWhenInUsePermission": "Qualifire uses your location to time your commute sectors.",
-          "locationAlwaysAndWhenInUsePermission": "Qualifire keeps recording your ride while the app is in the background or the screen is off.",
+          "locationAlwaysAndWhenInUsePermission": "Qualifire keeps recording your activity while the app is in the background or the screen is off.",
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true
         }

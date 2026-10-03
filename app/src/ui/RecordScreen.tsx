@@ -15,12 +15,12 @@
  * bottom.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, BackHandler, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Animated, AppState, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
   ActiveSession,
-  PermissionOutcome,
   RideSummary,
   TrackerStatus,
+  dropStaleSession,
   ensurePermissions,
   getRecoveryState,
   getStatus,
@@ -35,15 +35,17 @@ import {
 import { liveEngine, type LiveEngineState } from '../live/engine';
 import { LiveSectorPane, realTimebase, viewModelFromEngine } from './liveView';
 import { LaunchAnimation } from './launchAnimation';
-import { effectiveFromId, endingSlotFor, isFullscreen, liveMapOverlayFor, namingOfferMode, recordPressAction, statusItemsFor, type RecordPhase } from './recordFlow';
+import { effectiveFromId, endingSlotFor, isFullscreen, liveMapOverlayFor, namingOfferMode, recordPressAction, type RecordPhase } from './recordFlow';
+import { nextPollDelayMs, restartsBudget } from '../location/positionRetryPolicy';
 import { useTabNav } from './tabNav';
 import WayMapView from './wayMapView';
 import { metresBetween } from './wayMapGeo';
 import { appendTrailPoint, type TrailPoint } from './trailModel';
+import { initialRiderDotState, riderDotStep, type RiderDotState } from './riderDotModel';
 import { useSettings } from './settings';
 import { chipColors, tierLineColour, type Tier } from './chips';
 import { ALL_YELLOW, liveSectorColours } from './sectorTrailModel.ts';
-import { ghostsFor, lapValues, sectorValues, tierFor } from './colourModel';
+import { ghostsFor, liveTierFor, sectorValues } from './colourModel';
 import { loadSelfTracks, selfDotsAt, selfLivePosition, type SelfDot, type SelfTrack } from './selfRaceModel.ts';
 import { TimingTower } from './tower';
 import {
@@ -72,13 +74,13 @@ import {
 } from '../store/routeFromRide';
 import { GateAdjustCard } from './gateAdjustCard';
 import { RouteNamingCard } from './routeNamingCard';
-import { FirstSportPrompt } from './firstSportPrompt';
 import { deleteRide } from '../storage';
 import { getStoredResult, removeStoredResult } from '../store/resultsStore';
 import { markRideFree } from '../store/freeRides';
+import { whenStoresReady } from '../store/bootstrap';
 import { currentCatalog } from '../store/catalogStore';
 import { gateSetFor, landmarkAt } from '../store/catalog';
-import { addSport, effectiveRideSportId, scopeCatalog, setActiveSport, showSportPillRow, wayIdsOfSport } from '../store/sports';
+import { effectiveRideSportId, scopeCatalog, setActiveSport, showSportPillRow, wayIdsOfSport } from '../store/sports';
 import { afterSportSwitch } from '../store/sportSwitch';
 import { activeCatalog, activeSportId, currentSports, saveSports } from '../store/sportStore';
 import { defaultEndpoints, wayLabelIn, wayVariantLabel, sortWaysForDisplay } from '../store/defaultWay';
@@ -88,27 +90,26 @@ import type { Way } from '../store/types';
 import { PaddockTheme, colors, radius } from './theme';
 import { useTheme } from './themeContext';
 
-/** How long a newly-changed status line holds the rotating slot (IDEAS §24).
- * [ASSUMPTION — tune on device: long enough to survive a glance delay, short
- * enough that the carousel is not effectively disabled.] */
-const PIN_MS = 20000;
-
 /** virgin-cycle16 05 (Nathan 2026-09-28): pressing RECORD/START with the
  * phone's location toggle off no longer adds a banner at the top of the
  * screen (off-screen once the form is scrolled to the button). The yellow
  * button's own sub-label shows this text instead, holds GPS_FLASH_HOLD_MS,
  * fades out over GPS_FLASH_FADE_MS and the normal caption returns. Every
- * further press with GPS still off restarts the flash. */
+ * further press with GPS still off restarts the flash. virgin-cycle20 08: the
+ * same flash now carries the permission and no-sport messages with their own
+ * holds (see below). */
 const GPS_OFF_MSG = 'Location (GPS) is turned off';
 const GPS_FLASH_HOLD_MS = 2000;
 const GPS_FLASH_FADE_MS = 400;
-
-/** Piece 3 (Nathan 2026-09-01, ride 2): fixes fed before "detecting route…"
- * gives way to "writing history" when no candidate has anchored at its own
- * start. A candidate that IS going to anchor does so on its first on-corridor
- * fix within ANCHOR_M of its start, so a few fixes of grace only avoids a
- * flash on the very first tick. [ASSUMPTION — tune on device.] */
-const WRITING_HISTORY_AFTER_FIXES = 5;
+/** virgin-cycle20 brief 08 (Nathan, clutter review Q4/Q5): the two permission
+ * banners and the inline first-sport form are gone; these flash in the same
+ * slot, the same way, each with its own hold (Q5: permissions 5 s; Q4: the
+ * no-sport message shows 1 s, then RECORD hands over to SETTINGS). */
+const PERM_DENIED_MSG = 'Location permission not granted';
+const PERM_FOREGROUND_ONLY_MSG = 'Allow location all the time';
+const PERM_FLASH_HOLD_MS = 5000;
+const NO_SPORT_MSG = 'No sport configured yet';
+const NO_SPORT_FLASH_HOLD_MS = 1000;
 
 /** Stationary detection (B-51, RecordScreen-owned): the live ribbon dims and
  * releases its zoom-bar lock while genuinely moving is not the same as at a
@@ -124,6 +125,8 @@ const MOVE_EPS_M = 10;
  * from work>>new for example, or from new>>home"), never a catalog entry —
  * the catalog validator would rightly reject a coordinate-less place. */
 const NEW_ID = '~new';
+/** virgin-cycle20 08: the silent interrupted-recording finaliser runs once per JS launch. */
+let recoveryAutoSaveStarted = false;
 
 function fmtElapsed(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -186,11 +189,6 @@ export default function RecordScreen({
   sessionRef.current = session;
   const [status, setStatus] = useState<TrackerStatus>(getStatus());
   const [now, setNow] = useState(Date.now());
-  const [problem, setProblem] = useState<PermissionOutcome | null>(null);
-  const [recovered, setRecovered] = useState(false);
-  // Cycle 025 (P5): which kind of restoration the banner is reporting —
-  // set from getRecoveryState().restoration, the single shared predicate.
-  const [recoveredKind, setRecoveredKind] = useState<'relaunch' | 'remount'>('relaunch');
   const [busy, setBusy] = useState(false);
   const [lastSummary, setLastSummary] = useState<RideSummary | null>(null);
   // OPEN-ITEMS item 2 (WP-F: any finished ride, not just unlocked ones):
@@ -264,11 +262,6 @@ export default function RecordScreen({
   // and onRecord (belt-and-braces guard below, which reads the live store) —
   // a ride cannot start without a sport for it to belong to.
   const noSport = currentSports().sports.length === 0;
-  // virgin-cycle15 brief 02: the first sport is named right here. RECORD
-  // press 1 opens the prompt, press 2 saves the sport and arms (onFirstSport).
-  const [firstSportPrompt, setFirstSportPrompt] = useState(false);
-  const [firstSportText, setFirstSportText] = useState('');
-  const [firstSportError, setFirstSportError] = useState<string | null>(null);
   // B-39: data-driven, never literal ids — the first two offerable catalog
   // landmarks (today's seed: home, work), or the 'new' pseudo-landmark when
   // the catalog has none, so a blank install opens on new>>new: the free
@@ -320,12 +313,63 @@ export default function RecordScreen({
   // Live status from the location layer.
   useEffect(() => subscribe(setStatus), []);
 
-  // WP-D Piece B: a non-prompting position refresh on mount, so a returning
-  // user sees the rider dot on the setup map without pressing RECORD first —
-  // refreshPositionIfPermitted() checks permission before asking for a fix
-  // and never triggers an OS prompt just from opening this tab.
-  // [UNTESTED ON DEVICE]
+  // WP-D Piece B: a quiet position read on mount, so a returning user sees
+  // the rider dot on the setup map without pressing RECORD first —
+  // refreshPositionIfPermitted CHECKS permission + services and never
+  // triggers an OS prompt or the Play Services dialog just from opening this tab.
+  // virgin-cycle20 brief 11 (Nathan, 2026-10-02): and it keeps trying. The read
+  // used to run exactly once per mount; with location off at that moment the
+  // failure was swallowed and the DETECTED START pill stayed dead until a tab
+  // switch or a restart. Now: (1) again whenever the app returns to the
+  // foreground (Settings → enable → back), with the poll budget restarted;
+  // (2) a bounded quiet poll while this screen is in setup/armed and no
+  // position is known — positionRetryPolicy.ts owns the schedule (2-5 s steps,
+  // 60 s budget, ≤ maxReadsPerBudget() reads); (3) RECORD press restarts the
+  // budget (onRecord). The poll stops through the status subscription above
+  // (any fix, from any source) or when the phase leaves setup/armed or the
+  // screen unmounts (tab switch — App.tsx renders tabs conditionally). The
+  // quick-settings shade never backgrounds the app, which is why (1) alone
+  // is not enough. Non-prompting by construction: nothing here can request
+  // a permission. [UNTESTED ON DEVICE]
   useEffect(() => { void refreshPositionIfPermitted(); }, []);
+  const [pollEpoch, setPollEpoch] = useState(0); // bump = restart the poll budget
+  const noFix = status.lastLat === null || status.lastLon === null;
+  useEffect(() => {
+    // virgin-cycle20 brief 12 (Opus inspection of 11): no listener at all while
+    // running/ending — the ride feed owns lastLat/lastLon/lastFixMs and a
+    // foreground quiet read would overwrite them mid-ride (the poll below
+    // already stops outside setup/armed; this closes the one remaining path).
+    if (phase === 'running' || phase === 'ending') return;
+    const sub = AppState.addEventListener('change', (next) => {
+      if (next !== 'active') return;
+      void refreshPositionIfPermitted();
+      if (restartsBudget('app-active')) setPollEpoch((e) => e + 1);
+    });
+    return () => sub.remove();
+  }, [phase]);
+  useEffect(() => {
+    if (!noFix) return;
+    if (phase !== 'setup' && phase !== 'armed') return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const startedAtMs = Date.now();
+    let attempt = 0;
+    const schedule = () => {
+      const delay = nextPollDelayMs({ phase, hasFix: false, elapsedMs: Date.now() - startedAtMs, attempt });
+      if (delay === null) return;
+      timer = setTimeout(() => {
+        timer = null;
+        if (cancelled) return;
+        attempt += 1;
+        void refreshPositionIfPermitted().then((outcome) => {
+          if (cancelled || outcome === 'fixed') return; // 'fixed' → status update → noFix flips → cleanup
+          schedule();
+        });
+      }, delay);
+    };
+    schedule();
+    return () => { cancelled = true; if (timer !== null) clearTimeout(timer); };
+  }, [phase, noFix, pollEpoch]);
 
   // Live sector state from the engine (display-only, derived; D-023).
   useEffect(() => liveEngine.subscribe(setLive), []);
@@ -359,6 +403,24 @@ export default function RecordScreen({
     setTrail((prev) => appendTrailPoint(prev, status.lastLat as number, status.lastLon as number));
   }, [status.lastLat, status.lastLon, status.lastFixMs, session]);
 
+  // virgin-cycle20 brief 02: where the live rider dot is DRAWN — softly
+  // snapped to the display candidate's reference line (engine's read-only
+  // riderSnap mirror) via the pure rule in riderDotModel.ts. Raw fix whenever
+  // the engine has nothing to project (no display candidate yet, empty
+  // window). Display only: the trail, the stationary rule, hasFix and the raw
+  // JSONL above all keep reading status.lastLat/lastLon.
+  const riderDotStateRef = useRef<RiderDotState>(initialRiderDotState());
+  const [riderDot, setRiderDot] = useState<{ lat: number; lon: number } | null>(null);
+  useEffect(() => {
+    if (status.lastLat === null || status.lastLon === null) {
+      setRiderDot(null);
+      return;
+    }
+    const r = riderDotStep(riderDotStateRef.current, status.lastLat, status.lastLon, live.riderSnap);
+    riderDotStateRef.current = r.state;
+    setRiderDot({ lat: r.lat, lon: r.lon });
+  }, [status.lastLat, status.lastLon, live.riderSnap]);
+
   // LAYOUT §2a: the lap chip appears ~1.1 s after the final gate, with the
   // lap earcon — never simultaneously with the sector chip.
   const lapScored = live.lap !== null;
@@ -388,8 +450,6 @@ export default function RecordScreen({
         // from the SAME predicate that logged the sidecar record (P5) —
         // banner and counter can no longer disagree.
         setSession(rec.session);
-        setRecoveredKind(rec.restoration);
-        setRecovered(true);
         // WP-J §3 Step 4.4 (recovery hydration): replay the ride's own raw
         // fixes (the only record, D-023) through appendTrailPoint so the
         // trail doesn't restart empty after a relaunch mid-ride. Skips
@@ -413,21 +473,45 @@ export default function RecordScreen({
           });
         });
       } else {
-        // Service died (OS kill / battery saver). Offer to finalise.
-        Alert.alert(
-          'Unfinished ride found',
-          'The app was closed while a ride was recording and tracking has stopped. Save what was captured?',
-          [
-            {
-              text: 'Save ride',
-              onPress: async () => {
-                const sum = await stopTracking();
-                setLastSummary(sum);
-              },
-            },
-            { text: 'Discard for now', style: 'cancel' },
-          ],
-        );
+        // virgin-cycle20 brief 08 (Nathan, clutter review Q2): no dialog, no
+        // text. The service died (OS kill / force stop); what was captured is
+        // finalised exactly as the old save button did and then FILED FREE —
+        // an interrupted recording never counts for an official way: this
+        // path stores no result, and the free mark keeps it out of
+        // ACTIVITIES' backfill (ui/rideHomes.ts), the only path that could
+        // have matched it to a way. The setup screen's "Activity saved · …"
+        // line is the only trace. A marker whose ride file is gone cannot be
+        // saved and is dropped; any other failure leaves it for the next launch.
+        if (recoveryAutoSaveStarted) return;
+        recoveryAutoSaveStarted = true;
+        try {
+          // virgin-cycle20 brief 12 (Opus inspection of 08, B1): wait for App.tsx's
+          // store chain (sports -> catalog -> refs -> free rides -> ride history)
+          // before finalising. markRideFree() before initFreeRidePersistence()
+          // armed the store was dropped (`fs === null`) or overwrote the cache
+          // before its read landed, so the interrupted recording could later be
+          // backfilled and ranked against an official way; effectiveRideSportId()
+          // was null before sports.json loaded. The marker stays on disk until
+          // this resolves, so a kill mid-wait just retries next launch.
+          await whenStoresReady();
+          const sum = await stopTracking();
+          if (sum) {
+            markRideFree(
+              sum.rideId,
+              rec.session.startedAtMs,
+              Math.max(0, (sum.endMs - sum.startMs) / 1000),
+              effectiveRideSportId(rec.session.sportId, currentSports()),
+            );
+          }
+          setLastSummary(sum);
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          if (msg.includes('endRide: unknown')) {
+            await dropStaleSession().catch(() => {});
+          } else {
+            console.warn('[record] interrupted activity not finalised this launch:', msg);
+          }
+        }
       }
     })();
   }, []);
@@ -477,59 +561,78 @@ export default function RecordScreen({
     return () => sub.remove();
   }, [phase]);
 
-  // virgin-cycle16 05: transient GPS-off message in the yellow button's
-  // sub-label (RECORD in setup, START when armed). Imperative rather than an
-  // effect on `problem` because Nathan wants it to re-fire on EVERY press
-  // while GPS stays off, and `problem` would not change between presses.
-  const [gpsFlash, setGpsFlash] = useState(false);
-  const gpsFlashOpacity = useRef(new Animated.Value(1)).current;
-  const gpsFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const flashGpsOff = useCallback(() => {
-    if (gpsFlashTimer.current !== null) clearTimeout(gpsFlashTimer.current);
-    gpsFlashOpacity.stopAnimation();
-    gpsFlashOpacity.setValue(1);
-    setGpsFlash(true);
-    gpsFlashTimer.current = setTimeout(() => {
-      gpsFlashTimer.current = null;
-      Animated.timing(gpsFlashOpacity, {
+  // virgin-cycle16 05 / virgin-cycle20 08: transient message in the yellow
+  // button's sub-label (RECORD in setup, START when armed) or, while running,
+  // in the status slot under the sector pane. Imperative rather than an
+  // effect because Nathan wants it to re-fire on EVERY press. holdMs is per
+  // message (GPS-off 2 s, permissions 5 s, no-sport 1 s).
+  const [flashMsg, setFlashMsg] = useState<string | null>(null);
+  const flashOpacity = useRef(new Animated.Value(1)).current;
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const noSportNavTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashSub = useCallback((msg: string, holdMs: number = GPS_FLASH_HOLD_MS) => {
+    if (flashTimer.current !== null) clearTimeout(flashTimer.current);
+    flashOpacity.stopAnimation();
+    flashOpacity.setValue(1);
+    setFlashMsg(msg);
+    flashTimer.current = setTimeout(() => {
+      flashTimer.current = null;
+      Animated.timing(flashOpacity, {
         toValue: 0,
         duration: GPS_FLASH_FADE_MS,
         useNativeDriver: true,
       }).start(({ finished }) => {
         if (!finished) return; // a newer press stopped this fade — it owns the state now
-        setGpsFlash(false);
+        setFlashMsg(null);
       });
-    }, GPS_FLASH_HOLD_MS);
-  }, [gpsFlashOpacity]);
+    }, holdMs);
+  }, [flashOpacity]);
   useEffect(() => () => {
-    if (gpsFlashTimer.current !== null) clearTimeout(gpsFlashTimer.current);
-    gpsFlashOpacity.stopAnimation();
+    if (flashTimer.current !== null) clearTimeout(flashTimer.current);
+    if (noSportNavTimer.current !== null) clearTimeout(noSportNavTimer.current);
+    flashOpacity.stopAnimation();
   }, []);
-  // Sub-label of either yellow button: the GPS-off message while flashing
-  // (animated opacity replaces startSub's static 0.75), the caption otherwise.
-  const yellowSub = (caption: string) => (
-    <Animated.Text style={[styles.bigBtnSub, styles.startSub, gpsFlash ? { opacity: gpsFlashOpacity } : null]}>
-      {gpsFlash ? GPS_OFF_MSG : caption}
-    </Animated.Text>
-  );
+  // virgin-cycle20 08 (Q4): RECORD with zero sports — say so for a second,
+  // then hand over to SETTINGS (its SPORTS card adds the first sport).
+  const onNoSport = useCallback(() => {
+    flashSub(NO_SPORT_MSG, NO_SPORT_FLASH_HOLD_MS);
+    if (noSportNavTimer.current !== null) clearTimeout(noSportNavTimer.current);
+    noSportNavTimer.current = setTimeout(() => {
+      noSportNavTimer.current = null;
+      tabNav.go('settings');
+    }, NO_SPORT_FLASH_HOLD_MS);
+  }, [flashSub, tabNav]);
+  // Sub-label of either yellow button: the flash while flashing (animated
+  // opacity replaces startSub's static 0.75), the caption otherwise; nothing
+  // at all for an empty caption (START carries only its word).
+  const yellowSub = (caption: string) => {
+    if (flashMsg === null && caption === '') return null;
+    return (
+      <Animated.Text style={[styles.bigBtnSub, styles.startSub, flashMsg !== null ? { opacity: flashOpacity } : null]}>
+        {flashMsg ?? caption}
+      </Animated.Text>
+    );
+  };
 
   const onRecord = useCallback(async () => {
     // Q4 belt-and-braces: the setup flow is not rendered while zero sports
     // exist, but the guard makes the invariant explicit. Reads the live store
-    // (not a render-time flag) because onFirstSport calls this in the same
-    // tick as the saveSports that created sport #1.
+    // (not a render-time flag).
     if (currentSports().sports.length === 0) return;
     setBusy(true);
     try {
+      // virgin-cycle20 brief 11: a RECORD press restarts the quiet-read budget
+      // (the GPS-off flash → rider enables location → the pill lights up by
+      // itself). The post-permission refreshPositionOnce() below is unchanged.
+      if (restartsBudget('record-press')) setPollEpoch((e) => e + 1);
       // Permissions move up to RECORD (armed press) so the OS dialogs happen
       // at the kerb, not on the bike — START (below) re-checks, idempotently.
       const outcome = await ensurePermissions();
       if (outcome === 'denied' || outcome === 'services-off') {
-        setProblem(outcome);
-        if (outcome === 'services-off') flashGpsOff(); // virgin-cycle16 05: message in the button, not a banner
+        // virgin-cycle16 05 / cycle20 08: message in the button, never a banner
+        if (outcome === 'denied') flashSub(PERM_DENIED_MSG, PERM_FLASH_HOLD_MS); else flashSub(GPS_OFF_MSG);
         return; // stay in setup
       }
-      setProblem(outcome === 'foreground-only' ? 'foreground-only' : null);
       // Display-only, best-effort: improves the armed screen's map/location
       // before any ride is open (no fix is recorded — no ride exists yet).
       void refreshPositionOnce();
@@ -539,25 +642,7 @@ export default function RecordScreen({
     } finally {
       setBusy(false);
     }
-  }, []);
-
-  // virgin-cycle15 brief 02: RECORD press 2 with zero sports — SETTINGS'
-  // handleAdd transplanted (addSport → saveSports, first sport auto-active),
-  // then straight into the normal arming path. Not a []-deps callback: it
-  // reads the typed text.
-  const onFirstSport = useCallback(async () => {
-    const label = firstSportText.trim();
-    if (label.length === 0) { setFirstSportError('type a sport name first'); return; }
-    const candidate = addSport(currentSports(), label, Date.now());
-    if (Array.isArray(candidate)) { setFirstSportError(candidate.join('; ')); return; }
-    const errs = await saveSports(candidate);
-    if (errs.length > 0) { setFirstSportError(errs.join('; ')); return; }
-    setFirstSportError(null);
-    setFirstSportText('');
-    setFirstSportPrompt(false);
-    setSportSwitchTick((v) => v + 1);
-    await onRecord();
-  }, [firstSportText, onRecord]);
+  }, [flashSub]);
 
   const onStart = useCallback(async () => {
     setBusy(true);
@@ -566,26 +651,27 @@ export default function RecordScreen({
     // otherwise the map could read stationary for a moment at the very start.
     lastMovedRef.current = null;
     lastFixRef.current = null;
+    // virgin-cycle20 brief 02: a fresh ride starts un-glued.
+    riderDotStateRef.current = initialRiderDotState();
+    setRiderDot(null);
     // WP-J: a fresh ride must not inherit the previous one's trail either.
     setTrail([]);
     setPauseMenu(false);
     try {
       const outcome = await ensurePermissions();
       if (outcome === 'denied' || outcome === 'services-off') {
-        setProblem(outcome);
-        if (outcome === 'services-off') flashGpsOff(); // virgin-cycle16 05
+        if (outcome === 'denied') flashSub(PERM_DENIED_MSG, PERM_FLASH_HOLD_MS); else flashSub(GPS_OFF_MSG); // virgin-cycle16 05 / cycle20 08
         return;
       }
-      setProblem(outcome === 'foreground-only' ? 'foreground-only' : null);
+      // virgin-cycle20 08 (Q5b): recording proceeds; the running screen's
+      // status slot flashes the ask (START itself is gone the next frame).
+      if (outcome === 'foreground-only') flashSub(PERM_FOREGROUND_ONLY_MSG, PERM_FLASH_HOLD_MS);
       // WP-1: RECORD's setup phase refuses to render the START flow at all
       // while zero sports exist (Q4, the C0 card), so this is unreachable in
       // practice — the null check is belt-and-braces, matching engine.ts's
       // own honest-typing note on the [] fallback below.
       const sportId = activeSportId();
-      if (sportId === null) {
-        Alert.alert('No sport set up', 'Add a sport in SETTINGS before recording.');
-        return;
-      }
+      if (sportId === null) return; // unreachable in practice (see comment above); no dialog (virgin-cycle20 08)
       // virgin-cycle16 01 (Nathan 2026-09-28): 'new' at either end is an
       // ordinary first ride, not a free ride — it starts exactly like a known
       // pair with no route yet (wayPick null, sport-scoped candidates). What
@@ -600,7 +686,6 @@ export default function RecordScreen({
         startContext: startContextRef.current ?? undefined,
         sportId,
       });
-      setRecovered(false);
       const ctx = startContextRef.current;
       ridePickRef.current = {
         from: ctx && ctx.from !== NEW_ID ? ctx.from : null,
@@ -612,7 +697,7 @@ export default function RecordScreen({
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [flashSub]);
 
   const onEnd = useCallback(async () => {
     setBusy(true);
@@ -680,7 +765,6 @@ export default function RecordScreen({
       // session-less) screen; its onDone below is what actually lands on
       // Result.
       setSession(null);
-      setRecovered(false);
       setPauseMenu(false);
       // WP-J: clear the trail before handing the screen to 'ending' — the
       // just-finished ride's line must not bleed into the next one's setup/
@@ -805,7 +889,7 @@ export default function RecordScreen({
     // ROUTE on a duplicate, but the pick could have gone stale between
     // renders (another ride landed the same specs in the meantime).
     if (draft.existingRouteId && findWayWithSpecs(rideCatalog, draft.existingRouteId, names.specs ?? [])) {
-      Alert.alert('That way already exists', 'Pick it on RECORD next time instead of adding it again.');
+      // virgin-cycle20 08: race only (the card already disables ADD ROUTE on a duplicate) — fail silently
       return;
     }
     setBusy(true);
@@ -894,7 +978,7 @@ export default function RecordScreen({
     const s = sessionRef.current;
     if (!s) return;
     Alert.alert(
-      'Discard ride?',
+      'Discard activity?',
       'This stops recording and permanently removes the raw trace. Nothing is saved.',
       [
         { text: 'Cancel', style: 'cancel' },
@@ -914,14 +998,13 @@ export default function RecordScreen({
             }
             // Tracking is stopped. No rememberRide, no
             // 'ending' phase, no reversed mark, no Result handoff — nothing
-            // was kept, so fold straight back to setup (running -> setup is
+            // was kept, so fold straight to the setup phase (running -> setup is
             // legal: recordFlow.ts). Result's "last ride" intentionally still
             // shows the previous finished ride, never the discarded one.
             setSession(null);
-            setRecovered(false);
             setPauseMenu(false);
             setLastSummary(null);
-            // WP-J: discard folds straight back to setup — the trail dies
+            // WP-J: discard folds straight to the setup phase — the trail dies
             // with the ride, same as everything else nothing was kept.
             setTrail([]);
             // notes5 N5: same reset as onEnd — a discarded ride's explicit
@@ -943,7 +1026,7 @@ export default function RecordScreen({
             } catch (e) {
               Alert.alert(
                 'Could not discard',
-                `${e instanceof Error ? e.message : String(e)}\nThe ride was ended and kept instead — you can delete it from RIDES.`,
+                `${e instanceof Error ? e.message : String(e)}\nThe activity was ended and kept instead — you can delete it from ACTIVITIES.`,
               );
             } finally {
               setBusy(false);
@@ -961,89 +1044,33 @@ export default function RecordScreen({
   const lastFixAgeS =
     status.lastFixMs != null ? Math.round((now - status.lastFixMs) / 1000) : null;
 
-  // Rotating status slot (IDEAS §24): route / GPS state share one line,
-  // advancing every 6 s (Cycle 024, WP-A2: the raw fixes count is gone — see
-  // statusItemsFor). GPS trouble jumps the queue via ordering only — content
-  // stays honest, nothing is hidden, just time-multiplexed.
-  const [statusIdx, setStatusIdx] = useState(0);
-  useEffect(() => {
-    if (!recording) return;
-    const id = setInterval(() => setStatusIdx((i) => i + 1), 6000);
-    return () => clearInterval(id);
-  }, [recording]);
-  const gpsTrouble = status.lastFixMs == null || (lastFixAgeS != null && lastFixAgeS > 5);
-  const gpsLine =
-    status.lastFixMs == null
-      ? 'waiting for first GPS fix…'
-      : lastFixAgeS != null && lastFixAgeS > 5
-        ? `last fix ${lastFixAgeS}s ago — GPS struggling?`
-        : 'GPS live';
-  const wayLocked = live.phase === 'locked' || live.phase === 'finished';
-  // "Writing history" (Nathan 2026-09-01, ride 2): a few fixes in and no
-  // candidate has anchored at its own start => nothing known is being
-  // recognised so far — say so instead of "detecting route…" for the whole
-  // ride. A "so far" indicator, not a verdict: a later lock replaces it.
-  const writingHistory = !wayLocked
-    && live.fixesFed >= WRITING_HISTORY_AFTER_FIXES && !live.anyAnchored;
+  // virgin-cycle20 brief 08 (Nathan, clutter review): the rotating status
+  // slot is gone. The only live status text left is "GPS live", shown while
+  // the last fix is <= 5 s old (the same rule that chose it before) and
+  // nothing otherwise — no fix-wait or fix-age lines, no
+  // route/way lines. The engine's lock logic is untouched; it is simply not
+  // narrated here any more.
+  const gpsLive = status.lastFixMs != null && lastFixAgeS != null && lastFixAgeS <= 5;
   // Cycle-2 WP-A: reference line vs live trail, mutually exclusive — see
   // recordFlow.ts liveMapOverlayFor. Derived per render (no effect/state):
   // live.track (lock) outranks the START-frozen pick hint.
   const mapOverlay = liveMapOverlayFor({ track: live.track, wayHint: rideWayHint });
-  // Cycle 024 (WP-D2): a soft lock is displayed and scored, but it is not yet
-  // corridor-confirmed — say so. Verified/finalized keep today's wording.
-  // Before the soft lock, under a pick, nothing is being *detected* (hard
-  // pick, Nathan 2026-08-29: the engine waits for the pick's own 400 m) —
-  // name the pick and say so, never imply another route might be found.
-  const wayLine = wayLocked
-    ? live.lockKind === 'soft'
-      ? `${live.track ? wayLabelIn(CATALOG, live.track) : ''} · way locked (your pick) · verifying${live.onWay ? '' : ' · off route'}`
-      : `${live.track ? wayLabelIn(CATALOG, live.track) : ''} · way locked${live.onWay ? '' : ' · off route'}`
-    : writingHistory
-      ? (rideWayHint ? `writing history · not on ${wayLabelIn(CATALOG, rideWayHint)} yet` : 'writing history · no known route here')
-      : rideWayHint ? `${wayLabelIn(CATALOG, rideWayHint)} · your pick · confirming…` : 'detecting route…';
-  // Cycle 024 (WP-A2, Nathan 2026-08-19): "I don't know what 'fixes' are" —
-  // the raw count is gone from every user-facing status line; it still lives
-  // in the GPX+ sidecar for diagnostics. recordFlow.ts owns the pure rule so
-  // it is tested without RN.
-  const statusItems = statusItemsFor({ gpsTrouble, gpsLine, wayLine });
-
-  // A line that CHANGES claims the slot for PIN_MS instead of waiting its turn.
-  // Without this the carousel can rotate the route lock away ~2 s after it
-  // fires — and the lock (~400 m in) is the one line the rider is told to
-  // look for. Rotation resumes when the pin expires; nothing is hidden either
-  // way, and the pin only ever *delays* the other items.
-  const [pinned, setPinned] = useState<'way' | 'gps' | null>(null);
-  useEffect(() => {
-    if (!recording || !wayLocked) return;
-    setPinned('way');
-    const id = setTimeout(() => setPinned(null), PIN_MS);
-    return () => clearTimeout(id);
-  }, [recording, wayLocked, live.track]);
-  useEffect(() => {
-    if (!recording || !gpsTrouble) return;
-    setPinned('gps'); // trouble outranks the lock — it is the actionable one
-    const id = setTimeout(() => setPinned(null), PIN_MS);
-    return () => clearTimeout(id);
-  }, [recording, gpsTrouble]);
-  const statusLine =
-    pinned === 'gps' ? gpsLine : pinned === 'way' ? wayLine : statusItems[statusIdx % statusItems.length];
 
   // Colour comes from the ghost history for the LOCKED route only: before the
   // lock there is nothing honest to compare against, so everything stays
-  // neutral (D-025). Sector index 0 means "the whole lap".
-  const tierOf = (sectorIndex: number, timeS: number | null): Tier => {
-    if (live.track === null || timeS === null) return 'neutral';
-    const history = sectorIndex === 0 ? lapValues(live.track) : sectorValues(live.track, sectorIndex);
-    const tier = tierFor(timeS, history);
-    return tier === 'est' ? 'est' : (tier as Tier);
-  };
-
-  // virgin-cycle11 R1: sector index 0 is "the whole lap" (liveView.tsx:197–198). Its
-  // tier is the rank announcement in disguise — a purple lap chip says P1 — so the
-  // live pane shows the lap as 'neutral' (no verdict yet) and the tower reveals the
-  // tier after STOP. Sectors and the flash keep their live colours.
-  const tierOfLive = (sectorIndex: number, timeS: number | null): Tier =>
-    sectorIndex === 0 ? 'neutral' : tierOf(sectorIndex, timeS);
+  // neutral (D-025). Sector index 0 means "the whole lap". The rule itself is
+  // colourModel.liveTierFor (headless-tested); the current ride is excluded by
+  // id so the lap chip cannot change colour between the FINISH gate and the
+  // 'ending' screen — onEnd's rememberRide() stores today's ride while this
+  // tree is still rendering (B-44 for the live screen).
+  //
+  // virgin-cycle20 brief 07 (Nathan, 2026-10-02): the lap chip (index 0) shows its
+  // REAL tier the instant it lands — purple / green / yellow against the same
+  // window the tower reveals after STOP, so the two always agree. This reverts
+  // cycle11 R1's 'neutral' override on the lap chip exactly as R1 offered; the
+  // rank NUMBER is still revealed after STOP by the tower only (posChip stays null).
+  const tierOf = (sectorIndex: number, timeS: number | null): Tier =>
+    liveTierFor(live.track, sectorIndex, timeS, session?.rideId);
 
   // NOTE: the gate buzz is NOT fired here. src/location/index.ts owns it —
   // it sees every fire even with the screen off, and two buzzers meant the
@@ -1052,8 +1079,9 @@ export default function RecordScreen({
   // WP-K (phase 2): sector spans on the live map — the segment BETWEEN gates,
   // never the tick (Nathan: "they are gates"). Same comparison window tierOf()
   // uses (sectorValues on the LOCKED track, [] before the lock — D-025), the
-  // same clean-only predicate the stored ride will carry as quality 'clean',
-  // painted through tierLineColour (the map-line source of truth, never
+  // store's own sectorHistory predicate (clean AND interrupted sectors on the
+  // scored clock, virgin-cycle20 brief 10 — no longer clean-only), painted
+  // through tierLineColour (the map-line source of truth, never
   // chipColors().text). OFF passes ALL_YELLOW, not undefined: the sector-spans
   // source has to be mounted from the same render as the route line whatever
   // the setting, or a mid-ride flip would mount it above the rider dot
@@ -1069,66 +1097,6 @@ export default function RecordScreen({
     [live.sectors, live.track, settings.sectorColours],
   );
 
-  // virgin-cycle6 (self racing), Task 5. Loading: fire-and-forget, same
-  // discipline as initRideHistory's backfill (never blocks, never throws
-  // into the screen) — re-runs whenever the locked way, mode or the setting
-  // changes; clears (and the tick effect below stops) the moment any of
-  // those says "no selfs" (free mode, setting off, or no lock yet). Gate-set
-  // version: the same gateSetFor(currentCatalog(), wayId) lookup
-  // lastRide.ts's rememberRide uses for the identical "this way's CURRENT
-  // gate set" question (rememberRide, store/derive.ts's Task-2 sibling both
-  // need the same fact) — sectorColours's own history callback (above) does
-  // not itself need a gate-set version, so there is no second lookup of that
-  // exact shape to mirror; this is the established one.
-  const [selfTracks, setSelfTracks] = useState<SelfTrack[]>([]);
-  useEffect(() => {
-    if (live.track === null || !settings.selfDots) {
-      setSelfTracks([]);
-      return;
-    }
-    let cancelled = false;
-    const gateSetVersion = gateSetFor(currentCatalog(), live.track)?.version ?? 1;
-    void loadSelfTracks(live.track, gateSetVersion, createExpoFsAdapter()).then((tracks) => {
-      if (!cancelled) setSelfTracks(tracks);
-    });
-    return () => { cancelled = true; };
-  }, [live.track, settings.selfDots]);
-
-  // Tick: 250 ms while running (not 10 Hz — the rider dot itself only moves
-  // per GPS fix; four frames a second is smooth enough for a 5 px dot and
-  // keeps the map re-render cheap). Skipped entirely when there is nothing
-  // to animate. live.startGateT is a plain number|null, so this effect only
-  // restarts the interval when it actually changes (lock/gate-0 fire), not
-  // on every fix.
-  const [selfDots, setSelfDots] = useState<SelfDot[]>([]);
-  useEffect(() => {
-    if (phase !== 'running' || selfTracks.length === 0) {
-      setSelfDots([]);
-      return;
-    }
-    const tick = () => {
-      const elapsedMs = live.startGateT === null ? null : Date.now() - live.startGateT * 1000;
-      setSelfDots(selfDotsAt(selfTracks, elapsedMs));
-    };
-    tick();
-    const id = setInterval(tick, 250);
-    return () => clearInterval(id);
-  }, [phase, selfTracks, live.startGateT]);
-
-  // virgin-cycle11: the reveal's post-landing hold timer must not fire into
-  // an unmounted screen.
-  useEffect(() => () => {
-    if (revealHoldRef.current) clearTimeout(revealHoldRef.current);
-  }, []);
-
-  // follow-up (live PX, R10): 'P4' among the selfs on the map, by chainage —
-  // null before START, once the lap lands (the handover PosChip then owns
-  // the fact), off the route, or with self dots off.
-  const livePos = useMemo(() => {
-    if (!settings.selfDots || live.startGateT === null || live.lap !== null) return null;
-    const p = selfLivePosition(selfDots, live.chainageM);
-    return p === null ? null : `P${p}`;
-  }, [selfDots, live.chainageM, live.startGateT, live.lap, settings.selfDots]);
 
   // cycle15 brief 14 (Nathan 2026-09-27): most-used places first, ties keep
   // catalog order. Counted on demand from stored results (no cache); only
@@ -1176,6 +1144,68 @@ export default function RecordScreen({
   const pickedWayRef = useRef<Way | null>(null);
   pickedWayRef.current = pickedWay;
 
+  // virgin-cycle20 06 (Nathan 2026-10-01, START-gate lag): the selfs belong to the
+  // way that is ON SCREEN, not to the lock — during a ride the engine's display
+  // candidate (the pick from START press, the lock afterwards: the same id, so
+  // nothing reloads at START or at the lock), on the setup/armed screen the pick
+  // itself. So the window is read from disk while the rider is still choosing /
+  // arming, and is already on the map (parked at the START gate) when START is
+  // pressed. Reload triggers: another way picked, a gate-set edit (new cache
+  // keys), or the window itself changing — a ride just saved joins ghostsFor()'s
+  // slice the moment rememberRide stores it. ghostsFor is a filter over the
+  // in-memory results (ghostCount above already calls it per render).
+  const selfWayId = live.displayTrack ?? pickedWay?.id ?? null;
+  const selfGateSetVersion = selfWayId === null ? 1 : (gateSetFor(currentCatalog(), selfWayId)?.version ?? 1);
+  const selfWindowKey = selfWayId === null ? '' : ghostsFor(selfWayId).map((r) => r.rideId).join(',');
+  const [selfTracks, setSelfTracks] = useState<SelfTrack[]>([]);
+  useEffect(() => {
+    if (selfWayId === null || !settings.selfDots) {
+      setSelfTracks([]);
+      return;
+    }
+    let cancelled = false;
+    void loadSelfTracks(selfWayId, selfGateSetVersion, createExpoFsAdapter()).then((tracks) => {
+      if (!cancelled) setSelfTracks(tracks);
+    });
+    return () => { cancelled = true; };
+  }, [selfWayId, selfGateSetVersion, selfWindowKey, settings.selfDots]);
+
+  // Tick: 250 ms while running (not 10 Hz — the rider dot itself only moves
+  // per GPS fix; four frames a second is smooth enough for a 5 px dot and
+  // keeps the map re-render cheap). Skipped entirely when there is nothing
+  // to animate. live.startGateT is a plain number|null, so this effect only
+  // restarts the interval when it actually changes (lock/gate-0 fire), not
+  // on every fix.
+  const [selfDots, setSelfDots] = useState<SelfDot[]>([]);
+  useEffect(() => {
+    if (phase !== 'running' || selfTracks.length === 0) {
+      setSelfDots([]);
+      return;
+    }
+    const tick = () => {
+      const elapsedMs = live.startGateT === null ? null : Date.now() - live.startGateT * 1000;
+      setSelfDots(selfDotsAt(selfTracks, elapsedMs));
+    };
+    tick();
+    const id = setInterval(tick, 250);
+    return () => clearInterval(id);
+  }, [phase, selfTracks, live.startGateT]);
+
+  // virgin-cycle11: the reveal's post-landing hold timer must not fire into
+  // an unmounted screen.
+  useEffect(() => () => {
+    if (revealHoldRef.current) clearTimeout(revealHoldRef.current);
+  }, []);
+
+  // follow-up (live PX, R10): 'P4' among the selfs on the map, by chainage —
+  // null before START, once the lap lands (the handover PosChip then owns
+  // the fact), off the route, or with self dots off.
+  const livePos = useMemo(() => {
+    if (!settings.selfDots || live.startGateT === null || live.lap !== null) return null;
+    const p = selfLivePosition(selfDots, live.chainageM);
+    return p === null ? null : `P${p}`;
+  }, [selfDots, live.chainageM, live.startGateT, live.lap, settings.selfDots]);
+
   // Cycle 024 (WP-A2): the armed screen's readytag line names from/to by
   // their catalog label (mirrors the mockup's `lm()` helper), not their id.
   // WP-B: NEW_ID is a UI pseudo-landmark, not a catalog entry — labelled
@@ -1190,35 +1220,6 @@ export default function RecordScreen({
     from: fromId, to, fromLabel: landmarkLabel(fromId), toLabel: landmarkLabel(to), pickSource,
   };
 
-  // Shared between the three phase branches below — unchanged position/behaviour.
-  // 'services-off' is deliberately NOT here: it flashes in the yellow button
-  // (virgin-cycle16 05, flashGpsOff above) instead of a top-of-screen banner.
-  const problemStates = (
-    <>
-      {problem === 'denied' && (
-        <View style={styles.warnBox}>
-          <Text style={styles.warn}>
-            Location permission was denied — Qualifire cannot track without it.
-          </Text>
-          <Pressable style={styles.linkBtn} onPress={() => Linking.openSettings()}>
-            <Text style={styles.linkBtnText}>Open app settings</Text>
-          </Pressable>
-        </View>
-      )}
-      {problem === 'foreground-only' && (
-        <View style={styles.warnBox}>
-          <Text style={styles.warn}>
-            Background location ("Allow all the time") not granted. Tracking works only while the
-            app is open with the screen on. Grant it in settings for pocket recording.
-          </Text>
-          <Pressable style={styles.linkBtn} onPress={() => Linking.openSettings()}>
-            <Text style={styles.linkBtnText}>Open app settings</Text>
-          </Pressable>
-        </View>
-      )}
-    </>
-  );
-
   // Cycle 024 (WP-A2): 'armed' — the RACE screen, ready but not started
   // (Nathan 2026-08-19: "the selected route should be shown with your
   // location and everything set but not started"). Records nothing, starts
@@ -1229,34 +1230,29 @@ export default function RecordScreen({
       <View style={styles.raceColumn}>
         <Text style={styles.trackLine}>
           {landmarkLabel(fromId)} → {landmarkLabel(to)}
-          {route && pickedWay ? ` · ${wayVariantLabel(pickedWay.id, route, pickedWay.specs)}` : ''} · ready — not started
+          {route && pickedWay ? ` · ${wayVariantLabel(pickedWay.id, route, pickedWay.specs)}` : ''}
         </Text>
-        {problemStates}
-        {settings.liveMap ? (
-          <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch' }}>
-            <WayMapView
-              wayId={pickedWay?.refLineId ?? null}
-              lat={status.lastLat}
-              lon={status.lastLon}
-              zoom={1}
-              variant="live"
-              liveState="prestart"
-              fill
-            />
-          </View>
-        ) : (
-          <View style={{ flex: 1 }} />
-        )}
+        <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch' }}>
+          <WayMapView
+            wayId={pickedWay?.refLineId ?? null}
+            lat={status.lastLat}
+            lon={status.lastLon}
+            zoom={1}
+            variant="live"
+            liveState="prestart"
+            fill
+          />
+        </View>
         <Pressable
           style={[styles.bigBtn, styles.startYellow, busy && styles.busy]}
           disabled={busy}
           onPress={onStart}
         >
           <Text style={[styles.bigBtnText, styles.startText]}>START</Text>
-          {yellowSub('the clock runs from here')}
+          {yellowSub('')}
         </Pressable>
         <Pressable style={styles.cancelBar} onPress={() => setPhase('setup')}>
-          <Text style={styles.cancelBarText}>‹ cancel — back to setup</Text>
+          <Text style={styles.cancelBarText}>‹ cancel</Text>
         </Pressable>
       </View>
     );
@@ -1284,8 +1280,8 @@ export default function RecordScreen({
         >
           <Text style={styles.trackLine}>
             {reveal !== null
-              ? 'Ride saved.' // virgin-cycle11 R2: the tower's TODAY row is the headline
-              : lastSummary ? `Ride saved — ${fmtElapsed(lastSummary.endMs - lastSummary.startMs)}.` : 'Ride saved.'}
+              ? 'Activity saved.' // virgin-cycle11 R2: the tower's TODAY row is the headline
+              : lastSummary ? `Activity saved · ${fmtElapsed(lastSummary.endMs - lastSummary.startMs)}` : 'Activity saved.'}
           </Text>
           {reveal !== null && (
             <TimingTower
@@ -1341,7 +1337,7 @@ export default function RecordScreen({
               style={styles.notThisWayBtn}
               disabled={busy || showAnim !== null}
               onPress={onNotThisWay}
-              accessibilityLabel="This ride was a different way"
+              accessibilityLabel="This activity was a different way"
             >
               <Text style={styles.notThisWayText}>{`not ${wayLabelIn(currentCatalog(), naming.matchedWayId)}?`}</Text>
             </Pressable>
@@ -1381,37 +1377,25 @@ export default function RecordScreen({
     if (!session) return null;
     return (
       <View style={styles.raceColumn}>
-        {problemStates}
-        {recovered && (
-          <Text style={styles.recovered}>
-            {recoveredKind === 'relaunch'
-              ? 'Recovered after relaunch — still recording. Nothing was lost on disk.'
-              : 'Recording continued in the background — nothing was lost on disk.'}
-          </Text>
-        )}
         {/* The live map, big, at the top (Cycle 020) — was a slim ribbon below
             the clock/strip; Nathan's ruling overrules B-51's "subordinate
-            ribbon" layout for race mode. flex:1 spacer keeps the rest pinned
-            to the bottom even when the map is switched off. */}
-        {settings.liveMap ? (
-          <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch' }}>
-            <WayMapView
-              wayId={mapOverlay.wayId}
-              lat={status.lastLat}
-              lon={status.lastLon}
-              zoom={4}
-              gateColours={undefined}
-              sectorColours={sectorColours}
-              trail={mapOverlay.showTrail ? trail : undefined}
-              selfs={settings.selfDots ? selfDots : undefined}
-              variant="live"
-              liveState={live.phase === 'finished' ? 'finished' : (stationary ? 'stopped' : 'moving')}
-              fill
-            />
-          </View>
-        ) : (
-          <View style={{ flex: 1 }} />
-        )}
+            ribbon" layout for race mode. flex:1 keeps the rest pinned
+            to the bottom. */}
+        <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch' }}>
+          <WayMapView
+            wayId={mapOverlay.wayId}
+            lat={riderDot?.lat ?? status.lastLat}
+            lon={riderDot?.lon ?? status.lastLon}
+            zoom={4}
+            gateColours={undefined}
+            sectorColours={sectorColours}
+            trail={mapOverlay.showTrail ? trail : undefined}
+            selfs={settings.selfDots ? selfDots : undefined}
+            variant="live"
+            liveState={live.phase === 'finished' ? 'finished' : (stationary ? 'stopped' : 'moving')}
+            fill
+          />
+        </View>
         {/* LIVE surface v2 (LAYOUT §2/§2a) — real engine feed, real clock:
             rate-1 timebase anchored at recording start (whole-ride elapsed,
             per Nathan's lap-clock ruling). virgin-cycle11 R1: posChip is
@@ -1422,19 +1406,20 @@ export default function RecordScreen({
             live,
             realTimebase(session.startedAtMs),
             null, // virgin-cycle11 R1: the rank is revealed after STOP by the tower, never here
-            tierOfLive,
+            tierOf, // brief 07: real lap tier at the line (cycle11 R1 revert)
             livePos,
           )}
           showLap={showLap}
         />
-        {/* One rotating status slot (IDEAS §24, 2026-08-16): route / GPS cycle
-            every 6 s instead of stacking two lines (Cycle 024, WP-A2: the raw
-            fixes count is gone — see statusItemsFor). Warnings (storage
-            errors) stay permanent below — never rotated away. */}
-        <Text style={styles.trackLine}>{statusLine}</Text>
+        {/* virgin-cycle20 08: one quiet slot — "GPS live" or nothing; also the
+            5 s flash of the foreground-only permission ask (Q5b). Storage
+            errors stay permanent below. */}
+        <Animated.Text style={[styles.trackLine, flashMsg !== null ? { opacity: flashOpacity } : null]}>
+          {flashMsg ?? (gpsLive ? 'GPS live' : '')}
+        </Animated.Text>
         {status.storageErrors > 0 && (
           <Text style={styles.warn}>
-            {status.storageErrors} storage errors — last: {status.lastError}
+            {status.storageErrors} storage errors
           </Text>
         )}
         {/* PAUSE → RESUME | END (Cycle 020): a safety catch, not a real pause
@@ -1450,7 +1435,6 @@ export default function RecordScreen({
             onPress={() => { noteButtonPress('pause'); setPauseMenu(true); }}
           >
             <Text style={styles.stopSlimText}>PAUSE</Text>
-            <Text style={styles.stopSlimSub}>recording continues · resume or end</Text>
           </Pressable>
         ) : (
           <>
@@ -1475,7 +1459,7 @@ export default function RecordScreen({
               disabled={busy}
               onPress={onDiscard}
             >
-              <Text style={styles.discardBarText}>Discard ride</Text>
+              <Text style={styles.discardBarText}>Discard activity</Text>
             </Pressable>
           </>
         )}
@@ -1499,7 +1483,6 @@ export default function RecordScreen({
       <Pressable style={styles.modePill} onPress={toggleMode}>
         <Text style={styles.modePillText}>{mode === 'daylight' ? '☾ night' : '☀ day'}</Text>
       </Pressable>
-      {problemStates}
 
       {/* Idle readout */}
       <View style={styles.readout}>
@@ -1517,41 +1500,23 @@ export default function RecordScreen({
             removed the catalog-wide defaultRouteId() fallback in
             routeMapView.tsx, so a null pick draws rider-only even once the
             catalog holds drawable routes. */}
-        {settings.liveMap ? (
-          <View style={{ alignSelf: 'stretch' }}>
-            <WayMapView
-              wayId={pickedWay?.refLineId ?? null}
-              lat={status.lastLat}
-              lon={status.lastLon}
-              zoom={1}
-              showRider
-              variant="live"
-              liveState="prestart"
-              height={330}
-            />
-          </View>
-        ) : null}
+        <View style={{ alignSelf: 'stretch' }}>
+          <WayMapView
+            wayId={pickedWay?.refLineId ?? null}
+            lat={status.lastLat}
+            lon={status.lastLon}
+            zoom={1}
+            showRider
+            variant="live"
+            liveState="prestart"
+            height={330}
+          />
+        </View>
         {/* Q4 (WP-1): zero sports blocks the whole setup flow — a ride
             cannot start without a sport for it to belong to. No onboarding
-            screen. Nathan 2026-09-24: label only, no body copy.
-            virgin-cycle15 brief 02 (Nathan 2026-09-26): the first sport is
-            named HERE — RECORD opens the prompt, RECORD again saves + arms.
-            2nd+ sports: SETTINGS -> SPORTS, unchanged. */}
-        {noSport ? (
-          <View style={styles.startFlow}>
-            {firstSportPrompt ? (
-              <FirstSportPrompt
-                value={firstSportText}
-                onChange={(v) => { setFirstSportText(v); if (firstSportError) setFirstSportError(null); }}
-                error={firstSportError}
-                busy={busy}
-                onDismiss={() => { setFirstSportPrompt(false); setFirstSportText(''); setFirstSportError(null); }}
-              />
-            ) : (
-              <Text style={styles.flowLabel}>SET UP A SPORT FIRST — PRESS RECORD</Text>
-            )}
-          </View>
-        ) : (
+            screen. virgin-cycle20 08: no inline form — RECORD flashes and
+            hands over to SETTINGS. */}
+        {noSport ? null : (
           <>
             {/* Q3 (WP-1): the sport row shows only with 2+ sports AND the
                 SETTINGS toggle on — hidden by construction below that. */}
@@ -1577,7 +1542,7 @@ export default function RecordScreen({
                       ? 'DETECTED START'
                       : detected
                         ? 'STARTING FROM'
-                        : 'START NOT DETECTED — PICK ONE')
+                        : 'START NOT DETECTED')
                   : 'STARTING FROM'}
               </Text>
               <View style={styles.pillRow}>
@@ -1639,19 +1604,14 @@ export default function RecordScreen({
                         ))}
                       </View>
                     )}
-                  <Text style={styles.sub}>
-                    your pick is locked for this ride
-                  </Text>
                 </>
               ) : null}
             </View>
             {lastSummary ? (
               <Text style={styles.sub}>
-                Ride saved — {fmtElapsed(lastSummary.endMs - lastSummary.startMs)}. Find it in Rides.
+                Activity saved · {fmtElapsed(lastSummary.endMs - lastSummary.startMs)}
               </Text>
-            ) : (
-              <Text style={styles.sub}>Ready to record.</Text>
-            )}
+            ) : null}
           </>
         )}
       </View>
@@ -1660,36 +1620,24 @@ export default function RecordScreen({
           the launch mark, then the RACE screen is ready but not moving until
           START is pressed there. Amber, no red (D-013) — see WP-A2's
           NEEDS-NATHAN #1 for the red option. Q4 (WP-1): while zero sports
-          exist the button opens the first-sport prompt, then saves + arms
-          (virgin-cycle15 brief 02; recordFlow.recordPressAction) — Nathan
-          2026-09-24 wants it reading as the normal RECORD button, only the
-          subtext flags the missing sport. virgin-cycle14 brief 07 (Nathan #10): the caption
+          exist the button flashes "No sport configured yet" for a second and
+          switches to SETTINGS (recordFlow.recordPressAction). virgin-cycle14 brief 07 (Nathan #10): the caption
           under RECORD is the slogan now, not the arming hint. */}
       <Pressable
         style={[styles.bigBtn, styles.startYellow, busy && styles.busy]}
         disabled={busy}
         onPress={() => {
-          const action = recordPressAction({ sportCount: currentSports().sports.length, firstSportPrompt });
+          const action = recordPressAction({ sportCount: currentSports().sports.length });
           if (action === 'arm') void onRecord();
-          else if (action === 'add-first-sport') void onFirstSport();
-          else setFirstSportPrompt(true);
+          else onNoSport();
         }}
       >
-        {noSport ? (
-          <>
-            <Text style={[styles.bigBtnText, styles.startText]}>{'●'} RECORD</Text>
-            {yellowSub(firstSportPrompt ? 'with this sport' : 'no sport yet')}
-          </>
-        ) : (
-          <>
-            {/* Record-dot glyph (mockup: red slab + white dot; D-013 "NO RED
-                ANYWHERE" forbids the red, so this ships as a charcoal dot on the
-                existing accent-yellow slab — t.onAccent inherited from the
-                parent Text, same colour the RECORD label itself uses. */}
-            <Text style={[styles.bigBtnText, styles.startText]}>{'●'} RECORD</Text>
-            {yellowSub('same ride · new meaning')}
-          </>
-        )}
+        {/* Record-dot glyph (mockup: red slab + white dot; D-013 "NO RED
+            ANYWHERE" forbids the red, so this ships as a charcoal dot on the
+            existing accent-yellow slab — t.onAccent inherited from the
+            parent Text, same colour the RECORD label itself uses. */}
+        <Text style={[styles.bigBtnText, styles.startText]}>{'●'} RECORD</Text>
+        {yellowSub('same activity · new meaning')}
       </Pressable>
 
     </ScrollView>
@@ -1734,7 +1682,7 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
     flex: 1, alignSelf: 'stretch', backgroundColor: t.race.bg,
     paddingHorizontal: 12, paddingTop: 8, paddingBottom: 10, gap: 8,
   },
-  // Cycle 024 (WP-A2): armed screen's "back to setup" affordance — a slim
+  // Cycle 024 (WP-A2): armed screen's cancel affordance — a slim
   // amber-bordered bar, deliberately quieter than START (mockup's own armed
   // screen has no back button at all; this is an app-only addition so the
   // rider is never stuck armed with only START to press).
@@ -1786,17 +1734,7 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
   pillOn: { borderColor: t.accent },
   pillText: { color: t.textDim, fontSize: 12.5 },
   pillTextOn: { color: t.accentText },
-  recovered: { color: colors.amber, fontSize: 13, textAlign: 'center' },
   warn: { color: colors.amber, fontSize: 14, textAlign: 'center' },
-  warnBox: {
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: t.card,
-    borderWidth: 1,
-    borderColor: t.cardBorder,
-    borderRadius: radius.card,
-    padding: 14,
-  },
   bigBtn: {
     alignSelf: 'stretch',
     height: 150,
@@ -1824,7 +1762,6 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
   // can now never push past its flex:1 width, whatever future copy does
   // (2026-08-25 screenshot: "ESUME back to the rid" off both screen edges).
   stopSlimText: { color: colors.amber, fontSize: 18, fontWeight: '800', letterSpacing: 4, flexShrink: 1 },
-  stopSlimSub: { color: t.textDim, fontSize: 11, letterSpacing: 1 },
   // Discard = the quiet third action under RESUME | END: dim border + dim text
   // (RidesScreen's own Delete affordance tone), never amber, never red (D-013).
   discardBar: {
@@ -1843,13 +1780,4 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
   stopBtnText: { color: colors.amber },
   bigBtnSub: { color: t.textDim, fontSize: 12, letterSpacing: 1 },
   startSub: { color: t.onAccent, opacity: 0.75 },
-  linkBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: radius.btn,
-    borderWidth: 1,
-    borderColor: t.cardBorder,
-    backgroundColor: 'transparent',
-  },
-  linkBtnText: { color: t.text2, fontSize: 13 },
 });

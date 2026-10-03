@@ -12,10 +12,13 @@
  *  - virgin-cycle18 brief 01 (2026-09-29): show-over-lock-screen flag ON while
  *    a session exists, re-synced on AppState changes and RECORD mounts, never
  *    dropped by stopTracking itself (see syncShowWhenLocked).
- *  - virgin-cycle18 brief 03 (2026-09-29): the foreground-service notification
- *    gets a SystemUI chronometer (zero = session.startedAtMs) + "S<n>" header
- *    sub-text, driven by a module-scope liveEngine.subscribe through
- *    ./rideNotification (no-op on installs without the native module);
+ *  - virgin-cycle18 brief 03 → virgin-cycle20 brief 03 (2026-09-30): the
+ *    foreground-service notification's BODY is the elapsed ride time + sector
+ *    ("12:34 · S2"), rewritten once a second by the native module's own ticker
+ *    (zero = session.startedAtMs; keeps ticking without fixes, screen off);
+ *    JS only pushes the zero + label through a module-scope
+ *    liveEngine.subscribe via ./rideNotification (no-op on installs without
+ *    the native module) and stops the ticker before the service is stopped;
  *    POST_NOTIFICATIONS is requested at START (Android 13+).
  *
  * Storage (../storage) is the Backend Dev's module per the interface
@@ -32,8 +35,9 @@ import { classifyFix, newWarmupState } from './fixFlags';
 import { ActiveSession, saveSession, loadSession, clearSession } from './session';
 import { setShowWhenLocked } from './lockScreen';
 import { showWhenLockedFor } from './lockScreenPolicy';
-import { pushRideNotification, forceRideNotificationReassert } from './rideNotification';
+import { pushRideNotification, forceRideNotificationReassert, stopRideNotification } from './rideNotification';
 import { rideNotificationFor } from './rideNotificationPolicy';
+import { QUIET_REFRESH_TIMEOUT_MS, type QuietRefreshOutcome } from './positionRetryPolicy';
 
 export const LOCATION_TASK = 'qualifire-ride-tracking';
 
@@ -394,11 +398,18 @@ export async function startTracking(opts?: {
       distanceInterval: 0, // MUST be 0: keep fixes coming while stopped
       mayShowUserSettingsDialog: true,
       foregroundService: {
-        notificationTitle: 'Qualifire — recording ride',
-        notificationBody: 'GPS tracking is active until you press Stop.',
-        notificationColor: '#e10600',
+        notificationTitle: 'Recording activity',
+        // No notificationBody (virgin-cycle20 brief 03): the native module writes the
+        // body ("12:34 · S2") once a second; a static sentence here would flash back on
+        // every plain re-post and says nothing the rider needs. expo-location's TS type
+        // declares the field required, but its Kotlin record is `String? = null` and
+        // LocationTaskService only calls setContentText inside `body?.let`, so the cast
+        // below leaves the runtime body undefined (title-only card until the first tick).
+        // No notificationColor (virgin-cycle20 brief 01): any value makes expo-location
+        // setColorized(true) — a solid-colour card on Samsung One UI, ignored on Honor.
+        // Plain system card on every OEM instead; the module re-asserts that too.
         killServiceOnDestroy: false, // survive the app being swiped away
-      },
+      } as Location.LocationTaskServiceOptions,
     });
   } catch (e) {
     // Failed to actually start: don't leave an orphan ride/marker behind.
@@ -469,23 +480,66 @@ export async function refreshPositionOnce(): Promise<void> {
   }
 }
 
-/** WP-D Piece B: like refreshPositionOnce, but checks foreground permission
- * status FIRST and does nothing (no fix, no prompt) unless already granted —
- * safe to call unconditionally on a screen mount (e.g. RecordScreen), never
- * throwing an OS permission dialog at someone just for opening the tab.
- * [UNTESTED ON DEVICE] */
-export async function refreshPositionIfPermitted(): Promise<void> {
-  try {
-    const perm = await Location.getForegroundPermissionsAsync();
-    if (!perm.granted) return;
-  } catch {
-    return; // display only
-  }
-  await refreshPositionOnce();
+/** WP-D Piece B → virgin-cycle20 brief 11: the QUIET position read for the
+ * setup/armed screen. Never prompts: permission is CHECKED (getForeground-
+ * PermissionsAsync), never requested; services are CHECKED (a plain
+ * LocationManager read) and a disabled toggle returns 'no-services' without
+ * touching the fused client; the fix request itself passes
+ * mayShowUserSettingsDialog:false — expo-location's default is TRUE, which
+ * made the old mount read pop the Play Services "turn on location?" dialog
+ * whenever the tab opened with location off (LocationModule.kt
+ * getCurrentPositionAsync → resolveUserSettingsForRequest). Safe to call from
+ * a timer: one in-flight native request is shared by every caller, and a
+ * JS-side QUIET_REFRESH_TIMEOUT_MS cap turns a hung request into 'failed'
+ * while a late native resolve still applies its fix. Display only — nothing
+ * is recorded (no ride is open). Returns what happened so RecordScreen's
+ * poll can log it; the poll STOPS via the status subscription (lastLat set),
+ * never via this value. [UNTESTED ON DEVICE] */
+let quietRefreshInFlight: Promise<QuietRefreshOutcome> | null = null;
+export async function refreshPositionIfPermitted(): Promise<QuietRefreshOutcome> {
+  if (quietRefreshInFlight !== null) return quietRefreshInFlight;
+  const run = (async (): Promise<QuietRefreshOutcome> => {
+    try {
+      const perm = await Location.getForegroundPermissionsAsync();
+      if (!perm.granted) return 'no-permission';
+      if (!(await Location.hasServicesEnabledAsync())) return 'no-services';
+    } catch {
+      return 'failed'; // display only
+    }
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    try {
+      const native = Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+        mayShowUserSettingsDialog: false,
+      });
+      // Apply the fix whenever it lands — even after the timeout below gave up waiting.
+      const applied = native.then((loc) => {
+        lastFixMs = loc.timestamp;
+        lastLat = loc.coords.latitude;
+        lastLon = loc.coords.longitude;
+        emit();
+        return 'fixed' as const;
+      });
+      applied.catch(() => { /* display only */ });
+      const timeout = new Promise<'failed'>((resolve) => {
+        timer = setTimeout(() => resolve('failed'), QUIET_REFRESH_TIMEOUT_MS);
+      });
+      return await Promise.race([applied, timeout]);
+    } catch {
+      return 'failed'; // display only
+    } finally {
+      if (timer !== null) clearTimeout(timer);
+    }
+  })();
+  quietRefreshInFlight = run.finally(() => { quietRefreshInFlight = null; });
+  return quietRefreshInFlight;
 }
 
 export async function stopTracking(): Promise<RideSummary | null> {
   const s = await ensureSession();
+  // virgin-cycle20 brief 03: park the native 1 Hz body ticker BEFORE the
+  // service (and its notification) go away, so no tick can re-post a ghost.
+  stopRideNotification();
   try {
     if (await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK)) {
       await Location.stopLocationUpdatesAsync(LOCATION_TASK);
@@ -512,6 +566,18 @@ export async function stopTracking(): Promise<RideSummary | null> {
   liveEngine.stop(); // derived state is discarded; the raw JSONL is the record
   emit();
   return summary;
+}
+
+/** virgin-cycle20 brief 08: the silent relaunch finaliser (RecordScreen) found
+ * a marker whose ride file no longer exists — nothing can be saved, so the
+ * marker is dropped instead of being re-detected on every launch. Mirrors
+ * stopTracking's tail without touching the service or storage. */
+export async function dropStaleSession(): Promise<void> {
+  await clearSession();
+  session = null;
+  sessionLoaded = true;
+  liveEngine.stop();
+  emit();
 }
 
 // ---------------------------------------------------------------------------
@@ -547,10 +613,11 @@ liveEngine.subscribe((st) => {
   buzzedFires = st.gateFires;
 });
 
-// virgin-cycle18 brief 03 (testers via Nathan, 2026-09-29): keep the
-// foreground-service notification's header showing a live elapsed stopwatch
-// (SystemUI chronometer, zero = startedAtMs — no per-second work) and the
-// current sector ("S2"; "finished" after the last gate). Subscribed at module
+// virgin-cycle18 brief 03 → virgin-cycle20 brief 03 (Nathan, 2026-09-30): keep
+// the foreground-service notification's BODY showing the elapsed ride time and
+// the current sector ("12:34 · S2"; "finished" after the last gate). The native
+// module ticks the clock itself once a second (zero = startedAtMs); this
+// subscription only hands it the zero + label. Subscribed at module
 // scope for the same headless-relaunch reason as the buzz above: the task
 // handler feeds the engine with the screen off, so a gate fire here reaches
 // the notification within a tick. `session` is the module truth (set before

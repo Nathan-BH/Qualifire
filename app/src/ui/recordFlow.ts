@@ -87,31 +87,14 @@ export function liveMapOverlayFor(input: {
   return { wayId, showTrail: wayId === null };
 }
 
-/** The rotating status-line items (IDEAS §24) while running — WITHOUT any
- * fixes count ("I don't know what 'fixes' are" — Nathan 2026-08-19; the raw
- * count stays in the GPX+ sidecar for diagnostics, never a user-facing
- * line). Trouble jumps the queue via ordering only — content stays honest,
- * nothing hidden (mirrors mockup L484: route + 'gps live' only). */
-export function statusItemsFor(input: {
-  gpsTrouble: boolean;
-  gpsLine: string;
-  wayLine: string;
-}): string[] {
-  return input.gpsTrouble
-    ? [input.gpsLine, input.wayLine]
-    : [input.wayLine, input.gpsLine];
-}
-
-/** virgin-cycle15 brief 02: what the big RECORD button does on press.
- * 'open-first-sport' = zero sports and the inline prompt is closed → open it;
- * 'add-first-sport'  = zero sports and the prompt is open → save the typed
- *                      sport (RecordScreen's onFirstSport), then arm;
- * 'arm'              = at least one sport → onRecord as always (the prompt
- *                      flag is ignored: it can only be stale here). */
-export type RecordPressAction = 'open-first-sport' | 'add-first-sport' | 'arm';
-export function recordPressAction(input: { sportCount: number; firstSportPrompt: boolean }): RecordPressAction {
-  if (input.sportCount > 0) return 'arm';
-  return input.firstSportPrompt ? 'add-first-sport' : 'open-first-sport';
+/** virgin-cycle20 brief 08 (Nathan, clutter review Q4): what the big RECORD
+ * button does on press. 'no-sport' = zero sports → RecordScreen flashes
+ * "No sport configured yet" and switches to SETTINGS (whose SPORTS card adds
+ * the first sport); 'arm' = at least one sport → onRecord as always. The
+ * inline first-sport prompt (virgin-cycle15 brief 02) is retired. */
+export type RecordPressAction = 'no-sport' | 'arm';
+export function recordPressAction(input: { sportCount: number }): RecordPressAction {
+  return input.sportCount > 0 ? 'arm' : 'no-sport';
 }
 
 /** virgin-cycle15 brief 05 (Nathan 2026-09-26): how loud the STOP-time naming

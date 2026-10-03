@@ -257,12 +257,12 @@ export function buildHistoryBoard(results: RideResult[], allTimeBestS: number | 
 }
 
 export function boardCaption(total: number, rankingsOn: boolean): string {
-  const noun = total === 1 ? 'RIDE' : 'RIDES';
+  const noun = total === 1 ? 'ACTIVITY' : 'ACTIVITIES';
   return rankingsOn
     ? `ALL ${total} ${noun} · fastest first`
     : `ALL ${total} ${noun} · rankings off in SETTINGS`;
 }
 
 export function windowCaption(n: number): string {
-  return `LAST ${n} ${n === 1 ? 'RIDE' : 'RIDES'}`;
+  return `LAST ${n} ${n === 1 ? 'ACTIVITY' : 'ACTIVITIES'}`;
 }

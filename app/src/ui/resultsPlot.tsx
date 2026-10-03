@@ -20,10 +20,10 @@
  * `borderStyle: 'dotted'` (unreliable cross-platform on RN). Plain Views
  * throughout — no react-native-svg, no native rebuild.
  *
- * Rankings-off (SETTINGS s.tower) leaves the plot itself untouched — tones
- * are pure time comparisons, not a rank — the switch only drops the
- * position segment from the selection caption below (the screen passes an
- * empty `selectedPosLabel` in that case). Tones are still computed by the
+ * The Rankings switch (SETTINGS s.tower) was retired by virgin-cycle20 08 —
+ * rankings are always on; the screen still passes an empty `selectedPosLabel`
+ * for a point with no position, and the caption below drops that segment
+ * (tones are pure time comparisons, not a rank). Tones are still computed by the
  * model; the dots are NOT tone-coloured (virgin-cycle15 brief 04 retired the
  * three-tone code with its legend). virgin-cycle16 brief 08: the newest
  * ride's dot (last point, rightmost slot) is the brand yellow `t.accent`,
@@ -101,7 +101,7 @@ export default function ResultsPlot({
           <View style={{ height: PLOT_H }} />
         ) : model.empty === 'no-ranked' ? (
           <View style={styles.emptyWrap}>
-            <Text style={{ color: t.textDim }}>no ranked rides yet</Text>
+            <Text style={{ color: t.textDim }}>no ranked activities yet</Text>
           </View>
         ) : (
           <>
@@ -219,9 +219,9 @@ export default function ResultsPlot({
           </View>
         </View>
       ) : null}
-      {/* selection caption — WP-2 §3.7: drops the position segment when
-          rankings are off (the screen passes '' for selectedPosLabel), but
-          the dots above are unaffected by the switch. */}
+      {/* selection caption — WP-2 §3.7: drops the position segment when the
+          screen passes '' for selectedPosLabel (no position for this point;
+          the Rankings switch itself is gone, virgin-cycle20 08). */}
       <Pressable
         style={styles.captionRow}
         disabled={selectedPoint === null}
@@ -231,7 +231,7 @@ export default function ResultsPlot({
       >
         <Text style={[styles.captionText, { color: t.textDim }]}>
           {selectedPoint === null
-            ? 'tap a point for that ride'
+            ? 'tap a point for that activity'
             : [towerDate(selectedPoint.startedAtMs), fmt(selectedPoint.timeS), selectedPosLabel]
               .filter((part) => part !== '')
               .join(' · ')}

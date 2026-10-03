@@ -110,11 +110,11 @@ export default function ResultsScreen({ openRouteId }: { openRouteId: string | n
       <Text style={styles.title}>Results</Text>
       {/* Q5/WP-1: bare sport-name badge, same convention as ROUTES/RIDES. */}
       <Text style={styles.sub}>
-        {sportLabel !== null ? sportLabel.toUpperCase() : 'NO SPORT YET — ADD ONE IN SETTINGS'}
+        {sportLabel !== null ? sportLabel.toUpperCase() : 'NO SPORT YET · ADD ONE IN SETTINGS'}
       </Text>
       {routes.length === 0 && freeRides.length === 0 ? (
         // decision 8: no ridden route at all.
-        <Text style={styles.empty}>NO RESULTS YET — RIDE A ROUTE FIRST</Text>
+        <Text style={styles.empty}>NO RESULTS YET</Text>
       ) : (
         <View>
           {routes.map((route) => (
@@ -132,7 +132,7 @@ export default function ResultsScreen({ openRouteId }: { openRouteId: string | n
                 <View style={{ flex: 1 }}>
                   <Text style={styles.cardTitle}>{route.label}</Text>
                   <Text style={styles.cardSub}>
-                    {route.ways.length} way{route.ways.length === 1 ? '' : 's'} · {route.rideCount} ride{route.rideCount === 1 ? '' : 's'}
+                    {route.ways.length} way{route.ways.length === 1 ? '' : 's'} · {route.rideCount} activit{route.rideCount === 1 ? 'y' : 'ies'}
                   </Text>
                 </View>
                 <Text style={styles.chev}>›</Text>
@@ -143,7 +143,7 @@ export default function ResultsScreen({ openRouteId }: { openRouteId: string | n
       )}
       {freeRides.length > 0 ? (
         <View>
-          <Text style={styles.sectionHead}>FREE RIDES</Text>
+          <Text style={styles.sectionHead}>FREE ACTIVITIES</Text>
           {freeRides.map((r) => {
             // decision 5: a migrated v1/v2 record keeps its `free:<ms>` id,
             // which is not a raw ride — no detail to open.
@@ -158,7 +158,7 @@ export default function ResultsScreen({ openRouteId }: { openRouteId: string | n
                 <View style={styles.cardRow}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.cardTitle}>{dateTimeLabel(r.startedAtMs)}</Text>
-                    <Text style={styles.cardSub}>{r.durationS !== null ? fmt(r.durationS) : '–'} · free ride</Text>
+                    <Text style={styles.cardSub}>{r.durationS !== null ? fmt(r.durationS) : '–'} · free activity</Text>
                   </View>
                   {openable ? <Text style={styles.chev}>›</Text> : null}
                 </View>

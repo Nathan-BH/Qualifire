@@ -256,8 +256,27 @@ function decimateByTime<T extends { tUnixMs: number }>(fixes: readonly T[], minG
 
 /** Module-level cache, keyed `${rideId}:${gateSetVersion}` (R4) — a self
  * track never changes for a given ride + gate-set-version pair, so a
- * gate-set edit invalidates exactly the entries it should and nothing else. */
+ * gate-set edit invalidates exactly the entries it should and nothing else.
+ * virgin-cycle20 06: LRU-bounded (Map insertion order; a hit re-inserts) now
+ * that RecordScreen preloads on the setup screen for every way tapped. */
 const trackCache = new Map<string, SelfTrack>();
+/** 10 ways' full windows (WINDOW_PREV = 9 each); one decimated track is ~25 KB. */
+export const TRACK_CACHE_MAX = 90;
+/** Test seam only. */
+export function selfTrackCacheSizeForTests(): number { return trackCache.size; }
+export function resetSelfTrackCacheForTests(): void { trackCache.clear(); }
+function cacheSet(key: string, track: SelfTrack): void {
+  trackCache.delete(key); // re-insert → most recent
+  trackCache.set(key, track);
+  while (trackCache.size > TRACK_CACHE_MAX) {
+    const oldest = trackCache.keys().next().value;
+    if (oldest === undefined) break;
+    trackCache.delete(oldest);
+  }
+}
+/** virgin-cycle20 06: one macrotask between window rides so a cold load never
+ * holds the JS thread longer than one ride's parse. */
+function yieldToUi(): Promise<void> { return new Promise((r) => setTimeout(r, 0)); }
 
 /**
  * Builds the selfs for `wayId`'s current comparison window (R2:
@@ -284,8 +303,13 @@ export async function loadSelfTracksFor(
   if (!spec) return [];
   const out: SelfTrack[] = [];
   let skipped = 0;
+  let hits = 0;
+  const t0 = Date.now();
+  let first = true;
 
   for (const result of window) {
+    if (!first) await yieldToUi();
+    first = false;
     if (result.source !== 'app') {
       // R3: archive results have sector times but no fixes on this branch.
       skipped++;
@@ -299,6 +323,8 @@ export async function loadSelfTracksFor(
       // so re-read it on every hit rather than serving a stale mode's value.
       const lapS = scoredS(result.lap);
       if (lapS === null) { skipped++; continue; }
+      hits++;
+      cacheSet(cacheKey, cached); // LRU touch
       out.push({ ...cached, lapS });
       continue;
     }
@@ -340,7 +366,7 @@ export async function loadSelfTracksFor(
           { tUnixMs: f.tUnixMs, lat: f.lat, lon: f.lon, sM: f.sM }
         )),
       };
-      trackCache.set(cacheKey, track);
+      cacheSet(cacheKey, track);
       out.push(track);
     } catch {
       // D-023: a self track is a convenience derived from what's on disk —
@@ -352,6 +378,9 @@ export async function loadSelfTracksFor(
   if (skipped > 0) {
     console.log(`[selfRaceModel] loadSelfTracks(${wayId}): skipped ${skipped} of ${window.length} window entries`);
   }
+  // virgin-cycle20 06: the one timing instrument for the on-device cost of a
+  // cold vs warm load (read it off logcat/Metro; harmless otherwise).
+  console.log(`[selfRaceModel] loadSelfTracks(${wayId}): ${out.length} tracks (${hits} cached) in ${Date.now() - t0} ms`);
   return out;
 }
 

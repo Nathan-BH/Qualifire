@@ -44,7 +44,7 @@ export default function ResultsWayList({ route, onBack, onOpenWay }: ResultsWayL
               ) : null}
             </View>
             <View style={styles.rowRight}>
-              <Text style={styles.rides}>{item.rideCount} ride{item.rideCount === 1 ? '' : 's'}</Text>
+              <Text style={styles.rides}>{item.rideCount} activit{item.rideCount === 1 ? 'y' : 'ies'}</Text>
               <Text style={styles.chev}>›</Text>
             </View>
           </Pressable>

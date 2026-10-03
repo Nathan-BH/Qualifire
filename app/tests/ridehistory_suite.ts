@@ -151,7 +151,7 @@ test('virgin-cycle13: buildRideRows — a "no way" ride that founded a way shows
     (rideId) => (rideId === 'r1' ? { id: 'way:gymhome' } : null),
     () => 'SHOULD NOT WIN — pick label must lose to a reference way',
   );
-  assert(rows[0].wayName === 'Gym → Home — ref',
+  assert(rows[0].wayName === 'Gym → Home · ref',
     `a reference ride must show "<way name> — ref" ahead of any pick label, got ${rows[0].wayName}`);
   assert(rows[0].wayId === null,
     'wayId stays null for a reference override — no real lap was ever derived for this ride (D-025)');
@@ -209,7 +209,7 @@ test('virgin-cycle15 §1 / cycle16 02: buildRideRows — an unnamed free ride wi
     () => 'new → new',
     (startMs) => (startMs === 1000 ? makeFree(1000) : null),
   );
-  assert(rows[0].wayName === 'Free ride', `expected "Free ride", got ${rows[0].wayName}`);
+  assert(rows[0].wayName === 'Free activity', `expected "Free activity", got ${rows[0].wayName}`);
   assert(rows[0].lapLabel === '0:01', `the lap slot carries the ride's duration, got ${rows[0].lapLabel}`);
   assert(rows[0].wayId === null && rows[0].lapS === null && rows[0].rank === null,
     'a free ride has no way, no derived lap and no rank (D-025)');
@@ -230,7 +230,7 @@ test('virgin-cycle15 §1: buildRideRows — a reference way still wins over a fr
     () => null,
     () => { throw new Error('freeFor must not be consulted once a reference way has claimed the ride'); },
   );
-  assert(rows[0].wayName === 'Gym → Home — ref', `got ${rows[0].wayName}`);
+  assert(rows[0].wayName === 'Gym → Home · ref', `got ${rows[0].wayName}`);
 });
 
 test('virgin-cycle15 §1: buildRideRows — no free record (freeFor null) keeps the virgin-cycle13 pick-label fallback exactly', () => {
@@ -251,7 +251,7 @@ test('virgin-cycle16 03: FREE_RIDE_ROW_NAME is exactly the wayName buildRideRows
   const metas: RideMeta[] = [{ rideId: 'r1', startMs: 1000, endMs: 2000, nFixes: 10 }];
   const rows = buildRideRows(metas, () => null, () => [], undefined, () => null, () => null, () => makeFree(1000));
   assert(rows[0].wayName === FREE_RIDE_ROW_NAME, 'the section partition key must be the row name');
-  assert(FREE_RIDE_ROW_NAME === 'Free ride', 'the literal is pinned — RidesScreen partitions on it');
+  assert(FREE_RIDE_ROW_NAME === 'Free activity', 'the literal is pinned — RidesScreen partitions on it (virgin-cycle20 05: activity wording)');
 });
 
 // ============================================================ lapCellLabel
@@ -341,9 +341,6 @@ test('ridehistory: buildPbDetail — ascending sort, P1 gap blank, today marker,
   assert(todayRows.length === 1, `exactly one row must be marked today, got ${todayRows.length}`);
   assert(todayRows[0].timeLabel === fmt(540), 'the row marked today must be the lastRideId ride');
   assert(todayRows[0].dateLabel === 'today', `the today row's dateLabel must read "today", got ${todayRows[0].dateLabel}`);
-
-  const s1 = detail.pbSectors.find((s) => s.label === 'S1')!;
-  assert(s1.timeLabel === fmt(100, 1), `PB sector must ignore the interrupted 80s time, got ${s1.timeLabel}`);
 
   const blob = JSON.stringify(detail);
   for (const r of results) assert(!blob.includes(r.rideId), `a label leaked a raw rideId: ${r.rideId}`);

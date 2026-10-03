@@ -186,19 +186,19 @@ export function RouteNamingCard(props: RouteNamingCardProps) {
   return (
     <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
       <Text style={[st.title, { color: t.text }]}>
-        {existingRoute ? `New way on ${existingRoute.label}` : 'New route — name where you rode'}
+        {existingRoute ? `New way on ${existingRoute.label}` : 'New route'}
       </Text>
       {!(existingRoute && props.matchedWayLabel) && (
         <Text style={[st.sub, { color: t.textDim }]}>
           {existingRoute
-            ? `${existingRoute.label} is a route you have, but this ride did not follow any of its ways. Name what made it different to save it as a new way — this ride becomes its reference.`
+            ? `${existingRoute.label} is a route you have, but this activity did not follow any of its ways. Name what made it different to save it as a new way.`
             : loop
               ? startLabel !== null
-                ? `This ride looped from and back to ${startLabel}.`
-                : 'This ride looped from and back to one new place.'
+                ? `This activity looped from and back to ${startLabel}.`
+                : 'This activity looped from and back to one new place.'
               : props.matchedWayLabel
-                ? `Scored as ${props.matchedWayLabel}, but no route of yours runs between these two places. Name them to make this a way of its own — this ride becomes its reference.`
-                : 'This ride does not match any route you have. Name its start and end to make it a real way — this ride becomes its reference.'}
+                ? `Scored as ${props.matchedWayLabel}, but no route of yours runs between these two places. Name them to make this a way of its own.`
+                : 'This activity does not match any route you have. Name its start and end to make it a real way.'}
         </Text>
       )}
 
@@ -314,7 +314,7 @@ export function RouteNamingCard(props: RouteNamingCardProps) {
       )}
 
       <Text style={[st.label, { color: t.textDim }]}>
-        {existingRoute ? 'SPECIFICATIONS (required) — e.g. Dry, Left' : 'SPECIFICATIONS (optional) — e.g. Dry, Left'}
+        {existingRoute ? 'SPECIFICATIONS (required)' : 'SPECIFICATIONS (optional)'}
       </Text>
       {specs.length > 0 && (
         <View style={st.pillRow}>
@@ -366,8 +366,7 @@ export function RouteNamingCard(props: RouteNamingCardProps) {
       {duplicate && dupList && (
         <Text style={[st.hint, { color: t.textDim }]}>
           already exists as {existingRoute!.label}
-          {dupList.length ? ` · ${dupList.join(' · ')}` : ''} — pick it on RECORD next time, or add another
-          specification
+          {dupList.length ? ` · ${dupList.join(' · ')}` : ''}
         </Text>
       )}
 
@@ -390,7 +389,7 @@ export function RouteNamingCard(props: RouteNamingCardProps) {
           disabled={props.busy}
           onPress={props.onSaveFree}
         >
-          <Text style={[st.freeText, { color: t.text }]}>SAVE AS FREE RIDE</Text>
+          <Text style={[st.freeText, { color: t.text }]}>SAVE AS FREE ACTIVITY</Text>
         </Pressable>
       )}
     </View>

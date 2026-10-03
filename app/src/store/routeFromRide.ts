@@ -101,12 +101,12 @@ export async function promoteRideToReference(
     return { ok: false, errors: [`"${wayId}" is not one of your own ways — a shipped way cannot be re-referenced`] };
   }
   if (way.referenceRideId === rideId) {
-    return { ok: false, errors: ['this ride is already the reference of that way'] };
+    return { ok: false, errors: ['this activity is already the reference of that way'] };
   }
   const fixes = await readRideFixes(rideId, fs);
   const built = fixes ? buildRefFromRideFixes(fixes) : null;
   if (!built) {
-    return { ok: false, errors: ['no reference line can be built from this ride (recording unreadable, or under 200 m)'] };
+    return { ok: false, errors: ['no reference line can be built from this activity (recording unreadable, or under 200 m)'] };
   }
 
   // Everything below is decided; the catalog write is the only step that can refuse.
@@ -375,7 +375,7 @@ export async function deriveReferenceAgainst(
   const which = missed.length > 0
     ? `sector ${missed.join(' and ')} (between gate ${missed.map((i) => `${i - 1}→${i}`).join(', ')}) is not timed in its recording`
     : `its lap comes out '${result.lap.quality}'`;
-  return { result: null, readable: true, reason: `the reference ride cannot be timed against these gates: ${which}` };
+  return { result: null, readable: true, reason: `the reference activity cannot be timed against these gates: ${which}` };
 }
 
 /** virgin-cycle18 brief 04 (decision 8): the reference ride's result against
@@ -511,7 +511,7 @@ export async function editWayGates(
     if (next.result === null && next.readable) {
       const now = await deriveReferenceAgainst(refRideId, wayId, ref, current.chainageM, current.version, fs);
       if (now.result !== null) {
-        return { ok: false, errors: [`${next.reason} — move that gate somewhere the reference ride actually passed`] };
+        return { ok: false, errors: [`${next.reason} — move that gate somewhere the reference activity actually passed`] };
       }
     }
     refNext = next.result;

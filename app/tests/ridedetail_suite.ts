@@ -90,7 +90,7 @@ test('ridedetail: rideDetailFor — ignoredFromRanking true → ignored, neutral
   const res = mkResult({ rideId: 'r2', startedAtMs: 6000, ignoredFromRanking: true });
   const m = rideDetailFor('r2', 6000, { ...NOOP_DEPS, result: res, laps: () => [1, 2, 3, 4, 5], sectors: () => [1, 2, 3] });
   assert(m.ignored, 'must read as ignored');
-  assert(m.rankLine.startsWith('not ranked — you excluded'), `unexpected rank line: "${m.rankLine}"`);
+  assert(m.rankLine === 'not ranked', `unexpected rank line: "${m.rankLine}"`);
   assert(m.lapTier === 'neutral', `expected neutral lapTier, got ${m.lapTier}`);
   assert(m.sectorRows.every((r) => r.tier === 'neutral' || r.tier === 'est'), 'every sector row must read neutral/est while ignored');
   assert(m.sectorColours.every((c) => c === null), 'every sector colour must be null while ignored');
@@ -105,13 +105,13 @@ test('ridedetail: rideDetailFor — estimated lap → canToggleIgnore false, ran
   });
   const m = rideDetailFor('r3', 7000, { ...NOOP_DEPS, result: res });
   assert(!m.canToggleIgnore, 'nothing to ignore on a lap that never ranked in the first place');
-  assert(m.rankLine === 'no time — an estimated lap never ranks', `unexpected rank line: "${m.rankLine}"`);
+  assert(m.rankLine === 'no time', `unexpected rank line: "${m.rankLine}"`);
 });
 
 test('ridedetail: rideDetailFor — tripwireDemoted → barred → excluded-from-comparison line, canToggleIgnore false', () => {
   const res = mkResult({ rideId: 'r4', startedAtMs: 8000, tripwireDemoted: true });
   const m = rideDetailFor('r4', 8000, { ...NOOP_DEPS, result: res, laps: () => [1, 2, 3, 4, 5], barred: () => true });
-  assert(m.rankLine === 'no rank — this lap is excluded from the comparison', `unexpected rank line: "${m.rankLine}"`);
+  assert(m.rankLine === 'no rank', `unexpected rank line: "${m.rankLine}"`);
   assert(!m.canToggleIgnore, 'a tripwire-demoted lap never ranks either way — nothing to toggle');
 });
 
@@ -131,7 +131,7 @@ test('ridedetail: rankLineFor — ignored wins over every other branch', () => {
     Array.from({ length: MIN_HISTORY }, () => 900),
     true, // barred too
   );
-  assert(line === 'not ranked — you excluded this ride from ranking', `expected the ignored line, got "${line}"`);
+  assert(line === 'not ranked', `expected the ignored line, got "${line}"`);
 });
 
 test('ridedetail: sectorColoursFor — mirrors ResultScreen (clean+movingS coloured, interrupted/estimated/missed null; own ride excluded by rideId in hist, not by value — WP-K)', () => {

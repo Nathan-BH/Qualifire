@@ -40,6 +40,7 @@ import { ThemeProvider, useTheme } from './src/ui/themeContext';
 import { AutoThemeScheduler } from './src/ui/autoThemeScheduler';
 import { initRideHistory } from './src/ui/lastRide';
 import { freeRideNear, freeRideResults, initFreeRidePersistence } from './src/store/freeRides';
+import { markStoresReady } from './src/store/bootstrap';
 import { initCatalogStore } from './src/store/catalogStore';
 import { initSportStore } from './src/store/sportStore';
 import { initUserRefs } from './src/live/userRefs';
@@ -53,6 +54,13 @@ import {
   type Tab,
   type TabNav,
 } from './src/ui/tabNav';
+
+// virgin-cycle20 brief 05 (Nathan, 2026-09-30): the app serves walking and
+// running too, so the user sees "activities"; the tab ID stays 'rides' (it is
+// referenced across screens and never shown).
+const TAB_LABEL: Record<Tab, string> = {
+  record: 'record', rides: 'activities', routes: 'routes', results: 'results', settings: 'settings', demo: 'demo',
+};
 
 /**
  * Android 15 forces edge-to-edge: the app draws under the system navigation
@@ -174,6 +182,11 @@ function Shell() {
       // to run fire-and-forget beside the chain (WP-B).
       .then(() => initFreeRidePersistence(fs))
       .then(() => initRideHistory(fs, (_rideId, startMs) => freeRideNear(freeRideResults(), startMs) !== null))
+      // virgin-cycle20 brief 12: open the "stores ready" gate (store/bootstrap.ts)
+      // on BOTH paths — RecordScreen's relaunch recovery awaits it before it
+      // finalises an interrupted recording and files it free (it used to race
+      // this chain and lose the free mark; Opus inspection of brief 08, B1).
+      .then(markStoresReady, markStoresReady)
       .then(
         () => setWindowHydrated(true),
         () => {},
@@ -248,7 +261,7 @@ function Shell() {
                 style={[styles.tab, tab === tb && styles.tabActiveBar]}
                 onPress={() => setTab(tb)}
               >
-                <Text style={[styles.tabText, tab === tb && styles.tabActive]}>{tb}</Text>
+                <Text style={[styles.tabText, tab === tb && styles.tabActive]}>{TAB_LABEL[tb]}</Text>
               </Pressable>
             ))}
           </ScrollView>

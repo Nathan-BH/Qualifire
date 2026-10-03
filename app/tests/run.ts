@@ -58,7 +58,11 @@ import './mapcredit_suite.ts';
 import './replay_suite.ts';
 import './replay_drift_suite.ts';
 import './lockscreen_suite.ts';
+import './positionretry_suite.ts';
+import './bootstrap_suite.ts';
 import './ridenotification_suite.ts';
+import './riderdot_suite.ts';
+import './ui_strings_suite.ts';
 import { runAll } from './lib.ts';
 
 const { fail } = await runAll();

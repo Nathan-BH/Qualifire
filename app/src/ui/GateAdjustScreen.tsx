@@ -55,11 +55,11 @@ export default function GateAdjustScreen({ request }: { request: GateAdjustReque
   function confirmEditGates(chainageM: number[]) {
     const n = storedResultsForWay(request.wayId).length;
     const ghosts = n === 0
-      ? 'There are no timed rides on this way yet.'
-      : `Its ${n} timed ride${n === 1 ? ' is' : 's are'} re-timed from the recordings against the new gates — old times and ranks do not survive, the rides do.`;
+      ? 'There are no timed activities on this way yet.'
+      : `Its ${n} timed activit${n === 1 ? 'y is' : 'ies are'} re-timed from the recordings against the new gates — old times and ranks do not survive, the activities do.`;
     Alert.alert(
       `Move the gates of "${wayLabelIn(currentCatalog(), request.wayId)}"?`,
-      `${ghosts} The reference ride is kept and re-timed too, so it still races you as a dot. Recordings are never touched.`,
+      `${ghosts} The reference activity is kept and re-timed too, so it still races you as a dot. Recordings are never touched.`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Save & re-time', style: 'destructive', onPress: () => void onEditGates(chainageM) },
@@ -87,7 +87,7 @@ export default function GateAdjustScreen({ request }: { request: GateAdjustReque
         if (out.referenceRideId !== null && !out.referenceRetimed) {
           Alert.alert(
             'Gates saved — reference not re-timed',
-            'The gates are saved, but this way\'s reference ride could not be timed against them (its recording is missing or unreadable), so it will not race you as a dot.',
+            'The gates are saved, but this way\'s reference activity could not be timed against them (its recording is missing or unreadable), so it will not race you as a dot.',
           );
         }
       }
@@ -108,11 +108,7 @@ export default function GateAdjustScreen({ request }: { request: GateAdjustReque
         <Text style={[st.topTitle, { color: t.text }]}>EDIT GATES</Text>
         <View style={{ width: 56 }} />{/* balances ‹ BACK so the title centres, as RideDetail's date does */}
       </View>
-      {draft === null ? (
-        <Text style={{ color: t.textDim, fontSize: 13 }}>
-          This way's gates cannot be edited — it has no reference ride or gate set on file.
-        </Text>
-      ) : (
+      {draft === null ? null /* unreachable from the UI: CatalogDetailScreen hides "edit gates" without a draft (virgin-cycle20 08) */ : (
         <GateAdjustCard
           key={request.wayId}
           wayId={request.wayId}
@@ -121,9 +117,9 @@ export default function GateAdjustScreen({ request }: { request: GateAdjustReque
           initialChainageM={draft.chainageM}
           busy={busy}
           mapHeight={mapHeight}
-          title={`Sector gates — ${label}`}
-          subtitle="Tap a gate on the map or below to nudge it — start and finish too. Saving moved gates re-times this way's rides — the reference ride included — against the new gates; old times and ranks do not survive, recordings and rides do."
-          discardLabel="discard nudges — keep the current gates"
+          title={label}
+          subtitle="Tap a gate to move it"
+          discardLabel="discard nudges"
           onKeep={() => tabNav.closeGateAdjust()}
           onSave={(ch) => confirmEditGates(ch)}
         />

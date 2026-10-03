@@ -43,7 +43,7 @@ export default function RoutesScreen() {
       {/* Q5: a bare sport-name badge, nothing else — or, with zero sports, a
           plain nudge toward SETTINGS. */}
       <Text style={[st.h2, { color: t.textDim }]}>
-        {sportLabel !== null ? sportLabel.toUpperCase() : 'NO SPORT YET — ADD ONE IN SETTINGS'}
+        {sportLabel !== null ? sportLabel.toUpperCase() : 'NO SPORT YET · ADD ONE IN SETTINGS'}
       </Text>
       <Text style={[st.h2, { color: t.textDim }]}>YOUR PLACES</Text>
       <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>

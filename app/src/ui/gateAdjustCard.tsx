@@ -138,9 +138,9 @@ export function GateAdjustCard(props: GateAdjustCardProps) {
 
   return (
     <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-      <Text style={[st.title, { color: t.text }]}>{props.title ?? 'Sector gates — proposed'}</Text>
+      {props.title !== undefined ? <Text style={[st.title, { color: t.text }]}>{props.title}</Text> : null}
       <Text style={[st.sub, { color: t.textDim }]}>
-        {props.subtitle ?? 'Seeded at 1/25/50/75/99 % of your ride, nudged clear of where you stopped. A proposal, not a benchmark — pick a gate to nudge it (start and finish too), or keep it and refine after a few rides.'}
+        {props.subtitle ?? 'Tap a gate to move it'}
       </Text>
 
       <View style={st.mapWrap}>
@@ -204,7 +204,7 @@ export function GateAdjustCard(props: GateAdjustCardProps) {
       </Pressable>
       {dirty ? (
         <Pressable style={st.skipBtn} disabled={props.busy} onPress={props.onKeep}>
-          <Text style={[st.skipText, { color: t.textDim }]}>{props.discardLabel ?? 'discard nudges — keep the proposal'}</Text>
+          <Text style={[st.skipText, { color: t.textDim }]}>{props.discardLabel ?? 'discard nudges'}</Text>
         </Pressable>
       ) : null}
     </View>

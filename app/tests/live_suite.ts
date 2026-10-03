@@ -1389,3 +1389,160 @@ test('live: cycle025 stale-fix — a flagged fix is inert (not buffered, no auto
     `lock never reached from the real fixes: phase=${final.phase} track=${final.track}`);
   assert(final.anyAnchored, 'anyAnchored false on a locked Morning ride — the status line would still say "writing history"');
 });
+
+// ============================================================ virgin-cycle20 06: pre-lock display candidate
+
+/** SYN_L ridden from 0 at 5 m/s with a pick (or none); returns the engine plus
+ * the events it emitted. `accuracy(s)` lets a test shape the cycle-023 retry. */
+function rideSynL(toS: number, pickId: string | null, accuracy?: (s: number) => number) {
+  const engine = new LiveEngine([SYN_L]);
+  const evts: EngineEvent[] = [];
+  const diag: DiagnosticEvent[] = [];
+  engine.subscribeEvents((e) => evts.push(e));
+  engine.subscribeDiagnostics((e) => diag.push(e));
+  if (pickId !== null) engine.start({ pickId });
+  let t = 1755167000;
+  const tAt = new Map<number, number>();
+  for (let s = 0; s <= toS; s += 5) {
+    const [lat, lon] = xyToLatLon(s, 0, 0, 0);
+    engine.feed(lat, lon, t * 1000, accuracy ? accuracy(s) : undefined);
+    tAt.set(s, t);
+    t += 1;
+  }
+  return { engine, evts, diag, tAt };
+}
+
+test('live cycle20-06 E1: under a pick the pick\'s own candidate is DISPLAYED from start() — S1/startGateT on the START-crossing fix, no lock, no event', () => {
+  // Before gate 0 (100 m): displayed but nothing crossed.
+  const pre = rideSynL(95, 'SyntheticL');
+  const s0 = pre.engine.getState();
+  assert(s0.displayTrack === 'SyntheticL' && s0.track === null && s0.lockKind === 'none',
+    `pre-gate: displayTrack ${s0.displayTrack}, track ${s0.track}, lockKind ${s0.lockKind}`);
+  assert(s0.currentSector === null && s0.startGateT === null && s0.lastDone === null,
+    `pre-gate: currentSector ${s0.currentSector}, startGateT ${s0.startGateT}, lastDone ${s0.lastDone} — want all null`);
+  assert(s0.sectors.length === 4 && s0.sectors.every((x) => x.kind === 'pending'), `pre-gate sectors ${s0.sectors.map((x) => x.kind)}`);
+  assert(s0.chainageM !== null && numEq(s0.chainageM, 95, 6), `pre-gate chainageM ${s0.chainageM}, want ~95`);
+  // On the crossing fix (s = 100): S1 immediately, still no lock, still no event.
+  const at = rideSynL(100, 'SyntheticL');
+  const s1 = at.engine.getState();
+  assert(s1.track === null && s1.lockKind === 'none' && s1.phase === 'detecting', `at gate: track ${s1.track}, lockKind ${s1.lockKind}, phase ${s1.phase}`);
+  assert(s1.currentSector === 1, `at gate: currentSector ${s1.currentSector}, want 1`);
+  assert(s1.startGateT !== null && numEq(s1.startGateT, at.tAt.get(100)!, 1.01), `at gate: startGateT ${s1.startGateT}, want ~${at.tAt.get(100)}`);
+  assert(s1.sectors[0].kind === 'current' && s1.sectors.slice(1).every((x) => x.kind === 'pending'), `at gate sectors ${s1.sectors.map((x) => x.kind)}`);
+  assert(s1.gateFires === 1, `gateFires ${s1.gateFires} (the buzz counter already counted pre-lock fires)`);
+  assert(at.evts.length === 0, `${at.evts.length} engine events before the lock, want 0 (nothing is emitted for a display candidate)`);
+});
+
+test('live cycle20-06 E2: with NO pick nothing is presumed — display fields stay null until the lock (today\'s behaviour)', () => {
+  const r = rideSynL(395, null);
+  const st = r.engine.getState();
+  assert(st.displayTrack === null && st.track === null && st.currentSector === null && st.startGateT === null && st.chainageM === null,
+    `no pick: displayTrack ${st.displayTrack}, currentSector ${st.currentSector}, startGateT ${st.startGateT}, chainageM ${st.chainageM} — want all null`);
+  assert(st.sectors.every((x) => x.kind === 'pending'), `no-pick sectors ${st.sectors.map((x) => x.kind)}`);
+  assert(st.gateFires === 1, `gateFires ${st.gateFires}: gate 0 DID fire on the candidate (unchanged max-over-candidates rule)`);
+});
+
+test('live cycle20-06 E3: the lock changes nothing on screen — same startGateT before/after, the replayed gate-0 event carries that exact time, lock event unchanged', () => {
+  const r = rideSynL(405, 'SyntheticL');
+  let preLockStart: number | null = null;
+  // re-drive to capture the pre-lock value at s = 395
+  const pre = rideSynL(395, 'SyntheticL');
+  preLockStart = pre.engine.getState().startGateT;
+  const st = r.engine.getState();
+  assert(st.track === 'SyntheticL' && st.lockKind === 'verified', `post: track ${st.track}, lockKind ${st.lockKind}`);
+  assert(st.displayTrack === 'SyntheticL' && st.currentSector === 1, `post: displayTrack ${st.displayTrack}, currentSector ${st.currentSector}`);
+  assert(preLockStart !== null && st.startGateT === preLockStart, `startGateT moved at the lock: ${preLockStart} → ${st.startGateT}`);
+  const locks = r.evts.filter((e) => e.type === 'lock');
+  const gates = r.evts.filter((e) => e.type === 'gate');
+  assert(locks.length === 1 && locks[0].type === 'lock' && locks[0].kind === 'verified' && numEq(locks[0].atChainageM, 405, 6),
+    `lock events ${JSON.stringify(locks)}`);
+  assert(gates.length === 1 && gates[0].type === 'gate' && gates[0].gateIndex === 0 && gates[0].t === preLockStart,
+    `replayed gate-0 ${JSON.stringify(gates)} — want exactly one, t === the pre-lock startGateT`);
+});
+
+test('live cycle20-06 E4: a display candidate that reaches FINISH before 400 m shows sectors but NEVER scores a lap or flips phase; finalize() withdraws it', () => {
+  const SYN_SHORT: TrackSpec = {
+    id: 'SyntheticShort', ref: buildSyntheticRef([[0, 0], [405, 0]]), gates: [50, 150, 250, 350],
+  };
+  const engine = new LiveEngine([SYN_SHORT]);
+  const evts: EngineEvent[] = [];
+  engine.subscribeEvents((e) => evts.push(e));
+  engine.start({ pickId: 'SyntheticShort' });
+  let t = 1755167000;
+  for (let s = 0; s <= 360; s += 5) {
+    const [lat, lon] = xyToLatLon(s, 0, 0, 0);
+    engine.feed(lat, lon, t * 1000);
+    t += 1;
+  }
+  const mid = engine.getState();
+  assert(mid.track === null && mid.lockKind === 'none' && mid.displayTrack === 'SyntheticShort',
+    `mid: track ${mid.track}, lockKind ${mid.lockKind}, displayTrack ${mid.displayTrack}`);
+  assert(mid.sectors.length === 3 && mid.sectors.every((x) => x.kind === 'done'), `mid sectors ${mid.sectors.map((x) => x.kind)} — want 3 done`);
+  assert(mid.lap === null && mid.phase === 'detecting', `mid: lap ${JSON.stringify(mid.lap)}, phase ${mid.phase} — a display candidate must never score D-022's lap`);
+  assert(mid.currentSector === null && mid.lastDone === 3, `mid: currentSector ${mid.currentSector}, lastDone ${mid.lastDone}`);
+  assert(evts.length === 0, `${evts.length} events before finalize, want 0`);
+  engine.finalize();
+  const fin = engine.getState();
+  assert(fin.track === null && fin.lockKind === 'none' && fin.lap === null && fin.phase !== 'finished',
+    `finalize: track ${fin.track}, lockKind ${fin.lockKind}, lap ${JSON.stringify(fin.lap)}, phase ${fin.phase} — want unmatched (350 − 0 < 400)`);
+  assert(fin.displayTrack === null && fin.currentSector === null && fin.startGateT === null,
+    `finalize must end the presumption: displayTrack ${fin.displayTrack}, currentSector ${fin.currentSector}, startGateT ${fin.startGateT}`);
+  assert(fin.sectors.every((x) => x.kind === 'pending'), `finalize sectors ${fin.sectors.map((x) => x.kind)} — want all pending`);
+  assert(evts.length === 0, `${evts.length} events after finalize, want 0`);
+});
+
+test('live cycle20-06 E5: the cycle-023 retry re-derives the display — no stale "current" S1 after the re-seed skips gate 0', () => {
+  // Poor accuracy (60 m) through the START gate, first good fix at 160 m: the
+  // retry re-seeds the projector at 160 m; D-016(b) arming then SKIPS gate 0
+  // (160 − 100 = 60 > armWithinM 50) — the display must say so at once.
+  const r = rideSynL(160, 'SyntheticL', (s) => (s < 160 ? 60 : 10));
+  const retries = r.diag.filter((d) => d.track === 'SyntheticL' && d.phase === 'retry');
+  assert(retries.length === 1, `${retries.length} retries, want exactly 1 (scenario precondition)`);
+  const st = r.engine.getState();
+  assert(st.displayTrack === 'SyntheticL' && st.track === null, `displayTrack ${st.displayTrack}, track ${st.track}`);
+  assert(st.startGateT === null, `startGateT ${st.startGateT} survived the re-seed — stale pre-retry event`);
+  assert(st.sectors[0].kind === 'missed', `sectors[0] ${JSON.stringify(st.sectors[0])} — want missed (gate 0 skipped by arming), not a stale "current"`);
+  assert(r.evts.length === 0, `${r.evts.length} events, want 0`);
+});
+
+test('live cycle20-06 E6: every pre-lock `track === null` invariant still holds under a pick — stop() clears the display too', () => {
+  const r = rideSynL(300, 'SyntheticL');
+  const st = r.engine.getState();
+  assert(st.track === null && st.lockKind === 'none' && st.displayTrack === 'SyntheticL', `track ${st.track}, lockKind ${st.lockKind}, displayTrack ${st.displayTrack}`);
+  r.engine.stop();
+  const off = r.engine.getState();
+  assert(off.displayTrack === null && off.currentSector === null && off.startGateT === null && off.chainageM === null,
+    `after stop(): displayTrack ${off.displayTrack}, currentSector ${off.currentSector}, startGateT ${off.startGateT}, chainageM ${off.chainageM}`);
+});
+
+test('live cycle20-12: a soft-promoted ride keeps its done sectors through the defensive SECOND finalize()', () => {
+  // Opus inspection of brief 06 (I3): finalize()'s pending-reset ran for every
+  // lockKind other than 'soft' — including 'finalized', the state the FIRST
+  // finalize() leaves a soft lock in — so RecordScreen's onEnd finalize()
+  // followed by stopTracking()'s own wiped the ride's sectors to pending.
+  // Same two-ways-one-line layout as N9 L2: pick L, ride 1200 m straight —
+  // S and L tie on the shared corridor, so the lock stays soft (never verified).
+  const engine = new LiveEngine([SYN_S, SYN_L]);
+  engine.start({ pickId: 'SyntheticL' });
+  let t = 1755167000;
+  for (let s = 0; s <= 1200; s += 5) {
+    const [lat, lon] = xyToLatLon(s, 0, 0, 0);
+    engine.feed(lat, lon, t * 1000);
+    t += 1;
+  }
+  const mid = engine.getState();
+  assert(mid.track === 'SyntheticL' && mid.lockKind === 'soft', `pre-finalize: track ${mid.track}, lockKind ${mid.lockKind} — want soft`);
+  assert(mid.sectors[0].kind === 'done' && mid.sectors[1].kind === 'current',
+    `pre-finalize sectors ${mid.sectors.map((x) => x.kind)} — want S1 done (gates 100/800 crossed), S2 current`);
+  engine.finalize();
+  const once = engine.getState();
+  assert(once.lockKind === 'finalized' && once.track === 'SyntheticL', `first finalize: lockKind ${once.lockKind}, track ${once.track}`);
+  assert(once.sectors[0].kind === 'done', `first finalize sectors ${once.sectors.map((x) => x.kind)} — S1 must stay done`);
+  const before = JSON.stringify(once.sectors);
+  engine.finalize(); // the defensive second call (stopTracking after onEnd)
+  const twice = engine.getState();
+  assert(twice.sectors[0].kind === 'done', `second finalize sectors ${twice.sectors.map((x) => x.kind)} — S1 wiped to ${twice.sectors[0].kind}`);
+  assert(JSON.stringify(twice.sectors) === before, `second finalize changed sectors: ${before} -> ${JSON.stringify(twice.sectors)}`);
+  assert(twice.lockKind === 'finalized' && twice.track === 'SyntheticL' && twice.currentSector === once.currentSector,
+    `second finalize: lockKind ${twice.lockKind}, track ${twice.track}, currentSector ${twice.currentSector} (was ${once.currentSector})`);
+});

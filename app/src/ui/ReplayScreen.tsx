@@ -202,7 +202,6 @@ export default function ReplayScreen(props: {
   if (rider === 'loading') {
     return (
       <View style={styles.raceColumn}>
-        <Text style={styles.trackLine}>loading replay…</Text>
         <Pressable onPress={onClose} hitSlop={8}>
           <Text style={[styles.backText, { color: t.textDim }]}>‹ BACK</Text>
         </Pressable>
@@ -213,7 +212,6 @@ export default function ReplayScreen(props: {
   if (rider === null) {
     return (
       <View style={styles.raceColumn}>
-        <Text style={styles.trackLine}>no replay — this ride never crossed START on this way</Text>
         <Pressable onPress={onClose} hitSlop={8}>
           <Text style={[styles.backText, { color: t.textDim }]}>‹ BACK</Text>
         </Pressable>
@@ -230,26 +228,22 @@ export default function ReplayScreen(props: {
 
   return (
     <View style={styles.raceColumn}>
-      {settings.liveMap ? (
-        <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch' }}>
-          <WayMapView
-            key={`replay-${rideId}`}
-            wayId={wayId}
-            lat={pos ? pos.lat : null}
-            lon={pos ? pos.lon : null}
-            zoom={4}
-            sectorColours={sectorColours}
-            leadColour={settings.sectorColours ? colors.grey : undefined}
-            selfs={settings.selfDots ? selfDots : undefined}
-            rideTrace={rider.fixes}
-            variant="live"
-            liveState={anchor.playing ? 'moving' : 'finished'}
-            fill
-          />
-        </View>
-      ) : (
-        <View style={{ flex: 1 }} />
-      )}
+      <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch' }}>
+        <WayMapView
+          key={`replay-${rideId}`}
+          wayId={wayId}
+          lat={pos ? pos.lat : null}
+          lon={pos ? pos.lon : null}
+          zoom={4}
+          sectorColours={sectorColours}
+          leadColour={settings.sectorColours ? colors.grey : undefined}
+          selfs={settings.selfDots ? selfDots : undefined}
+          rideTrace={rider.fixes}
+          variant="live"
+          liveState={anchor.playing ? 'moving' : 'finished'}
+          fill
+        />
+      </View>
 
       {vm ? <LiveSectorPane vm={vm} showLap clockSize={56} /> : null}
 

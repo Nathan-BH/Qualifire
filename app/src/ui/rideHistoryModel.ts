@@ -60,7 +60,7 @@ export function dateTimeLabel(ms: number): string {
 /** The `wayName` buildRideRows gives a free ride, and the ONLY way a row is
  * free (virgin-cycle16 03): RidesScreen partitions its FREE RIDES section on
  * this exact literal. Four ridehistory_suite tests pin the text. */
-export const FREE_RIDE_ROW_NAME = 'Free ride';
+export const FREE_RIDE_ROW_NAME = 'Free activity';
 
 export interface RideRowModel {
   rideId: string;
@@ -79,8 +79,8 @@ export interface RideRowModel {
 /**
  * One row per stored ride, newest first. A ride with no derived result yet
  * (not backfilled), or one whose result matched no way, falls through the
- * two overrides below before landing on `wayName: null` (rendered by the
- * caller as "no way — recorded only"):
+ * two overrides below before landing on `wayName: null` (the caller renders
+ * no title at all — virgin-cycle20 08 removed the "no way" text):
  *
  * virgin-cycle13 (Nathan 2026-09-24): a "no way" ride was indistinguishable
  * from a free ride, AND a ride that later became a route's own reference
@@ -89,7 +89,7 @@ export interface RideRowModel {
  * (resultsStore.ts) means it is never retried once the ride's own way is
  * minted from it. Both are display-only fixes; neither touches matching:
  *  1. `referenceWayFor(rideId)` — this ride founded a way (Way.referenceRideId)
- *     — wins outright: shown as "<way name> — ref" via the SAME `labelFor`
+ *     — wins outright: shown as "<way name> · ref" via the SAME `labelFor`
  *     already used for a matched wayId, `wayId` stays null (D-025: no real
  *     lap was ever derived for it, so nothing here pretends one was).
  *  2. `pickLabelFor(rideId)` — the START-time pick logged to the ride's own
@@ -108,7 +108,7 @@ export interface RideRowModel {
  * passes freeRideNear(freeRideResults(), startMs), the SAME tolerance match
  * RideDetailScreen resolves the free view with, so row and detail agree by
  * construction — slots in between the two fallbacks above: a ride that
- * founded a way is still "<way name> — ref" (a named free ride became a
+ * founded a way is still "<way name> · ref" (a named free ride became a
  * route's reference; that wins), an unnamed free ride with a record on
  * file is "Free ride" with the ride's own wall-clock duration in the lap
  * slot (virgin-cycle16 02 — a free ride carries no gates; D-025: no lap was ever derived),
@@ -155,7 +155,7 @@ export function buildRideRows(
             rank: null,
           };
         }
-        const wayName = refWay !== null ? `${labelFor(refWay.id)} — ref` : pickLabelFor(m.rideId);
+        const wayName = refWay !== null ? `${labelFor(refWay.id)} · ref` : pickLabelFor(m.rideId);
         return {
           rideId: m.rideId,
           startMs: m.startMs,
@@ -280,13 +280,12 @@ export function buildPbRows(
 
 export interface PbDetailModel {
   ranking: { posLabel: string; dateLabel: string; timeLabel: string; gapLabel: string; today: boolean }[];
-  pbSectors: { label: string; timeLabel: string }[];
 }
 
 /**
  * The expanded detail under one Personal Bests row: the route's ranking
  * (dates, never rideIds — the `today` flag is how the caller's own last ride
- * is marked) and its best-ever sector split.
+ * is marked). virgin-cycle20 08: no sector bests — rolling comparison only (Nathan).
  *
  * `window` is the route's comparison window (caller passes ghostsFor(routeId),
  * unfiltered by excludeRideId — the point here IS to show where the rider's
@@ -308,22 +307,5 @@ export function buildPbDetail(window: RideResult[], lastRideId: string | null): 
     };
   });
 
-  // Sector indices are read from the window itself rather than assumed
-  // 1..N — different gate-set versions of the same route could in principle
-  // carry different sector counts in the same window.
-  const indices = new Set<number>();
-  for (const r of window) for (const s of r.sectors) indices.add(s.index);
-  const pbSectors = [...indices].sort((a, b) => a - b).map((i) => {
-    let best: number | null = null;
-    for (const r of window) {
-      const s = r.sectors.find((x) => x.index === i);
-      const v = s && s.quality === 'clean' ? scoredS(s) : null;
-      if (v !== null && (best === null || v < best)) {
-        best = v;
-      }
-    }
-    return { label: `S${i}`, timeLabel: best !== null ? fmt(best, 1) : '–' };
-  });
-
-  return { ranking, pbSectors };
+  return { ranking };
 }

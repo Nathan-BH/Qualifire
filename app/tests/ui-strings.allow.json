@@ -1,0 +1,3937 @@
+{
+  "owner": "Nathan",
+  "rule": "Every string a rider can see must be listed here with a reason. Nathan owns this file. Agents may APPEND an entry only with a one-line justification and must say so in their report; they never regenerate this file. Budgets (process/CONVENTIONS.md § Rider-facing text): 40 chars unless long:true; alert body <= 20 words; no em dash (use ' · '); warnings flash in the yellow button's sub-label, never a banner.",
+  "generatedAt": "2026-10-02",
+  "generatedFrom": "ae911bb",
+  "legacyCount": 33,
+  "banners": [],
+  "entries": [
+    {
+      "file": "src/location/index.ts",
+      "kind": "literal",
+      "text": "foreground-only",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/location/index.ts",
+      "kind": "literal",
+      "text": "no-permission",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/location/index.ts",
+      "kind": "literal",
+      "text": "no-services",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/location/index.ts",
+      "kind": "literal",
+      "text": "qualifire-ride-tracking",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/location/index.ts",
+      "kind": "literal",
+      "text": "services-off",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/location/index.ts",
+      "kind": "prop:notificationTitle",
+      "text": "Recording activity",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/location/positionRetryPolicy.ts",
+      "kind": "literal",
+      "text": "app-active",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/location/positionRetryPolicy.ts",
+      "kind": "literal",
+      "text": "record-press",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/location/session.ts",
+      "kind": "literal",
+      "text": "{…}qualifire-active-ride.json",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "alert-title",
+      "text": "Could not merge",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "alert-title",
+      "text": "Could not rename",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "alert-title",
+      "text": "Merge \"{…}\" into \"{…}\"?",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "attr:label",
+      "text": "activities on file",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "attr:label",
+      "text": "gates",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "attr:label",
+      "text": "length",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "attr:label",
+      "text": "ranked",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "attr:label",
+      "text": "reference activity",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "literal",
+      "text": "ROUTES FROM HERE",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "literal",
+      "text": "Ride recordings are never touched.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "literal",
+      "text": "not offered at START",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "literal",
+      "text": "offered at START",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "literal",
+      "text": "on file, not scored",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "literal",
+      "text": "{…} route{…} become{…} a loop.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "literal",
+      "text": "{…} route{…} become{…} the same as an existing one and fold{…} into it — its ways, gates, reference lines and results are kept.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true,
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "literal",
+      "text": "{…} route{…} from or to \"{…}\" will use \"{…}\" instead, and \"{…}\" is removed.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "literal",
+      "text": "· asks which one at START",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "prop:text",
+      "text": "Cancel",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "prop:text",
+      "text": "Merge",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
+      "text": "ACTIONS",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
+      "text": "BACK TO ROUTES",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
+      "text": "Delete",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
+      "text": "Delete route",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
+      "text": "Merge into another place…",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
+      "text": "No route uses this place yet.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
+      "text": "None.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
+      "text": "Pick the place to keep. Every route from or to \"{…}\" will use it instead, and \"{…}\" is removed.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
+      "text": "ROUTES TO HERE",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
+      "text": "Rename",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
+      "text": "SAVE",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
+      "text": "WAY ·",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
+      "text": "cancel",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
+      "text": "delete way",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
+      "text": "edit gates",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
+      "text": "from:",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
+      "text": "loop ·",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
+      "text": "reference activity",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
+      "text": "to:",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
+      "text": "way",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
+      "text": "‹ BACK",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/DemoScreen.tsx",
+      "kind": "attr:accessibilityLabel",
+      "text": "Demo speed {…}x",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/DemoScreen.tsx",
+      "kind": "attr:accessibilityLabel",
+      "text": "This activity was a different way",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/DemoScreen.tsx",
+      "kind": "literal",
+      "text": "Activity saved — {…}.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/DemoScreen.tsx",
+      "kind": "literal",
+      "text": "Activity saved.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/DemoScreen.tsx",
+      "kind": "literal",
+      "text": "demo:first-ride",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/DemoScreen.tsx",
+      "kind": "literal",
+      "text": "writing history · no known route here",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/DemoScreen.tsx",
+      "kind": "text",
+      "text": "DEMO ACTIVITY",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/DemoScreen.tsx",
+      "kind": "text",
+      "text": "FIRST",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/DemoScreen.tsx",
+      "kind": "text",
+      "text": "Not part of the final app · use only for testing features.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/DemoScreen.tsx",
+      "kind": "text",
+      "text": "RUN DEMO ACTIVITY",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/DemoScreen.tsx",
+      "kind": "text",
+      "text": "SECOND",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/DemoScreen.tsx",
+      "kind": "text",
+      "text": "TENTH",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/DemoScreen.tsx",
+      "kind": "text",
+      "text": "demo only · nothing saved",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/DemoScreen.tsx",
+      "kind": "text",
+      "text": "demo · nothing is recorded",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/DemoScreen.tsx",
+      "kind": "text",
+      "text": "not {…}?",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/DemoScreen.tsx",
+      "kind": "text",
+      "text": "· AS ON THE RESULTS TAB",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/GateAdjustScreen.tsx",
+      "kind": "alert-body",
+      "text": "The gates are saved, but this way's reference activity could not be timed against them (its recording is missing or unreadable), so it will not race you as a dot.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "legacy": true,
+      "violates": [
+        "alert-words"
+      ]
+    },
+    {
+      "file": "src/ui/GateAdjustScreen.tsx",
+      "kind": "alert-body",
+      "text": "{…} The reference activity is kept and re-timed too, so it still races you as a dot. Recordings are never touched.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/GateAdjustScreen.tsx",
+      "kind": "alert-title",
+      "text": "Could not save the gates",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/GateAdjustScreen.tsx",
+      "kind": "alert-title",
+      "text": "Gates saved — reference not re-timed",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/GateAdjustScreen.tsx",
+      "kind": "alert-title",
+      "text": "Move the gates of \"{…}\"?",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/GateAdjustScreen.tsx",
+      "kind": "attr:subtitle",
+      "text": "Tap a gate to move it",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/GateAdjustScreen.tsx",
+      "kind": "literal",
+      "text": "Its {…} timed activit{…} re-timed from the recordings against the new gates — old times and ranks do not survive, the activities do.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true,
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/GateAdjustScreen.tsx",
+      "kind": "literal",
+      "text": "There are no timed activities on this way yet.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/GateAdjustScreen.tsx",
+      "kind": "literal",
+      "text": "discard nudges",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/GateAdjustScreen.tsx",
+      "kind": "literal",
+      "text": "ies are",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/GateAdjustScreen.tsx",
+      "kind": "prop:text",
+      "text": "Cancel",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/GateAdjustScreen.tsx",
+      "kind": "prop:text",
+      "text": "Save & re-time",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/GateAdjustScreen.tsx",
+      "kind": "text",
+      "text": "EDIT GATES",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/GateAdjustScreen.tsx",
+      "kind": "text",
+      "text": "‹ BACK",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "alert-body",
+      "text": "This stops recording and permanently removes the raw trace. Nothing is saved.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "alert-body",
+      "text": "{…} The activity was ended and kept instead — you can delete it from ACTIVITIES.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "alert-title",
+      "text": "Could not check permissions",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "alert-title",
+      "text": "Could not create the route",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "alert-title",
+      "text": "Could not discard",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "alert-title",
+      "text": "Could not save the gates",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "alert-title",
+      "text": "Could not start tracking",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "alert-title",
+      "text": "Could not stop cleanly",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "alert-title",
+      "text": "Discard activity?",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "attr:accessibilityLabel",
+      "text": "This activity was a different way",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "literal",
+      "text": "Activity saved · {…}",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "literal",
+      "text": "Activity saved.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "literal",
+      "text": "Allow location all the time",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "literal",
+      "text": "DETECTED START",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "literal",
+      "text": "GPS live",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "literal",
+      "text": "Location (GPS) is turned off",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "literal",
+      "text": "Location permission not granted",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "literal",
+      "text": "No sport configured yet",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "literal",
+      "text": "START NOT DETECTED",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "literal",
+      "text": "STARTING FROM",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "literal",
+      "text": "app-active",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "literal",
+      "text": "endRide: unknown",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "literal",
+      "text": "post-stop",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "literal",
+      "text": "record-press",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "literal",
+      "text": "same activity · new meaning",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "prop:text",
+      "text": "Cancel",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "prop:text",
+      "text": "Discard",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "text",
+      "text": "Activity saved ·",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "text",
+      "text": "Discard activity",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "text",
+      "text": "END",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "text",
+      "text": "GOING TO",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "text",
+      "text": "PAUSE",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "text",
+      "text": "Qualifire",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "text",
+      "text": "RECORD",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "text",
+      "text": "RESUME",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "text",
+      "text": "SPORT",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "text",
+      "text": "START",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "text",
+      "text": "WHICH WAY TODAY?",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "text",
+      "text": "new",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "text",
+      "text": "not {…}?",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "text",
+      "text": "storage errors",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "text",
+      "text": "‹ cancel",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/ReplayScreen.tsx",
+      "kind": "attr:accessibilityLabel",
+      "text": "replay speed",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/ReplayScreen.tsx",
+      "kind": "literal",
+      "text": "replay over · {…}",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/ReplayScreen.tsx",
+      "kind": "text",
+      "text": "‹ BACK",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/ResultsDetailScreen.tsx",
+      "kind": "text",
+      "text": "BACK TO RESULTS",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/ResultsDetailScreen.tsx",
+      "kind": "text",
+      "text": "RESULTS",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/ResultsDetailScreen.tsx",
+      "kind": "text",
+      "text": "activit",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/ResultsDetailScreen.tsx",
+      "kind": "text",
+      "text": "‹ BACK",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/ResultsScreen.tsx",
+      "kind": "literal",
+      "text": "NO SPORT YET · ADD ONE IN SETTINGS",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/ResultsScreen.tsx",
+      "kind": "text",
+      "text": "FREE ACTIVITIES",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/ResultsScreen.tsx",
+      "kind": "text",
+      "text": "NO RESULTS YET",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/ResultsScreen.tsx",
+      "kind": "text",
+      "text": "Results",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/ResultsScreen.tsx",
+      "kind": "text",
+      "text": "activit",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/ResultsScreen.tsx",
+      "kind": "text",
+      "text": "way",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/ResultsScreen.tsx",
+      "kind": "text",
+      "text": "· free activity",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "alert-body",
+      "text": "GPX sent as text via the share sheet.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "alert-body",
+      "text": "Pick it on RECORD next time instead of adding it again.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "alert-body",
+      "text": "This way will be overwritten and past ghosts will be lost. Its reference line and gates are rebuilt from this activity ({…}). {…} Activity recordings are kept.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "legacy": true,
+      "violates": [
+        "alert-words"
+      ]
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "alert-body",
+      "text": "{…} · {…} This permanently removes the raw trace.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "alert-body",
+      "text": "{…}.gpx saved to the folder you picked.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "alert-title",
+      "text": "Could not create the route",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "alert-title",
+      "text": "Could not delete",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "alert-title",
+      "text": "Could not save the gates",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "alert-title",
+      "text": "Could not set the reference",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "alert-title",
+      "text": "Could not update",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "alert-title",
+      "text": "Delete activity?",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "alert-title",
+      "text": "Export failed",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "alert-title",
+      "text": "Exported",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "alert-title",
+      "text": "Overwrite the reference of \"{…}\"?",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "alert-title",
+      "text": "Shared",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "alert-title",
+      "text": "That way already exists",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "literal",
+      "text": "BACK TO ACTIVITIES",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "literal",
+      "text": "BACK TO RESULTS",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "literal",
+      "text": "BACK TO ROUTE",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "literal",
+      "text": "Count in ranking",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "literal",
+      "text": "Export GPX+",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "literal",
+      "text": "Ignore in ranking",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "literal",
+      "text": "Its {…} past result{…} discarded and re-timed from the recordings against the new reference — old times and ranks do not survive.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true,
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "literal",
+      "text": "Make this the reference of a new route",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "literal",
+      "text": "RECORD ANOTHER",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "literal",
+      "text": "Save as a new way on {…}",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "literal",
+      "text": "There are no past results on this way yet.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "literal",
+      "text": "rides/{…}.events.jsonl",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "literal",
+      "text": "saved as a free activity",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "literal",
+      "text": "this route",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "prop:text",
+      "text": "Cancel",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "prop:text",
+      "text": "Delete",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "prop:text",
+      "text": "Overwrite",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "text",
+      "text": "ACTIONS",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "text",
+      "text": "ACTIVITY",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "text",
+      "text": "Delete",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "text",
+      "text": "FREE ACTIVITY",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "text",
+      "text": "Make this the reference of this way",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "text",
+      "text": "Not a free activity",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "text",
+      "text": "ON THIS WAY",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "text",
+      "text": "Replay",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "text",
+      "text": "SECTORS",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "text",
+      "text": "Save as free activity",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "text",
+      "text": "last",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "text",
+      "text": "on this way",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "text",
+      "text": "ref",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "text",
+      "text": "reference activity of",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "text",
+      "text": "‹ BACK",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RidesScreen.tsx",
+      "kind": "alert-title",
+      "text": "Could not load activities",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RidesScreen.tsx",
+      "kind": "literal",
+      "text": "NO SPORT YET · ADD ONE IN SETTINGS",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RidesScreen.tsx",
+      "kind": "literal",
+      "text": "rides/{…}.events.jsonl",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RidesScreen.tsx",
+      "kind": "prop:title",
+      "text": "FREE ACTIVITIES",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RidesScreen.tsx",
+      "kind": "text",
+      "text": "Activities",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RidesScreen.tsx",
+      "kind": "text",
+      "text": "No activities yet",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RidesScreen.tsx",
+      "kind": "text",
+      "text": "Refresh",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RoutesScreen.tsx",
+      "kind": "literal",
+      "text": "NO SPORT YET · ADD ONE IN SETTINGS",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RoutesScreen.tsx",
+      "kind": "literal",
+      "text": "· asks which one at START",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RoutesScreen.tsx",
+      "kind": "literal",
+      "text": "· not used by {…}",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RoutesScreen.tsx",
+      "kind": "text",
+      "text": "No places yet.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RoutesScreen.tsx",
+      "kind": "text",
+      "text": "No routes yet.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RoutesScreen.tsx",
+      "kind": "text",
+      "text": "ROUTES",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RoutesScreen.tsx",
+      "kind": "text",
+      "text": "YOUR PLACES",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RoutesScreen.tsx",
+      "kind": "text",
+      "text": "way",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/catalogDeleteActions.ts",
+      "kind": "alert-title",
+      "text": "Could not delete",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/catalogDeleteActions.ts",
+      "kind": "literal",
+      "text": "Delete \"{…}\" on {…} → {…}?",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/catalogDeleteActions.ts",
+      "kind": "literal",
+      "text": "Delete the route {…} → {…}?",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/catalogDeleteActions.ts",
+      "kind": "literal",
+      "text": "Its gates and reference line go with it. {…} scored activit{…} on this way will be re-matched against your other ways; the activity recordings themselves are kept.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/catalogDeleteActions.ts",
+      "kind": "literal",
+      "text": "This is the only way on {…} → {…}, so the route is removed too.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/catalogDeleteActions.ts",
+      "kind": "literal",
+      "text": "This place is no longer used by any route.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/catalogDeleteActions.ts",
+      "kind": "literal",
+      "text": "{…} way{…}, its gates and reference line{…} go with it. {…} scored activit{…} will be re-matched against your other ways; the activity recordings themselves are kept.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/catalogDeleteActions.ts",
+      "kind": "literal",
+      "text": "{…} {…} no longer used by any route and will be removed as places.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/catalogDeleteActions.ts",
+      "kind": "prop:text",
+      "text": "Cancel",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/catalogDeleteActions.ts",
+      "kind": "prop:text",
+      "text": "Delete",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/chips.tsx",
+      "kind": "text",
+      "text": "LAP",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/demoModel.ts",
+      "kind": "literal",
+      "text": "demo:prior-{…}",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/demoModel.ts",
+      "kind": "literal",
+      "text": "demo:today",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/demoModel.ts",
+      "kind": "literal",
+      "text": "gates adjusted ·",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/demoModel.ts",
+      "kind": "literal",
+      "text": "gates kept ·",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/demoModel.ts",
+      "kind": "literal",
+      "text": "{…} → {…} created · {…}demo only, nothing saved",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/demoModel.ts",
+      "kind": "literal",
+      "text": "{…}{…} added as a new way · demo only, nothing saved",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/demoWayFixture.ts",
+      "kind": "literal",
+      "text": "demo:second-ride",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/gateAdjustCard.tsx",
+      "kind": "literal",
+      "text": "KEEP GATES",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/gateAdjustCard.tsx",
+      "kind": "literal",
+      "text": "SAVE GATES",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/gateAdjustCard.tsx",
+      "kind": "literal",
+      "text": "Tap a gate to move it",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/gateAdjustCard.tsx",
+      "kind": "literal",
+      "text": "discard nudges",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/gateAdjustCard.tsx",
+      "kind": "literal",
+      "text": "gate-card",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/gateAdjustCard.tsx",
+      "kind": "text",
+      "text": "tap a gate on the map or below to nudge it",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/lastRide.ts",
+      "kind": "literal",
+      "text": "index.json",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/mapCreditModel.ts",
+      "kind": "literal",
+      "text": "Esri, HERE, Garmin",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/mapCreditModel.ts",
+      "kind": "literal",
+      "text": "Esri, HERE, Garmin, © OpenStreetMap contributors",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/mapCreditModel.ts",
+      "kind": "literal",
+      "text": "OpenFreeMap © OpenMapTiles Data from OpenStreetMap",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/mapCreditModel.ts",
+      "kind": "literal",
+      "text": "© OpenStreetMap contributors",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "literal",
+      "text": "Fri 15 Aug",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "literal",
+      "text": "Moved gates are preview-only — nothing is stored yet (B-20).",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true,
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "literal",
+      "text": "Sector medians for this track land with the B-19 rerun.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "literal",
+      "text": "■ riding…",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "literal",
+      "text": "▶ demo ride",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "Benchmarks start colouring after 5 clean rides (D-008 warm-up).",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "Drag the handles — a gate IS a chainage value; the map only previews it (D-011). Proposed gates sit in measured stop_frac = 0.00 zones, median crossing speed 19–30 km/h.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true,
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "Elapsed clock on live screen",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "History",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "Home",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "IDEAL LAP",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "MAP PREVIEW (cosmetic — D-002) · real",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "New reference set",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "Nothing stored, nothing counted.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "Quali attempt · 14:46 vs ref 15:03",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "Qualifire",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "REFERENCE SET",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "Reference defended",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "Reference defended — 15:03 stands.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "START",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "Setup · gates on chainage",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "Sound",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "Thu 14 Aug · 07:41",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "Way & sector setup",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "Wed · 15:19 →",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "Yesterday's board",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "arms the gates · screen goes inert while moving",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "auto-selected · 07:41 · near home",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "best sectors, trailing 28 d — not a real lap",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true,
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "completed sectors only — no benchmark, no name, nothing upcoming (D-006)",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true,
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "km trace",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "lap moving time · last 28 rides · dashed = ref 15:03",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "mostly flat — that is correct. A month scans like the season graphic: purple visibly rare (D-008's intent made visible). No streaks, no averages. Lap tier colours the time itself (D-022): one green 14:46 pops out of a column of plain laps, like the F1 tower.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true,
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "off",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "on",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "real app: zero touch targets while moving. Final gate pushes the board automatically.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "today",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "you: +0:27",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "→ WORK · MORNING",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "▶ demo: board after an armed quali attempt (D-021)",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/preview/PreviewScreen.tsx",
+      "kind": "text",
+      "text": "⚠ example: a gate within ~50 m of a junction exit gets this banner — \"move it downstream so queues wait BEFORE the gate\". None of the proposed gates trigger it.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true,
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "(deliberately silent — a neutral lap makes no sound)",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true,
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Campus rise",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Canal straight",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Fri 01 Aug",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Fri 08 Aug",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Fri 18 Jul",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Mon 11 Aug",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Mon 14 Jul",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Mon 21 Jul",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Mon 28 Jul",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "NO TIME",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Thu 07 Aug",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Thu 14 Aug",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Thu 17 Jul",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Tue 05 Aug",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Tue 12 Aug",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Tue 22 Jul",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Tue 29 Jul",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Vaartdijk drag",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Village exit",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Wed 06 Aug",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Wed 13 Aug",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Wed 16 Jul",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Wed 23 Jul",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "Wed 30 Jul",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "estimated sector — not ranked · 16:02 elapsed · ‖ 2 stops",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true,
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "home → work · 5.7 km · 4 sectors · ref 15:03",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "mixed day",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "moving · +0:16 vs ref · 15:34 elapsed · ‖ 1 stop",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "moving · −0:11 vs ref · 15:03 elapsed · ‖ 1 stop",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "moving · −0:17 vs ref · 15:12 elapsed · ‖ 1 stop",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "moving · −0:32 vs ref · 14:44 elapsed · 0 stops",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "ordinary day",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "purple day",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "quiet green",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "scrappy day",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "work → home · 5.6 km · 4 sectors · ref 15:12",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "work → home · 5.8 km · 4 sectors · ref 15:48",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "🔊 buzz + earned tier’s sound — ‖ carries the asterisk",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true,
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "🔊 buzz + one soft note — time posted",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "🔊 buzz + rising arpeggio ♪ — beats 28-day best (+ PB grace note)",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true,
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "🔊 buzz + rising fifth — beats 7-day best",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true,
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "🔊 buzz + silence — lap estimated (gap in the trace), recorded not scored",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true,
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "🔊 buzz + silence — recorded, not scored",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "🔊 lap voice: rising arpeggio an octave fuller — 28-day lap best",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true,
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/preview/data.ts",
+      "kind": "literal",
+      "text": "🔊 lap voice: rising fifth an octave fuller — beats 7-day lap best",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true,
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/recordFlow.ts",
+      "kind": "literal",
+      "text": "no-sport",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/replayModel.ts",
+      "kind": "literal",
+      "text": "rides/{…}.jsonl",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/resultsListModel.ts",
+      "kind": "literal",
+      "text": "ALL {…} {…} · fastest first",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/resultsListModel.ts",
+      "kind": "literal",
+      "text": "ALL {…} {…} · rankings off in SETTINGS",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/resultsListModel.ts",
+      "kind": "literal",
+      "text": "NO TIME",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/resultsPlot.tsx",
+      "kind": "literal",
+      "text": "tap a point for that activity",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/resultsPlot.tsx",
+      "kind": "text",
+      "text": "no ranked activities yet",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/resultsPlot.tsx",
+      "kind": "text",
+      "text": "open ›",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/resultsPlotModel.ts",
+      "kind": "prop:empty",
+      "text": "no-ranked",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/resultsPlotModel.ts",
+      "kind": "prop:empty",
+      "text": "none",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/resultsWayList.tsx",
+      "kind": "text",
+      "text": "activit",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/resultsWayList.tsx",
+      "kind": "text",
+      "text": "best",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/resultsWayList.tsx",
+      "kind": "text",
+      "text": "‹ ROUTES",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/rideDetailModel.ts",
+      "kind": "literal",
+      "text": "P{…} of {…} on this way",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/rideDetailModel.ts",
+      "kind": "literal",
+      "text": "no lap",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/rideDetailModel.ts",
+      "kind": "literal",
+      "text": "no rank",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/rideDetailModel.ts",
+      "kind": "literal",
+      "text": "no time",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/rideDetailModel.ts",
+      "kind": "literal",
+      "text": "not ranked",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/rideDetailModel.ts",
+      "kind": "literal",
+      "text": "too few to rank",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/rideHistoryModel.ts",
+      "kind": "literal",
+      "text": "Free activity",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/rideHistoryModel.ts",
+      "kind": "literal",
+      "text": "no lap",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/rideHistoryModel.ts",
+      "kind": "literal",
+      "text": "– did not traverse –",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/rideHomes.ts",
+      "kind": "literal",
+      "text": "index.json",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/routeNamingCard.tsx",
+      "kind": "attr:placeholder",
+      "text": "e.g. Dry, Left, Fast",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/routeNamingCard.tsx",
+      "kind": "attr:placeholder",
+      "text": "e.g. Home",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/routeNamingCard.tsx",
+      "kind": "attr:placeholder",
+      "text": "e.g. Work",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/routeNamingCard.tsx",
+      "kind": "literal",
+      "text": "ADD WAY",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/routeNamingCard.tsx",
+      "kind": "literal",
+      "text": "CREATE ROUTE",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/routeNamingCard.tsx",
+      "kind": "literal",
+      "text": "New route",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/routeNamingCard.tsx",
+      "kind": "literal",
+      "text": "New way on {…}",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/routeNamingCard.tsx",
+      "kind": "literal",
+      "text": "SPECIFICATIONS (optional)",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/routeNamingCard.tsx",
+      "kind": "literal",
+      "text": "SPECIFICATIONS (required)",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/routeNamingCard.tsx",
+      "kind": "literal",
+      "text": "Scored as {…}, but no route of yours runs between these two places. Name them to make this a way of its own.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/routeNamingCard.tsx",
+      "kind": "literal",
+      "text": "This activity does not match any route you have. Name its start and end to make it a real way.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/routeNamingCard.tsx",
+      "kind": "literal",
+      "text": "This activity looped from and back to one new place.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/routeNamingCard.tsx",
+      "kind": "literal",
+      "text": "This activity looped from and back to {…}.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/routeNamingCard.tsx",
+      "kind": "literal",
+      "text": "{…} is a route you have, but this activity did not follow any of its ways. Name what made it different to save it as a new way.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/routeNamingCard.tsx",
+      "kind": "literal",
+      "text": "· picked at START",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/routeNamingCard.tsx",
+      "kind": "text",
+      "text": "ENDED AT",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/routeNamingCard.tsx",
+      "kind": "text",
+      "text": "SAVE AS FREE ACTIVITY",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/routeNamingCard.tsx",
+      "kind": "text",
+      "text": "STARTED AT",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/routeNamingCard.tsx",
+      "kind": "text",
+      "text": "already exists as",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/routeNamingCard.tsx",
+      "kind": "text",
+      "text": "change",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/routeNamingCard.tsx",
+      "kind": "text",
+      "text": "keep it as {…}",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/saveGpx.ts",
+      "kind": "literal",
+      "text": "application/octet-stream",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/saveGpx.ts",
+      "kind": "literal",
+      "text": "share-text",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/selfRaceModel.ts",
+      "kind": "literal",
+      "text": "rides/{…}.jsonl",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "alert-body",
+      "text": "No places, routes or reference lines on this phone yet.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "alert-body",
+      "text": "Qualifire is back at its first launch. Close it fully and reopen it to see the launch animation and a clean RECORD tab. {…}",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "legacy": true,
+      "violates": [
+        "alert-words"
+      ]
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "alert-body",
+      "text": "Stop it on the RECORD tab first.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "alert-body",
+      "text": "This cannot be undone from inside the app.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "alert-body",
+      "text": "{…} activit{…}, {…} place{…}, {…} route{…}, {…} way{…}, every sport and every result will be moved out of the app. Your settings and theme stay. Export anything you want to keep first (ACTIVITIES → Export GPX+, or Export app above).",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "legacy": true,
+      "violates": [
+        "alert-words"
+      ]
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "alert-body",
+      "text": "{…} saved to the folder you picked.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "alert-body",
+      "text": "{…} sent as text via the share sheet.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "alert-title",
+      "text": "An activity is being recorded",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "alert-title",
+      "text": "Cannot delete",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "alert-title",
+      "text": "Delete \"{…}\"?",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "alert-title",
+      "text": "Export failed",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "alert-title",
+      "text": "Exported",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "alert-title",
+      "text": "Nothing to export yet",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "alert-title",
+      "text": "Really reset?",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "alert-title",
+      "text": "Reset app?",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "alert-title",
+      "text": "Reset done",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "alert-title",
+      "text": "Reset failed",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "attr:accessibilityLabel",
+      "text": "About {…}",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "attr:accessibilityLabel",
+      "text": "Time, hours and minutes",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "attr:hint",
+      "text": "A short buzz at each gate crossing.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "attr:hint",
+      "text": "Colour sectors on live map",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "attr:label",
+      "text": "Active sport",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "attr:label",
+      "text": "Auto day/night",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "attr:label",
+      "text": "Choose sport at start",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "attr:label",
+      "text": "Day from",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "attr:label",
+      "text": "Export app",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "attr:label",
+      "text": "Gate buzz",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "attr:label",
+      "text": "Help icons",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "attr:label",
+      "text": "Race yourself",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "attr:label",
+      "text": "Reset app",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "attr:label",
+      "text": "Sector colours",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "attr:label",
+      "text": "Start place",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "attr:label",
+      "text": "Theme",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "literal",
+      "text": "Nothing was moved — the reset did not start. Your data is untouched.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true,
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "literal",
+      "text": "There was nothing on this phone to move — it was already at first launch.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true,
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "literal",
+      "text": "Your old data is in <documents>/{…} on the phone.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "literal",
+      "text": "Your old data was moved aside{…}, but finishing the reset failed. Restart the app.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "literal",
+      "text": "application/json",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "literal",
+      "text": "number-pad",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "literal",
+      "text": "qualifire-export",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "literal",
+      "text": "qualifire-export-{…}.json",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "literal",
+      "text": "settings.json",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "literal",
+      "text": "to <documents>/{…}",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "literal",
+      "text": "{…}settings.json",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "prop:text",
+      "text": "Cancel",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "prop:text",
+      "text": "Continue…",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "prop:text",
+      "text": "Delete",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "prop:text",
+      "text": "Reset",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "text",
+      "text": "APPEARANCE",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "text",
+      "text": "Add at least one sport to record. Name it what you like.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "text",
+      "text": "DATA",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "text",
+      "text": "Race",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "text",
+      "text": "SPORTS",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "text",
+      "text": "STARTING AN ACTIVITY",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "text",
+      "text": "Times must be different — auto is paused until they are.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true,
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "text",
+      "text": "WHILE RECORDING",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "text",
+      "text": "activit",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "text",
+      "text": "add sport",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "text",
+      "text": "delete",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "text",
+      "text": "dots on live map",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "text",
+      "text": "export",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "text",
+      "text": "rename",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "text",
+      "text": "reset…",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "text",
+      "text": "route",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "text",
+      "text": "selfs",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "text",
+      "text": "sports.json could not be read at boot — saving is disabled this session. Reset the app (DATA → Reset app) or fix the file (debug export) to recover.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true,
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "text",
+      "text": "switch to another sport first",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/settings.tsx",
+      "kind": "text",
+      "text": "until",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/theme.ts",
+      "kind": "literal",
+      "text": "#FAF7EE",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/themeContext.tsx",
+      "kind": "literal",
+      "text": "settings.json",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/tower.tsx",
+      "kind": "text",
+      "text": "LAP",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/tower.tsx",
+      "kind": "text",
+      "text": "TODAY",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/tower.tsx",
+      "kind": "text",
+      "text": "TODAY · unranked",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/tower.tsx",
+      "kind": "text",
+      "text": "⋮ P1–P{…} above",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/tower.tsx",
+      "kind": "text",
+      "text": "⋮ {…} more below",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/towerModel.ts",
+      "kind": "literal",
+      "text": "NO TIME",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "attr:accessibilityLabel",
+      "text": "Close map data sources",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "attr:accessibilityLabel",
+      "text": "Map data sources: {…}",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "attr:accessibilityLabel",
+      "text": "Reset map to north up",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "literal",
+      "text": "gate-selected",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "literal",
+      "text": "gate-selected-ring",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "literal",
+      "text": "gate-ticks",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "literal",
+      "text": "gate-ticks-casing",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "literal",
+      "text": "https://tiles.openfreemap.org/styles/dark",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "literal",
+      "text": "https://tiles.openfreemap.org/styles/positron",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "long": true
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "literal",
+      "text": "place-centre",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "literal",
+      "text": "place-disc-fill",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "literal",
+      "text": "place-disc-line",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "literal",
+      "text": "ride-trace",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "literal",
+      "text": "ride-trace-core",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "literal",
+      "text": "rider-dot",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "literal",
+      "text": "route-casing",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "literal",
+      "text": "route-core",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "literal",
+      "text": "sector-spans",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "literal",
+      "text": "sector-spans-core",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "literal",
+      "text": "self-dot",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "literal",
+      "text": "trail-casing",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "literal",
+      "text": "trail-core",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "text",
+      "text": "FIT",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "text",
+      "text": "MAP IMAGE FAILED — drawing the line",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap",
+      "legacy": true,
+      "violates": [
+        "em-dash"
+      ]
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "text",
+      "text": "ME",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "text",
+      "text": "Map data sources",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "text",
+      "text": "OFF ROUTE · >120 m from the route line",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "text",
+      "text": "map needs the tile map",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "text",
+      "text": "place map needs the tile map",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapView.tsx",
+      "kind": "text",
+      "text": "waiting for GPS",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    }
+  ]
+}

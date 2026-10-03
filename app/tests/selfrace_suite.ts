@@ -33,6 +33,7 @@ registerHooks({
 });
 const {
   loadSelfTracks, selfDotsAt, selfPositionAt, selfTierFor, selfsFeatureCollection, selfLivePosition,
+  loadSelfTracksFor, TRACK_CACHE_MAX, selfTrackCacheSizeForTests, resetSelfTrackCacheForTests,
 } = await import('../src/ui/selfRaceModel.ts');
 const { ghostsFor } = await import('../src/ui/colourModel.ts');
 const { replaceRecorded, resetRecordedForTests } = await import('../src/ui/lastRide.ts');
@@ -551,4 +552,76 @@ test('selfrace: selfLivePosition — 1 + count(selfs ahead by chainage); a null 
     `rider at 1000, dots at 900/1000/1100: a level self must not count as ahead (P2), got ${selfLivePosition(level, 1000)}`);
   assert(selfLivePosition(dots, null) === null, `rider chainage null must give null, got ${selfLivePosition(dots, null)}`);
   assert(selfLivePosition([], 1000) === null, `empty dots must give null, got ${selfLivePosition([], 1000)}`);
+});
+
+// ============================================================ virgin-cycle20 06: preload cache
+
+/** A 40-fix ramp ride on Morning from 5 m before gate 0 to 5 m past FINISH (same
+ * shape as the R7 test above), written to `fs` as rides/<rideId>.jsonl. */
+async function writeRampRide(fs: FsAdapter, rideId: string, baseT: number): Promise<void> {
+  const spec = catalogTrackSpecs().find((s) => s.id === 'Morning');
+  assert(spec !== undefined, 'expected Morning to resolve a TrackSpec from the runtime catalog');
+  const g0 = spec!.gates[0];
+  const gLast = spec!.gates[spec!.gates.length - 1];
+  const N = 40;
+  const lines: string[] = [];
+  for (let i = 0; i < N; i++) {
+    const p = pointAtChainage(spec!.ref, (g0 - 5) + ((gLast - g0 + 10) * i) / (N - 1));
+    lines.push(fixLine((baseT + i) * 1000, p.lat, p.lon));
+  }
+  await fs.writeText(`rides/${rideId}.jsonl`, lines.join('\n') + '\n');
+}
+
+function countingFs(inner: FsAdapter): FsAdapter & { reads: number } {
+  const wrapped = { ...inner, reads: 0 } as FsAdapter & { reads: number };
+  wrapped.readText = async (p: string) => { wrapped.reads += 1; return inner.readText(p); };
+  return wrapped;
+}
+
+test('selfrace cycle20-06 L1: a second load of the same window reads NO files (warm cache — the setup-screen preload pays for the ride)', async () => {
+  resetRecordedForTests();
+  resetSelfTrackCacheForTests();
+  const fs = countingFs(createMemoryFsAdapter());
+  const reads = () => fs.reads; // a call, so TS never narrows the count between asserts (tsc TS2367 otherwise)
+  const window: RideResult[] = [];
+  for (let k = 0; k < 3; k++) {
+    const rideId = `c20-06-warm-${k}`;
+    await writeRampRide(fs, rideId, 1_670_000_000 + k * 1000);
+    window.push(makeResult(rideId, 'Morning', FAR_FUTURE_MS + k, { movingS: 900 + k, rawS: 900 + k, quality: 'clean' }));
+  }
+  const first = await loadSelfTracksFor('Morning', 1, fs, window);
+  assert(first.length === 3 && reads() === 3, `cold: ${first.length} tracks, ${reads()} reads — want 3 / 3`);
+  const second = await loadSelfTracksFor('Morning', 1, fs, window);
+  assert(second.length === 3 && reads() === 3, `warm: ${second.length} tracks, ${reads()} reads — want 3 / still 3 (no file read on a hit)`);
+  // A gate-set edit is a different key → re-read, exactly once per ride.
+  const bumped = await loadSelfTracksFor('Morning', 2, fs, window);
+  assert(bumped.length === 3 && reads() === 6, `gateSetVersion 2: ${bumped.length} tracks, ${reads()} reads — want 3 / 6`);
+});
+
+test('selfrace cycle20-06 L2: the cache is bounded at TRACK_CACHE_MAX (LRU) while every requested track is still returned', async () => {
+  resetRecordedForTests();
+  resetSelfTrackCacheForTests();
+  const fs = createMemoryFsAdapter();
+  const n = TRACK_CACHE_MAX + 5;
+  const window: RideResult[] = [];
+  for (let k = 0; k < n; k++) {
+    const rideId = `c20-06-cap-${k}`;
+    await writeRampRide(fs, rideId, 1_680_000_000 + k * 1000);
+    window.push(makeResult(rideId, 'Morning', FAR_FUTURE_MS + k, { movingS: 900, rawS: 900, quality: 'clean' }));
+  }
+  const tracks = await loadSelfTracksFor('Morning', 1, fs, window);
+  assert(tracks.length === n, `${tracks.length} tracks returned, want ${n} (the cap limits retention, never the result)`);
+  assert(selfTrackCacheSizeForTests() === TRACK_CACHE_MAX, `cache size ${selfTrackCacheSizeForTests()}, want ${TRACK_CACHE_MAX}`);
+});
+
+test('selfrace cycle20-06 L3: the loader yields between rides — an unreadable ride in the middle costs nothing to its neighbours and the call still resolves', async () => {
+  resetRecordedForTests();
+  resetSelfTrackCacheForTests();
+  const base = createMemoryFsAdapter();
+  await writeRampRide(base, 'c20-06-y-0', 1_690_000_000);
+  await writeRampRide(base, 'c20-06-y-2', 1_690_002_000);
+  const fs: FsAdapter = { ...base, async readText(p) { if (p.includes('c20-06-y-1')) throw new Error('boom'); return base.readText(p); } };
+  const window = [0, 1, 2].map((k) => makeResult(`c20-06-y-${k}`, 'Morning', FAR_FUTURE_MS + k, { movingS: 900, rawS: 900, quality: 'clean' }));
+  const tracks = await loadSelfTracksFor('Morning', 1, fs, window);
+  assert(tracks.map((t) => t.rideId).join(',') === 'c20-06-y-0,c20-06-y-2', `tracks ${tracks.map((t) => t.rideId)} — want rides 0 and 2, ride 1 skipped`);
 });

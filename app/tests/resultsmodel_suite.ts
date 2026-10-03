@@ -283,11 +283,11 @@ test('resultsmodel: buildHistoryBoard — ranked 1..4, ignored/estimated after, 
 });
 
 test('resultsmodel: boardCaption / windowCaption wording', () => {
-  assert(boardCaption(27, true) === 'ALL 27 RIDES · fastest first', boardCaption(27, true));
-  assert(boardCaption(1, true) === 'ALL 1 RIDE · fastest first', boardCaption(1, true));
-  assert(boardCaption(27, false) === 'ALL 27 RIDES · rankings off in SETTINGS', boardCaption(27, false));
-  assert(windowCaption(9) === 'LAST 9 RIDES', windowCaption(9));
-  assert(windowCaption(1) === 'LAST 1 RIDE', windowCaption(1));
+  assert(boardCaption(27, true) === 'ALL 27 ACTIVITIES · fastest first', boardCaption(27, true));
+  assert(boardCaption(1, true) === 'ALL 1 ACTIVITY · fastest first', boardCaption(1, true));
+  assert(boardCaption(27, false) === 'ALL 27 ACTIVITIES · rankings off in SETTINGS', boardCaption(27, false));
+  assert(windowCaption(9) === 'LAST 9 ACTIVITIES', windowCaption(9));
+  assert(windowCaption(1) === 'LAST 1 ACTIVITY', windowCaption(1));
 });
 
 // plotWindow

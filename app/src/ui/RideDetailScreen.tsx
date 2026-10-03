@@ -37,6 +37,7 @@ import {
 } from './colourModel.ts';
 import { rideDetailFor } from './rideDetailModel.ts';
 import ReplayScreen from './ReplayScreen.tsx';
+import { loadReplayRider } from './replayModel.ts';
 import { ALL_YELLOW } from './sectorTrailModel.ts';
 import { currentCatalog, userCatalog } from '../store/catalogStore.ts';
 import { effectiveRideSportId, scopeCatalog } from '../store/sports.ts';
@@ -90,38 +91,25 @@ function fmtDur(ms: number): string {
 }
 
 /** ResultScreen.tsx's PbDetail, lifted in verbatim — the ride-detail's own
- * "ON THIS ROUTE" section, scoped to this ride's route (§3.4). */
-function PbDetail(props: { wayId: string; lastRideId: string | null; showRanking: boolean; t: PaddockTheme }) {
-  const { wayId, lastRideId, showRanking, t } = props;
+ * "ON THIS ROUTE" section, scoped to this ride's route (§3.4).
+ * virgin-cycle20 08: ranking only — the sector-bests block is gone
+ * (Nathan: rolling comparison, no records). */
+function PbDetail(props: { wayId: string; lastRideId: string | null; t: PaddockTheme }) {
+  const { wayId, lastRideId, t } = props;
   const detail = buildPbDetail(rankingPoolFor(wayId, lastRideId), lastRideId);
   return (
     <View style={st.pbDetail}>
       {detail.ranking.length > 0 ? (
         <>
           <Text style={[st.hint, { color: t.textDim }]}>last {detail.ranking.length} on this way</Text>
-          {showRanking
-            ? detail.ranking.map((row) => (
-              <View key={row.posLabel} style={st.pbRow}>
-                <Text style={[st.pbPos, { color: t.text }]}>{row.posLabel}</Text>
-                <Text style={{ flex: 1, color: row.today ? t.accentText : t.textDim, fontSize: 13 }}>
-                  {row.dateLabel}
-                </Text>
-                <Text style={[st.pbNum, { color: t.text }]}>{row.timeLabel}</Text>
-                <Text style={[st.pbNum, { color: t.textDim }]}>{row.gapLabel}</Text>
-              </View>
-            ))
-            : null}
-        </>
-      ) : (
-        <Text style={[st.hint, { color: t.textDim }]}>no rides on file yet</Text>
-      )}
-      {detail.pbSectors.length > 0 ? (
-        <>
-          <Text style={[st.hint, { color: t.textDim, marginTop: 10 }]}>personal best sectors</Text>
-          {detail.pbSectors.map((sec) => (
-            <View key={sec.label} style={st.pbRow}>
-              <Text style={[st.pbPos, { color: t.text }]}>{sec.label}</Text>
-              <Text style={[st.pbNum, { color: t.text }]}>{sec.timeLabel}</Text>
+          {detail.ranking.map((row) => (
+            <View key={row.posLabel} style={st.pbRow}>
+              <Text style={[st.pbPos, { color: t.text }]}>{row.posLabel}</Text>
+              <Text style={{ flex: 1, color: row.today ? t.accentText : t.textDim, fontSize: 13 }}>
+                {row.dateLabel}
+              </Text>
+              <Text style={[st.pbNum, { color: t.text }]}>{row.timeLabel}</Text>
+              <Text style={[st.pbNum, { color: t.textDim }]}>{row.gapLabel}</Text>
             </View>
           ))}
         </>
@@ -139,6 +127,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
   const [tick, setTick] = useState(0);
   const [fixes, setFixes] = useState<TrailPoint[] | null>(null);
   const [replaying, setReplaying] = useState(false); // virgin-cycle14 brief 02
+  const [canReplay, setCanReplay] = useState(false);
   const [busy, setBusy] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [meta, setMeta] = useState<RideMeta | null>(null);
@@ -208,6 +197,18 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
   );
 
   const replayWayId = model.wayId ?? model.referenceOf?.id ?? null; // a matched ride, or a way's own reference ride
+  // virgin-cycle20 08 (Q1): the Replay button only when a replay exists —
+  // the same loader ReplayScreen uses, so the two can never disagree. An
+  // activity that never crossed START on its way simply has no button.
+  useEffect(() => {
+    let cancelled = false;
+    setCanReplay(false);
+    if (replayWayId === null) return;
+    loadReplayRider(request.rideId, replayWayId, createExpoFsAdapter())
+      .then((r) => { if (!cancelled) setCanReplay(r !== null); })
+      .catch(() => { /* no button is the honest fallback */ });
+    return () => { cancelled = true; };
+  }, [request.rideId, replayWayId]);
 
   // virgin-cycle13: only fetched for the card that actually needs it (kind
   // !== 'route' and not a way's own reference — see the render below and
@@ -391,7 +392,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
   function onDelete() {
     if (!meta) return;
     Alert.alert(
-      'Delete ride?',
+      'Delete activity?',
       `${fmtWhen(meta.startMs)} · ${fmtDur(meta.endMs - meta.startMs)}\nThis permanently removes the raw trace.`,
       [
         { text: 'Cancel', style: 'cancel' },
@@ -453,7 +454,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
       : `Its ${n} past result${n === 1 ? ' is' : 's are'} discarded and re-timed from the recordings against the new reference — old times and ranks do not survive.`;
     Alert.alert(
       `Overwrite the reference of "${wayLabelIn(currentCatalog(), wayId)}"?`,
-      `This way will be overwritten and past ghosts will be lost.\n\nIts reference line and gates are rebuilt from this ride (${dateTimeLabel(request.startedAtMs)}). ${ghosts} Ride recordings are kept.`,
+      `This way will be overwritten and past ghosts will be lost.\n\nIts reference line and gates are rebuilt from this activity (${dateTimeLabel(request.startedAtMs)}). ${ghosts} Activity recordings are kept.`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Overwrite', style: 'destructive', onPress: () => void onPromote() },
@@ -461,7 +462,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
     );
   }
 
-  const primaryLabel = request.source === 'post-stop' ? 'RECORD ANOTHER' : request.source === 'routes' ? 'BACK TO ROUTE' : request.source === 'results' ? 'BACK TO RESULTS' : 'BACK TO RIDES';
+  const primaryLabel = request.source === 'post-stop' ? 'RECORD ANOTHER' : request.source === 'routes' ? 'BACK TO ROUTE' : request.source === 'results' ? 'BACK TO RESULTS' : 'BACK TO ACTIVITIES';
 
   if (replaying && replayWayId !== null) {
     return (
@@ -476,7 +477,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
         <Pressable onPress={() => tabNav.closeRide()} hitSlop={8}>
           <Text style={[styles.backText, { color: t.textDim }]}>‹ BACK</Text>
         </Pressable>
-        <Text style={[styles.topTitle, { color: t.text }]}>RIDE</Text>
+        <Text style={[styles.topTitle, { color: t.text }]}>ACTIVITY</Text>
         <Text style={[styles.topDate, { color: t.textDim }]}>{dateTimeLabel(request.startedAtMs)}</Text>
       </View>
 
@@ -487,7 +488,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
           <Text style={{ color: t.textDim, fontSize: 12.5 }}>{model.rankLine}</Text>
           {model.referenceOf ? (
             <Text style={{ color: t.textDim, fontSize: 11.5, marginTop: 4 }}>
-              reference ride of {wayLabelIn(currentCatalog(), model.referenceOf.id)}
+              reference activity of {wayLabelIn(currentCatalog(), model.referenceOf.id)}
             </Text>
           ) : null}
 
@@ -529,7 +530,6 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
             <PbDetail
               wayId={model.wayId as string}
               lastRideId={request.rideId}
-              showRanking={s.tower}
               t={t}
             />
           </View>
@@ -544,10 +544,8 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
         // no fabricated lap/rank/sectors, this ride genuinely has none on
         // file.
         <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder, alignItems: 'center' }]}>
-          <Text style={{ color: t.textDim }}>{wayLabelIn(currentCatalog(), model.referenceOf.id)} — ref</Text>
-          <Text style={{ color: t.textDim, fontSize: 12.5, marginTop: 4 }}>
-            this ride is the reference for this way — no lap time on file for it
-          </Text>
+          <Text style={{ color: t.textDim }}>{wayLabelIn(currentCatalog(), model.referenceOf.id)}</Text>
+          <Text style={{ color: t.textDim, fontSize: 12.5, marginTop: 4 }}>ref</Text>
           <View style={{ alignSelf: 'stretch', marginTop: 10 }}>
             <WayMapView
               variant="browse"
@@ -563,11 +561,10 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
         </View>
       ) : model.kind === 'free' && model.free ? (
         <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder, alignItems: 'center' }]}>
-          <Text style={{ color: t.textDim }}>FREE RIDE</Text>
+          <Text style={{ color: t.textDim }}>FREE ACTIVITY</Text>
           <Text style={{ color: t.textDim, fontSize: 12.5, marginTop: 4 }}>
-            {pickLabel ?? 'saved as a free ride'}
+            {pickLabel ?? 'saved as a free activity'}
           </Text>
-          <Text style={{ color: t.textDim, marginTop: 4 }}>no lap, no sectors — a free ride is not compared to anything</Text>
           <View style={{ alignSelf: 'stretch', marginTop: 10 }}>
             <WayMapView
               variant="browse"
@@ -587,8 +584,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
         // route-mode ride that genuinely matched nothing; falls back to the
         // old plain text only for a pre-GPX+ ride with no sidecar pick at all.
         <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-          <Text style={{ color: t.textDim }}>{pickLabel ?? 'no way — recorded only'}</Text>
-          <Text style={{ color: t.textDim, marginTop: 4 }}>sector times not on file for this ride</Text>
+          {pickLabel !== null ? <Text style={{ color: t.textDim }}>{pickLabel}</Text> : null}
           <View style={{ alignSelf: 'stretch', marginTop: 10 }}>
             <WayMapView
               variant="browse"
@@ -607,7 +603,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
       <View style={{ marginTop: 16 }}>
         <Text style={[st.h2, { color: t.textDim }]}>ACTIONS</Text>
         <View style={styles.pillRow}>
-          {replayWayId !== null ? (
+          {replayWayId !== null && canReplay ? (
             <Pressable style={styles.exportBtn} onPress={() => setReplaying(true)}>
               <Text style={styles.exportText}>Replay</Text>
             </Pressable>
@@ -652,7 +648,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
             disabled={busy}
             onPress={onSaveFree}
           >
-            <Text style={styles.deleteText}>Save as free ride</Text>
+            <Text style={styles.deleteText}>Save as free activity</Text>
           </Pressable>
         ) : null}
         {model.kind === 'free' ? (
@@ -661,7 +657,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
             disabled={busy}
             onPress={onUnsaveFree}
           >
-            <Text style={styles.deleteText}>Not a free ride</Text>
+            <Text style={styles.deleteText}>Not a free activity</Text>
           </Pressable>
         ) : null}
       </View>

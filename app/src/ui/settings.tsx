@@ -27,9 +27,10 @@ import { useTheme } from './themeContext';
 import { DEFAULT_DAY_END, DEFAULT_DAY_START, digitsAfterEdit, digitsFromText, displayTime, formatHHMM, parseHHMM, themeForTime } from './autoTheme';
 
 export interface Settings {
+  /** virgin-cycle20 brief 08 (Nathan, clutter review): `liveMap` and `tower`
+   * (Live map, Rankings) are no longer settings — the live map and the
+   * rankings are always on. Old settings.json keys are scrubbed on load. */
   startMode: 'auto' | 'pick';
-  tower: boolean;
-  liveMap: boolean;
   earcons: boolean;
   /** WP-K: paint each sector of the route line in the tier it earned (live
    * map, ride-detail trace, RIDES row) — off keeps the line all yellow.
@@ -60,8 +61,6 @@ export interface Settings {
 
 const DEFAULTS: Settings = {
   startMode: 'auto',
-  tower: true,
-  liveMap: true,
   earcons: true,
   sectorColours: false,
   selfDots: true,
@@ -100,6 +99,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       if (saved) {
         delete (saved as Record<string, unknown>).redLight; // virgin-cycle7: setting retired; scrub old files
         delete (saved as Record<string, unknown>).timing; // virgin-cycle14 #5: "Luck factor" row retired; scoring is raw-only, scrub old files
+        delete (saved as Record<string, unknown>).liveMap; // virgin-cycle20 08: Live map row retired, always on
+        delete (saved as Record<string, unknown>).tower; // virgin-cycle20 08: Rankings row retired, always on
         // virgin-cycle14 brief 01: never load an unparseable time (hand-edited file).
         if (typeof saved.dayStart !== 'string' || parseHHMM(saved.dayStart) === null) delete saved.dayStart;
         if (typeof saved.dayEnd !== 'string' || parseHHMM(saved.dayEnd) === null) delete saved.dayEnd;
@@ -212,7 +213,7 @@ function DayWindowRow(props: { start: string; end: string; onStart: (v: string) 
 interface Help { show: boolean; open: string | null; toggle: (key: string) => void }
 
 function Row(props: {
-  label: string; hint?: string; help: Help; t: PaddockTheme; children: React.ReactNode;
+  label: string; hint?: React.ReactNode; help: Help; t: PaddockTheme; children: React.ReactNode;
   /** WP-Q: a visual break above this row (top border + extra gap) so it
    * reads as its own group rather than a sibling of the row above — used for
    * DATA's "Reset to virgin" row, one step down from the two share rows. */
@@ -251,18 +252,36 @@ function Row(props: {
   );
 }
 
-/** Debug export (OPEN-ITEMS item 3, Part C — NOT item 5's whole-app
- * export/import, which stays parked): share ONE storage-root JSON via the
- * proven saveGpx.ts rungs. A missing file is an honest "nothing yet", never
- * an empty share. */
-async function shareStoreFile(rel: string, outName: string): Promise<void> {
+/** virgin-cycle20 brief 08 (Nathan, clutter review Q11): ONE "Export app"
+ * document — the catalog (places, ways, routes) and the reference lines
+ * together, since neither is useful without the other. Replaces the two
+ * per-file exports. There is no importer yet; the shape is documentation.
+ * Each file is parsed when it is valid JSON and carried raw when it is not,
+ * so a corrupt file is still exported rather than dropped. */
+async function shareAppExport(outName: string): Promise<void> {
   try {
-    const text = await createExpoFsAdapter().readText(rel);
-    if (text === null) {
-      Alert.alert('Nothing to export yet', `${rel} does not exist on this phone.`);
+    const fs = createExpoFsAdapter();
+    const [catalogText, refsText] = await Promise.all([fs.readText(USER_CATALOG_FILE), fs.readText(USER_REFS_FILE)]);
+    if (catalogText === null && refsText === null) {
+      Alert.alert('Nothing to export yet', 'No places, routes or reference lines on this phone yet.');
       return;
     }
-    const res = await saveTextFile(outName, 'application/json', text);
+    const parse = (text: string | null): { value: unknown; raw: string | null } => {
+      if (text === null) return { value: null, raw: null };
+      try { return { value: JSON.parse(text) as unknown, raw: null }; } catch { return { value: null, raw: text }; }
+    };
+    const cat = parse(catalogText);
+    const refs = parse(refsText);
+    const doc = {
+      kind: 'qualifire-export',
+      schemaVersion: 1,
+      exportedAtMs: Date.now(),
+      catalog: cat.value,
+      refs: refs.value,
+      ...(cat.raw !== null ? { catalog_raw: cat.raw } : {}),
+      ...(refs.raw !== null ? { refs_raw: refs.raw } : {}),
+    };
+    const res = await saveTextFile(outName, 'application/json', JSON.stringify(doc));
     if (res.method === 'saf') Alert.alert('Exported', `${outName} saved to the folder you picked.`);
     else if (res.method === 'share-text') Alert.alert('Exported', `${outName} sent as text via the share sheet.`);
   } catch (e) {
@@ -336,7 +355,7 @@ async function performReset(): Promise<void> {
 async function onResetPress(): Promise<void> {
   const active = await loadSession();
   if (active) {
-    Alert.alert('A ride is being recorded', 'Stop it on the RECORD tab first.');
+    Alert.alert('An activity is being recorded', 'Stop it on the RECORD tab first.');
     return;
   }
   const rides = await listRides();
@@ -347,7 +366,7 @@ async function onResetPress(): Promise<void> {
   const q = uc.ways.length;
   Alert.alert(
     'Reset app?',
-    `${r} ride${r === 1 ? '' : 's'}, ${p} place${p === 1 ? '' : 's'}, ${w} route${w === 1 ? '' : 's'}, ${q} way${q === 1 ? '' : 's'}, every sport and every result will be moved out of the app. Your settings and theme stay. Export anything you want to keep first (RIDES → Export GPX+, or the two export buttons above).`,
+    `${r} activit${r === 1 ? 'y' : 'ies'}, ${p} place${p === 1 ? '' : 's'}, ${w} route${w === 1 ? '' : 's'}, ${q} way${q === 1 ? '' : 's'}, every sport and every result will be moved out of the app. Your settings and theme stay. Export anything you want to keep first (ACTIVITIES → Export GPX+, or Export app above).`,
     [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -471,7 +490,7 @@ function SportsSection({ t, help }: { t: PaddockTheme; help: Help }) {
       <Text style={[st.h2, { color: t.textDim }]}>SPORTS</Text>
       <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
         {sf.sports.length > 0 ? (
-          <Row label="Active sport" hint="Everything on RECORD, ROUTES and RIDES is scoped to this one." help={help} t={t}>
+          <Row label="Active sport" help={help} t={t}>
             <Seg
               t={t}
               value={sf.activeSportId ?? sf.sports[0].id}
@@ -506,7 +525,7 @@ function SportsSection({ t, help }: { t: PaddockTheme; help: Help }) {
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Text style={{ color: t.text, fontSize: 14 }}>{sp.label}</Text>
                   <Text style={{ color: t.textDim, fontSize: 11.5 }}>
-                    {usage.routes} route{usage.routes === 1 ? '' : 's'} · {usage.rides} ride{usage.rides === 1 ? '' : 's'}
+                    {usage.routes} route{usage.routes === 1 ? '' : 's'} · {usage.rides} activit{usage.rides === 1 ? 'y' : 'ies'}
                   </Text>
                 </View>
               </Pressable>
@@ -533,12 +552,8 @@ function SportsSection({ t, help }: { t: PaddockTheme; help: Help }) {
                       <Text style={[st.shareText, { color: t.textDim }]}>delete</Text>
                     </Pressable>
                   </View>
-                  {!canDelete ? (
-                    <Text style={{ color: t.textDim, fontSize: 11 }}>
-                      {isActive
-                        ? 'switch to another sport first'
-                        : `${usage.routes} route${usage.routes === 1 ? '' : 's'} · ${usage.rides} ride${usage.rides === 1 ? '' : 's'} — delete those first`}
-                    </Text>
+                  {!canDelete && isActive ? (
+                    <Text style={{ color: t.textDim, fontSize: 11 }}>switch to another sport first</Text>
                   ) : null}
                 </View>
               ) : null}
@@ -569,8 +584,7 @@ function SportsSection({ t, help }: { t: PaddockTheme; help: Help }) {
 
         {sf.sports.length >= 2 ? (
           <Row
-            label="Sport picker on RECORD"
-            hint="Show the sport row on RECORD. Off: switch sports here instead."
+            label="Choose sport at start"
             help={help} t={t} sep
           >
             <Switch on={s.showSportPillOnRecord} onToggle={() => set('showSportPillOnRecord', !s.showSportPillOnRecord)} t={t} />
@@ -594,13 +608,12 @@ export default function SettingsScreen() {
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
       <Text style={[st.h2, { color: t.textDim }]}>APPEARANCE</Text>
       <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-        <Row label="Theme" hint="The map and race surface follow it. With Auto on, your pick holds until the next scheduled change." help={help} t={t}>
+        <Row label="Theme" help={help} t={t}>
           <Seg t={t} value={mode === 'daylight' ? 'day' : 'night'}
             options={[['night', 'night'], ['day', 'day']]}
             onPick={(v) => pickMode(v === 'day' ? 'daylight' : 'night')} />
         </Row>
-        <Row label="Auto day/night" t={t} help={help}
-          hint="Day theme inside the window, night outside, switched at the times below (phone clock). Never switches mid-ride — it waits for STOP.">
+        <Row label="Auto day/night" t={t} help={help}>
           <Switch on={s.autoTheme} onToggle={() => set('autoTheme', !s.autoTheme)} t={t} />
         </Row>
         {s.autoTheme ? (
@@ -624,15 +637,12 @@ export default function SettingsScreen() {
 
       <Text style={[st.h2, { color: t.textDim }]}>WHILE RECORDING</Text>
       <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-        <Row label="Live map" hint="Show the moving dot on the route while recording." help={help} t={t}>
-          <Switch on={s.liveMap} onToggle={() => set('liveMap', !s.liveMap)} t={t} />
-        </Row>
         <Row label="Sector colours" t={t} help={help}
-          hint="Paint each stretch of the route line in the colour its sector earned.">
+          hint="Colour sectors on live map">
           <Switch on={s.sectorColours} onToggle={() => set('sectorColours', !s.sectorColours)} t={t} />
         </Row>
-        <Row label="Race your past rides" t={t} help={help}
-          hint="Your previous rides of this route move along the map as small dots, timed from the START gate. Purple is your best of the last nine, green is faster than their average, yellow slower. The P-number under the map is your position among them right now.">
+        <Row label="Race yourself" t={t} help={help}
+          hint={<>Race <Text style={{ fontStyle: 'italic' }}>selfs</Text> dots on live map</>}>
           <Switch on={s.selfDots} onToggle={() => set('selfDots', !s.selfDots)} t={t} />
         </Row>
         <Row label="Gate buzz" hint="A short buzz at each gate crossing." help={help} t={t}>
@@ -640,56 +650,33 @@ export default function SettingsScreen() {
         </Row>
       </View>
 
-      <Text style={[st.h2, { color: t.textDim }]}>STARTING A RIDE</Text>
+      <Text style={[st.h2, { color: t.textDim }]}>STARTING AN ACTIVITY</Text>
       <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-        <Row label="Start place" hint="Detect where you are when a ride starts, or choose the place yourself." help={help} t={t}>
+        <Row label="Start place" help={help} t={t}>
           <Seg t={t} value={s.startMode}
             options={[['auto', 'detect'], ['pick', 'choose']]}
             onPick={(v) => set('startMode', v)} />
         </Row>
       </View>
 
-      <Text style={[st.h2, { color: t.textDim }]}>SCORING</Text>
-      <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-        {/* Cycle 024 (WP-A3): renamed from "Timing tower" — the tower left the
-            Result tab with the RIDES/RESULT redesign; this switch now gates
-            the ranking table inside Result's Personal Bests accordion. Still
-            a real switch, never decorative (file doctrine, unchanged).
-            virgin-cycle14 #5 (Nathan): the "Luck factor" raw/moving row that sat above this one is gone — scoring is raw wall-clock only; store/timing.ts's register stays at DEFAULT_TIMING. */}
-        <Row label="Rankings" hint="Show where each ride placed against your others on that way — in the ride detail and on RESULTS." help={help} t={t}>
-          <Switch on={s.tower} onToggle={() => set('tower', !s.tower)} t={t} />
-        </Row>
-      </View>
-
       <Text style={[st.h2, { color: t.textDim }]}>DATA</Text>
       <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-        <Row label="Places & routes" t={t} help={help}
-          hint="Export catalog.user.json — every place, way and route created on this phone.">
+        <Row label="Export app" t={t} help={help}>
           <Pressable
             style={[st.shareBtn, { borderColor: t.cardBorder }]}
-            onPress={() => void shareStoreFile(USER_CATALOG_FILE, `qualifire-catalog-${dateStamp(Date.now())}.json`)}
+            onPress={() => void shareAppExport(`qualifire-export-${dateStamp(Date.now())}.json`)}
           >
             <Text style={[st.shareText, { color: t.text }]}>export</Text>
           </Pressable>
         </Row>
-        <Row label="Reference rides" t={t} help={help}
-          hint="Export refs.user.json — the line of each way, built from its reference ride. Per-ride GPX+ export lives on RIDES.">
-          <Pressable
-            style={[st.shareBtn, { borderColor: t.cardBorder }]}
-            onPress={() => void shareStoreFile(USER_REFS_FILE, `qualifire-refs-${dateStamp(Date.now())}.json`)}
-          >
-            <Text style={[st.shareText, { color: t.text }]}>export</Text>
-          </Pressable>
-        </Row>
-        {/* WP-Q Part B: visually separated from the two share rows above (a
+        {/* WP-Q Part B: visually separated from the export row above (a
             top border) so it never reads as a sibling "share" action. Text is
             dim, never the accent — this repo's own D-013 rule is "no red
             anywhere" (theme.ts), so "dim" (not a nonexistent "danger" token)
             is the honest reading of the brief's "danger/dim colour"; the
             destructive style lives entirely in the two-step Alert.alert
             confirm, same as RidesScreen's own delete button. */}
-        <Row label="Reset app" t={t} sep help={help}
-          hint="Moves every ride, result, sport, place, route and way aside and starts the app over from its first launch. Settings and theme are kept.">
+        <Row label="Reset app" t={t} sep help={help}>
           <Pressable
             style={[st.shareBtn, { borderColor: t.cardBorder }]}
             onPress={() => void onResetPress()}

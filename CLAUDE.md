@@ -34,3 +34,8 @@ Orientation for any Claude session working in this repo. Binding.
    never delete it. Real git writes (add/commit) do go through despite the warning noise.
 8. Process details, honesty rules, and the full model-tier explanation:
    `process/CONVENTIONS.md`.
+9. **Rider-facing text is budgeted and owned by Nathan.** Every string a rider can see is mirrored
+   in `app/tests/ui-strings.allow.json`; `tests/run.ts` fails on any string not in it, any entry no
+   longer in code, >40 chars without `long: true`, any alert body >20 words, any em dash, any banner
+   box. Agents may append an entry only with a one-line reason and must say so in their report;
+   warnings flash in the yellow button's sub-label, never a banner. `process/CONVENTIONS.md` § Rider-facing text.

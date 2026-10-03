@@ -30,7 +30,6 @@ export default function RidesScreen() {
   const tabNav = useTabNav();
   const styles = useMemo(() => makeStyles(t), [t]);
   const [rides, setRides] = useState<RideMeta[] | null>(null);
-  const [backfilling, setBackfilling] = useState(false);
   // Bumped after a backfill pass so buildRideRows re-reads resultsStore's
   // module-level map — React has no way to know that map changed on its own.
   const [resultsTick, setResultsTick] = useState(0);
@@ -54,7 +53,7 @@ export default function RidesScreen() {
       const scoped = list.filter((r) => effectiveRideSportId(r.sportId, f) === active);
       setRides([...scoped].sort((a, b) => b.startMs - a.startMs));
     } catch (e) {
-      Alert.alert('Could not load rides', e instanceof Error ? e.message : String(e));
+      Alert.alert('Could not load activities', e instanceof Error ? e.message : String(e));
       setRides([]);
     }
   }, []);
@@ -72,7 +71,7 @@ export default function RidesScreen() {
   // Fix 2026-08-24 (WP-A3 review): only rides whose index status is 'ended'
   // are offered up. `rides` (listRides()) deliberately also includes a ride
   // still recording or crashed mid-ride, honestly derived from its truncated
-  // file — backfilling THAT file can fail to match any route, and a failed
+  // file — back-filling THAT file can fail to match any route, and a failed
   // match writes a PERMANENT unmatched marker at the current
   // BACKFILL_ENGINE_VERSION (resultsStore.ts), poisoning that ride's result
   // even after it is later healed/ended. Reads index.json the same way
@@ -83,13 +82,11 @@ export default function RidesScreen() {
     if (rides === null || rides.length === 0) return;
     let cancelled = false;
     (async () => {
-      setBackfilling(true);
       // virgin-cycle18 brief 04: the inline backfill moved to ui/rideHomes.ts
       // (same pass, minus free rides) and is followed there by the orphan
       // filing — a ride this list shows is, after this, always in RESULTS too.
       await settleRideHomes(createExpoFsAdapter());
       if (!cancelled) {
-        setBackfilling(false);
         setResultsTick((v) => v + 1);
       }
     })();
@@ -165,27 +162,24 @@ export default function RidesScreen() {
     const free = rows.filter((r) => r.wayName === FREE_RIDE_ROW_NAME);
     const out: { title: string | null; data: RideRowModel[] }[] = [];
     if (main.length > 0) out.push({ title: null, data: main });
-    if (free.length > 0) out.push({ title: 'FREE RIDES', data: free });
+    if (free.length > 0) out.push({ title: 'FREE ACTIVITIES', data: free });
     return out;
   }, [rows]);
   const sportLabel = currentSports().sports.find((sp) => sp.id === activeSportId())?.label ?? null;
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Rides</Text>
+        <Text style={styles.title}>Activities</Text>
         <Pressable style={styles.refreshBtn} onPress={refresh}>
           <Text style={styles.refreshText}>Refresh</Text>
         </Pressable>
       </View>
       {/* Q5: bare sport-name badge, same convention as ROUTES. */}
       <Text style={styles.sub}>
-        {sportLabel !== null ? sportLabel.toUpperCase() : 'NO SPORT YET — ADD ONE IN SETTINGS'}
+        {sportLabel !== null ? sportLabel.toUpperCase() : 'NO SPORT YET · ADD ONE IN SETTINGS'}
       </Text>
-      {backfilling ? <Text style={styles.sub}>matching ways…</Text> : null}
-      {rides == null ? (
-        <Text style={styles.sub}>Loading…</Text>
-      ) : rides.length === 0 ? (
-        <Text style={styles.sub}>No rides yet. Record one on the Record tab.</Text>
+      {rides == null ? null : rides.length === 0 ? (
+        <Text style={styles.sub}>No activities yet</Text>
       ) : (
         <SectionList
           sections={sections}
@@ -201,7 +195,7 @@ export default function RidesScreen() {
                 onPress={() => tabNav.openRide({ rideId: item.rideId, source: 'rides', startedAtMs: item.startMs })}
               >
                 <View style={styles.rowInfo}>
-                  <Text style={styles.rowTitle}>{item.wayName ?? 'no way — recorded only'}</Text>
+                  {item.wayName !== null ? <Text style={styles.rowTitle}>{item.wayName}</Text> : null}
                   <Text style={styles.sub}>
                     {item.dateLabel} · {item.lapLabel}
                     {item.quality ? ` · ${item.quality}` : ''}

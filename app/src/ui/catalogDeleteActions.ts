@@ -62,7 +62,7 @@ export function onDeleteWay(
   let body = deletion.removedRouteIds.length > 0
     ? `This is the only way on ${from?.label} → ${to?.label}, so the route is removed too.\n`
     : '';
-  body += `Its gates and reference line go with it. ${n} scored ride${n === 1 ? '' : 's'} on this way will be re-matched against your other ways; the ride recordings themselves are kept.`;
+  body += `Its gates and reference line go with it. ${n} scored activit${n === 1 ? 'y' : 'ies'} on this way will be re-matched against your other ways; the activity recordings themselves are kept.`;
   if (deletion.removedLandmarkIds.length > 0) {
     const verb = deletion.removedLandmarkIds.length === 1 ? 'is' : 'are';
     body += `\n${landmarkLabels(CATALOG, deletion.removedLandmarkIds)} ${verb} no longer used by any route and will be removed as places.`;
@@ -76,7 +76,7 @@ export function onDeleteRoute(CATALOG: Catalog, SEED: Catalog, w: Route, bump: (
   const to = CATALOG.landmarks.find((l) => l.id === w.endLandmarkId);
   const wayCount = deletion.removedWayIds.length;
   const n = deletion.removedWayIds.reduce((sum, rid) => sum + storedResultsForWay(rid).length, 0);
-  let body = `${wayCount} way${wayCount === 1 ? '' : 's'}, its gates and reference line${wayCount === 1 ? '' : 's'} go with it. ${n} scored ride${n === 1 ? '' : 's'} will be re-matched against your other ways; the ride recordings themselves are kept.`;
+  let body = `${wayCount} way${wayCount === 1 ? '' : 's'}, its gates and reference line${wayCount === 1 ? '' : 's'} go with it. ${n} scored activit${n === 1 ? 'y' : 'ies'} will be re-matched against your other ways; the activity recordings themselves are kept.`;
   if (deletion.removedLandmarkIds.length > 0) {
     const verb = deletion.removedLandmarkIds.length === 1 ? 'is' : 'are';
     body += `\n${landmarkLabels(CATALOG, deletion.removedLandmarkIds)} ${verb} no longer used by any route and will be removed as places.`;

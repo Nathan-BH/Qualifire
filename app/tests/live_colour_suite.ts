@@ -9,7 +9,8 @@
 import { registerHooks } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import * as nodeFs from 'node:fs';
-import { assert, test, loadFixture } from './lib.ts';
+import * as path from 'node:path';
+import { assert, test, loadFixture, TESTS_DIR } from './lib.ts';
 import type { LiveEngineState } from '../src/live/engine.ts';
 
 // App code imports the seed as a bare `.json` — Metro bundles that directly,
@@ -27,9 +28,10 @@ registerHooks({
   },
 });
 const {
-  fmt, ghostsFor, lapValues, positionAmong, sectorValues, tierFor, MIN_HISTORY, WINDOW_N,
+  fmt, ghostsFor, lapValues, liveTierFor, positionAmong, sectorValues, tierFor, MIN_HISTORY, WINDOW_N,
   WINDOW_PREV, rankingPoolFor, rankedCountFor,
 } = await import('../src/ui/colourModel.ts');
+const { buildRankingReveal } = await import('../src/ui/rankingRevealModel.ts');
 const { getLiveTowerPosition } = await import('../src/live/towerSource.ts');
 const { getLastRide, recordedResults, rememberRide, resetRecordedForTests } =
   await import('../src/ui/lastRide.ts');
@@ -40,6 +42,19 @@ const {
   initFreeRidePersistence, lastFreeRide, markRideFree, unmarkRideFree, resetFreeRidesForTests,
 } = await import('../src/store/freeRides.ts');
 const { createMemoryFsAdapter } = await import('../src/storage/fsAdapter.ts');
+// virgin-cycle20 brief 10: the founded-route → second-ride fixture needs the
+// real catalog / results / user-ref stack and the ride-file encoder.
+const b10CatalogStore = await import('../src/store/catalogStore.ts');
+const b10ResultsStore = await import('../src/store/resultsStore.ts');
+const b10UserRefs = await import('../src/live/userRefs.ts');
+const b10RouteFromRide = await import('../src/store/routeFromRide.ts');
+const { replaceRecorded: b10ReplaceRecorded, dropRecorded: b10DropRecorded } = await import('../src/ui/lastRide.ts');
+const { liveSectorColours: b10LiveSectorColours } = await import('../src/ui/sectorTrailModel.ts');
+const { tierLineColour: b10TierLineColour } = await import('../src/ui/tierColour.ts');
+const { encodeEnd: b10EncodeEnd, encodeFix: b10EncodeFix, encodeHeader: b10EncodeHeader } = await import('../src/storage/jsonl.ts');
+const { scoredS: b10ScoredS, setTimingMode: b10SetTimingMode, DEFAULT_TIMING: b10DefaultTiming } = await import('../src/store/timing.ts');
+const { ranks: b10Ranks } = await import('../src/store/results.ts');
+const { STOP_T_S: b10StopTS } = await import('../core/src/kinematics.ts');
 
 function stateWith(over: Partial<LiveEngineState>): LiveEngineState {
   return {
@@ -51,6 +66,7 @@ function stateWith(over: Partial<LiveEngineState>): LiveEngineState {
     // state rather than silently omitting a required field.
     startGateT: null,
     chainageM: null,
+    displayTrack: null,
     ...over,
   } as LiveEngineState;
 }
@@ -500,4 +516,269 @@ test('virgin-cycle16 02: unmarkRideFree removes exactly that record and persists
   await initFreeRidePersistence(fs);
   assert(freeRideResults().length === 1 && freeRideResults()[0].rideId === 'r-b', 'the removal reached disk');
   resetFreeRidesForTests();
+});
+
+/** brief 07 helper: a clean 4-sector finished ride on `wayId` with a real
+ * rideId/startedAtMs (the shape onEnd hands rememberRide), for the live-tier tests. */
+function brief07Ride(wayId: string, lapS: number, rideId: string, startedAtMs: number) {
+  const q = lapS / 4;
+  rememberRide(
+    stateWith({
+      track: wayId,
+      sectors: [doneSector(q), doneSector(q), doneSector(q), doneSector(q)],
+      lap: { rawS: lapS, stoppedS: 0, movingS: lapS, estimated: false },
+    }),
+    { rideId, startedAtMs },
+  );
+}
+
+test('virgin-cycle20 07: liveTierFor — the lap chip gets its real tier at the line (cycle11 R1 revert)', () => {
+  resetRecordedForTests();
+  const wayId = 'brief07-way-a';
+  brief07Ride(wayId, 600, 'b07a-1', 1_000);
+  brief07Ride(wayId, 620, 'b07a-2', 2_000);
+  brief07Ride(wayId, 640, 'b07a-3', 3_000); // best 600, mean 620
+  const today = 'b07a-today';
+  assert(liveTierFor(wayId, 0, 590, today) === 'purple', 'beats every lap in the window ⇒ purple at the line');
+  assert(liveTierFor(wayId, 0, 610, today) === 'green', 'between best and mean ⇒ green at the line');
+  assert(liveTierFor(wayId, 0, 630, today) === 'yellow', 'slower than the mean ⇒ yellow at the line');
+  // sector path: the refactor must not change the flash/strip rule (sector 1: 150/155/160 → best 150, mean 155)
+  assert(liveTierFor(wayId, 1, 149, today) === 'purple', 'sector verdict unchanged by the refactor (purple)');
+  assert(liveTierFor(wayId, 1, 152, today) === 'green', 'sector verdict unchanged by the refactor (green)');
+  assert(liveTierFor(wayId, 1, 158, today) === 'yellow', 'sector verdict unchanged by the refactor (yellow)');
+  // exact parity with the old RecordScreen.tierOf body
+  assert(liveTierFor(wayId, 0, 610, today) === tierFor(610, lapValues(wayId, today)), 'lap: liveTierFor === tierFor over lapValues');
+  assert(liveTierFor(wayId, 2, 152, today) === tierFor(152, sectorValues(wayId, 2, today)), 'sector: liveTierFor === tierFor over sectorValues');
+  resetRecordedForTests();
+});
+
+test('virgin-cycle20 07: no lock / no time / no history ⇒ neutral, exactly as before', () => {
+  resetRecordedForTests();
+  assert(liveTierFor(null, 0, 600, 'x') === 'neutral', 'no locked way ⇒ neutral (D-025)');
+  assert(liveTierFor('brief07-way-b', 0, null, 'x') === 'neutral', 'no real time ⇒ neutral, never est on the live surface');
+  assert(liveTierFor('brief07-way-b', 0, 600, 'x') === 'neutral', 'ride 1 of a way (no history) ⇒ neutral (MIN_HISTORY floor), however fast');
+  // n=1: only purple/yellow reachable (NW-1), unchanged
+  brief07Ride('brief07-way-b', 600, 'b07b-1', 1_000);
+  assert(liveTierFor('brief07-way-b', 0, 599, 'today') === 'purple', 'n=1 faster ⇒ purple');
+  assert(liveTierFor('brief07-way-b', 0, 600, 'today') === 'yellow', 'n=1 tie ⇒ yellow (not green)');
+  resetRecordedForTests();
+});
+
+test('virgin-cycle20 07: the lap tier does not flip when onEnd stores today (exclusion by session.rideId)', () => {
+  resetRecordedForTests();
+  const wayId = 'brief07-way-c';
+  brief07Ride(wayId, 600, 'b07c-1', 1_000);
+  brief07Ride(wayId, 620, 'b07c-2', 2_000);
+  const today = 'b07c-today';
+  const mine = 580; // a new best — the case a self-inclusion demotes
+  // 1) at the FINISH gate (nothing stored yet): exclusion is a no-op
+  const atLine = liveTierFor(wayId, 0, mine, today);
+  assert(atLine === 'purple', `at the line a new best is purple, got ${atLine}`);
+  assert(liveTierFor(wayId, 0, mine, today) === liveTierFor(wayId, 0, mine), 'before STOP, excluding an unstored id changes nothing');
+  // 2) STOP: onEnd's rememberRide stores today under session.rideId while the 'running' tree still renders
+  brief07Ride(wayId, mine, today, 3_000);
+  assert(liveTierFor(wayId, 0, mine, today) === atLine, 'WITH the exclusion the lap chip keeps its colour after the store write (no flicker)');
+  // the defect this brief removes: today's own unexcluded read is NOT purple any more
+  const unexcluded = tierFor(mine, lapValues(wayId));
+  assert(unexcluded !== 'purple', `without the exclusion the stored ride compares against itself and drops to ${unexcluded} — the flip Decision 2 prevents`);
+  // 3) the tower reveal lands on the colour the rider already saw
+  const reveal = buildRankingReveal(
+    { track: wayId, lap: { rawS: mine, stoppedS: 0, movingS: mine, estimated: false } },
+    today, 3_000,
+  );
+  assert(reveal !== null && reveal.tier === atLine, `reveal tier ${reveal?.tier} must equal the live chip's ${atLine}`);
+  resetRecordedForTests();
+});
+
+test('virgin-cycle20 07: RecordScreen wires the real lap tier and the session exclusion', () => {
+  const src = nodeFs.readFileSync(path.resolve(TESTS_DIR, '..', 'src', 'ui', 'RecordScreen.tsx'), 'utf8');
+  assert(!src.includes('tierOfLive'), 'cycle11 R1 lap-neutral override must be gone (tierOfLive)');
+  assert(src.includes('liveTierFor(live.track, sectorIndex, timeS, session?.rideId)'), 'tierOf delegates to liveTierFor with the session exclusion');
+  assert(!src.includes('lapValues(live.track)') && !src.includes('sectorValues(live.track, sectorIndex)'), 'no unexcluded live tierOf history read survives');
+  // the cut from the sector flash to the lap chip is unchanged (LAYOUT §2a)
+  assert(src.includes('setTimeout(() => setShowLap(true), 1100)'), 'the ~1.1 s lap handover delay is untouched');
+});
+
+// ------------------------------------------------- virgin-cycle20 brief 10 (2026-10-02)
+// Nathan: second ride of a freshly founded route — no sector colour in the strip.
+// Cause: the founding ride's sectors are 'interrupted' (a stop inside each) and
+// sectorValues was clean-only, so ride 2's sector history was [] ⇒ 'neutral'.
+// Fixture: a real founded route (createRouteFromDraft on a memory fs, mirrored into
+// the live window exactly as RecordScreen.tsx 829-831 does), ride 2 through the
+// LiveEngine with a hard pick, ride 3's window after rememberRide.
+
+const B10_LAT0 = 51.30;
+const B10_LON0 = 4.50;
+
+/** A straight 1 Hz ride northwards at `vMs`, with a stationary run of `s`
+ * seconds (same coordinates, 1 Hz) at each `frac` of `lengthM`. A run longer
+ * than STOP_T_S is what core flags as a stop ⇒ the enclosing sector is
+ * 'interrupted' (core/src/timing.ts INTERRUPTED_STOP_S). */
+function b10Ride(lengthM: number, vMs: number, startS: number, stops: { frac: number; s: number }[]) {
+  const t: number[] = []; const lat: number[] = []; const lon: number[] = [];
+  const left = [...stops].sort((a, b) => a.frac - b.frac);
+  let d = 0; let tt = startS;
+  while (d <= lengthM) {
+    t.push(tt); lat.push(B10_LAT0 + d / 110540); lon.push(B10_LON0);
+    if (left.length > 0 && d / lengthM >= left[0].frac) {
+      const st = left.shift()!;
+      for (let k = 1; k <= st.s; k++) { tt += 1; t.push(tt); lat.push(B10_LAT0 + d / 110540); lon.push(B10_LON0); }
+    }
+    tt += 1; d += vMs;
+  }
+  return { t, lat, lon };
+}
+
+async function b10WriteRide(fs: ReturnType<typeof createMemoryFsAdapter>, rideId: string, f: { t: number[]; lat: number[]; lon: number[] }) {
+  let text = b10EncodeHeader(rideId, f.t[0] * 1000);
+  for (let i = 0; i < f.t.length; i++) text += b10EncodeFix({ tUnixMs: f.t[i] * 1000, lat: f.lat[i], lon: f.lon[i] });
+  text += b10EncodeEnd(f.t[f.t.length - 1] * 1000, f.t.length);
+  await fs.ensureDir('rides');
+  await fs.writeText(`rides/${rideId}.jsonl`, text);
+}
+
+/** Founds a route from ride 'b10-ride1' (5 km at 5.5 m/s with `stops`) through the
+ * real flow and mirrors the stored founding result into the live window the way
+ * RecordScreen.tsx 829-831 does. Returns the way id and the stored founding result. */
+async function b10Found(stops: { frac: number; s: number }[]) {
+  b10CatalogStore.resetCatalogStoreForTests();
+  resetRecordedForTests(); // also resets the results store
+  b10UserRefs.resetUserRefsForTests();
+  const fs = createMemoryFsAdapter();
+  await b10CatalogStore.initCatalogStore(fs);
+  await b10ResultsStore.initResultsStore(fs);
+  await b10UserRefs.initUserRefs(fs);
+  const r1 = b10Ride(5000, 5.5, 1_700_000_000, stops);
+  await b10WriteRide(fs, 'b10-ride1', r1);
+  const d = await b10RouteFromRide.draftRouteFromRide('b10-ride1', r1.t[0] * 1000, null, fs);
+  assert(d !== null, 'b10: the founding ride drafts a route');
+  const out = await b10RouteFromRide.createRouteFromDraft(d!, { start: 'B10 Home', end: 'B10 Work' }, fs);
+  assert(out.ok && out.referenceTimed, `b10: createRouteFromDraft must store the founding result, got ${JSON.stringify(out)}`);
+  if (!out.ok) throw new Error('unreachable');
+  const founding = b10ResultsStore.getStoredResult('b10-ride1');
+  if (founding) b10ReplaceRecorded(founding); else b10DropRecorded('b10-ride1');
+  assert(founding !== null, 'b10: founding result stored');
+  return { fs, wayId: out.wayId, founding: founding! };
+}
+
+/** Ride 2/3: the real LiveEngine over the real catalog specs, hard-picked on the way. */
+function b10Drive(wayId: string, f: { t: number[]; lat: number[]; lon: number[] }): LiveEngineState {
+  const engine = new LiveEngine(catalogTrackSpecs());
+  engine.start({ pickId: wayId });
+  for (let i = 0; i < f.t.length; i++) engine.feed(f.lat[i], f.lon[i], f.t[i] * 1000);
+  return engine.getState();
+}
+
+function b10Teardown() {
+  b10CatalogStore.resetCatalogStoreForTests();
+  resetRecordedForTests();
+  b10UserRefs.resetUserRefsForTests();
+}
+
+/** The strip chip's verdict for sector i, exactly RecordScreen.tierOf's body
+ * (tierFor over sectorValues of the locked way; neutral with no lock / no time). */
+function b10StripTier(st: LiveEngineState, i: number) {
+  const sec = st.sectors[i - 1];
+  const v = sec.kind === 'done' ? b10ScoredS(sec) : null;
+  return st.track === null || v === null ? 'neutral' : tierFor(v, sectorValues(st.track, i));
+}
+
+const B10_STOPS = [{ frac: 0.15, s: 15 }, { frac: 0.4, s: 12 }, { frac: 0.6, s: 8 }, { frac: 0.9, s: 20 }];
+
+test('virgin-cycle20 10: founded route, founding ride stopped in every sector — ride 2 STRIP chips earn purple, not neutral (map line follows)', async () => {
+  const { wayId, founding } = await b10Found(B10_STOPS);
+  try {
+    // Preconditions (true before AND after the fix — if these fail, the stop
+    // detection or the founding flow changed, not the colour rule).
+    assert(B10_STOPS.every((s) => s.s > b10StopTS), 'every synthetic stop is longer than STOP_T_S');
+    assert(founding.lap.quality === 'interrupted', `founding lap is interrupted (a stop in it), got ${founding.lap.quality}`);
+    assert(founding.sectors.length === 4 && founding.sectors.every((s) => s.quality === 'interrupted'),
+      `every founding sector is interrupted, got ${JSON.stringify(founding.sectors.map((s) => s.quality))}`);
+    assert(b10Ranks(founding) && rankedCountFor(wayId) === 1, 'the founding ride ranks and is ride 2\'s whole window');
+    assert(lapValues(wayId).length === 1, 'the LAP window already sees the founding ride (the lap chip was never the problem)');
+
+    // Ride 2: clean, faster everywhere.
+    const st = b10Drive(wayId, b10Ride(5000, 6.0, 1_700_100_000, []));
+    assert(st.track === wayId && st.phase === 'finished' && st.sectors.every((s) => s.kind === 'done'),
+      `ride 2 locks the pick and scores all four sectors, got track=${st.track} phase=${st.phase}`);
+    assert(st.lap !== null && !st.lap.estimated && tierFor(b10ScoredS(st.lap), lapValues(wayId)) === 'purple', 'ride 2 lap verdict is purple (unchanged)');
+
+    // THE SYMPTOM — fails on today's tree with four 'neutral's / four nulls.
+    for (let i = 1; i <= 4; i++) {
+      const hist = sectorValues(wayId, i);
+      assert(hist.length === 1, `S${i}: the founding ride's interrupted sector IS ride 2's history, got ${JSON.stringify(hist)}`);
+      const sec = st.sectors[i - 1];
+      const v = sec.kind === 'done' ? b10ScoredS(sec) : null;
+      assert(v !== null && v < hist[0], `S${i}: ride 2 (${v}) is faster than the founding sector (${hist[0]})`);
+      assert(b10StripTier(st, i) === 'purple', `S${i}: strip chip must be purple (faster than the only earlier ride), got ${b10StripTier(st, i)}`);
+    }
+    // (secondary surface: map line) — same history, so it follows the strip for free; droppable.
+    const spans = b10LiveSectorColours(st.sectors, (i) => (st.track === null ? [] : sectorValues(st.track, i)), b10TierLineColour);
+    assert(spans.length === 5 && spans[0] === null, 'sector-colour array shape: [START, S1..S4]');
+    assert(spans.slice(1).every((c) => c === b10TierLineColour('purple')), `map line paints all four sectors purple, got ${JSON.stringify(spans)}`);
+  } finally {
+    b10Teardown();
+  }
+});
+
+test('virgin-cycle20 10: ride 3 still works — window holds the founding sector AND ride 2, green reachable, exclusion by id intact', async () => {
+  const { wayId, founding } = await b10Found(B10_STOPS);
+  try {
+    const st2 = b10Drive(wayId, b10Ride(5000, 6.0, 1_700_100_000, []));
+    rememberRide(st2, { rideId: 'b10-ride2', startedAtMs: 1_700_100_000_000 }); // onEnd's store write
+    assert(rankedCountFor(wayId) === 2, 'two ranked rides on file');
+    for (let i = 1; i <= 4; i++) {
+      const hist = sectorValues(wayId, i, 'b10-ride3'); // ride 3, not yet stored: exclusion is a no-op
+      const f = founding.sectors.find((s) => s.index === i)!;
+      const own2 = st2.sectors[i - 1];
+      const v2 = own2.kind === 'done' ? b10ScoredS(own2) : null;
+      assert(hist.length === 2 && v2 !== null, `S${i}: ride 3 sees both earlier rides, got ${JSON.stringify(hist)}`);
+      assert(hist.includes(b10ScoredS(f) as number) && hist.includes(v2), `S${i}: the window is [founding ${b10ScoredS(f)}, ride 2 ${v2}]`);
+      const best = Math.min(...hist); const mean = (hist[0] + hist[1]) / 2;
+      assert(tierFor(best - 1, hist) === 'purple', `S${i}: faster than both ⇒ purple`);
+      assert(tierFor(mean - 1, hist) === 'green', `S${i}: between best and mean ⇒ green (n=2 unlocks green)`);
+      assert(tierFor(mean + 1, hist) === 'yellow', `S${i}: slower than the mean ⇒ yellow`);
+      // B-44 exclusion unchanged: ride 2 re-judged on its own detail sees only the founding sector
+      const excl = sectorValues(wayId, i, 'b10-ride2');
+      assert(excl.length === 1 && excl[0] === b10ScoredS(f), `S${i}: excluding ride 2 by id leaves the founding sector only, got ${JSON.stringify(excl)}`);
+    }
+  } finally {
+    b10Teardown();
+  }
+});
+
+test('virgin-cycle20 10: timing mode — raw reads the interrupted founding sector\'s stop-inclusive time, moving its raw − stop', async () => {
+  const { wayId, founding } = await b10Found(B10_STOPS);
+  try {
+    const f1 = founding.sectors.find((s) => s.index === 1)!;
+    assert(f1.movingS !== null && f1.rawS > f1.movingS + b10StopTS, `founding S1 carries a real moving time below its raw time (raw ${f1.rawS}, moving ${f1.movingS})`);
+    assert(JSON.stringify(sectorValues(wayId, 1)) === JSON.stringify([f1.rawS]), 'raw mode (default): the sector\'s raw time');
+    b10SetTimingMode('moving');
+    try {
+      assert(JSON.stringify(sectorValues(wayId, 1)) === JSON.stringify([f1.movingS]), 'moving mode: the sector\'s moving time');
+    } finally {
+      b10SetTimingMode(b10DefaultTiming);
+    }
+    assert(JSON.stringify(sectorValues(wayId, 1)) === JSON.stringify([f1.rawS]), 'mode restored to raw');
+  } finally {
+    b10Teardown();
+  }
+});
+
+test('virgin-cycle20 10: a clean founding ride is unchanged — ride 2 slower ⇒ yellow everywhere (n=1: never green), faster ⇒ purple', async () => {
+  const { wayId, founding } = await b10Found([]);
+  try {
+    assert(founding.lap.quality === 'clean' && founding.sectors.every((s) => s.quality === 'clean'), 'a no-stop founding ride is clean throughout');
+    const slow = b10Drive(wayId, b10Ride(5000, 5.0, 1_700_100_000, []));
+    for (let i = 1; i <= 4; i++) assert(b10StripTier(slow, i) === 'yellow', `S${i}: slower than the clean founding sector ⇒ yellow, got ${b10StripTier(slow, i)}`);
+    // (secondary surface: map line) — droppable.
+    const slowSpans = b10LiveSectorColours(slow.sectors, (i) => sectorValues(wayId, i), b10TierLineColour);
+    assert(slowSpans.slice(1).every((c) => c === b10TierLineColour('yellow')), 'map line: four earned-yellow spans (H6: same hex as the base line — Decision 2)');
+    const fast = b10Drive(wayId, b10Ride(5000, 6.0, 1_700_100_000, []));
+    for (let i = 1; i <= 4; i++) assert(b10StripTier(fast, i) === 'purple', `S${i}: faster ⇒ purple, got ${b10StripTier(fast, i)}`);
+    // estimated / missed sectors never enter a history: pinned on the store's own
+    // sectorHistory by store_suite.ts 423-441, which this fix now delegates to.
+  } finally {
+    b10Teardown();
+  }
 });

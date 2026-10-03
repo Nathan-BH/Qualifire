@@ -86,16 +86,31 @@
  * into freeCrossings/freeSectors for a gates-only live map — is gone: a
  * "free ride" is now a post-ride label (store/freeRides.ts), never an
  * engine mode. One mode remains: the lock/verify machinery below.
+ *
+ * DISPLAY CANDIDATE (virgin-cycle20 06, Nathan 2026-10-01 "S1 and the selfs
+ * only show 1-2 minutes into the ride"): the lock needs 400 m of evidence
+ * measured from the first good fix — ~110-240 m PAST every START gate — so
+ * nothing about the way used to be displayed until then. Under a RECORD-tab
+ * pick the pick's own candidate is the only one this ride can ever display,
+ * so getState() now describes it from start() on (`displayTrack`,
+ * currentSector, lastDone, sectors, startGateT, chainageM). Display-only:
+ * `track` is still the lock verdict, no event is emitted before the lock, the
+ * lock race / finalize() / the ride record are untouched, and recompute()
+ * scores a lap (D-022) only for the LOCKED candidate.
  */
 import {
   DEFAULT_LIVE_OPTIONS,
   GateDetector,
   LiveProjector,
   computeKinematics,
+  interp1,
+  nearestOnSegments,
   projectRideOffline,
+  searchsortedLeft,
   sectorTimes,
   stoppedTimeBetween,
   toXY,
+  xyToLatLon,
   type GateEvent,
   type RefLine,
   type TrackId,
@@ -305,6 +320,23 @@ export interface LiveEngineState {
    *  (its LiveProjector.chainage), null whenever `track` is null. Display-only mirror —
    *  never feeds gate logic or timing. */
   chainageM: number | null;
+  /** virgin-cycle20 06: the candidate whose live progress is on screen — `track`
+   * once locked; before any lock, under a RECORD-tab pick, the pick's own
+   * candidate (the only one a picked ride can ever display — see the file
+   * header's DISPLAY CANDIDATE). null with no pick and no lock, and after
+   * finalize() left the ride unmatched. currentSector / lastDone / sectors /
+   * startGateT / chainageM describe THIS candidate. Display-only presumption:
+   * `track`, the lock race, the event record and finalize() are untouched. */
+  displayTrack: TrackId | null;
+  /** virgin-cycle20 brief 02: DISPLAY-ONLY nearest point on the DISPLAY
+   *  candidate's reference (displayCand(): the lock, else the pick's own
+   *  pre-lock candidate — the same candidate chainageM reads) for the live
+   *  rider dot — degrees of the projection of the last fed fix plus that fix's
+   *  cross-track distance (m). null whenever `displayTrack` is null, or the
+   *  projector's search window was empty for that fix. A read-only mirror like
+   *  chainageM: never feeds chainage, gates or timing (those read LiveProjector
+   *  exactly as before). ui/riderDotModel.ts decides what to draw from it. */
+  riderSnap: { lat: number; lon: number; xtdM: number } | null;
 }
 
 interface Candidate {
@@ -328,6 +360,28 @@ interface Candidate {
   /** WP-G Part 2 gap-fill: this candidate's own cross-track deviation (m) at
    * its most recent fed fix (LiveFix.xtd verbatim) — surfaced in diagnostics. */
   lastXtd: number;
+  /** virgin-cycle20 brief 02: display-only nearest point of the last fed fix
+   * on this candidate's reference — chainage of the hit (NOT the monotonic
+   * projector chainage) and its distance. null = no fix yet / empty window. */
+  lastSnap: { s: number; xtdM: number } | null;
+}
+
+/** virgin-cycle20 brief 02: the rider-dot projection. Re-runs the projector's
+ * own windowed nearest-segment search — window [sp - windowBack, sp + windowFwd]
+ * around the candidate's CURRENT (post-update) chainage, same lo/hi arithmetic
+ * as core/live.ts LiveProjector.update — and returns the hit's TRUE chainage
+ * and distance, unclamped by monotonicity. Never fed back into the projector,
+ * the gate detector or recompute(): a display mirror only. */
+function displayProjection(ref: RefLine, sp: number, x: number, y: number): { s: number; xtdM: number } | null {
+  const { ch } = ref;
+  const nseg = ch.length - 1;
+  let lo = searchsortedLeft(ch, sp - DEFAULT_LIVE_OPTIONS.windowBack);
+  let hi = searchsortedLeft(ch, sp + DEFAULT_LIVE_OPTIONS.windowFwd);
+  lo = Math.max(0, lo - 1);
+  hi = Math.min(nseg, hi);
+  if (hi <= lo) return null;
+  const hit = nearestOnSegments(x, y, ref, lo, hi);
+  return { s: hit.s, xtdM: hit.dist };
 }
 
 const N_SECTORS_DEFAULT = 4; // the legacy four commute tracks all have 4 sectors
@@ -351,6 +405,9 @@ export class LiveEngine {
   private lap: LiveLap | null = null;
   private fixesFed = 0;
   private onWay = false;
+  /** virgin-cycle20 06: true from finalize() until the next start() — ends the
+   * pre-lock display presumption (displayCand() then returns only `locked`). */
+  private ended = false;
   private tBuf: number[] = [];
   private latBuf: number[] = [];
   private lonBuf: number[] = [];
@@ -370,6 +427,7 @@ export class LiveEngine {
     this.locked = null;
     this.lockKind = 'none';
     this.pickHonoured = false;
+    this.ended = false;
     const allSpecs = this.specs ?? catalogTrackSpecs();
     const pickSpec = this.pick !== null ? allSpecs.find((s) => s.id === this.pick) : undefined;
     this.sectors = pendingSectors(pickSpec ? pickSpec.gates.length - 1 : N_SECTORS_DEFAULT);
@@ -397,6 +455,7 @@ export class LiveEngine {
       baseAccuracyM: null,
       retried: false,
       lastXtd: 999,
+      lastSnap: null,
     }));
     this.emit();
   }
@@ -435,6 +494,7 @@ export class LiveEngine {
     this.fixesFed += 1;
 
     let lockedFired = false;
+    let displayDirty = false; // virgin-cycle20 06: see `disp` below
 
     if (this.lockKind === 'verified' || this.lockKind === 'finalized') {
       // Today's exact fast path: only the winner is fed once verified — and
@@ -453,6 +513,10 @@ export class LiveEngine {
       // Detecting, or soft-locked: every candidate keeps running (soft is a
       // display choice, not a narrowing of the evidence).
       const poorNow = accuracyM !== undefined && accuracyM > POOR_ACCURACY_M;
+      // virgin-cycle20 06: the pre-lock display candidate (the pick's own, or
+      // null). Its gate fires / re-seeds rebuild `sectors` below exactly as a
+      // locked candidate's do — display only, nothing is emitted for it.
+      const disp = this.locked === null ? this.displayCand() : null;
       for (const c of this.cands) {
         // Cycle 023 fix 2: the FIRST fix anchors this candidate's chainage via
         // a global nearest-vertex search (core/live.ts LiveProjector) — if
@@ -473,6 +537,8 @@ export class LiveEngine {
           c.anchored = false; // the re-seeded chainage needs its own fresh anchor check
           c.retried = true;
           c.lastXtd = 999; // fresh candidate: nothing fed yet this instant
+          c.lastSnap = null;
+          if (c === disp) displayDirty = true; // re-seeded: its kept events are gone
           this.emitDiagnostic({
             type: 'wayMatchAttempt', track: c.track, phase: 'retry',
             accuracyM: accuracyM ?? null, thresholdM: POOR_ACCURACY_M, poorAccuracy: false,
@@ -492,6 +558,7 @@ export class LiveEngine {
             });
           }
         }
+        if (c === disp && evs.length > 0) displayDirty = true;
         if (!wasAnchored && c.baseS !== null) {
           c.baseAccuracyM = accuracyM ?? null;
           this.emitDiagnostic({
@@ -508,6 +575,9 @@ export class LiveEngine {
       this.onWay = this.locked ? this.locked.onWay : (this.pickLeader()?.onWay ?? false);
     }
     if (lockedFired && this.locked) this.recompute();
+    // virgin-cycle20 06: a display-candidate fire/re-seed with STILL no lock
+    // (a lock on this same fix already recomputed inside commitLock).
+    else if (displayDirty && this.locked === null && !this.ended) this.recompute();
     this.emit();
   }
 
@@ -517,6 +587,7 @@ export class LiveEngine {
    * even soft) lock, and promotes a still-soft lock that never got the
    * chance to clear its margin. Idempotent — safe to call more than once. */
   finalize(): void {
+    this.ended = true;
     if (this.lockKind === 'verified') return; // nothing to do
     // N9: captured up front (before either branch below reassigns
     // this.lockKind) so both can report the transition they actually made.
@@ -558,6 +629,13 @@ export class LiveEngine {
         // no lock event (finalize()'s relabel never emitted one) and no
         // other trace either.
         this.noteLockChange('soft', this.locked!, atT, 'rideEndPromotion');
+      } else if (this.lockKind === 'none') {
+        // virgin-cycle20 06: never locked → the pre-lock display presumption is
+        // withdrawn with the ride (nothing provisional reaches rememberRide/Result).
+        // brief 12: 'none' ONLY — a bare `else` also ran for 'finalized', so the
+        // defensive second finalize() (RecordScreen onEnd, then stopTracking) wiped
+        // a soft-promoted ride's done sectors back to pending.
+        this.sectors = pendingSectors(this.sectors.length);
       }
       this.emit();
       return;
@@ -613,14 +691,17 @@ export class LiveEngine {
   }
 
   getState(): LiveEngineState {
-    const det = this.locked?.det ?? null;
+    // virgin-cycle20 06: everything positional below reads the DISPLAY candidate
+    // (locked, else the pick's own pre-lock); `track`/`gateFires` keep today's rule.
+    const disp = this.displayCand();
+    const det = disp?.det ?? null;
     const next = det ? det.nextGateIndex : 0;
-    const nGates = this.locked ? this.locked.gates.length : this.sectors.length + 1;
+    const nGates = disp ? disp.gates.length : this.sectors.length + 1;
     let currentSector: number | null = null;
     if (det && next >= 1 && next < nGates) currentSector = next;
     let lastDone: number | null = null;
-    if (this.locked) {
-      for (const e of this.locked.events) {
+    if (disp) {
+      for (const e of disp.events) {
         if (e.gateIndex >= 1) lastDone = Math.max(lastDone ?? 0, e.gateIndex);
       }
     }
@@ -630,13 +711,14 @@ export class LiveEngine {
     // virgin-cycle6 (self racing): the displayed candidate's own gate-0
     // event, if it has fired one yet.
     let startGateT: number | null = null;
-    if (this.locked) {
-      const g0 = this.locked.events.find((e) => e.gateIndex === 0);
+    if (disp) {
+      const g0 = disp.events.find((e) => e.gateIndex === 0);
       if (g0) startGateT = g0.time;
     }
     return {
       phase: this.phase,
       track: this.locked ? this.locked.track : null,
+      displayTrack: disp ? disp.track : null,
       sectors: [...this.sectors],
       currentSector,
       lastDone,
@@ -649,8 +731,22 @@ export class LiveEngine {
       pickHonoured: this.pickHonoured,
       anyAnchored: this.cands.some((c) => c.anchored),
       startGateT,
-      chainageM: this.locked ? this.locked.proj.chainage : null,
+      chainageM: disp ? disp.proj.chainage : null,
+      riderSnap: this.riderSnapOf(disp),
     };
+  }
+
+  /** virgin-cycle20 brief 02: the display candidate's last display projection
+   * in degrees — interp1 over the 5 m-resampled reference gives the exact point
+   * on the hit segment; xyToLatLon is the inverse of the toXY the fix went
+   * through. Pure read of stored state; no projector call. */
+  private riderSnapOf(c: Candidate | null): LiveEngineState['riderSnap'] {
+    if (!c || c.lastSnap === null) return null;
+    const { ref } = c;
+    const x = interp1(c.lastSnap.s, ref.ch, ref.rx);
+    const y = interp1(c.lastSnap.s, ref.ch, ref.ry);
+    const [lat, lon] = xyToLatLon(x, y, ref.lat0, ref.lon0);
+    return { lat, lon, xtdM: c.lastSnap.xtdM };
   }
 
   subscribe(fn: (s: LiveEngineState) => void): () => void {
@@ -693,6 +789,15 @@ export class LiveEngine {
 
   private emitDiagnostic(e: DiagnosticEvent): void {
     this.diagListeners.forEach((fn) => { try { fn(e); } catch { /* diagnostics only */ } });
+  }
+
+  /** virgin-cycle20 06: the candidate getState()/recompute() describe — the lock
+   * when there is one; otherwise, under a RECORD-tab pick and until finalize(),
+   * the pick's own candidate (display-only presumption, see the file header). */
+  private displayCand(): Candidate | null {
+    if (this.locked) return this.locked;
+    if (this.pick === null || this.ended) return null;
+    return this.cands.find((c) => c.track === this.pick) ?? null;
   }
 
   /** The overall leader by corridor-verified advance. Exact ties (rare) break
@@ -823,6 +928,9 @@ export class LiveEngine {
     const wasOnWay = c.onWay;
     const fix = c.proj.update(xy.x[0], xy.y[0], tSec);
     c.lastXtd = fix.xtd; // WP-G Part 2 gap-fill: per-candidate deviation for diagnostics
+    // virgin-cycle20 brief 02: display-only rider-dot projection around the
+    // chainage the projector just settled on (see displayProjection).
+    c.lastSnap = displayProjection(c.ref, c.proj.chainage, xy.x[0], xy.y[0]);
     if (c.baseS === null) {
       c.baseS = fix.s;
     } else {
@@ -848,7 +956,7 @@ export class LiveEngine {
    * the offline parity pipeline over the buffer says HOW LONG (raw/stopped/
    * moving) and catches interrupted/offroute. */
   private recompute(): void {
-    const cand = this.locked;
+    const cand = this.displayCand();
     if (!cand) return;
     const gates = cand.gates;
     const nSec = gates.length - 1;
@@ -920,7 +1028,10 @@ export class LiveEngine {
     // D-022 handover: FINISH gate fired => the lap is scored once.
     const evStart = ev[0];
     const evFin = ev[nSec];
-    if (evFin && this.lap === null) {
+    // virgin-cycle20 06: D-022's handover is the LOCKED candidate's alone — a
+    // pre-lock display candidate shows its sectors but never scores a lap nor
+    // flips phase (phase==='finished' gates evaluateLockState; finalize() rules).
+    if (evFin && this.lap === null && cand === this.locked) {
       const anyDirty = out.some(
         (s) => s.kind === 'missed' || (s.kind === 'done' && s.estimated),
       );

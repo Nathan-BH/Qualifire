@@ -411,15 +411,15 @@ function WaySection({
         {r.lengthLabel !== null ? <FactRow label="length" value={r.lengthLabel} t={t} /> : null}
         {r.gatesLabel !== null ? <FactRow label="gates" value={r.gatesLabel} t={t} /> : null}
         {r.gateRows.map((g) => <FactRow key={g.name} label={g.name} value={g.chainageLabel} t={t} />)}
-        <FactRow label="rides on file" value={String(r.ridesOnFile)} t={t} />
+        <FactRow label="activities on file" value={String(r.ridesOnFile)} t={t} />
         <FactRow label="ranked" value={String(r.rankedCount)} t={t} />
         {r.referenceRide !== null ? (
           <Pressable style={st.linkRow} onPress={() => onOpenRide(r.referenceRide!.rideId, r.referenceRide!.startedAtMs)}>
-            <Text style={{ flex: 1, color: t.textDim, fontSize: 13 }}>reference ride</Text>
+            <Text style={{ flex: 1, color: t.textDim, fontSize: 13 }}>reference activity</Text>
             <Text style={{ color: t.text, fontSize: 13 }}>{dateTimeLabel(r.referenceRide.startedAtMs)} ›</Text>
           </Pressable>
         ) : r.referenceUnscored ? (
-          <FactRow label="reference ride" value="on file, not scored" t={t} />
+          <FactRow label="reference activity" value="on file, not scored" t={t} />
         ) : null}
       </View>
 

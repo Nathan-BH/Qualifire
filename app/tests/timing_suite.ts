@@ -217,7 +217,7 @@ test('timing: rideDetailFor prints and judges the scored clock', () => {
   setTimingMode(DEFAULT_TIMING);
 });
 
-test('timing: buildPbDetail orders rides and picks the sector best by the scored clock', () => {
+test('timing: buildPbDetail orders rides by the scored clock', () => {
   const ra: RideResult = {
     kind: 'rideResult', schemaVersion: RESULT_SCHEMA_VERSION, rideId: 'pa', startedAtMs: 1,
     wayId: 'RouteA', source: 'app',
@@ -235,15 +235,11 @@ test('timing: buildPbDetail orders rides and picks the sector best by the scored
   const rawDetail = buildPbDetail([ra, rb], null);
   assert(rawDetail.ranking[0].timeLabel === '14:50',
     `raw: pole should be B's raw time (890), got ${rawDetail.ranking[0].timeLabel}`);
-  assert(rawDetail.pbSectors[0].timeLabel === '7:00.0',
-    `raw: pbSectors should pick B's raw sector (420), got ${rawDetail.pbSectors[0].timeLabel}`);
 
   setTimingMode('moving');
   const movingDetail = buildPbDetail([ra, rb], null);
   assert(movingDetail.ranking[0].timeLabel === '14:40',
     `moving: pole should be A's moving time (880), got ${movingDetail.ranking[0].timeLabel}`);
-  assert(movingDetail.pbSectors[0].timeLabel === '7:10.0',
-    `moving: pbSectors should pick A's moving sector (430), got ${movingDetail.pbSectors[0].timeLabel}`);
 
   setTimingMode(DEFAULT_TIMING);
 });

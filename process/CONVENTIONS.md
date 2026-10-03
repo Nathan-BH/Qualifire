@@ -19,7 +19,7 @@ work to the cheapest model that can hold it.
 | **Digest** | Haiku subagent (Sonnet only where Haiku's read would be unreliable) | Reads the files/state a task needs; produces a condensed, factual, line-anchored digest — exact quotes, line numbers, current behaviour, no design opinion | deciding anything, writing the brief |
 | **Plan** | Frontier — dispatched as `model: "fable"` | Reads the digest, does the thinking: designs the fix, writes a self-contained brief. May open a specific file directly to spot-check an anchor the digest leaves ambiguous, or to dry-run the finished brief | broad exploratory reading of its own |
 | **Execute** | Sonnet subagent | The edits + tests, from the brief alone | redesign, guessing |
-| **Inspect** | Opus subagent, **fresh context** | Adversarial verification; reruns every check itself | trusting the executor's report; editing |
+| **Inspect** | Opus subagent, **fresh context** | Adversarial verification; reruns every check itself — including `tests/run.ts` with the `ui-strings` suite and `git diff -- app/tests/ui-strings.allow.json`: every added/changed entry is quoted in the Inspect report (see § Rider-facing text) | trusting the executor's report; editing |
 
 Binding rules:
 
@@ -62,6 +62,31 @@ Binding rules:
 - **Progress = a checkable artifact.** A file that exists, a test that flipped from FAIL to
   PASS, a change Nathan's actually seen. Not an agent's say-so.
 
+## Rider-facing text (added 2026-10-02 at Nathan's request, virgin-cycle20)
+
+Nathan has had to ask repeatedly to remove sub-labels, hint lines, banners, status lines and long
+alert bodies; these rules are the guardrail so it does not creep back.
+
+- **Minimal.** A figure, a number or one word beats a sentence. No explanatory sub-label under a
+  button; no hint that restates the obvious; no status line about machinery the rider "should not
+  be concerned with" (GPS fix age, route detection, loading).
+- **Warnings use the yellow button's sub-label flash, never a banner.** The pattern is
+  `flashSub(msg, holdMs)` in `RecordScreen.tsx` (virgin-cycle20 08 generalised `flashGpsOff`): the
+  message replaces the button's caption, holds 2 s for GPS off (`GPS_FLASH_HOLD_MS`) or 5 s for a
+  permission problem (`PERM_FLASH_HOLD_MS`), fades, and the caption returns. No `warnBox`-style
+  boxes, no top-of-screen notices.
+- **` · ` not `—`.** Middle dot between fragments; the lone `—` stays only as an empty-value placeholder.
+- **Budgets, enforced by `app/tests/ui_strings_suite.ts`:** every visible string must be in
+  `app/tests/ui-strings.allow.json` (**Nathan's file**) with `reason`/`since`/`by`; >40 chars needs
+  `long: true`; alert bodies ≤ 20 words, no em dash, no banner box — these three cannot be waived
+  (bootstrap `legacy` entries are frozen by count). Agents **append** entries, never regenerate the
+  file, and say in their report exactly which entries they added. Nathan reviews that diff.
+- **Every brief that adds or changes visible text carries an `## Added visible text` table**
+  (`file | kind | exact text | why it earns its place`) — so the decision is made at Plan time,
+  not discovered by the test.
+- **Inspect** runs the suite and diffs the allowlist; any new entry is quoted in its report.
+- **Before launch** the human audit is re-run: `process/CLUTTER-AUDIT-HOWTO.md`.
+
 ## File ownership
 
 - `IDEAS.md` — Nathan's raw idea log. Never edited by an agent.
@@ -97,8 +122,9 @@ migration, don't mutate history.
 ## Verification, every time code lands
 
 ```
-cd app && node --experimental-strip-types tests/run.ts   # zero FAIL
+cd app && node --experimental-strip-types tests/run.ts   # zero FAIL (includes the ui-strings guard)
 cd app && ./node_modules/.bin/tsc --noEmit                # exit 0
+GIT_OPTIONAL_LOCKS=0 git diff --stat -- app/tests/ui-strings.allow.json   # any change → quote the entries in the report
 ```
 
 ## Escalating to Nathan

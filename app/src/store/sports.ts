@@ -213,7 +213,7 @@ export function deleteSport(
   if (!f.sports.some((s) => s.id === id)) return [`unknown sport id: ${id}`];
   if (id === f.activeSportId) return ['cannot delete the active sport — switch to another sport first'];
   if (usage.routes > 0 || usage.rides > 0) {
-    return [`sport "${id}" has ${usage.routes} routes · ${usage.rides} rides — delete those first`];
+    return [`sport "${id}" has ${usage.routes} routes · ${usage.rides} activities — delete those first`];
   }
   return { ...f, sports: f.sports.filter((s) => s.id !== id) };
 }

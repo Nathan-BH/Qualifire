@@ -57,6 +57,7 @@ function stateWith(over: Partial<LiveEngineState>): LiveEngineState {
     gateFires: 5, fixesFed: 900, onWay: true, anyAnchored: false,
     startGateT: null,
     chainageM: null,
+    displayTrack: null,
     ...over,
   } as LiveEngineState;
 }

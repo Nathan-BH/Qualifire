@@ -750,9 +750,9 @@ test('demoModel: plot — demoPlotPosLabel mirrors the real screen\'s P<pos> of 
 });
 
 test('demoModel: plot — demoPlotCaption is the real windowCaption over plotWindow', () => {
-  assert(demoPlotCaption(demoPlotResults('tenth', T)) === 'LAST 9 RIDES', `expected 'LAST 9 RIDES', got ${demoPlotCaption(demoPlotResults('tenth', T))}`);
-  assert(demoPlotCaption(demoPlotResults('second', T)) === 'LAST 2 RIDES', `expected 'LAST 2 RIDES', got ${demoPlotCaption(demoPlotResults('second', T))}`);
-  assert(demoPlotCaption(demoPlotResults('first', T)) === 'LAST 1 RIDE', `expected 'LAST 1 RIDE', got ${demoPlotCaption(demoPlotResults('first', T))}`);
+  assert(demoPlotCaption(demoPlotResults('tenth', T)) === 'LAST 9 ACTIVITIES', `expected 'LAST 9 ACTIVITIES', got ${demoPlotCaption(demoPlotResults('tenth', T))}`);
+  assert(demoPlotCaption(demoPlotResults('second', T)) === 'LAST 2 ACTIVITIES', `expected 'LAST 2 ACTIVITIES', got ${demoPlotCaption(demoPlotResults('second', T))}`);
+  assert(demoPlotCaption(demoPlotResults('first', T)) === 'LAST 1 ACTIVITY', `expected 'LAST 1 ACTIVITY', got ${demoPlotCaption(demoPlotResults('first', T))}`);
 });
 
 test('demoModel: plot — no throw pre-layout (width 0), and a lopsided lap is still honestly fastest', () => {
