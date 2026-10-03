@@ -63,6 +63,8 @@ import './bootstrap_suite.ts';
 import './ridenotification_suite.ts';
 import './riderdot_suite.ts';
 import './ui_strings_suite.ts';
+import './easignore_suite.ts';
+import './seedstubs_suite.ts';
 import { runAll } from './lib.ts';
 
 const { fail } = await runAll();

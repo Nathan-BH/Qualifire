@@ -1,0 +1,28 @@
+# .easignore -- Qualifire (virgin-cycle19 brief 02, refreshed 2026-10-03)
+# EAS CLI archives the WHOLE git repo (git root = this folder; the Expo project is app/).
+# When this file exists EAS CLI uses it INSTEAD of .gitignore for the working-tree copy and
+# strips matching committed files from its clone -- so it must be self-sufficient.
+# Rule: upload app/ and nothing else. Before: 1.1 GB. Simulated after: ~8 MB (2026-10-03).
+# NO trailing slash on directory rules: EAS's copy filter tests directories as "app", not
+# "app/", and "!/app/" would re-include nothing (empty archive, failed build).
+
+# 1. the clone's own .git -- EAS CLI only drops it when this file says so
+.git
+
+# 2. everything at the repo root except app
+/*
+!/app
+
+# 3. inside app: what .gitignore + app/.gitignore exclude, repeated on purpose
+node_modules
+.expo
+/app/dist
+/app/android
+safe_to_delete
+_to_delete
+__pycache__
+*.log
+*.bak
+*.apk
+*.aab
+*.gpx

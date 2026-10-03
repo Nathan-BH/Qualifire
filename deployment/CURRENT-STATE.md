@@ -90,11 +90,11 @@ All manual, all PowerShell, all run on Nathan's Windows PC. Nothing runs in CI.
 
 | Script | Role | Proven? |
 |---|---|---|
-| `scripts/build7.ps1` | Current APK build: EAS Build, profile `preview`, ~10–20 min, needs `-ExecutionPolicy Bypass` | Yes — Build 7 exists (fingerprint `cc04b458…` in `scripts/OTA-TROUBLESHOOTING.md`) |
-| `scripts/build4.ps1` | The underlying engine build7 calls: preflight (npm/node/git/tsc/tests), `eas login` check, `eas build` | Yes — the active runbook per `scripts/README.md` |
+| `scripts/build8.ps1` | Current APK build: preflight for the app as it is now (blank seed + Metro seed redirect, native layer, `.easignore` upload archive), then the `build4.ps1` engine; EAS Build, profile `preview`, ~10-20 min, needs `-ExecutionPolicy Bypass` | Wraps the proven build4 engine; its first build is build 8. Installed today: build 7 (cycle-18 rebuild, fingerprint `610cfe83…` in `scripts/OTA-TROUBLESHOOTING.md`) |
+| `scripts/build4.ps1` | The engine build8 calls (builds 5-7, now in `scripts/legacy/`, called it too): preflight (node/tsc/tests, native slate, variant, icons), `eas login` check, `eas build`. Its route-PNG section was removed 2026-10-03 | Yes — ran builds 5, 6, 7 |
 | `scripts/publish-preview.ps1` | OTA publish: `npx eas-cli update --channel preview --environment preview --platform android`; sets `APP_VARIANT=preview` + `EXPO_PUBLIC_SEED_MODE=empty` locally so the fingerprint matches the build; runs tsc + tests first; ~1–2 min, no build slot | Yes — Build 6 / Build 7 fingerprints recorded; `scripts/OTA-TROUBLESHOOTING.md` exists precisely because this has been exercised and debugged |
 | `scripts/OTA-TROUBLESHOOTING.md` | Fingerprint-mismatch playbook (`eas update:list`, `eas fingerprint:compare`) | Doc, not a script |
-| `scripts/README.md` | Build-tooling lineage build3 → build7 | Doc |
+| `scripts/README.md` | What is in `scripts/` now; lineage build3 → build8 (builds 3, 5-7 in `scripts/legacy/`) | Doc |
 | `app/README-dev.md` | `npm install -g eas-cli`, `eas login`, `eas build --platform android --profile development`; seed-mode env switch | Doc |
 
 Verification gates every script runs before building/publishing (also the gates any

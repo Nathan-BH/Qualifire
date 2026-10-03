@@ -38,6 +38,14 @@
     the on-device checklist are in BUILD-4-RUNBOOK.md at the repo root.
 
     Safe to run as often as you like -- the preflight half never writes.
+
+    2026-10-03 (virgin-cycle19 brief 03): this file is now only the ENGINE
+    that scripts\build8.ps1 calls; it is not run on its own any more. Builds
+    5-7, which also called it, are history in scripts\legacy\ and no longer
+    run. Section 6 (the pre-rendered map PNG check) is removed: the
+    blank-seed app ships no Leuven map assets, and build8.ps1 asserts the
+    Metro seed redirect instead. The text above is build-4 history;
+    build8.ps1's header describes the app as it is now.
 #>
 [CmdletBinding()]
 param(
@@ -89,7 +97,7 @@ $problems = @()
 
 Push-Location $app
 try {
-    Write-Host "Qualifire build 4 -- $BuildProfile" -ForegroundColor White
+    Write-Host "Qualifire build engine (build4.ps1) -- $BuildProfile" -ForegroundColor White
     Say "repo: $repo"
     if ($DryRun) { Warn 'DRY RUN -- checks only, no build will be queued' }
 
@@ -97,7 +105,7 @@ try {
     # 2026-09-06 (build 7): 'virgin' goes through the same gate as 'preview' --
     # both are standalone APKs that bake in whatever JS is on disk right now.
     if ($BuildProfile -in @('preview', 'virgin')) {
-        Step "0. Profile gate -- standalone ($BuildProfile) is barred until the app is finalized"
+        Step "0. Profile gate -- $BuildProfile is a standalone APK that freezes the JS on disk now"
         if (-not ($Force -or $Standalone)) {
             Warn "$BuildProfile/standalone builds need -Standalone (Nathan 2026-08-19: a rebuildable APK that bakes in the CURRENT working tree; build 3's stale-JS failure is the precedent -- commit first, rebuild after every change you want on the phone)."
             $problems += "BuildProfile $BuildProfile requires -Standalone (or -Force)."
@@ -139,7 +147,7 @@ try {
     }
 
     # ----------------------------- 3. native slate -- MapLibre added (B-50/D-041)
-    Step '3. Native slate -- build 4 adds ONE native module since build 3: MapLibre (B-50/D-041)'
+    Step '3. Native slate -- packages and config plugins the APK must contain'
     $pkg  = Get-Content (Join-Path $app 'package.json') -Raw | ConvertFrom-Json
     $deps = $pkg.dependencies.PSObject.Properties.Name
     foreach ($p in @('expo-audio', 'react-native-safe-area-context', '@maplibre/maplibre-react-native')) {
@@ -227,11 +235,11 @@ try {
             }
         }
     } else {
-        Ok "profile is $BuildProfile -- rebuilds the dev client in place. This IS build 4's expected path (Nathan, 2026-08-17): no standalone/preview APK until the app is finalized."
+        Ok "profile is $BuildProfile -- rebuilds the dev client (com.nathanbonher.qualifire) in place; no variant check needed"
     }
 
     # ------------------------------------------------------------- 5. app icon
-    Step '5. Launcher icon (corrected mark -- one of the things build 4 ships)'
+    Step '5. Launcher icon'
     $icon    = Join-Path $app 'assets\icon.png'
     $adaptive = Join-Path $app 'assets\adaptive-icon.png'
     if (Test-Path $icon) { Ok 'assets\icon.png present' } else { $problems += 'assets\icon.png missing' }
@@ -252,26 +260,9 @@ try {
         $problems += "app.json adaptiveIcon.foregroundImage is '$fg', expected ./assets/adaptive-icon.png"
     }
 
-    # -------------------------------------------------------- 6. route assets
-    Step '6. Route map assets (the faked map -- pre-rendered PNGs, no native module)'
-    $routesJson = Join-Path $app 'assets\ways\ways.json'
-    if (Test-Path $routesJson) {
-        $routesDir = Split-Path -Parent $routesJson
-        $rj = Get-Content $routesJson -Raw | ConvertFrom-Json
-        $names = @($rj.ways.PSObject.Properties)
-        Ok "$($names.Count) pre-rendered routes in ways.json"
-        foreach ($n in $names) {
-            if (-not $n.Value.image) { Ok "  $($n.Name) -> (no PNG; MapLibre/path rung only)"; continue }
-            $png = Join-Path $routesDir $n.Value.image
-            if (Test-Path $png) {
-                Ok "  $($n.Name) -> $($n.Value.image)"
-            } else {
-                $problems += "route $($n.Name) points at $($n.Value.image), which is not on disk"
-            }
-        }
-    } else {
-        $problems += 'assets\ways\ways.json missing -- regenerate with python safe_to_delete\virgin-branch-cut-20260831\data\analysis\08_build_route_assets.py (archived 2026-08-31; move it back into the active tree first)'
-    }
+    # (Section 6, the pre-rendered map PNG check, was removed 2026-10-03 by
+    # virgin-cycle19 brief 03: the blank-seed app ships no Leuven map assets;
+    # build8.ps1 asserts the Metro seed redirect instead.)
 
     # ------------------------------------------------------------- the verdict
     Step 'Preflight verdict'
@@ -329,6 +320,6 @@ try {
         Say 'It installs OVER the old preview app (com.nathanbonher.qualifire.preview) and keeps its data.'
     }
     Say 'Status of past builds:  npx.cmd eas-cli build:list'
-    Say 'On-device checklist: see BUILD-4-RUNBOOK.md section 5.'
+    Say 'Fingerprint of this build: npx.cmd eas-cli build:list --platform android --limit 1 (record it in scripts\OTA-TROUBLESHOOTING.md)'
 }
 finally { Pop-Location }

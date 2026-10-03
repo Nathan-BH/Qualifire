@@ -44,12 +44,11 @@ doing anything else:
 
 - **Diff shows a real native change** (new dependency in package.json, an
   app.json/app.config.js plugin or permission, SDK bump) → this is the
-  fingerprint policy doing its job. Clone the highest-numbered
-  `scripts/buildN.ps1` to `build(N+1).ps1` (as of 2026-09-08 that is
-  `build7.ps1` → `build8.ps1`; build 7 was itself the build-6 → build-7
-  fingerprint re-anchor), run it (costs one EAS build slot), install the
-  new APK, then record the new fingerprint in the section below; OTA
-  publishing then works against the new build.
+  fingerprint policy doing its job. Run the current build script,
+  `scripts/build8.ps1` (costs one EAS build slot; builds 3, 5, 6, 7 are
+  history in `scripts/legacy/` since 2026-10-03), install the new APK, then
+  record the new fingerprint in the section below; OTA publishing then
+  works against the new build.
 
 ## Known fingerprints by build
 

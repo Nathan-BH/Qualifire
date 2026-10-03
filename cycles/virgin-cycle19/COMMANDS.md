@@ -56,9 +56,9 @@ powershell -ExecutionPolicy Bypass -File "C:\Users\natha\Claude personal project
 
 First line = the blank-seed bundle (what `publish-preview.ps1` and the preview build produce).
 Expected BEFORE brief 01 (the 2026-09-29 export in `app\dist` already shows exactly this):
-PNGs `Morning,EveningA,EveningB`; seed strings `home2work,seed:2026,WorkHomeDry`; three ~1.3 MB
+PNGs `Morning,EveningA,EveningB`; seed strings `seed:2026,puttestraat,web-mercator`; three ~1.3 MB
 assets; VERDICT "IS in the bundle". Expected AFTER: both lists empty, no asset over 500 KB,
-bundle ~200 KB under 2,622,188 bytes, VERDICT "NOT in the bundle".
+bundle noticeably under 2,622,188 bytes (roughly 0.1-0.25 MB less), VERDICT "NOT in the bundle".
 Second line = the shipped-seed bundle (dev mode); must print all three PNGs before AND after.
 
 ## §5 — Build 8 dry run (after brief 03)
@@ -67,9 +67,10 @@ Second line = the shipped-seed bundle (dev mode); must print all three PNGs befo
 powershell -ExecutionPolicy Bypass -File "C:\Users\natha\Claude personal projects\Qualifire\scripts\build8.ps1" -DryRun
 ```
 
-Expected: every section OK, section 6 "seed not in bundle" + bundle size, section 7 archive
-estimate ~10-20 MB + `.easignore` present, verdict "safe to spend a build", then the
-`eas-cli build` line it would run. The real build, only when a native change needs one:
+Expected (brief 03): sections A-F print only `OK` lines (F may warn about uncommitted files),
+then "Build 8 checks (C-E) verdict" OK, then the build4 engine 0-5, "everything checks out --
+safe to spend a build" and the `eas-cli build` line it would run. No "Route map" section.
+The full expected list is in `03-refresh-build-scripts.md` "Nathan's dry run". The real build:
 
 ```
 powershell -ExecutionPolicy Bypass -File "C:\Users\natha\Claude personal projects\Qualifire\scripts\build8.ps1"

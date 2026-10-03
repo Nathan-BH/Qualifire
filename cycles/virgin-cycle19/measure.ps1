@@ -103,7 +103,7 @@ try {
         Say ("PNGs named in assetmap : " + ($pngs -join ','))
         $hbc = Get-ChildItem (Join-Path $out '_expo\static\js\android') -Filter *.hbc | Select-Object -First 1
         $txt = [Text.Encoding]::GetEncoding(28591).GetString([IO.File]::ReadAllBytes($hbc.FullName))
-        $hits = @('home2work', 'seed:2026', 'WorkHomeDry') | Where-Object { $txt.Contains($_) }
+        $hits = @('seed:2026', 'puttestraat', 'web-mercator') | Where-Object { $txt.Contains($_) }
         Say ("seed strings in bundle : " + ($hits -join ','))
         Say ("bundle bytes           : " + ('{0:N0}' -f $hbc.Length) + "   (2026-09-29 empty export: 2,622,188)")
         Get-ChildItem (Join-Path $out 'assets') | Where-Object { $_.Length -gt 500KB } |

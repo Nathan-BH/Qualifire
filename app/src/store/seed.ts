@@ -61,8 +61,11 @@ export function shippedResults(): RideResult[] {
  * baked into the JS bundle that an empty-seed (virgin) build must not be
  * able to reach — today the route asset manifest (assets/ways/routes.json)
  * and the three pre-rendered route PNGs, both defined in ui/routeMapView.tsx.
- * Static imports are resolved by Metro before any env logic runs, so the
- * bytes still ship; this makes them unreachable: every consumer sees `{}`.
+ * Static imports are resolved by Metro before any env logic runs; since
+ * virgin-cycle19 (2026-10-03) app/metro.config.js redirects the six seed
+ * files to stubs in assets/seed-stubs/ on non-shipped bundles, so the bytes
+ * no longer ship either. This guard stays as the runtime belt to that
+ * braces: every consumer sees `{}`.
  * 'shipped' hands the very same object back (identity preserved — the
  * resolver's manifest-wins-by-identity rule and Nathan's builds are
  * byte-identical). Pure, so the suite can pin both modes. */
