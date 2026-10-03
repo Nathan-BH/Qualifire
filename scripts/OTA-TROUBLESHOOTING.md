@@ -58,8 +58,21 @@ doing anything else:
   the tree (package-lock.json expo-updates 56.0.24 → 56.0.25 plus
   virgin's app.config.js / eas.json additions), which silently blocked
   OTA publishing until build 7.
-- **Build 7** (commit `03710eb`, the re-anchor build; the currently
-  installed preview APK and the build `publish-preview.ps1` targets) —
+- **Build 7, cycle-18 rebuild (2026-09-30)** (commit `ae911bb`, build id
+  `74644fd9-9516-4f31-9cf5-239b1c2909dc`, finished 08:43 local; **the
+  currently installed preview APK and the build `publish-preview.ps1`
+  targets**) — fingerprint/runtime version
+  `610cfe837448add1ccdd3c045eb550c3ac6dcdd3`. Built with the unchanged
+  `build7.ps1` (no build8 script exists). Adds the two native modules of
+  virgin-cycle18 (brief 01 lock screen, brief 03 ride notification +
+  flame icons), which moved the fingerprint. Confirmed via
+  `eas-cli build:list --platform android --build-profile preview`. Use this
+  value for `fingerprint:compare` while this APK is the installed Preview.
+  Publish-preview.ps1 needs no edit: it derives the runtime from the tree,
+  so JS-only OTAs match this build while the native surface is unchanged.
+- **Build 7, original (2026-09-08)** (commit `03710eb`, the re-anchor build;
+  **superseded** by the cycle-18 rebuild above; do not use for
+  `fingerprint:compare`) —
   fingerprint `cc04b4582bf8d69ff768b7e897f786c7a1862e7f`. Confirmed
   2026-09-08 via `eas-cli build:list --platform android --build-profile
   preview --limit 1` (build id `223985de-67e1-4c28-99d1-a13b26765f49`);
