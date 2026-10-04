@@ -24,9 +24,10 @@ cd "C:\Users\natha\Claude personal projects\Qualifire\scripts"
 powershell -ExecutionPolicy Bypass -File .\build8.ps1 -DryRun
 ```
 
-(Double-click alternative: `build8.cmd dry`.) Expect warnings only about untracked folders
-(`cycles/virgin-cycle19`, `virgin-cycle21`, `marketing/assets/fire/web-ideas`) and
-`scripts/OTA-TROUBLESHOOTING.md` — those are not part of cycle 20.
+(Double-click alternative: `build8.cmd dry`.) After cycle 19 landed (2026-10-03) `build8.ps1` was rewritten by cycle 19: the preflight now
+checks steps A-G (update config, blank seed + Metro seed stubs, native layer incl. the two local
+modules and `withShowWhenLocked`, `.easignore` upload archive ~8 MB, working tree, then the
+`build4.ps1` engine). The commands below are unchanged. Builds 5-7 moved to `scripts/legacy/`.
 
 ## 2. Build the APK (npm install, tests, EAS build ~10-20 min, one EAS build slot)
 
