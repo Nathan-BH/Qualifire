@@ -159,7 +159,7 @@ replaced. Vocabulary is post-WP-3: a route is the from→to path, a way is one v
 
 ## Distribution (2026-09-09 pivot — see `deployment/`)
 
-Nathan answered most of `deployment/QUESTIONS-FOR-NATHAN.md` on 2026-09-09; folded into
+Nathan answered most of `deployment/rounds/round1/questions-and-rulings.md` on 2026-09-09; folded into
 `STATE.md`'s ground rules. What that adds here:
 
 - **Package rename to the clean `com.nathanbonher.qualifire` / "Qualifire"** (dropping
@@ -176,13 +176,22 @@ Nathan answered most of `deployment/QUESTIONS-FOR-NATHAN.md` on 2026-09-09; fold
   `app/src/location/index.ts` uses `TaskManager` + `Location.startLocationUpdatesAsync`, and
   `app.json` sets `isAndroidBackgroundLocationEnabled: true` + `ACCESS_BACKGROUND_LOCATION`.
   This raises the cost of the Play route (prominent-disclosure copy, written justification,
-  usually a demo video in review) — factored into `deployment/DEPLOYMENT-OPTIONS.md`.
+  usually a demo video in review) — factored into `deployment/rounds/round1/review.md`.
 - **Signing decided 2026-09-10:** Google generates the Play app-signing key (Q6); no keystore
   backup needed for the Play-signed key (Q7) — Play keeps its own copy. Nothing left open on
   distribution route or signing. Real remaining work, tracked in
-  `deployment/DEPLOYMENT-OPTIONS.md` §0: a `play` EAS build profile, the background-location
+  `deployment/rounds/round1/review.md` §0: a `play` EAS build profile, the background-location
   in-app disclosure UI (can ride along with the Sentry native build), a privacy policy page,
   the Play Console setup itself, and the written background-location justification for review.
+- **Round 2 landed 2026-10-05 (`deployment/rounds/round2/`):** `scripts/publish-play.ps1` exists (never run; its step 0 stops until the `play` profile is back). The `play` profile in `app/eas.json` (store, `.aab`, channel `play`, `autoIncrement`, no `APP_VARIANT`) was drafted, then **backed out the same day**: inspection showed `eas.json` is hashed by the fingerprint, so it would have stopped preview OTAs reaching installed build 7. Draft kept in `deployment/rounds/round2/DEFERRED-eas.json-with-play-profile.json`. **Deferred to one native-build cycle** (adds the `play` profile back, (own `cycles/`
+  folder; trigger = the next native build, i.e. Sentry): `app/fingerprint.config.js` (skip name +
+  package, probably version, so `.preview` and Play hash the same), `app.json` version bump,
+  Sentry, background-location disclosure UI, build `preview` + `play`, verify with
+  `eas fingerprint:compare` that both fingerprints match, first manual `.aab` upload to the Play
+  internal track, then add `-Promote` (`eas update:republish --destination-channel play`) to
+  `publish-play.ps1` and the OTA loop becomes preview → check on phone → republish to `play`.
+  Checklist: `deployment/rounds/round2/PLAN.md` §4. Optional, Nathan-only: download the `.preview`
+  credentials once as a backup (`eas credentials`, interactive).
 
 ## Housekeeping (agent-side, no phone needed)
 

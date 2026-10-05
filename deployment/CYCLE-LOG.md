@@ -9,13 +9,13 @@ if an entry says something was done, name the file/build/commit.
 ## 2026-09-10 — Q6/Q7 decided; all ten questions resolved; update mechanism explained
 
 **Trigger.** Nathan answered the two rewritten signing questions inline, in a file he saved
-as `QUESTIONS-FOR-NATHAN2.md` (the canonical `QUESTIONS-FOR-NATHAN.md` had meanwhile
+as `QUESTIONS-FOR-NATHAN2.md` (the canonical `rounds/round1/questions-and-rulings.md` had meanwhile
 reverted to an older 8,137-byte version without the Q6/Q7 primers). His Q6 answer carried a
 real follow-up question — whether he can still use Expo for updates once the app is on Play,
 or whether Play has its own update tool — and his Q7 answer carried a piece of reasoning he
 asked to have confirmed.
 
-**Decided (Nathan's words quoted in `QUESTIONS-FOR-NATHAN.md`):**
+**Decided (Nathan's words quoted in `rounds/round1/questions-and-rulings.md`):**
 - **Q6 — let Google generate a fresh app-signing key** (option a, the Play Console
   default): "I would go with the play store route so I start from a fresh key." Consequence,
   already explained to him before he chose and now recorded as permanent: the clean package
@@ -31,7 +31,7 @@ asked to have confirmed.
   `.preview` key, of which Expo holds the only copy; that install is being retired (§0
   Step 3), so it's a non-issue in practice. Optional ten-minute export stays available.
 
-**His update question, answered (in `QUESTIONS-FOR-NATHAN.md` Q6 and `DEPLOYMENT-OPTIONS.md`
+**His update question, answered (in `rounds/round1/questions-and-rulings.md` Q6 and `rounds/round1/review.md`
 §0 "Two update paths"):** two independent mechanisms. **Path 1, EAS Update (OTA)** — JS and
 assets via `expo-updates`, published with `eas update` to the build's channel, applied on
 next launch when the native fingerprint matches; does not go through Play, is not reviewed
@@ -45,7 +45,7 @@ There is no separate "Play update tool" — the console *is* it, and only for Pa
 Q6, Path 2 is the only way a native change reaches any phone with the clean package.
 
 **Done (Plan pass, Fable; analysis only, nothing in the app)**
-- `QUESTIONS-FOR-NATHAN.md` — **rewritten in full as the canonical, fully resolved
+- `rounds/round1/questions-and-rulings.md` — **rewritten in full as the canonical, fully resolved
   record**, replacing the stale content at that path. All ten questions in order, each with
   the question as asked, Nathan's quote, and what it settles; Q6/Q7 written up in the same
   "Answered — decided" style as the other eight, with the primer kept as a "Background for
@@ -53,7 +53,7 @@ Q6, Path 2 is the only way a native change reaches any phone with the clean pack
   Q7. Header states it supersedes `QUESTIONS-FOR-NATHAN2.md` and `QUESTIONS-FOR-NATHAN
   (answered before update).md`. Q4/Q8/Q10 "what this settles" lines got one-clause updates
   to reflect Q6.
-- `DEPLOYMENT-OPTIONS.md` — framing note lists Q6/Q7 as decided and states nothing on
+- `rounds/round1/review.md` — framing note lists Q6/Q7 as decided and states nothing on
   route or signing is open; §0 short version, Step 0 (items 1–2 struck: answered / dropped),
   Step 2 (accept the Play App Signing default; EAS keystore auto-registered as upload key)
   updated; **new §0 subsection "Two update paths once Play is live"** with a Path 1 vs
@@ -71,22 +71,22 @@ verify.
 
 **For the coordinator — not done here**
 - **File cleanup:** `QUESTIONS-FOR-NATHAN2.md` and `QUESTIONS-FOR-NATHAN(answered before
-  update).md` are now redundant copies of what `QUESTIONS-FOR-NATHAN.md` holds; safe to
+  update).md` are now redundant copies of what `rounds/round1/questions-and-rulings.md` holds; safe to
   clear out once Nathan agrees. Neither was touched or deleted by this pass.
 - Fold Q6/Q7 into `STATE.md` ("Distribution decisions locked in") and `OPEN-ITEMS.md`
   ("Distribution"): signing = Google-generated key, clean package Play-only, no keystore
   backup scheduled. The earlier note about `STATE.md`/`OPEN-ITEMS.md` overstating tester
   ride-history loss still stands.
 - Relay the update-mechanism answer to Nathan (the Q6 write-up is written to him directly).
-- `README.md` in this folder still describes `DEPLOYMENT-OPTIONS.md` as having "no single
-  recommendation" and `QUESTIONS-FOR-NATHAN.md` as an inbox of pending decisions — both
+- `README.md` in this folder still describes `rounds/round1/review.md` as having "no single
+  recommendation" and `rounds/round1/questions-and-rulings.md` as an inbox of pending decisions — both
   lines are out of date; not edited here (out of scope for this pass).
 
 **Open after this session** — nothing decision-shaped. Work items only:
 - §0 Step 1 repo work: `play` profile in `eas.json`, background-location disclosure UI
   (`cycles/` package, same build as Sentry), privacy-policy page on `marketing/`,
   justification text, store-listing minimums.
-- Background-location cost-reduction check (`[UNVERIFIED]`, `DEPLOYMENT-OPTIONS.md` §3):
+- Background-location cost-reduction check (`[UNVERIFIED]`, `rounds/round1/review.md` §3):
   one Digest pass into `expo-location` to see whether the foreground service alone suffices.
 - Sideload-verification rollout status — one check, now only relevant to Nathan's own
   `.preview` install.
@@ -106,7 +106,7 @@ decisions locked in 2026-09-09") and `OPEN-ITEMS.md` ("Distribution") before thi
 Haiku Digest pass resolved Q9 from the code. This pass brought the `deployment/` folder into
 line with those.
 
-**Decided (Nathan's words quoted in `QUESTIONS-FOR-NATHAN.md`):**
+**Decided (Nathan's words quoted in `rounds/round1/questions-and-rulings.md`):**
 - Q1 Google Play route — the sideload "strange app" warning is the friction to remove.
 - Q2 5–10 testers to start, Android only. Q3 $25 Play fee approved; Apple "would have to
   see if it makes sense financially" → deferred/unfunded. Q4 no timeline pressure.
@@ -122,7 +122,7 @@ prominent-disclosure / written-justification / demo-video requirements now apply
 certain.
 
 **Done (Plan pass, Fable; analysis only, nothing in the app)**
-- `QUESTIONS-FOR-NATHAN.md` — restructured into "Still open" (Q6, Q7) and "Answered".
+- `rounds/round1/questions-and-rulings.md` — restructured into "Still open" (Q6, Q7) and "Answered".
   Q1–Q5, Q8, Q10 marked decided with his quote and what each settles; Q9 marked resolved by
   code check, with a plain-language foreground-vs-background explanation since he asked
   what the difference was; Q5 carries a "you should know" note on ride-history loss —
@@ -134,7 +134,7 @@ certain.
   `.preview` install" moot, and Q10 means no tester install exists to strand — what Q6
   still decides is whether Play installs and EAS-built APKs of the clean package are ever
   interchangeable. `[ASSUMPTION]`-tagged lean recorded (upload the EAS key, if Q7 is yes).
-- `DEPLOYMENT-OPTIONS.md` — framing note now lists the decisions; §0 rewritten from
+- `rounds/round1/review.md` — framing note now lists the decisions; §0 rewritten from
   "recommendation and staging" to a concrete step order (Step 0 Nathan-present hygiene +
   Q6/Q7; Step 1 repo work incl. the background-location disclosure UI, privacy page on
   `marketing/`, justification text, `play` profile; Step 2 Play Console → internal → closed
@@ -171,7 +171,7 @@ verify.
 **Open after this session**
 - **Q6 and Q7 — waiting on Nathan**, now that they're explained. Q6 is permanent at first
   Play upload; Q7 needs him at the keyboard for ~10 minutes.
-- Background-location cost-reduction check (`[UNVERIFIED]`, `DEPLOYMENT-OPTIONS.md` §3):
+- Background-location cost-reduction check (`[UNVERIFIED]`, `rounds/round1/review.md` §3):
   does `expo-location`'s `startLocationUpdatesAsync` work with a while-in-use foreground
   service and no `ACCESS_BACKGROUND_LOCATION`? One Digest pass; decides whether the
   disclosure/justification/video work can be avoided.
@@ -186,7 +186,7 @@ verify.
 
 **Trigger.** Nathan, in chat: Qualifire "is not a personal app for myself anymore, but
 something i want people to be able to try out" — the virgin build and the deployment /
-marketing effort exist *because of* that. This answers Q1 of `QUESTIONS-FOR-NATHAN.md`,
+marketing effort exist *because of* that. This answers Q1 of `rounds/round1/questions-and-rulings.md`,
 which was the question this whole folder was waiting on.
 
 **Already landed before this pass (coordinator, not re-described here):** `STATE.md`
@@ -196,7 +196,7 @@ opening blurb was updated to match. This folder's job was to stop sounding out o
 with those.
 
 **Done (Plan pass, Fable; analysis only, nothing in the app)**
-- `DEPLOYMENT-OPTIONS.md` — rewritten from "deliberately no recommendation" to a
+- `rounds/round1/review.md` — rewritten from "deliberately no recommendation" to a
   recommendation. New framing note at the top (goal decided; what the pivot does and
   doesn't settle). New **§0 Recommendation and staging**: route-independent hygiene now
   (keystore backup, background-location check, sideload-verification status check,
@@ -212,7 +212,7 @@ with those.
   first" — a sequencing argument, no longer a fit-with-the-record one. §5 iOS and §6
   cross-cutting content unchanged in substance (one-line notes that the pivot doesn't
   touch Android-only, and that keystore backup is now staging step 1).
-- `QUESTIONS-FOR-NATHAN.md` — Q1 marked answered with the quote; spelled out what it
+- `rounds/round1/questions-and-rulings.md` — Q1 marked answered with the quote; spelled out what it
   settles (store distribution in scope; at least option (b), (c) left open) and what it
   does *not* (invited-vs-public, scale, timeline, package name, signing, in-app model).
   Q2 reworded from "the testers you have in mind" to "the first people to try it" with a
@@ -264,12 +264,12 @@ Tests/tsc not run — nothing to verify.
   `.aab` profile, no store presence, no iOS, no CI, no crash reporting, keystore lives only
   in the EAS account (backup status unknown). Quoted the `STATE.md` ground rule
   ("no store distribution") verbatim.
-- `DEPLOYMENT-OPTIONS.md`: five routes (status quo; smoother sideloading via EAS links /
+- `rounds/round1/review.md`: five routes (status quo; smoother sideloading via EAS links /
   download page / Obtainium / Firebase App Distribution; Play internal-closed testing;
   Play public; iOS scoping) plus cross-cutting concerns (signing continuity, the
   `.preview` package-name split, crash reporting, versioning, EAS free tier) and a
   comparison table. No recommendation — the goal isn't decided.
-- `QUESTIONS-FOR-NATHAN.md`: ten questions. Q1 (does the app ever leave Nathan's/testers'
+- `rounds/round1/questions-and-rulings.md`: ten questions. Q1 (does the app ever leave Nathan's/testers'
   phones — direct conflict with the `STATE.md` rule) gates the store routes; Q7–Q9
   (keystore backup, crash reporting, background-location check) are route-independent.
 - `TOKEN-USAGE.md`: running readout table started with today's Digest + Plan rows
@@ -280,7 +280,7 @@ publish, no git operations (the `device_bash` mount was unavailable this session
 were written through `device_commit_files`). Tests/tsc not run — nothing to verify.
 
 **Open after this session**
-- Nathan's answers to `QUESTIONS-FOR-NATHAN.md`, Q1 first.
+- Nathan's answers to `rounds/round1/questions-and-rulings.md`, Q1 first.
 - Check current status of Google's Android developer-verification-for-sideloading rollout
   (announced 2025, phased from late 2026) — it's the one external factor that could force
   a decision; every mention in this folder is `[UNVERIFIED]`.

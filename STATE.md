@@ -28,7 +28,7 @@ alone — the empty-seed `virgin` build (autonomous from a blank install, nothin
 baked in), the `deployment/` folder's distribution work, and a separately-run `marketing/`
 effort (video teasers + a landing page, its own cycle process — see `marketing/README.md`)
 all exist *because of* this goal, not as separate side-quests. See
-`deployment/DEPLOYMENT-OPTIONS.md` and `deployment/QUESTIONS-FOR-NATHAN.md` for the actual
+`deployment/rounds/round1/review.md` and `deployment/rounds/round1/questions-and-rulings.md` for the actual
 distribution route and what's still open; Nathan answered most of the open questions the same
 day (below).
 
@@ -228,7 +228,7 @@ Distilled from `main`'s decision log 2026-08-31 — only what still actually con
 virgin prototype. Full rationale/history for any of these is on `main` if ever needed.
 
 - **Distribution decisions locked in 2026-09-09** (Nathan's answers, folded from
-  `deployment/QUESTIONS-FOR-NATHAN.md`): targeting **Google Play** (closed testing first, not
+  `deployment/rounds/round1/questions-and-rulings.md`): targeting **Google Play** (closed testing first, not
   a public listing yet) — sideloading's Android "unknown sources" warning is too much friction
   for new testers. **5–10 testers to start, Android only** (iPhone testers explicitly
   deferred). The Play listing will use the **clean package name `com.nathanbonher.qualifire`
@@ -240,14 +240,14 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
   foreground (`expo-location` plugin config + `ACCESS_BACKGROUND_LOCATION` +
   `Location.startLocationUpdatesAsync`/`TaskManager` in `app/src/location/index.ts`) — this
   adds Play's prominent-disclosure/justification/demo-video review requirements to the Play
-  route (see `deployment/DEPLOYMENT-OPTIONS.md`). **Signing decided 2026-09-10: Google
+  route (see `deployment/rounds/round1/review.md`). **Signing decided 2026-09-10: Google
   generates the Play app-signing key** (not the existing EAS one) — the clean package becomes
   Play-only permanently (no interchangeable sideload), which matches "everyone gets it from
   Play" (Q1). **No keystore backup scheduled** — Play holds its own copy of the key it
   generates, so losing the Expo account wouldn't strand the Play-distributed app; the one
   narrow exception is Nathan's own `.preview` phone, which Step 3 of the plan retires anyway.
-  Nothing on distribution route or signing is open — see `deployment/QUESTIONS-FOR-NATHAN.md`
-  for the full record and `deployment/DEPLOYMENT-OPTIONS.md` §0 for what's left to actually do.
+  Nothing on distribution route or signing is open — see `deployment/rounds/round1/questions-and-rulings.md`
+  for the full record and `deployment/rounds/round1/review.md` §0 for what's left to actually do.
 - **"No accounts, no social" still stands** — the pivot and the above are about distribution
   reach, not the in-app model; that's a separate call Nathan hasn't made.
 - **Scoring:** three colour tiers (purple/green/yellow). **Reverted 2026-09-16

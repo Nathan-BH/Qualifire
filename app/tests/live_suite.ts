@@ -36,29 +36,23 @@ registerHooks({
     return nextLoad(url, context);
   },
 });
-const { LiveEngine, LOCK_MIN_ADVANCE_M, LOCK_MARGIN_M, POOR_ACCURACY_M, REACQ_JUMP_M } =
-  await import('../src/live/engine.ts');
+const { LiveEngine, POOR_ACCURACY_M } = await import('../src/live/engine.ts');
 const { catalogTrackSpecs } = await import('../src/live/tracks.ts');
-
-const TRACKS: readonly TrackId[] = ['Morning', 'EveningA', 'EveningB'];
-/** slack on lock-advance bounds: one 1 Hz fix at e-bike speed + ref resampling */
-const LOCK_SLACK_M = 80;
 
 interface DriveResult {
   engine: InstanceType<typeof LiveEngine>;
   final: LiveEngineState;
-  /** fixesFed at the first emit with a non-null track (the lock moment) */
+  /** fixesFed at the first emit with a non-null track (0 = from start()) */
   lockAt: number | null;
   emits: number;
   lastEmitted: LiveEngineState | null;
 }
 
-/** `specs` defaults to the legacy four-track set (the existing suites' whole
- * point is auto-lock mechanics, not the catalog); pass `catalogTrackSpecs()`
- * explicitly for the cycle-024 full-catalog regression tests. `pickId`
- * (cycle 024) pre-seeds the RECORD-tab pick via an explicit start() before
- * the feed loop — undefined leaves feed()'s own no-pick auto-start untouched
- * (byte-identical to pre-024 behaviour for every caller that omits it). */
+/** `specs` defaults to the legacy four-track set; pass `catalogTrackSpecs()`
+ * explicitly for the full-catalog tests. `pickId` pre-seeds the START pick via
+ * an explicit start() before the feed loop (virgin-cycle21: the pick is the
+ * engine's one reference) — undefined leaves feed()'s own no-pick auto-start
+ * untouched, which yields NO reference. */
 function drive(
   f: Fixture, fromIndex = 0, specs?: TrackSpec[], pickId?: string | null,
 ): DriveResult {
@@ -79,31 +73,6 @@ function drive(
   return { engine, final: engine.getState(), lockAt, emits, lastEmitted };
 }
 
-/** Candidate-advance replica: same LiveProjector + same refs the engine uses,
- * measured from the first fed fix — mirrors Candidate.adv exactly.
- * `discount` mirrors cycle 024's REACQ_JUMP_M rule plus cycle-2 WP-D's
- * off-route-rejoin rule (a D-016(a) re-acquisition teleport, or any advance
- * landing on the first on-route fix after an off-route one, is not lock
- * evidence); pass false to measure the RAW chainage delta the pre-024 engine
- * used, which is what the shadow-lock test below needs. */
-function advanceAt(f: Fixture, track: TrackId, nFixes: number, fromIndex = 0, discount = true): number {
-  const ref = refFor(track);
-  const proj = new LiveProjector(ref);
-  let base: number | null = null;
-  let adv = 0;
-  let wasOnWay = false; // Candidate.onRoute starts false (engine.ts :429)
-  for (let i = fromIndex; i < fromIndex + nFixes; i++) {
-    const before = proj.chainage;
-    const xy = toXY([f.fixes.lat[i]], [f.fixes.lon[i]], ref.lat0, ref.lon0);
-    const fix = proj.update(xy.x[0], xy.y[0], f.fixes.t[i]);
-    if (base === null) base = fix.s;
-    else if (discount && (proj.chainage - before > REACQ_JUMP_M || !wasOnWay)) base += proj.chainage - before;
-    wasOnWay = fix.onRoute;
-    adv = proj.chainage - base;
-  }
-  return adv;
-}
-
 function assertDoneReal(ctx: string, s: LiveSector, row: SectorRow, tol = 2e-6): void {
   assert(s.kind === 'done', `${ctx}: kind ${s.kind}, want done`);
   assert(!s.estimated, `${ctx}: marked estimated on a real crossing`);
@@ -114,50 +83,17 @@ function assertDoneReal(ctx: string, s: LiveSector, row: SectorRow, tol = 2e-6):
   assert(numEq(s.movingS, row.movingS, tol), `${ctx}: movingS ${s.movingS} != offline ${row.movingS}`);
 }
 
-test('live: engine importable headless (Metro shim) — lock constants as documented', () => {
+test('live: engine importable headless (Metro shim) — the engine exports no lock constants', () => {
   assert(typeof LiveEngine === 'function', 'LiveEngine not exported');
-  assert(LOCK_MIN_ADVANCE_M === 400, `LOCK_MIN_ADVANCE_M ${LOCK_MIN_ADVANCE_M}, doc says 400`);
-  assert(LOCK_MARGIN_M === 200, `LOCK_MARGIN_M ${LOCK_MARGIN_M}, doc says 200`);
+  assert(POOR_ACCURACY_M === 50, `POOR_ACCURACY_M ${POOR_ACCURACY_M}, doc says 50`);
 });
-
-// --------------------------------------------------------- route auto-lock
-
-for (const name of ['clean_morning', 'clean_eveninga', 'clean_eveningb'] as const) {
-  test(`live: ${name} auto-locks the right track within the documented advance bounds`, () => {
-    const f = loadFixture(name);
-    const { final, lockAt } = drive(f);
-    assert(final.track === f.track, `locked ${final.track}, want ${f.track}`);
-    assert(final.phase === 'finished', `phase ${final.phase}, want finished`);
-    assert(lockAt !== null, 'never locked');
-    const advOwn = advanceAt(f, f.track, lockAt);
-    // ~400 m rule: lock as soon as the leader has LOCK_MIN_ADVANCE_M of route
-    assert(advOwn >= LOCK_MIN_ADVANCE_M && advOwn <= LOCK_MIN_ADVANCE_M + LOCK_SLACK_M,
-      `lock advance ${advOwn.toFixed(1)} m outside [${LOCK_MIN_ADVANCE_M}, ${LOCK_MIN_ADVANCE_M + LOCK_SLACK_M}]`);
-    // margin rule vs every other candidate at the lock moment
-    let maxSib = 0;
-    for (const tr of TRACKS) {
-      if (tr === f.track) continue;
-      maxSib = Math.max(maxSib, advanceAt(f, tr, lockAt));
-    }
-    assert(advOwn - maxSib >= LOCK_MARGIN_M,
-      `lock margin ${(advOwn - maxSib).toFixed(1)} m < ${LOCK_MARGIN_M}`);
-    if (f.track === 'EveningA' || f.track === 'EveningB') {
-      // post-split bound: the sibling evening candidate freezes at the physical
-      // split; the lock must land within ~LOCK_MIN_ADVANCE_M past that point.
-      const sibling: TrackId = f.track === 'EveningA' ? 'EveningB' : 'EveningA';
-      const advSib = advanceAt(f, sibling, lockAt);
-      assert(advOwn - advSib <= LOCK_MIN_ADVANCE_M + LOCK_SLACK_M,
-        `locked ${(advOwn - advSib).toFixed(1)} m past the A/B split freeze — beyond the documented bound`);
-    }
-  });
-}
 
 // ------------------------------------------- parity anchor: displayed times
 
 test('live: clean rides — 5 real fires each; displayed sector + lap times equal the offline pipeline', () => {
   for (const name of ['clean_morning', 'clean_eveninga', 'clean_eveningb'] as const) {
     const f = loadFixture(name);
-    const { final } = drive(f);
+    const { final } = drive(f, 0, undefined, f.track);
     assert(final.gateFires === f.expected.live.events.length,
       `${name}: ${final.gateFires} fires, snapshot has ${f.expected.live.events.length}`);
     assert(final.lastDone === 4, `${name}: lastDone ${final.lastDone}`);
@@ -178,7 +114,7 @@ test('live: clean rides — 5 real fires each; displayed sector + lap times equa
 
 test('live: gap_20260521 — gap-bounded sectors surface estimated: ~raw from live events, no moving time', () => {
   const f = loadFixture('gap_20260521');
-  const { final } = drive(f);
+  const { final } = drive(f, 0, undefined, f.track);
   assert(final.track === 'Morning' && final.phase === 'finished', 'wrong track/phase');
   const ev = f.expected.live.events; // G3 and G4 fire estimated in the snapshot
   for (let i = 0; i < 2; i++) assertDoneReal(`S${i + 1}`, final.sectors[i], f.expected.offline[i]);
@@ -194,7 +130,7 @@ test('live: gap_20260521 — gap-bounded sectors surface estimated: ~raw from li
 
 test('live: latelock_20260805 — START skipped => sector 1 missed, lap never scored real', () => {
   const f = loadFixture('latelock_20260805');
-  const { final } = drive(f);
+  const { final } = drive(f, 0, undefined, f.track);
   assert(final.sectors[0].kind === 'missed' && final.sectors[0].reason === 'skipped',
     `S1 ${JSON.stringify(final.sectors[0])}, want missed:skipped`);
   for (let i = 1; i < 4; i++) assertDoneReal(`S${i + 1}`, final.sectors[i], f.expected.offline[i]);
@@ -205,7 +141,7 @@ test('live: latelock_20260805 — START skipped => sector 1 missed, lap never sc
 
 test('live: detour_eveningb — offroute/estimated sectors never show a real coloured time (D-015/D-013)', () => {
   const f = loadFixture('detour_eveningb');
-  const { final } = drive(f);
+  const { final } = drive(f, 0, undefined, f.track);
   assert(final.track === 'EveningB', `locked ${final.track}`);
   // S1 offline flag 'interrupted' with real bounding fires: real numbers, interrupted set
   assertDoneReal('S1', final.sectors[0], f.expected.offline[0]);
@@ -224,57 +160,9 @@ test('live: detour_eveningb — offroute/estimated sectors never show a real col
     'detour lap must be estimated with no moving time');
 });
 
-test('live: a re-acquisition jump is not lock evidence — the promoted MorningB line must not steal the Morning commute (cycle 024)', () => {
-  // WP-D1 promoted MorningB's reference onto Nathan's real 2026-08-19
-  // home>work route-B ride. That line leaves home on the same streets as
-  // Morning, diverges after ~50 m, and passes back within the 40 m corridor
-  // around 460 m of ground. D-016(a) then re-acquires MorningB hundreds of
-  // metres downstream in a SINGLE fix. Before cycle 024 the lock race counted
-  // that teleport as advance and locked MorningB on a Morning commute — the
-  // daily ride, mis-scored. This test pins both halves: the pathology is real
-  // in the data, and the engine is immune to it.
-  const f = loadFixture('clean_morning');
-  const { final, lockAt } = drive(f);
-  assert(final.track === 'Morning', `locked ${final.track}, want Morning`);
-  assert(lockAt !== null, 'never locked');
-
-  const rawShadow = advanceAt(f, 'MorningB' as TrackId, lockAt!, 0, false);
-  const honestOwn = advanceAt(f, 'Morning', lockAt!);
-  assert(rawShadow - honestOwn >= LOCK_MARGIN_M && rawShadow >= LOCK_MIN_ADVANCE_M,
-    `the shadow pathology has gone away (raw MorningB delta ${rawShadow.toFixed(1)} m vs Morning ` +
-      `${honestOwn.toFixed(1)} m) — this test no longer proves anything; re-derive it`);
-
-  const honestShadow = advanceAt(f, 'MorningB' as TrackId, lockAt!);
-  assert(honestOwn - honestShadow >= LOCK_MARGIN_M,
-    `corridor-verified margin ${(honestOwn - honestShadow).toFixed(1)} m < ${LOCK_MARGIN_M}: ` +
-      `MorningB earned ${honestShadow.toFixed(1)} m of real advance on a Morning ride`);
-  // The projector's forward search window is 240 m, but a windowed lookup can still land on
-  // the reference vertex just past the window edge (this app's ~5 m resampling), so ordinary
-  // projection can advance up to ~245 m in one fix — REACQ_JUMP_M must clear that, not just
-  // the raw window, or a normal fast/sparse-fix advance gets misclassified as a re-acquisition
-  // (adversarial review 2026-08-23: reproduced up to 245.0 m of ordinary windowed advance).
-  assert(REACQ_JUMP_M > 240,
-    `REACQ_JUMP_M ${REACQ_JUMP_M} must exceed the projector's 240 m forward window by a real ` +
-      'margin (windowed projection can reach ~245 m in one fix), or ordinary projection would ' +
-      'be discounted as a re-acquisition');
-});
-
-test('live: wrongdir_eveninga fixes (a real Morning ride) — auto-detect locks Morning, times it fully', () => {
-  // engine_suite proves a single EveningA detector rejects this ride; the
-  // wiring-level truth is stronger: with all three candidates running, the
-  // engine simply recognizes the ride for what it is.
-  const f = loadFixture('wrongdir_eveninga');
-  const { final } = drive(f);
-  assert(final.track === 'Morning', `locked ${final.track}, want Morning (auto-detect rescue)`);
-  assert(final.phase === 'finished' && final.gateFires === 5, `phase ${final.phase}, fires ${final.gateFires}`);
-  assert(final.sectors.every((s) => s.kind === 'done' && !s.estimated),
-    `sectors [${final.sectors.map((s) => s.kind)}] not all real`);
-  assert(final.lap !== null && !final.lap.estimated && final.lap.movingS !== null, 'lap not scored real');
-});
-
 test('live: synthetic_truncated — mid-ride kill: locked but unfinished, S3 current, no lap, no fabricated gates', () => {
   const f = loadFixture('synthetic_truncated');
-  const { final } = drive(f);
+  const { final } = drive(f, 0, undefined, f.track);
   assert(final.phase === 'locked' && final.track === 'Morning', `phase ${final.phase}/${final.track}`);
   assert(final.gateFires === 3 && final.lastDone === 2, `fires ${final.gateFires}, lastDone ${final.lastDone}`);
   assertDoneReal('S1', final.sectors[0], f.expected.offline[0]);
@@ -287,21 +175,21 @@ test('live: synthetic_truncated — mid-ride kill: locked but unfinished, S3 cur
 
 test('live: synthetic_firstride — full real sectors and lap with zero benchmark history', () => {
   const f = loadFixture('synthetic_firstride');
-  const { final } = drive(f);
+  const { final } = drive(f, 0, undefined, f.track);
   assert(final.track === 'EveningB' && final.phase === 'finished', `${final.track}/${final.phase}`);
   for (let i = 0; i < 4; i++) assertDoneReal(`S${i + 1}`, final.sectors[i], f.expected.offline[i]);
   assert(final.lap !== null && !final.lap.estimated && final.lap.movingS !== null,
     'first-ever ride must still score a real lap (colour stays blank at the benchmark layer, D-008/D-021)');
 });
 
-test('live: mid-ride JS relaunch (feed while idle) — auto-start; sectors behind missed, sectors ahead at full parity', () => {
+test('live: engine started mid-ride on a pick (partial buffer) — sectors behind missed, sectors ahead at full parity', () => {
   const f = loadFixture('clean_morning');
   const ev = f.expected.live.events;
   const from = f.fixes.t.findIndex((t) => t >= (ev[2].t + ev[3].t) / 2); // between G2 and G3
   assert(from > 0, 'could not find a mid-sector-3 restart fix');
-  const { final, lockAt } = drive(f, from);
+  const { final, lockAt } = drive(f, from, undefined, f.track);
   assert(final.phase === 'finished' && final.track === 'Morning', `${final.phase}/${final.track}`);
-  assert(lockAt !== null, 'never re-locked after relaunch');
+  assert(lockAt === 0, `reference not present from start() after relaunch (first track at fix ${lockAt})`);
   for (let i = 0; i < 3; i++) {
     assert(final.sectors[i].kind === 'missed',
       `S${i + 1} after relaunch: ${JSON.stringify(final.sectors[i])}, want missed`);
@@ -319,7 +207,7 @@ test('live: honesty invariants across all fixtures — estimated => no moving/st
     'latelock_20260805', 'detour_eveningb', 'synthetic_truncated', 'synthetic_firstride'] as const;
   for (const name of names) {
     const f = loadFixture(name);
-    const { final } = drive(f);
+    const { final } = drive(f, 0, undefined, f.track);
     for (const [i, s] of final.sectors.entries()) {
       if (s.kind === 'done' && s.estimated) {
         assert(s.movingS === null && s.stoppedS === null,
@@ -374,20 +262,17 @@ test('live: subscribe contract — one emit per feed (+start), snapshot equals g
 
 // ------------------------------------------------------- GPX+ engine events
 
-test('live: engine events (GPX+) — clean_morning emits exactly one lock + gate events matching the live snapshot', () => {
+test('live: engine events (GPX+) — clean_morning (picked) emits gate events only, matching the live snapshot, and no lock event', () => {
   const f = loadFixture('clean_morning');
   const engine = new LiveEngine(fixtureSpecs());
   const evts: { type: string; track: TrackId; atChainageM?: number; gateIndex?: number; t?: number; estimated?: boolean }[] = [];
   const unsub = engine.subscribeEvents((e) => evts.push(e));
+  engine.start({ pickId: f.track });
   for (let i = 0; i < f.fixes.t.length; i++) {
     engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
   }
   unsub();
-  const locks = evts.filter((e) => e.type === 'lock');
-  assert(locks.length === 1, `${locks.length} lock events, want exactly 1`);
-  assert(locks[0].track === f.track, `lock track ${locks[0].track}, want ${f.track}`);
-  assert(locks[0].atChainageM! >= LOCK_MIN_ADVANCE_M,
-    `lock atChainageM ${locks[0].atChainageM} below the lock-advance threshold ${LOCK_MIN_ADVANCE_M}`);
+  assert(evts.every((e) => e.type === 'gate'), `non-gate engine events: ${JSON.stringify(evts.filter((e) => e.type !== 'gate'))}`);
   const gates = evts.filter((e) => e.type === 'gate');
   const expected = f.expected.live.events;
   assert(gates.length === expected.length, `${gates.length} gate events, want ${expected.length}`);
@@ -440,6 +325,7 @@ test('live: cycle 023 fix 2 — a poor-accuracy first fix recovers via the singl
   const engine = new LiveEngine(fixtureSpecs());
   const diag: DiagnosticEvent[] = [];
   engine.subscribeDiagnostics((e) => diag.push(e));
+  engine.start({ pickId: 'Morning' });
 
   let tMs = 1755167000000;
   // fix 0: bad anchor — geometrically near chainage 4000 m, poor accuracy
@@ -481,6 +367,7 @@ test('live: cycle 023 fix 2 guard — a candidate anchored with GOOD accuracy is
   const engine = new LiveEngine(fixtureSpecs());
   const diag: DiagnosticEvent[] = [];
   engine.subscribeDiagnostics((e) => diag.push(e));
+  engine.start({ pickId: 'Morning' });
 
   let tMs = 1755167000000;
   for (let i = 0; i <= 40; i++) {
@@ -506,23 +393,19 @@ test('live: cycle 023 fix 5a — routeMatchAttempt diagnostics are a channel dis
   const u1 = engine.subscribe((s) => stateEmits.push(s));
   const u2 = engine.subscribeEvents((e) => engineEvts.push(e));
   const u3 = engine.subscribeDiagnostics((e) => diagEvts.push(e));
+  engine.start({ pickId: 'Morning' });
   for (let i = 0; i < f.fixes.t.length; i++) {
     engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
   }
   u1(); u2(); u3();
-  assert(diagEvts.length > 0, 'no diagnostics emitted at all on a normal clean lock');
-  const lockDiag = diagEvts.find((d) => d.phase === 'lock' && d.track === 'Morning');
-  assert(lockDiag !== undefined, 'no lock-phase diagnostic emitted for the winning candidate');
-  // WP-G Part 2 gap-fill: the winning candidate's own deviation is known at
-  // lock time (it has just been fed), so xtdM must be a real number, not null.
-  assert(typeof lockDiag!.xtdM === 'number', `lock diagnostic xtdM should be a number, got ${lockDiag!.xtdM}`);
-  // all four candidates anchor (one 'anchor' diagnostic each) even though only
-  // the winner ever reaches subscribeEvents()/the ride record — diagnostics
-  // see every attempt, not just the one that wins (that's the whole point).
-  const anchoredTracks = new Set(diagEvts.filter((d) => d.phase === 'anchor').map((d) => d.track));
-  assert(anchoredTracks.size === 4, `${anchoredTracks.size} candidates anchored, want all 4`);
+  assert(diagEvts.length > 0, 'no diagnostics emitted at all on a normal clean ride');
+  assert(!diagEvts.some((d) => (d.phase as string) === 'lock'), 'a lock-phase diagnostic was emitted — locking is retired');
+  // virgin-cycle21: exactly one candidate (the pick's) exists, so exactly one anchor.
+  const anchorDiags = diagEvts.filter((d) => d.phase === 'anchor');
+  assert(anchorDiags.length === 1 && anchorDiags[0].track === 'Morning' && typeof anchorDiags[0].xtdM === 'number',
+    `anchor diagnostics ${JSON.stringify(anchorDiags)}, want exactly one, on Morning, with a numeric xtdM`);
   // state emits once per feed (+1 for auto-start); diagnostics only fire on
-  // anchor/retry/lock attempts, which is far fewer than one-per-fix — proof
+  // anchor/retry attempts, which is far fewer than one-per-fix — proof
   // the two channels run on genuinely different cadences, not just different
   // Sets carrying the same volume of traffic.
   assert(stateEmits.length === f.fixes.t.length + 1, `${stateEmits.length} state emits, want ${f.fixes.t.length + 1}`);
@@ -561,16 +444,13 @@ test('live (WP-1 C3): start({ wayIds: [] }) arms zero candidates — [] means "n
   assert(st.gateFires === 0, 'no candidate exists to fire a gate');
 });
 
-test('live: pick honoured — clean_eveningb with pick=EveningB matches the no-pick lock exactly', () => {
+test('live: pick honoured — clean_eveningb with pick=EveningB is the reference from the first fix; only gate events are recorded', () => {
   const f = loadFixture('clean_eveningb');
-  const noPick = drive(f);
   const picked = drive(f, 0, fixtureSpecs(), 'EveningB');
-  assert(picked.lockAt === noPick.lockAt,
-    `pick=EveningB locked at fix ${picked.lockAt}, no-pick locked at ${noPick.lockAt} — the pick must not change lock timing when it agrees with the ride`);
-  assert(picked.final.track === 'EveningB' && picked.final.lockKind === 'verified',
-    `track ${picked.final.track}, lockKind ${picked.final.lockKind}`);
-  assert(picked.final.pick === 'EveningB' && picked.final.pickHonoured,
-    `pick ${picked.final.pick}, pickHonoured ${picked.final.pickHonoured}`);
+  assert(picked.lockAt === 0, `the pick was not the reference from start() (first track at fix ${picked.lockAt})`);
+  assert(picked.final.track === 'EveningB' && picked.final.phase === 'finished',
+    `track ${picked.final.track}, phase ${picked.final.phase}`);
+  assert(picked.final.pick === 'EveningB', `pick ${picked.final.pick}`);
 
   const engine = new LiveEngine(fixtureSpecs());
   const evts: EngineEvent[] = [];
@@ -578,15 +458,14 @@ test('live: pick honoured — clean_eveningb with pick=EveningB matches the no-p
   engine.start({ pickId: 'EveningB' });
   for (let i = 0; i < f.fixes.t.length; i++) engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
   unsub();
-  const locks = evts.filter((e): e is Extract<EngineEvent, { type: 'lock' }> => e.type === 'lock');
-  assert(locks.length === 1, `${locks.length} lock events, want exactly 1`);
-  assert(locks[0].pick === 'EveningB', 'lock event does not carry the pick');
+  assert(evts.length > 0 && evts.every((e) => e.type === 'gate' && e.track === 'EveningB'),
+    `events ${JSON.stringify(evts)} — want only gate events on EveningB`);
 });
 
 test('live: pick wrong — clean_eveningb with pick=EveningA is a HARD pick: the ridden route (EveningB) is never locked, never displayed', () => {
   // Nathan 2026-08-29: what you pick stays locked until the end. A wrong pick
   // therefore never gets "rescued" onto the ridden road — the invariant is
-  // that no lock or gate event, and no final track, ever names EveningB.
+  // that no gate event, and no final track, ever names EveningB.
   const f = loadFixture('clean_eveningb');
   const engine = new LiveEngine(fixtureSpecs());
   const evts: EngineEvent[] = [];
@@ -598,27 +477,13 @@ test('live: pick wrong — clean_eveningb with pick=EveningA is a HARD pick: the
   const final = engine.getState();
   assert(final.track !== 'EveningB', 'a hard pick of EveningA must never end up displaying EveningB');
   assert(final.track === null || final.track === 'EveningA', `final track ${final.track}, want null or EveningA`);
-  assert(final.pick === 'EveningA' && final.pickHonoured === (final.track === 'EveningA'),
-    `pick ${final.pick}, pickHonoured ${final.pickHonoured}, track ${final.track}`);
+  assert(final.pick === 'EveningA', `pick ${final.pick}, track ${final.track}`);
   assert(evts.every((e) => e.track === 'EveningA'),
     `engine events name a route other than the pick: ${JSON.stringify(evts.filter((e) => e.track !== 'EveningA'))}`);
-  console.log(`  (measured: pick=EveningA on clean_eveningb ends track=${final.track} lockKind=${final.lockKind} events=${evts.length})`);
+  console.log(`  (measured: pick=EveningA on clean_eveningb ends track=${final.track} events=${evts.length})`);
 });
 
-test('live: no pick — behaviour unchanged (auto-start still locks; pick/lockKind read null/verified honestly)', () => {
-  const f = loadFixture('clean_morning');
-  const engine = new LiveEngine(fixtureSpecs()); // no start() call: relies on feed()'s own auto-start, exactly as before cycle 024
-  for (let i = 0; i < f.fixes.t.length; i++) engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
-  const final = engine.getState();
-  const driven = drive(f).final;
-  assert(final.track === driven.track && final.phase === driven.phase,
-    'implicit auto-start differs from an explicit no-pick drive()');
-  assert(numEq(final.lap?.rawS ?? null, driven.lap?.rawS ?? null, 1e-9), 'lap differs between auto-start and explicit drive()');
-  assert(final.pick === null, `pick ${final.pick}, want null`);
-  assert(final.lockKind === 'verified', `lockKind ${final.lockKind}, want verified`);
-});
-
-test('live: full-catalog shadow regression — clean_morning + pick=Morning soft-locks, finalize() settles it', () => {
+test('live: full-catalog — clean_morning + pick=Morning is the reference from START, finalize() keeps it', () => {
   // HomeStationPreferred is an anchored blocker the whole way (measured:
   // shares 98% of Morning's corridor); HomeChurch shares the first ~340 m.
   // The leader at any instant may be a different anchored candidate by
@@ -629,55 +494,36 @@ test('live: full-catalog shadow regression — clean_morning + pick=Morning soft
   const f = loadFixture('clean_morning');
   const engine = new LiveEngine(catalogTrackSpecs());
   engine.start({ pickId: 'Morning' });
-  let softAt: number | null = null;
-  const unsub = engine.subscribe((s) => {
-    if (softAt === null && s.lockKind === 'soft') softAt = s.fixesFed;
-  });
+  assert(engine.getState().track === 'Morning', 'the pick is not the reference before the first fix');
   for (let i = 0; i < f.fixes.t.length; i++) engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
-  unsub();
-  assert(softAt !== null, 'clean_morning + pick=Morning never soft-locked against the full catalog');
-  const advAtSoft = advanceAt(f, 'Morning', softAt!);
-  assert(advAtSoft >= LOCK_MIN_ADVANCE_M && advAtSoft <= 520,
-    `soft-lock advance ${advAtSoft.toFixed(1)} m outside [${LOCK_MIN_ADVANCE_M}, 520]`);
   engine.finalize();
   const final = engine.getState();
-  assert(final.lockKind === 'finalized' && final.track === 'Morning',
-    `lockKind ${final.lockKind}, track ${final.track}`);
+  assert(final.track === 'Morning', `track ${final.track}`);
   assert(final.phase === 'finished', `phase ${final.phase}, want finished`);
   for (let i = 0; i < 4; i++) assertDoneReal(`S${i + 1}`, final.sectors[i], f.expected.offline[i]);
   assert(final.lap !== null && !final.lap.estimated && final.lap.movingS !== null, 'lap not scored real after finalize');
 });
 
-test('live: full-catalog shadow regression — clean_eveningb, no pick: an anchored partial blocker still verified-locks EveningB', () => {
+test('live: full-catalog — clean_eveningb + pick=EveningB: the pick alone is a candidate, sectors and lap real', () => {
   // StationHomeWet is an UNANCHORED shadow (its corridor joins mid-line at
   // its own ~2900 m — must not block, per the anchored rule); WorkChurchB is
   // an ANCHORED partial blocker (shares EveningB's exit from work up to
   // EveningB chainage ~310 m).
   const f = loadFixture('clean_eveningb');
-  const { final, lockAt } = drive(f, 0, catalogTrackSpecs());
-  assert(final.track === 'EveningB' && final.lockKind === 'verified',
-    `track ${final.track}, lockKind ${final.lockKind}`);
-  assert(lockAt !== null, 'never locked');
-  const adv = advanceAt(f, 'EveningB', lockAt!);
-  assert(adv >= LOCK_MIN_ADVANCE_M && adv <= 700,
-    `lock advance ${adv.toFixed(1)} m outside [${LOCK_MIN_ADVANCE_M}, 700]`);
-  // eslint-disable-next-line no-console
-  console.log(`  (measured: clean_eveningb full-catalog verified-lock advance = ${adv.toFixed(1)} m)`);
+  const { final, lockAt } = drive(f, 0, catalogTrackSpecs(), 'EveningB');
+  assert(final.track === 'EveningB', `track ${final.track}`);
+  assert(lockAt === 0, `the pick was not the reference from start() (first track at fix ${lockAt})`);
   for (let i = 0; i < 4; i++) assertDoneReal(`S${i + 1}`, final.sectors[i], f.expected.offline[i]);
   assert(final.lap !== null && !final.lap.estimated && final.lap.movingS !== null, 'lap not scored real');
 });
 
-test('live: unanchored shadow never blocks — clean_eveninga, no pick, full catalog', () => {
+test('live: full-catalog — clean_eveninga + pick=EveningA: shadows cannot interfere, sectors real', () => {
   // StationHomePreferred shadows EveningA mid-line (unanchored) — must not
   // widen the margin needed to lock.
   const f = loadFixture('clean_eveninga');
-  const { final, lockAt } = drive(f, 0, catalogTrackSpecs());
-  assert(final.track === 'EveningA' && final.lockKind === 'verified',
-    `track ${final.track}, lockKind ${final.lockKind}`);
-  assert(lockAt !== null, 'never locked');
-  const adv = advanceAt(f, 'EveningA', lockAt!);
-  assert(adv >= LOCK_MIN_ADVANCE_M && adv <= LOCK_MIN_ADVANCE_M + LOCK_SLACK_M,
-    `lock advance ${adv.toFixed(1)} m outside [${LOCK_MIN_ADVANCE_M}, ${LOCK_MIN_ADVANCE_M + LOCK_SLACK_M}] — an unanchored shadow must not have widened the margin needed`);
+  const { final, lockAt } = drive(f, 0, catalogTrackSpecs(), 'EveningA');
+  assert(final.track === 'EveningA', `track ${final.track}`);
+  assert(lockAt === 0, `the pick was not the reference from start() (first track at fix ${lockAt})`);
   for (let i = 0; i < 4; i++) assertDoneReal(`S${i + 1}`, final.sectors[i], f.expected.offline[i]);
 });
 
@@ -690,7 +536,7 @@ function candidateTracks(diag: readonly DiagnosticEvent[]): string[] {
   return [...new Set(diag.filter((d) => d.phase === 'anchor').map((d) => d.track))].sort();
 }
 
-test('live: WP-B coordinator addendum — start({routeIds}) restricts candidates, not just which fires get shown', () => {
+test('live: WP-B coordinator addendum — start({wayIds}) scopes the spec set: a pick outside it is no reference at all', () => {
   // A filter that excludes every route anywhere near a real Morning ride
   // (EveningA/EveningB run work<->home, nowhere near home<->work Morning
   // territory at these chainages) must leave the engine with exactly those
@@ -703,15 +549,14 @@ test('live: WP-B coordinator addendum — start({routeIds}) restricts candidates
   const events: EngineEvent[] = [];
   engine.subscribeDiagnostics((e) => diag.push(e));
   engine.subscribeEvents((e) => events.push(e));
-  engine.start({ wayIds: ['EveningA', 'EveningB'] });
+  engine.start({ pickId: 'Morning', wayIds: ['EveningA', 'EveningB'] });
   for (let i = 0; i < f.fixes.t.length; i++) engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
   const final = engine.getState();
   const cands = candidateTracks(diag);
-  assert(cands.join(',') === 'EveningA,EveningB',
-    `candidates were [${cands.join(', ')}], want exactly [EveningA, EveningB] — a routeIds filter must restrict the candidate set itself`);
-  assert(final.track === null && final.lockKind === 'none',
-    `track ${final.track}, lockKind ${final.lockKind} — Morning must not lock when the filter excluded it`);
-  assert(!final.anyAnchored, 'a work<->home candidate anchored on a home->work ride');
+  assert(cands.length === 0,
+    `candidates were [${cands.join(', ')}], want none — a pick outside the wayIds-scoped set is no reference`);
+  assert(final.track === null && final.phase === 'detecting',
+    `track ${final.track}, phase ${final.phase} — Morning must not be the reference when the filter excluded it`);
   assert(final.gateFires === 0, `${final.gateFires} gate fires against a routeIds filter excluding every nearby route`);
   assert(events.filter((e) => e.type === 'gate').length === 0, 'gate events emitted with no candidate near the ride');
 });
@@ -725,21 +570,18 @@ test('live: WP-B coordinator addendum — start({routeIds}) filtered to the ridd
   const events: EngineEvent[] = [];
   engine.subscribeDiagnostics((e) => diag.push(e));
   engine.subscribeEvents((e) => events.push(e));
-  engine.start({ wayIds: ['Morning', 'MorningB'] });
+  engine.start({ pickId: 'Morning', wayIds: ['Morning', 'MorningB'] });
   for (let i = 0; i < f.fixes.t.length; i++) engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
   const final = engine.getState();
-  for (const id of candidateTracks(diag)) {
-    assert(id === 'Morning' || id === 'MorningB', `candidate ${id} built outside the routeIds filter`);
-  }
-  assert(final.track === 'Morning' && final.lockKind === 'verified',
-    `track ${final.track}, lockKind ${final.lockKind} — the ridden route inside the filter must still verified-lock`);
+  assert(candidateTracks(diag).join(',') === 'Morning', `candidates [${candidateTracks(diag)}], want exactly the pick`);
+  assert(final.track === 'Morning', `track ${final.track} — the picked route inside the filter must be the reference`);
   assert(final.gateFires === nGates, `${final.gateFires} Morning gate fires under a routeIds filter that includes it, want ${nGates}`);
   const gateEvents = events.filter((e) => e.type === 'gate');
   assert(gateEvents.length === nGates && gateEvents.every((e) => e.track === 'Morning'),
     `${gateEvents.length} gate events (${[...new Set(gateEvents.map((e) => e.track))].join(', ')}), want ${nGates} all on Morning`);
 });
 
-test('live: WP-B coordinator addendum — routeIds omitted/undefined is unfiltered, identical to the full catalog', () => {
+test('live: WP-B coordinator addendum — wayIds omitted/undefined is unfiltered: the pick is found among the full catalog', () => {
   const f = loadFixture('clean_morning');
   const allIds = catalogTrackSpecs().map((s) => s.id).sort();
   const withUndefined = new LiveEngine(catalogTrackSpecs());
@@ -748,23 +590,22 @@ test('live: WP-B coordinator addendum — routeIds omitted/undefined is unfilter
   const diagO: DiagnosticEvent[] = [];
   withUndefined.subscribeDiagnostics((e) => diagU.push(e));
   omitted.subscribeDiagnostics((e) => diagO.push(e));
-  withUndefined.start({ wayIds: undefined });
-  omitted.start();
+  withUndefined.start({ pickId: 'Morning', wayIds: undefined });
+  omitted.start({ pickId: 'Morning' });
   for (let i = 0; i < f.fixes.t.length; i++) {
     withUndefined.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
     omitted.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
   }
   const candsU = candidateTracks(diagU);
   const candsO = candidateTracks(diagO);
-  assert(candsU.join(',') === allIds.join(','),
-    `routeIds:undefined built ${candsU.length} candidates, want every catalog route (${allIds.length})`);
-  assert(candsO.join(',') === allIds.join(','),
-    `omitted routeIds built ${candsO.length} candidates, want every catalog route (${allIds.length})`);
+  assert(allIds.includes('Morning'), 'precondition: Morning is a catalog route');
+  assert(candsU.join(',') === 'Morning', `wayIds:undefined built [${candsU}], want exactly the pick`);
+  assert(candsO.join(',') === 'Morning', `omitted wayIds built [${candsO}], want exactly the pick`);
   const u = withUndefined.getState();
   const o = omitted.getState();
   assert(
-    u.track === o.track && u.lockKind === o.lockKind && u.gateFires === o.gateFires && u.anyAnchored === o.anyAnchored,
-    'passing routeIds:undefined and omitting it entirely must behave identically (both = unfiltered, every catalog route a candidate)',
+    u.track === o.track && u.gateFires === o.gateFires && u.phase === o.phase,
+    'passing routeIds:undefined and omitting it entirely must behave identically (both = unfiltered)',
   );
 });
 
@@ -802,210 +643,7 @@ function synPos(onS: boolean, s: number): [number, number] {
   return s <= 1200 ? [s, 0] : [1200, s - 1200];
 }
 
-/** WP-D (cycle 2): feed [x, y, dtSec] steps along SYN_L's planar frame into a
- * single-candidate engine; returns the step's x at the first lock (or null). */
-function lockXOnSynL(steps: [number, number, number][]): number | null {
-  const engine = new LiveEngine([SYN_L]);
-  let lockX: number | null = null;
-  const unsub = engine.subscribe((s) => {
-    if (lockX === null && s.track !== null) lockX = steps[s.fixesFed - 1][0];
-  });
-  let t = 1755167000;
-  for (const [x, y, dt] of steps) {
-    t += dt;
-    const [lat, lon] = xyToLatLon(x, y, 0, 0);
-    engine.feed(lat, lon, t * 1000);
-  }
-  unsub();
-  return lockX;
-}
-
-test('live WP-D: a sub-245 m re-acquisition hop is not lock evidence (the cycle-024 residual)', () => {
-  // Ride SYN_L on-corridor 0..150 m at 5 m/s, leave the corridor (y = 120 m,
-  // 3x CORRIDOR_M) for 8 fixes, then re-acquire at x = 350 — a 200 m hop,
-  // under REACQ_JUMP_M, after lost >= 5 — and ride on. Before WP-D the 200 m
-  // counted and the lock fired at ride-chainage 400 (measured 2026-09-04);
-  // the rider was never seen on the 150..350 m stretch, so the lock must
-  // wait until 400 m of OBSERVED advance: 150 + (x - 350) >= 400 -> x = 600.
-  const steps: [number, number, number][] = [];
-  for (let x = 0; x <= 150; x += 5) steps.push([x, 0, 1]);
-  for (let i = 1; i <= 8; i++) steps.push([150 + 5 * i, 120, 1]);
-  for (let x = 350; x <= 700; x += 5) steps.push([x, 0, 1]);
-  const lockX = lockXOnSynL(steps);
-  assert(lockX !== null, 'never locked after re-acquisition');
-  assert(lockX! >= 600 && lockX! <= 600 + 10,
-    `locked at ride-chainage ${lockX} m: a 200 m re-acquisition hop must earn no lock evidence (want 600, pre-WP-D gave 400)`);
-});
-
-test('live WP-D: ordinary windowed advance across a sparse-fix gap, and fast real riding, still count in full', () => {
-  // Control 1: on-corridor to 150 m, then NO fixes for 40 s, next fix 200 m
-  // down the same corridor (a windowed hit, no off-route fix in between) —
-  // this is the "normal fast/sparse-fix advance" the REACQ_JUMP_M > 240
-  // invariant protects. It must still lock at ride-chainage 400.
-  const gap: [number, number, number][] = [];
-  for (let x = 0; x <= 150; x += 5) gap.push([x, 0, 1]);
-  gap.push([350, 0, 40]);
-  for (let x = 355; x <= 700; x += 5) gap.push([x, 0, 1]);
-  const lockGap = lockXOnSynL(gap);
-  assert(lockGap !== null && lockGap >= 400 && lockGap <= 410,
-    `sparse-gap control locked at ${lockGap} m, want 400 (windowed advance is observed riding, never discounted)`);
-
-  // Control 2: 25 m per 1 Hz fix (90 km/h — a hard descent), all on-corridor.
-  // The rule never looks at speed; lock at the first fix with adv >= 400.
-  const fast: [number, number, number][] = [];
-  for (let x = 0; x <= 700; x += 25) fast.push([x, 0, 1]);
-  const lockFast = lockXOnSynL(fast);
-  assert(lockFast !== null && lockFast >= 400 && lockFast <= 425,
-    `fast-descent control locked at ${lockFast} m, want 400 (speed is not evidence against a rider)`);
-
-  // Control 3: the pre-WP-D rule still holds — a 300 m hop (> REACQ_JUMP_M)
-  // after lost >= 5 was and is discounted: 150 + (x - 450) >= 400 -> x = 700.
-  const big: [number, number, number][] = [];
-  for (let x = 0; x <= 150; x += 5) big.push([x, 0, 1]);
-  for (let i = 1; i <= 8; i++) big.push([150 + 5 * i, 120, 1]);
-  for (let x = 450; x <= 900; x += 5) big.push([x, 0, 1]);
-  const lockBig = lockXOnSynL(big);
-  assert(lockBig !== null && lockBig >= 700 && lockBig <= 710,
-    `>245 m hop control locked at ${lockBig} m, want 700 (unchanged from cycle 024)`);
-});
-
-test('live: prefix stall + finalize — synthetic corridor-subset routes', () => {
-  // (a) ride the shared road then S's own branch to 1400 m, then stand still
-  // 30 s. No pick: both tied (anchored) on the shared corridor, so no lock
-  // fires there; L freezes at the 1200 m split (off S's branch), so the
-  // 200 m margin over L can only open near S's own 1400 m end — verified
-  // lock necessarily lands there, not earlier.
-  {
-    const engine = new LiveEngine([SYN_S, SYN_L]);
-    let lockAtFixesFed: number | null = null;
-    const unsub = engine.subscribe((s) => {
-      if (lockAtFixesFed === null && s.track !== null) lockAtFixesFed = s.fixesFed;
-    });
-    let t = 1755167000;
-    for (let s = 0; s <= 1400; s += 5) {
-      const [x, y] = synPos(true, s);
-      const [lat, lon] = xyToLatLon(x, y, 0, 0);
-      engine.feed(lat, lon, t * 1000);
-      t += 1;
-    }
-    assert(lockAtFixesFed !== null, 'never locked riding S all the way to its own 1400 m end');
-    const chainageAtLock = (lockAtFixesFed! - 1) * 5;
-    assert(chainageAtLock >= 1200 && chainageAtLock <= 1400,
-      `S locked at ride-chainage ~${chainageAtLock} m, want within [1200, 1400] (the margin cannot open before the 1200 m split)`);
-    unsub();
-    const [xEnd, yEnd] = synPos(true, 1400);
-    const [latEnd, lonEnd] = xyToLatLon(xEnd, yEnd, 0, 0);
-    for (let i = 0; i < 30; i++) { engine.feed(latEnd, lonEnd, t * 1000); t += 1; }
-    const final = engine.getState();
-    assert(final.track === 'SyntheticS' && final.lockKind === 'verified',
-      `after standing still: track ${final.track}, lockKind ${final.lockKind} (a verified lock must never unlock)`);
-  }
-
-  // (a, second sub-case) stop exactly AT the 1200 m split: still tied, never
-  // locks; neither candidate's own FINISH has fired either, so finalize()
-  // correctly leaves the ride genuinely unmatched.
-  {
-    const engine2 = new LiveEngine([SYN_S, SYN_L]);
-    let t = 1755167000;
-    for (let s = 0; s <= 1200; s += 5) {
-      const [lat, lon] = xyToLatLon(s, 0, 0, 0);
-      engine2.feed(lat, lon, t * 1000);
-      t += 1;
-    }
-    assert(engine2.getState().track === null, 'locked while S and L are still tied on the shared corridor');
-    engine2.finalize();
-    const final2 = engine2.getState();
-    assert(final2.phase !== 'finished', `phase ${final2.phase}, want not finished (genuinely unmatched)`);
-    assert(final2.lap === null, 'lap scored on a ride finalize() should have left unmatched');
-  }
-
-  // (b) same (a) ride, but pick=SyntheticL: soft lock on L at 400 m while
-  // still tied on the shared corridor; once the ride diverges onto S's
-  // branch and S pulls ahead, the engine must NOT switch (hard pick, Nathan
-  // 2026-08-29). L stays displayed with its later gates unfired; finalize()
-  // promotes the still-soft L to 'finalized' with partial sectors and no lap.
-  {
-    const engine3 = new LiveEngine([SYN_S, SYN_L]);
-    const evts: EngineEvent[] = [];
-    const unsubEv = engine3.subscribeEvents((e) => evts.push(e));
-    engine3.start({ pickId: 'SyntheticL' });
-    let t = 1755167000;
-    for (let s = 0; s <= 1400; s += 5) {
-      const [x, y] = synPos(true, s);
-      const [lat, lon] = xyToLatLon(x, y, 0, 0);
-      engine3.feed(lat, lon, t * 1000);
-      t += 1;
-    }
-    const mid3 = engine3.getState();
-    assert(mid3.track === 'SyntheticL' && mid3.lockKind === 'soft',
-      `pre-finalize: track ${mid3.track}, lockKind ${mid3.lockKind} — the hard pick must stay displayed, never switch to S`);
-    engine3.finalize();
-    unsubEv();
-    const locks = evts.filter((e): e is Extract<EngineEvent, { type: 'lock' }> => e.type === 'lock');
-    assert(locks.length === 1, `${locks.length} lock events, want exactly 1 (soft L, never a switch) — got ${JSON.stringify(locks)}`);
-    assert(locks[0].track === 'SyntheticL' && locks[0].kind === 'soft' && locks[0].pick === 'SyntheticL',
-      `lock event wrong: ${JSON.stringify(locks[0])}`);
-    assert(evts.every((e) => e.track === 'SyntheticL'), 'an event names SyntheticS — a non-pick candidate leaked into the record');
-    const final3 = engine3.getState();
-    assert(final3.track === 'SyntheticL' && final3.lockKind === 'finalized',
-      `final track ${final3.track}, lockKind ${final3.lockKind} — a soft hard-pick is promoted to finalized, never reassigned`);
-    assert(final3.phase === 'locked' && final3.lap === null,
-      `phase ${final3.phase}, lap ${JSON.stringify(final3.lap)} — L's FINISH never fired, so no lap`);
-    assert(final3.gateFires === 2, `${final3.gateFires} gate fires on L, want 2 (100 m and 800 m; 1500 m+ are on the unridden road)`);
-    assert(final3.sectors[0].kind === 'done' && final3.sectors[1].kind === 'current'
-      && final3.sectors[2].kind === 'pending' && final3.sectors[3].kind === 'pending',
-      `sectors [${final3.sectors.map((s) => s.kind)}], want done/current/pending/pending`);
-  }
-});
-
-test('live: prefix ride-through + finalize by completed line — synthetic corridor-subset routes', () => {
-  // (i) ride the shared road then L's own branch all the way to 3000 m, no
-  // pick: S freezes at the 1200 m split; its FINISH gate (1300, on the
-  // unridden branch) never fires, so it must never leak a gate event into
-  // the ride record. L verified-locks once the margin opens past the split.
-  {
-    const engine = new LiveEngine([SYN_S, SYN_L]);
-    const evts: EngineEvent[] = [];
-    const unsub = engine.subscribeEvents((e) => evts.push(e));
-    let t = 1755167000;
-    for (let s = 0; s <= 3000; s += 5) {
-      const [lat, lon] = xyToLatLon(s, 0, 0, 0);
-      engine.feed(lat, lon, t * 1000);
-      t += 1;
-    }
-    unsub();
-    const final = engine.getState();
-    assert(final.track === 'SyntheticL' && final.lockKind === 'verified',
-      `track ${final.track}, lockKind ${final.lockKind}`);
-    const sGateLeak = evts.some((e) => e.type === 'gate' && e.track === 'SyntheticS');
-    assert(!sGateLeak, 'S (never the displayed candidate on this ride) leaked a gate event into the ride record');
-  }
-
-  // (ii) ride ONLY S's own branch to 1350 m — past its own FINISH (1300),
-  // but the margin over the now-frozen L is only 150 m, never enough to lock
-  // live. finalize() must recover S from its completed FINISH gate.
-  {
-    const engine2 = new LiveEngine([SYN_S, SYN_L]);
-    let t = 1755167000;
-    for (let s = 0; s <= 1350; s += 5) {
-      const [x, y] = synPos(true, s);
-      const [lat, lon] = xyToLatLon(x, y, 0, 0);
-      engine2.feed(lat, lon, t * 1000);
-      t += 1;
-    }
-    assert(engine2.getState().track === null, 'locked live despite only a 150 m margin');
-    engine2.finalize();
-    const final2 = engine2.getState();
-    assert(final2.lockKind === 'finalized' && final2.track === 'SyntheticS',
-      `lockKind ${final2.lockKind}, track ${final2.track} — finalize() must recover the only candidate whose FINISH fired`);
-    assert(final2.sectors.length === 4 && final2.sectors.every((s) => s.kind === 'done' && !s.estimated),
-      `sectors not all real: ${final2.sectors.map((s) => s.kind)}`);
-    assert(final2.lap !== null && !final2.lap.estimated && final2.lap.movingS !== null,
-      'lap not scored real after finalize recovers a completed-but-never-locked route');
-  }
-});
-
-test('live: 2026-09-01 ride 2 — a ride that merely STARTS at a route\'s far end is never finalized onto it (arming-skip artifact; completion-evidence guard)', () => {
+test('live: 2026-09-01 ride 2 — a picked route ridden from its far end fires no gate, so finalize() leaves the ride unmatched (arming-skip artifact)', () => {
   // The artifact the guard exists for: D-016(b) arming on a first fix that
   // already lies past every gate resolves ALL of them as skipped in one call
   // — nextGateIndex === gates.length before a metre is ridden.
@@ -1014,13 +652,14 @@ test('live: 2026-09-01 ride 2 — a ride that merely STARTS at a route\'s far en
   assert(det.nextGateIndex === SYN_L.gates.length && det.skippedGates.length === SYN_L.gates.length,
     `arming precondition: next ${det.nextGateIndex}, skipped ${det.skippedGates.length}, want ${SYN_L.gates.length}/${SYN_L.gates.length}`);
 
-  // Ride SyntheticL's road in REVERSE (3000 m -> 0), the only candidate, no
-  // pick: the projector seeds at the far end and is forward-only, so the
-  // candidate never anchors and never advances. Before the guard, finalize()
-  // declared it the winner purely from the arming skip above.
+  // Ride SyntheticL's road in REVERSE (3000 m -> 0) with SyntheticL picked:
+  // the projector seeds at the far end and is forward-only, so the candidate
+  // never advances. The arming skips above are not gate FIRES, so under
+  // virgin-cycle21 finalize() leaves the ride unmatched.
   const engine = new LiveEngine([SYN_L]);
   const evts: EngineEvent[] = [];
   const unsub = engine.subscribeEvents((e) => evts.push(e));
+  engine.start({ pickId: 'SyntheticL' });
   let t = 1755167000;
   for (let s = 3000; s >= 0; s -= 5) {
     const [lat, lon] = xyToLatLon(s, 0, 0, 0);
@@ -1029,15 +668,15 @@ test('live: 2026-09-01 ride 2 — a ride that merely STARTS at a route\'s far en
   }
   unsub();
   const mid = engine.getState();
-  assert(mid.track === null && mid.lockKind === 'none' && mid.gateFires === 0,
-    `pre-finalize: track ${mid.track}, lockKind ${mid.lockKind}, gateFires ${mid.gateFires} — want null/none/0`);
+  assert(mid.track === 'SyntheticL' && mid.gateFires === 0,
+    `pre-finalize: track ${mid.track}, gateFires ${mid.gateFires} — want SyntheticL/0`);
   engine.finalize();
   const final = engine.getState();
   assert(final.track === null,
-    `finalize() matched ${final.track} — the ride never advanced on it (must stay unmatched so the naming offer appears)`);
-  assert(final.lockKind === 'none' && final.phase !== 'finished' && final.lap === null,
-    `lockKind ${final.lockKind}, phase ${final.phase}, lap ${JSON.stringify(final.lap)} — want none / not finished / null`);
-  assert(evts.length === 0, `${evts.length} engine events, want 0 (no lock, no gate)`);
+    `finalize() kept ${final.track} — no gate fired on it (must be unmatched so the naming offer appears)`);
+  assert(final.phase !== 'finished' && final.lap === null,
+    `phase ${final.phase}, lap ${JSON.stringify(final.lap)} — want not finished / null`);
+  assert(evts.length === 0, `${evts.length} engine events, want 0 (no gate fired)`);
 });
 
 // SyntheticP is a literal spatial PREFIX of SyntheticL's corridor (same
@@ -1064,8 +703,8 @@ test('live: hard pick at finalize — a picked prefix route (SyntheticP) stays t
 
   const midState = engine.getState();
   assert(
-    midState.track === 'SyntheticP' && midState.lockKind === 'soft' && midState.phase === 'finished',
-    `pre-finalize state wrong: track ${midState.track}, lockKind ${midState.lockKind}, phase ${midState.phase} — expected P still soft-locked and frozen at its own FINISH`,
+    midState.track === 'SyntheticP' && midState.phase === 'finished',
+    `pre-finalize state wrong: track ${midState.track}, phase ${midState.phase} — expected P still the reference and frozen at its own FINISH`,
   );
   assert(midState.lap !== null, 'P\'s own lap was never scored before finalize()');
   const ownRawS = midState.lap!.rawS;
@@ -1073,61 +712,15 @@ test('live: hard pick at finalize — a picked prefix route (SyntheticP) stays t
   engine.finalize();
   unsubEv();
   const final = engine.getState();
-  assert(final.track === 'SyntheticP' && final.lockKind === 'finalized' && final.pickHonoured,
-    `finalize() reassigned the hard pick: track ${final.track}, lockKind ${final.lockKind}, pickHonoured ${final.pickHonoured}`);
+  assert(final.track === 'SyntheticP',
+    `finalize() reassigned the hard pick: track ${final.track}`);
   assert(final.lap !== null && !final.lap.estimated && final.lap.rawS === ownRawS,
     `final lap ${JSON.stringify(final.lap)} is not P's own (rawS ${ownRawS})`);
   assert(numEq(final.lap!.rawS!, 160, 2), `final lap ${final.lap!.rawS}s does not match P's own timing (~160s)`);
   assert(final.sectors.length === 4 && final.sectors.every((s) => s.kind === 'done' && !s.estimated),
     `sectors not all real after finalize: ${final.sectors.map((s) => s.kind)}`);
-  const locks = evts.filter((e) => e.type === 'lock');
-  assert(locks.length === 1 && locks[0].track === 'SyntheticP', `${locks.length} lock events / ${JSON.stringify(locks)} — want exactly one, on P`);
+  assert(evts.length > 0 && evts.every((e) => e.type === 'gate'), 'a non-gate event was emitted');
   assert(evts.every((e) => e.track === 'SyntheticP'), 'an event names SyntheticL — a non-pick candidate leaked into the record');
-});
-
-test('live: late anchor — a poor-accuracy first 400 m (cycle 023 retry re-seeds mid-route) never discards a gate-verified finish at finalize()', () => {
-  // 2026-09-02 Inspect finding on the WP-A `anchored` guard: the cycle 023
-  // retry re-seeds a candidate's projector wherever the first GOOD fix lands
-  // and resets `anchored`; projection is forward-only, so a re-seed past
-  // ANCHOR_M can never re-anchor — even though every later gate then fires
-  // for real. Ride SyntheticP start to finish with SyntheticL as a tying
-  // rival (no live lock ever forms — the clean_morning/HomeStationPreferred
-  // shape), accuracy 60 m until 400 m in, then 10 m. The retry fires at
-  // 400 m; P's gates 2, 3 and FINISH fire for real afterwards, with 500 m of
-  // corridor-verified advance before FINISH — finalize() must settle P
-  // (sectors 1-2 honestly missed, lap ~estimated with no START), never leave
-  // the ride unmatched.
-  const engine = new LiveEngine([SYN_P, SYN_L]);
-  const evts: EngineEvent[] = [];
-  const diag: DiagnosticEvent[] = [];
-  const unsubEv = engine.subscribeEvents((e) => evts.push(e));
-  const unsubDiag = engine.subscribeDiagnostics((e) => diag.push(e));
-  let t = 1755167000;
-  for (let s = 0; s <= 905; s += 5) {
-    const [lat, lon] = xyToLatLon(s, 0, 0, 0);
-    engine.feed(lat, lon, t * 1000, s < 400 ? 60 : 10);
-    t += 1;
-  }
-  const retries = diag.filter((d) => d.track === 'SyntheticP' && d.phase === 'retry');
-  assert(retries.length === 1, `${retries.length} SyntheticP retries, want exactly 1 (the scenario needs the mid-route re-seed)`);
-  const mid = engine.getState();
-  assert(mid.track === null && mid.lockKind === 'none',
-    `pre-finalize: track ${mid.track}, lockKind ${mid.lockKind} — want no live lock (P and L tied on the shared corridor)`);
-  engine.finalize();
-  unsubEv(); unsubDiag();
-  const final = engine.getState();
-  assert(final.track === 'SyntheticP' && final.lockKind === 'finalized' && final.phase === 'finished',
-    `finalize() threw away a gate-verified finish: track ${final.track}, lockKind ${final.lockKind}, phase ${final.phase}`);
-  const kinds = final.sectors.map((s) => s.kind + (s.kind === 'done' && s.estimated ? '~' : ''));
-  assert(kinds.join('/') === 'missed/missed/done/done',
-    `sectors [${kinds}], want missed/missed/done/done (gates 0-1 skipped by the re-seed, 2-4 real)`);
-  assert(final.lap !== null && final.lap.estimated && final.lap.rawS === null,
-    `lap ${JSON.stringify(final.lap)} — START was skipped by the re-seed, so the lap must be ~estimated with no raw time`);
-  const locks = evts.filter((e): e is Extract<EngineEvent, { type: 'lock' }> => e.type === 'lock');
-  assert(locks.length === 1 && locks[0].track === 'SyntheticP' && locks[0].kind === 'finalized',
-    `${locks.length} lock events / ${JSON.stringify(locks)} — want exactly one finalized lock on P`);
-  assert(evts.filter((e) => e.type === 'gate').length === 3 && evts.every((e) => e.track === 'SyntheticP'),
-    `gate events ${JSON.stringify(evts.filter((e) => e.type === 'gate'))} — want P's three real post-retry fires, nothing from L`);
 });
 
 // SyntheticT is SyntheticL's line with its FINISH gate pulled back to 2400 m
@@ -1138,220 +731,6 @@ const SYN_T: TrackSpec = {
   id: 'SyntheticT', ref: buildSyntheticRef([[0, 0], [3005, 0]]), gates: [100, 800, 1500, 2200, 2400],
 };
 
-test('live: tail ride — advance earned AFTER a route\'s FINISH gate is not completion evidence; finalize() stays unmatched', () => {
-  // Start at 2550 m — past every gate of T (FINISH 2400, skipped by arming)
-  // and 350 m short of L's FINISH (2900, crossed for real) — and ride to
-  // 3000 m. Both reach nextGateIndex === gates.length with 450 m of
-  // corridor-verified advance and tie (no live lock), but neither had
-  // LOCK_MIN_ADVANCE_M of advance BEFORE its FINISH: T's was all tail, L's
-  // was 350 m. A bare `adv >= 400` guard would finalize T onto a ride that
-  // skipped all five of its gates — the 2026-09-01 ride-2 bug back through
-  // the tail.
-  const engine = new LiveEngine([SYN_T, SYN_L]);
-  const evts: EngineEvent[] = [];
-  const unsub = engine.subscribeEvents((e) => evts.push(e));
-  let t = 1755167000;
-  for (let s = 2550; s <= 3000; s += 5) {
-    const [lat, lon] = xyToLatLon(s, 0, 0, 0);
-    engine.feed(lat, lon, t * 1000);
-    t += 1;
-  }
-  const mid = engine.getState();
-  assert(mid.track === null && mid.lockKind === 'none',
-    `pre-finalize: track ${mid.track}, lockKind ${mid.lockKind} — want no live lock (T and L tied)`);
-  engine.finalize();
-  unsub();
-  const final = engine.getState();
-  assert(final.track === null && final.lockKind === 'none' && final.phase !== 'finished' && final.lap === null,
-    `finalize() matched ${final.track} (lockKind ${final.lockKind}, phase ${final.phase}) — 450 m ridden past FINISH is not a completed route`);
-  assert(evts.length === 0, `${evts.length} engine events, want 0 (no lock, no gate)`);
-});
-
-// ================================================================ N9 (2026-09-02)
-// GPX+ pick + lock-change logging: LiveEngine.noteLockChange emits one
-// EngineEvent (type 'lockChange') per LockKind transition — including the
-// two that a 'lock' event alone never reported (soft->verified promotion,
-// soft/none->finalized ride-end settle; see engine.ts's file header dry-run
-// table). L1-L5 below pin the reason table (design brief §3.2) directly
-// against the synthetic corridor-subset fixtures already established above.
-
-/** Filters an EngineEvent[] down to just the 'lockChange' members. */
-function changes(evts: EngineEvent[]): Extract<EngineEvent, { type: 'lockChange' }>[] {
-  return evts.filter((e): e is Extract<EngineEvent, { type: 'lockChange' }> => e.type === 'lockChange');
-}
-
-test('live N9 L1: pick=L soft->verified promotion emits one lock event and two lockChanges (pickAdvance, then unblockedLeader)', () => {
-  const engine = new LiveEngine([SYN_S, SYN_L]);
-  const evts: EngineEvent[] = [];
-  const unsub = engine.subscribeEvents((e) => evts.push(e));
-  engine.start({ pickId: 'SyntheticL' });
-  let t = 1755167000;
-  for (let s = 0; s <= 3000; s += 5) {
-    const [lat, lon] = xyToLatLon(s, 0, 0, 0);
-    engine.feed(lat, lon, t * 1000);
-    t += 1;
-  }
-  unsub();
-  const final = engine.getState();
-  assert(final.track === 'SyntheticL' && final.lockKind === 'verified',
-    `track ${final.track}, lockKind ${final.lockKind}`);
-  const locks = evts.filter((e): e is Extract<EngineEvent, { type: 'lock' }> => e.type === 'lock');
-  assert(locks.length === 1 && locks[0].kind === 'soft' && locks[0].track === 'SyntheticL' && locks[0].pick === 'SyntheticL',
-    `${locks.length} lock events / ${JSON.stringify(locks)} — want exactly 1 soft lock (the promotion emits no second lock event)`);
-  const cs = changes(evts);
-  assert(cs.length === 2, `${cs.length} lockChange events, want exactly 2 — got ${JSON.stringify(cs)}`);
-  assert(
-    cs[0].from === 'none' && cs[0].to === 'soft' && cs[0].reason === 'pickAdvance' &&
-      cs[0].track === 'SyntheticL' && cs[0].pick === 'SyntheticL',
-    `first lockChange wrong: ${JSON.stringify(cs[0])}`,
-  );
-  assert(
-    cs[1].from === 'soft' && cs[1].to === 'verified' && cs[1].reason === 'unblockedLeader' &&
-      cs[1].track === 'SyntheticL' && cs[1].pick === 'SyntheticL',
-    `second lockChange wrong: ${JSON.stringify(cs[1])}`,
-  );
-  // Ordering (design §3.2): within one transition the 'lock' event comes
-  // before its 'lockChange' — here that's the whole first transition (the
-  // only 'lock' event fired at all, on the none->soft commit).
-  const lockIdx = evts.indexOf(locks[0]);
-  const firstChangeIdx = evts.indexOf(cs[0]);
-  assert(lockIdx !== -1 && firstChangeIdx !== -1 && lockIdx < firstChangeIdx,
-    'the lock event must be emitted before its own lockChange');
-});
-
-test('live N9 L2: pick=L stalled on the shared corridor — soft finalizes via rideEndPromotion, idempotent on a second finalize()', () => {
-  const engine = new LiveEngine([SYN_S, SYN_L]);
-  const evts: EngineEvent[] = [];
-  const unsub = engine.subscribeEvents((e) => evts.push(e));
-  engine.start({ pickId: 'SyntheticL' });
-  let t = 1755167000;
-  for (let s = 0; s <= 1000; s += 5) {
-    const [lat, lon] = xyToLatLon(s, 0, 0, 0);
-    engine.feed(lat, lon, t * 1000);
-    t += 1;
-  }
-  const mid = engine.getState();
-  assert(mid.track === 'SyntheticL' && mid.lockKind === 'soft',
-    `pre-finalize: track ${mid.track}, lockKind ${mid.lockKind} — want soft (tied with S on the shared corridor, never enough margin)`);
-  engine.finalize();
-  const afterFirst = changes(evts);
-  // Two transitions by now: the live none->soft commit (~400 m in, long
-  // before the ride stops at 1000 m) AND finalize()'s own soft->finalized
-  // rideEndPromotion — the ride-end settle this WP makes visible.
-  assert(afterFirst.length === 2, `${afterFirst.length} lockChange events after the first finalize(), want exactly 2 — got ${JSON.stringify(afterFirst)}`);
-  assert(afterFirst[0].from === 'none' && afterFirst[0].to === 'soft' && afterFirst[0].reason === 'pickAdvance',
-    `first lockChange wrong: ${JSON.stringify(afterFirst[0])}`);
-  assert(
-    afterFirst[1].from === 'soft' && afterFirst[1].to === 'finalized' &&
-      afterFirst[1].reason === 'rideEndPromotion' && afterFirst[1].pick === 'SyntheticL',
-    `second lockChange wrong: ${JSON.stringify(afterFirst[1])}`,
-  );
-  const final1 = engine.getState();
-  assert(final1.lockKind === 'finalized' && final1.track === 'SyntheticL',
-    `after first finalize: track ${final1.track}, lockKind ${final1.lockKind}`);
-  engine.finalize(); // idempotent — must emit nothing new
-  unsub();
-  assert(changes(evts).length === 2, `${changes(evts).length} lockChange events after a second finalize(), want still exactly 2 (idempotent)`);
-  const locks = evts.filter((e) => e.type === 'lock');
-  assert(locks.length === 1 && locks[0].kind === 'soft', `${locks.length} lock events / ${JSON.stringify(locks)} — want exactly 1 (the original soft lock)`);
-});
-
-test('live N9 L3: no pick — none->verified lockChange with pick:null', () => {
-  const engine = new LiveEngine([SYN_S, SYN_L]);
-  const evts: EngineEvent[] = [];
-  const unsub = engine.subscribeEvents((e) => evts.push(e));
-  let t = 1755167000;
-  for (let s = 0; s <= 3000; s += 5) {
-    const [lat, lon] = xyToLatLon(s, 0, 0, 0);
-    engine.feed(lat, lon, t * 1000);
-    t += 1;
-  }
-  unsub();
-  const final = engine.getState();
-  assert(final.track === 'SyntheticL' && final.lockKind === 'verified', `track ${final.track}, lockKind ${final.lockKind}`);
-  const cs = changes(evts);
-  assert(cs.length === 1, `${cs.length} lockChange events, want exactly 1`);
-  assert(cs[0].from === 'none' && cs[0].to === 'verified' && cs[0].reason === 'unblockedLeader' && cs[0].pick === null,
-    `lockChange wrong: ${JSON.stringify(cs[0])}`);
-  const locks = evts.filter((e): e is Extract<EngineEvent, { type: 'lock' }> => e.type === 'lock');
-  assert(locks.length === 1 && locks[0].pick === null, `${locks.length} lock events / ${JSON.stringify(locks)} — want exactly 1 with pick null`);
-});
-
-test('live N9 L4: routeCompleted lockChange — picked-prefix (soft->finalized, already displayed) and no-pick-late-anchor (none->finalized, never displayed)', () => {
-  // (a) hard pick at finalize (SYN_P picked) — soft display already stood at
-  // its own FINISH; finalize() relabels only (no new lock event) but DOES
-  // emit a routeCompleted lockChange (soft -> finalized).
-  {
-    const engine = new LiveEngine([SYN_P, SYN_L]);
-    const evts: EngineEvent[] = [];
-    const unsubEv = engine.subscribeEvents((e) => evts.push(e));
-    engine.start({ pickId: 'SyntheticP' });
-    let t = 1755167000;
-    for (let s = 0; s <= 2905; s += 5) {
-      const [lat, lon] = xyToLatLon(s, 0, 0, 0);
-      engine.feed(lat, lon, t * 1000);
-      t += 1;
-    }
-    const mid = engine.getState();
-    assert(mid.track === 'SyntheticP' && mid.lockKind === 'soft', `pre-finalize: track ${mid.track}, lockKind ${mid.lockKind}`);
-    engine.finalize();
-    unsubEv();
-    const locks = evts.filter((e) => e.type === 'lock');
-    assert(locks.length === 1 && locks[0].kind === 'soft', `${locks.length} lock events, want exactly 1 soft (finalize() relabels only, no new lock event)`);
-    const cs = changes(evts);
-    // Two transitions: the live none->soft commit (~400 m in) AND
-    // finalize()'s own soft->finalized routeCompleted (P's own route
-    // completed while it was the already-displayed candidate).
-    assert(cs.length === 2, `${cs.length} lockChange events, want exactly 2 — got ${JSON.stringify(cs)}`);
-    assert(cs[0].from === 'none' && cs[0].to === 'soft' && cs[0].reason === 'pickAdvance',
-      `first lockChange wrong: ${JSON.stringify(cs[0])}`);
-    assert(
-      cs[1].from === 'soft' && cs[1].to === 'finalized' && cs[1].reason === 'wayCompleted' && cs[1].pick === 'SyntheticP',
-      `second lockChange wrong: ${JSON.stringify(cs[1])}`,
-    );
-  }
-  // (b) no-pick late anchor (SYN_P vs SYN_L, tied — never live-locked) — a
-  // routeCompleted lockChange straight from none to finalized.
-  {
-    const engine = new LiveEngine([SYN_P, SYN_L]);
-    const evts: EngineEvent[] = [];
-    const unsubEv = engine.subscribeEvents((e) => evts.push(e));
-    let t = 1755167000;
-    for (let s = 0; s <= 905; s += 5) {
-      const [lat, lon] = xyToLatLon(s, 0, 0, 0);
-      engine.feed(lat, lon, t * 1000, s < 400 ? 60 : 10);
-      t += 1;
-    }
-    const mid = engine.getState();
-    assert(mid.track === null && mid.lockKind === 'none', `pre-finalize: track ${mid.track}, lockKind ${mid.lockKind}`);
-    engine.finalize();
-    unsubEv();
-    const cs = changes(evts);
-    assert(
-      cs.length === 1 && cs[0].from === 'none' && cs[0].to === 'finalized' && cs[0].reason === 'wayCompleted' && cs[0].pick === null,
-      `lockChange wrong: ${JSON.stringify(cs)}`,
-    );
-    const locks = evts.filter((e) => e.type === 'lock');
-    assert(locks.length === 1 && locks[0].kind === 'finalized', `${locks.length} lock events, want exactly 1 finalized`);
-  }
-});
-
-test('live N9 L5: a ride that never locks emits zero lockChanges', () => {
-  // never-locked (the tail-ride fixture: T/L tie, neither had 400 m before its own FINISH)
-  const engine = new LiveEngine([SYN_T, SYN_L]);
-  const evts: EngineEvent[] = [];
-  const unsub = engine.subscribeEvents((e) => evts.push(e));
-  let t = 1755167000;
-  for (let s = 2550; s <= 3000; s += 5) {
-    const [lat, lon] = xyToLatLon(s, 0, 0, 0);
-    engine.feed(lat, lon, t * 1000);
-    t += 1;
-  }
-  engine.finalize();
-  unsub();
-  assert(changes(evts).length === 0, `never-locked ride emitted a lockChange, want 0 — got ${JSON.stringify(changes(evts))}`);
-});
-
 // --------------------------------------------------------------------------
 // cycle 025 (WP-stale-first-fix P1): flagged fixes are inert to the matcher
 // --------------------------------------------------------------------------
@@ -1361,6 +740,7 @@ test('live: cycle025 stale-fix — a flagged fix is inert (not buffered, no auto
   const engine = new LiveEngine(fixtureSpecs());
   const diag: DiagnosticEvent[] = [];
   engine.subscribeDiagnostics((e) => diag.push(e));
+  engine.start({ pickId: 'Morning' });
   const t0Ms = 1755167000000;
   // the 2026-08-25 shape: a stale cached fix 9 s before the first real one,
   // geometrically far down the track, with GOOD claimed accuracy (so the
@@ -1369,16 +749,15 @@ test('live: cycle025 stale-fix — a flagged fix is inert (not buffered, no auto
   engine.feed(staleLat, staleLon, t0Ms - 9000, 12, true);
   assert(engine.getState().fixesFed === 0, 'flagged fix entered the engine buffer');
   assert(diag.length === 0, `flagged fix produced ${diag.length} diagnostics`);
-  assert(!engine.getState().anyAnchored, 'anyAnchored true before any real fix');
+  assert(engine.getState().riderSnap === null, 'a flagged fix produced a rider snap');
   // the real ride: chainage 0 -> 800 m, good accuracy
   let tMs = t0Ms;
   for (let i = 0; i <= 40; i++) {
     const [lat, lon] = morningLatLonAt(ref, i * 20);
     engine.feed(lat, lon, tMs, 15);
     tMs += 1000;
-    // Piece 3 ("writing history"): the first REAL fix sits at Morning's own
-    // start, so anyAnchored must flip true on it and stay true.
-    if (i === 0) assert(engine.getState().anyAnchored, 'anyAnchored still false after the first real on-route fix at chainage 0');
+    // the first REAL fix sits at Morning's own start: it must anchor and snap.
+    if (i === 0) assert(engine.getState().riderSnap !== null, 'no rider snap after the first real on-route fix at chainage 0');
   }
   const anchors = diag.filter((d) => d.track === 'Morning' && d.phase === 'anchor');
   assert(anchors.length === 1, `${anchors.length} Morning anchor diagnostics, want 1`);
@@ -1387,7 +766,6 @@ test('live: cycle025 stale-fix — a flagged fix is inert (not buffered, no auto
   const final = engine.getState();
   assert(final.track === 'Morning' && final.phase !== 'detecting',
     `lock never reached from the real fixes: phase=${final.phase} track=${final.track}`);
-  assert(final.anyAnchored, 'anyAnchored false on a locked Morning ride — the status line would still say "writing history"');
 });
 
 // ============================================================ virgin-cycle20 06: pre-lock display candidate
@@ -1412,12 +790,12 @@ function rideSynL(toS: number, pickId: string | null, accuracy?: (s: number) => 
   return { engine, evts, diag, tAt };
 }
 
-test('live cycle20-06 E1: under a pick the pick\'s own candidate is DISPLAYED from start() — S1/startGateT on the START-crossing fix, no lock, no event', () => {
+test('live cycle20-06 E1: under a pick the pick is the reference from start() — S1/startGateT on the START-crossing fix, one gate event (virgin-cycle21)', () => {
   // Before gate 0 (100 m): displayed but nothing crossed.
   const pre = rideSynL(95, 'SyntheticL');
   const s0 = pre.engine.getState();
-  assert(s0.displayTrack === 'SyntheticL' && s0.track === null && s0.lockKind === 'none',
-    `pre-gate: displayTrack ${s0.displayTrack}, track ${s0.track}, lockKind ${s0.lockKind}`);
+  assert(s0.track === 'SyntheticL' && s0.phase === 'locked',
+    `pre-gate: track ${s0.track}, phase ${s0.phase}`);
   assert(s0.currentSector === null && s0.startGateT === null && s0.lastDone === null,
     `pre-gate: currentSector ${s0.currentSector}, startGateT ${s0.startGateT}, lastDone ${s0.lastDone} — want all null`);
   assert(s0.sectors.length === 4 && s0.sectors.every((x) => x.kind === 'pending'), `pre-gate sectors ${s0.sectors.map((x) => x.kind)}`);
@@ -1425,97 +803,35 @@ test('live cycle20-06 E1: under a pick the pick\'s own candidate is DISPLAYED fr
   // On the crossing fix (s = 100): S1 immediately, still no lock, still no event.
   const at = rideSynL(100, 'SyntheticL');
   const s1 = at.engine.getState();
-  assert(s1.track === null && s1.lockKind === 'none' && s1.phase === 'detecting', `at gate: track ${s1.track}, lockKind ${s1.lockKind}, phase ${s1.phase}`);
+  assert(s1.track === 'SyntheticL' && s1.phase === 'locked', `at gate: track ${s1.track}, phase ${s1.phase}`);
   assert(s1.currentSector === 1, `at gate: currentSector ${s1.currentSector}, want 1`);
   assert(s1.startGateT !== null && numEq(s1.startGateT, at.tAt.get(100)!, 1.01), `at gate: startGateT ${s1.startGateT}, want ~${at.tAt.get(100)}`);
   assert(s1.sectors[0].kind === 'current' && s1.sectors.slice(1).every((x) => x.kind === 'pending'), `at gate sectors ${s1.sectors.map((x) => x.kind)}`);
-  assert(s1.gateFires === 1, `gateFires ${s1.gateFires} (the buzz counter already counted pre-lock fires)`);
-  assert(at.evts.length === 0, `${at.evts.length} engine events before the lock, want 0 (nothing is emitted for a display candidate)`);
+  assert(s1.gateFires === 1, `gateFires ${s1.gateFires} (the buzz counter)`);
+  assert(at.evts.length === 1 && at.evts[0].type === 'gate' && at.evts[0].gateIndex === 0,
+    `${JSON.stringify(at.evts)} — want exactly the gate-0 event`);
 });
 
-test('live cycle20-06 E2: with NO pick nothing is presumed — display fields stay null until the lock (today\'s behaviour)', () => {
+test('live cycle20-06 E2: with NO pick there is no reference — every positional field stays null for the whole ride', () => {
   const r = rideSynL(395, null);
   const st = r.engine.getState();
-  assert(st.displayTrack === null && st.track === null && st.currentSector === null && st.startGateT === null && st.chainageM === null,
-    `no pick: displayTrack ${st.displayTrack}, currentSector ${st.currentSector}, startGateT ${st.startGateT}, chainageM ${st.chainageM} — want all null`);
+  assert(st.track === null && st.currentSector === null && st.startGateT === null && st.chainageM === null,
+    `no pick: track ${st.track}, currentSector ${st.currentSector}, startGateT ${st.startGateT}, chainageM ${st.chainageM} — want all null`);
   assert(st.sectors.every((x) => x.kind === 'pending'), `no-pick sectors ${st.sectors.map((x) => x.kind)}`);
-  assert(st.gateFires === 1, `gateFires ${st.gateFires}: gate 0 DID fire on the candidate (unchanged max-over-candidates rule)`);
+  assert(st.gateFires === 0, `gateFires ${st.gateFires}: no candidate exists, nothing can fire`);
 });
 
-test('live cycle20-06 E3: the lock changes nothing on screen — same startGateT before/after, the replayed gate-0 event carries that exact time, lock event unchanged', () => {
-  const r = rideSynL(405, 'SyntheticL');
-  let preLockStart: number | null = null;
-  // re-drive to capture the pre-lock value at s = 395
-  const pre = rideSynL(395, 'SyntheticL');
-  preLockStart = pre.engine.getState().startGateT;
-  const st = r.engine.getState();
-  assert(st.track === 'SyntheticL' && st.lockKind === 'verified', `post: track ${st.track}, lockKind ${st.lockKind}`);
-  assert(st.displayTrack === 'SyntheticL' && st.currentSector === 1, `post: displayTrack ${st.displayTrack}, currentSector ${st.currentSector}`);
-  assert(preLockStart !== null && st.startGateT === preLockStart, `startGateT moved at the lock: ${preLockStart} → ${st.startGateT}`);
-  const locks = r.evts.filter((e) => e.type === 'lock');
-  const gates = r.evts.filter((e) => e.type === 'gate');
-  assert(locks.length === 1 && locks[0].type === 'lock' && locks[0].kind === 'verified' && numEq(locks[0].atChainageM, 405, 6),
-    `lock events ${JSON.stringify(locks)}`);
-  assert(gates.length === 1 && gates[0].type === 'gate' && gates[0].gateIndex === 0 && gates[0].t === preLockStart,
-    `replayed gate-0 ${JSON.stringify(gates)} — want exactly one, t === the pre-lock startGateT`);
-});
-
-test('live cycle20-06 E4: a display candidate that reaches FINISH before 400 m shows sectors but NEVER scores a lap or flips phase; finalize() withdraws it', () => {
-  const SYN_SHORT: TrackSpec = {
-    id: 'SyntheticShort', ref: buildSyntheticRef([[0, 0], [405, 0]]), gates: [50, 150, 250, 350],
-  };
-  const engine = new LiveEngine([SYN_SHORT]);
-  const evts: EngineEvent[] = [];
-  engine.subscribeEvents((e) => evts.push(e));
-  engine.start({ pickId: 'SyntheticShort' });
-  let t = 1755167000;
-  for (let s = 0; s <= 360; s += 5) {
-    const [lat, lon] = xyToLatLon(s, 0, 0, 0);
-    engine.feed(lat, lon, t * 1000);
-    t += 1;
-  }
-  const mid = engine.getState();
-  assert(mid.track === null && mid.lockKind === 'none' && mid.displayTrack === 'SyntheticShort',
-    `mid: track ${mid.track}, lockKind ${mid.lockKind}, displayTrack ${mid.displayTrack}`);
-  assert(mid.sectors.length === 3 && mid.sectors.every((x) => x.kind === 'done'), `mid sectors ${mid.sectors.map((x) => x.kind)} — want 3 done`);
-  assert(mid.lap === null && mid.phase === 'detecting', `mid: lap ${JSON.stringify(mid.lap)}, phase ${mid.phase} — a display candidate must never score D-022's lap`);
-  assert(mid.currentSector === null && mid.lastDone === 3, `mid: currentSector ${mid.currentSector}, lastDone ${mid.lastDone}`);
-  assert(evts.length === 0, `${evts.length} events before finalize, want 0`);
-  engine.finalize();
-  const fin = engine.getState();
-  assert(fin.track === null && fin.lockKind === 'none' && fin.lap === null && fin.phase !== 'finished',
-    `finalize: track ${fin.track}, lockKind ${fin.lockKind}, lap ${JSON.stringify(fin.lap)}, phase ${fin.phase} — want unmatched (350 − 0 < 400)`);
-  assert(fin.displayTrack === null && fin.currentSector === null && fin.startGateT === null,
-    `finalize must end the presumption: displayTrack ${fin.displayTrack}, currentSector ${fin.currentSector}, startGateT ${fin.startGateT}`);
-  assert(fin.sectors.every((x) => x.kind === 'pending'), `finalize sectors ${fin.sectors.map((x) => x.kind)} — want all pending`);
-  assert(evts.length === 0, `${evts.length} events after finalize, want 0`);
-});
-
-test('live cycle20-06 E5: the cycle-023 retry re-derives the display — no stale "current" S1 after the re-seed skips gate 0', () => {
-  // Poor accuracy (60 m) through the START gate, first good fix at 160 m: the
-  // retry re-seeds the projector at 160 m; D-016(b) arming then SKIPS gate 0
-  // (160 − 100 = 60 > armWithinM 50) — the display must say so at once.
-  const r = rideSynL(160, 'SyntheticL', (s) => (s < 160 ? 60 : 10));
-  const retries = r.diag.filter((d) => d.track === 'SyntheticL' && d.phase === 'retry');
-  assert(retries.length === 1, `${retries.length} retries, want exactly 1 (scenario precondition)`);
-  const st = r.engine.getState();
-  assert(st.displayTrack === 'SyntheticL' && st.track === null, `displayTrack ${st.displayTrack}, track ${st.track}`);
-  assert(st.startGateT === null, `startGateT ${st.startGateT} survived the re-seed — stale pre-retry event`);
-  assert(st.sectors[0].kind === 'missed', `sectors[0] ${JSON.stringify(st.sectors[0])} — want missed (gate 0 skipped by arming), not a stale "current"`);
-  assert(r.evts.length === 0, `${r.evts.length} events, want 0`);
-});
-
-test('live cycle20-06 E6: every pre-lock `track === null` invariant still holds under a pick — stop() clears the display too', () => {
+test('live cycle20-06 E6: stop() clears the reference and every positional field (virgin-cycle21)', () => {
   const r = rideSynL(300, 'SyntheticL');
   const st = r.engine.getState();
-  assert(st.track === null && st.lockKind === 'none' && st.displayTrack === 'SyntheticL', `track ${st.track}, lockKind ${st.lockKind}, displayTrack ${st.displayTrack}`);
+  assert(st.track === 'SyntheticL', `track ${st.track}`);
   r.engine.stop();
   const off = r.engine.getState();
-  assert(off.displayTrack === null && off.currentSector === null && off.startGateT === null && off.chainageM === null,
-    `after stop(): displayTrack ${off.displayTrack}, currentSector ${off.currentSector}, startGateT ${off.startGateT}, chainageM ${off.chainageM}`);
+  assert(off.track === null && off.currentSector === null && off.startGateT === null && off.chainageM === null,
+    `after stop(): track ${off.track}, currentSector ${off.currentSector}, startGateT ${off.startGateT}, chainageM ${off.chainageM}`);
 });
 
-test('live cycle20-12: a soft-promoted ride keeps its done sectors through the defensive SECOND finalize()', () => {
+test('live cycle20-12: a ride with fired gates keeps its done sectors through the defensive SECOND finalize()', () => {
   // Opus inspection of brief 06 (I3): finalize()'s pending-reset ran for every
   // lockKind other than 'soft' — including 'finalized', the state the FIRST
   // finalize() leaves a soft lock in — so RecordScreen's onEnd finalize()
@@ -1531,18 +847,188 @@ test('live cycle20-12: a soft-promoted ride keeps its done sectors through the d
     t += 1;
   }
   const mid = engine.getState();
-  assert(mid.track === 'SyntheticL' && mid.lockKind === 'soft', `pre-finalize: track ${mid.track}, lockKind ${mid.lockKind} — want soft`);
+  assert(mid.track === 'SyntheticL', `pre-finalize: track ${mid.track}`);
   assert(mid.sectors[0].kind === 'done' && mid.sectors[1].kind === 'current',
     `pre-finalize sectors ${mid.sectors.map((x) => x.kind)} — want S1 done (gates 100/800 crossed), S2 current`);
   engine.finalize();
   const once = engine.getState();
-  assert(once.lockKind === 'finalized' && once.track === 'SyntheticL', `first finalize: lockKind ${once.lockKind}, track ${once.track}`);
+  assert(once.track === 'SyntheticL', `first finalize: track ${once.track}`);
   assert(once.sectors[0].kind === 'done', `first finalize sectors ${once.sectors.map((x) => x.kind)} — S1 must stay done`);
   const before = JSON.stringify(once.sectors);
   engine.finalize(); // the defensive second call (stopTracking after onEnd)
   const twice = engine.getState();
   assert(twice.sectors[0].kind === 'done', `second finalize sectors ${twice.sectors.map((x) => x.kind)} — S1 wiped to ${twice.sectors[0].kind}`);
   assert(JSON.stringify(twice.sectors) === before, `second finalize changed sectors: ${before} -> ${JSON.stringify(twice.sectors)}`);
-  assert(twice.lockKind === 'finalized' && twice.track === 'SyntheticL' && twice.currentSector === once.currentSector,
-    `second finalize: lockKind ${twice.lockKind}, track ${twice.track}, currentSector ${twice.currentSector} (was ${once.currentSector})`);
+  assert(twice.track === 'SyntheticL' && twice.currentSector === once.currentSector,
+    `second finalize: track ${twice.track}, currentSector ${twice.currentSector} (was ${once.currentSector})`);
+});
+
+// ============================================================ virgin-cycle21 01: the START pick is the one reference
+// (Nathan 2026-10-03: "never lock any ways into the ride; the absolute
+// reference is the user pick at the start"). Synthetic corridor-subset specs
+// only (SYN_S / SYN_L share their first 1200 m) — never a rider's real route.
+
+/** Feed SYN positions s0..s1 step 5 m at 1 Hz; `onS` selects S's branch past 1200 m.
+ * Returns the state after every fix. */
+function ride21(
+  engine: InstanceType<typeof LiveEngine>, s0: number, s1: number, onS = false,
+  accuracy?: (s: number) => number,
+): LiveEngineState[] {
+  const states: LiveEngineState[] = [];
+  let t = 1755167000 + s0;
+  for (let s = s0; s <= s1; s += 5) {
+    const [x, y] = synPos(onS, s);
+    const [lat, lon] = xyToLatLon(x, y, 0, 0);
+    engine.feed(lat, lon, t * 1000, accuracy ? accuracy(s) : undefined);
+    states.push(engine.getState());
+    t += 1;
+  }
+  return states;
+}
+
+test('virgin-cycle21 01: L1 the pick is the reference from the first call — before any fix and after one fix', () => {
+  const engine = new LiveEngine([SYN_S, SYN_L]);
+  engine.start({ pickId: 'SyntheticL' });
+  const pre = engine.getState();
+  assert(pre.track === 'SyntheticL' && pre.phase === 'locked', `before any fix: track ${pre.track}, phase ${pre.phase}`);
+  assert(pre.pick === 'SyntheticL', `pick ${pre.pick}`);
+  const st = ride21(engine, 0, 0)[0];
+  assert(st.track === 'SyntheticL' && st.phase === 'locked', `after one fix: track ${st.track}, phase ${st.phase}`);
+  assert(!('lockKind' in st) && !('pickHonoured' in st) && !('anyAnchored' in st) && !('displayTrack' in st),
+    `retired fields still on the state: ${Object.keys(st).join(',')}`);
+});
+
+test('virgin-cycle21 01: L2 a rival that pulls ahead never takes over — pick S, rider rides L\'s divergent road for 1.8 km', () => {
+  const engine = new LiveEngine([SYN_S, SYN_L]);
+  const evts: EngineEvent[] = [];
+  engine.subscribeEvents((e) => evts.push(e));
+  engine.start({ pickId: 'SyntheticS' });
+  const states = ride21(engine, 0, 3000, false);
+  assert(states.every((x) => x.track === 'SyntheticS'), 'track left the pick at some fix');
+  assert(evts.length > 0 && evts.every((e) => e.type === 'gate' && e.track === 'SyntheticS'),
+    `events ${JSON.stringify(evts.filter((e) => e.type !== 'gate' || e.track !== 'SyntheticS'))} — want only gate events on the pick`);
+  assert(!evts.some((e) => (e.type as string) === 'lock' || (e.type as string) === 'lockChange'), 'a lock/lockChange event was emitted');
+  const fin = states[states.length - 1];
+  assert(fin.gateFires === 4, `${fin.gateFires} fires, want 4 (S gates at 100/400/700/1000; 1300 is on the unridden branch)`);
+  assert(fin.sectors[3].kind !== 'done' && fin.lap === null, `S4 ${JSON.stringify(fin.sectors[3])}, lap ${JSON.stringify(fin.lap)} — the unridden stretch must not be scored`);
+});
+
+test('virgin-cycle21 01: L2b pick=L while the rider takes S\'s branch — L stays, 2 fires, partial sectors, no lap, finalize keeps it', () => {
+  const engine = new LiveEngine([SYN_S, SYN_L]);
+  const evts: EngineEvent[] = [];
+  engine.subscribeEvents((e) => evts.push(e));
+  engine.start({ pickId: 'SyntheticL' });
+  ride21(engine, 0, 1400, true);
+  const mid = engine.getState();
+  assert(mid.track === 'SyntheticL', `track ${mid.track}`);
+  engine.finalize();
+  const fin = engine.getState();
+  assert(fin.track === 'SyntheticL' && fin.lap === null, `final track ${fin.track}, lap ${JSON.stringify(fin.lap)}`);
+  assert(fin.gateFires === 2, `${fin.gateFires} fires on L, want 2 (100 and 800)`);
+  assert(fin.sectors[0].kind === 'done' && fin.sectors[1].kind === 'current'
+    && fin.sectors[2].kind === 'pending' && fin.sectors[3].kind === 'pending',
+    `sectors [${fin.sectors.map((x) => x.kind)}], want done/current/pending/pending`);
+  assert(evts.every((e) => e.type === 'gate' && e.track === 'SyntheticL'), 'an event names a non-pick route or is not a gate');
+});
+
+test('virgin-cycle21 01: L3 no pick = no reference — 2 km along A shows nothing, fires nothing, emits nothing', () => {
+  const engine = new LiveEngine([SYN_S, SYN_L]);
+  const evts: EngineEvent[] = [];
+  engine.subscribeEvents((e) => evts.push(e));
+  engine.start({ pickId: null });
+  const states = ride21(engine, 0, 2000);
+  for (const st of states) {
+    assert(st.track === null && st.phase === 'detecting' && st.gateFires === 0 && st.riderSnap === null && st.chainageM === null,
+      `fix ${st.fixesFed}: track ${st.track}, phase ${st.phase}, fires ${st.gateFires}`);
+    assert(st.sectors.length === 4 && st.sectors.every((x) => x.kind === 'pending'), `sectors ${st.sectors.map((x) => x.kind)}`);
+  }
+  assert(evts.length === 0, `${evts.length} engine events with no reference`);
+});
+
+test('virgin-cycle21 01: L4 a pick outside the sport-scoped set (wayIds) behaves as no pick', () => {
+  const engine = new LiveEngine([SYN_S, SYN_L]);
+  const evts: EngineEvent[] = [];
+  engine.subscribeEvents((e) => evts.push(e));
+  engine.start({ pickId: 'SyntheticL', wayIds: ['SyntheticS'] });
+  const states = ride21(engine, 0, 2000);
+  for (const st of states) {
+    assert(st.track === null && st.phase === 'detecting' && st.gateFires === 0 && st.riderSnap === null,
+      `fix ${st.fixesFed}: track ${st.track}, phase ${st.phase}, fires ${st.gateFires}`);
+    assert(st.sectors.length === 4 && st.sectors.every((x) => x.kind === 'pending'), `sectors ${st.sectors.map((x) => x.kind)}`);
+  }
+  assert(states[0].pick === 'SyntheticL', 'pick should still be logged');
+  assert(evts.length === 0, `${evts.length} engine events`);
+});
+
+test('virgin-cycle21 01: L5 finalize — a pick that fired nothing is unmatched; a pick that fired keeps its sectors; a no-pick full ride is never recovered; all idempotent', () => {
+  // (a) accidental START: pick L, rider stops before gate 0 (100 m)
+  const a = new LiveEngine([SYN_S, SYN_L]);
+  a.start({ pickId: 'SyntheticL' });
+  ride21(a, 0, 95);
+  assert(a.getState().track === 'SyntheticL', 'pick not the reference before finalize');
+  a.finalize();
+  const a1 = JSON.stringify(a.getState());
+  const sa = a.getState();
+  assert(sa.track === null && sa.sectors.every((x) => x.kind === 'pending'), `unfired pick: track ${sa.track}, sectors ${sa.sectors.map((x) => x.kind)}`);
+  a.finalize();
+  assert(JSON.stringify(a.getState()) === a1, 'second finalize changed the unmatched state');
+  // (b) pick with >= 1 gate fired
+  const b = new LiveEngine([SYN_S, SYN_L]);
+  b.start({ pickId: 'SyntheticL' });
+  ride21(b, 0, 1000);
+  b.finalize();
+  const b1 = JSON.stringify(b.getState());
+  const sb = b.getState();
+  assert(sb.track === 'SyntheticL' && sb.sectors[0].kind === 'done', `fired pick: track ${sb.track}, S1 ${sb.sectors[0].kind}`);
+  b.finalize();
+  assert(JSON.stringify(b.getState()) === b1, 'second finalize changed the matched state');
+  // (c) no pick, rider completed L's whole route: nothing is recovered
+  const c = new LiveEngine([SYN_S, SYN_L]);
+  ride21(c, 0, 3000);
+  c.finalize();
+  const sc = c.getState();
+  assert(sc.track === null && sc.lap === null && sc.phase !== 'finished', `no-pick full ride: track ${sc.track}, phase ${sc.phase}`);
+});
+
+test('virgin-cycle21 01: L6 the poor-accuracy re-seed never eats a real fire (only runs while no gate has fired)', () => {
+  // (a) poor accuracy THROUGH gate 0 (100 m), good fix after: gate 0 genuinely fired -> no re-seed, fire kept
+  const a = new LiveEngine([SYN_L]);
+  const diagA: DiagnosticEvent[] = [];
+  a.subscribeDiagnostics((e) => diagA.push(e));
+  a.start({ pickId: 'SyntheticL' });
+  ride21(a, 0, 150, false, (s) => (s <= 105 ? 60 : 10));
+  const sa = a.getState();
+  assert(diagA.filter((d) => d.phase === 'retry').length === 0, 'a re-seed ran after a gate had fired');
+  assert(sa.gateFires === 1 && sa.startGateT !== null && sa.sectors[0].kind === 'current',
+    `fires ${sa.gateFires}, startGateT ${sa.startGateT}, S1 ${sa.sectors[0].kind} — the fire was discarded`);
+  // (b) poor first fix, good fix BEFORE any gate: the re-seed still happens (cycle 023 fix 2)
+  const b = new LiveEngine([SYN_L]);
+  const diagB: DiagnosticEvent[] = [];
+  b.subscribeDiagnostics((e) => diagB.push(e));
+  b.start({ pickId: 'SyntheticL' });
+  ride21(b, 0, 150, false, (s) => (s === 0 ? 60 : 10));
+  assert(diagB.filter((d) => d.phase === 'retry').length === 1, `${diagB.filter((d) => d.phase === 'retry').length} retries, want exactly 1`);
+  assert(b.getState().gateFires === 1, `fires ${b.getState().gateFires}, want 1 (gate 0 after the re-seed)`);
+});
+
+test('virgin-cycle21 01: L8 idle auto-start (a headless relaunch feed with no start) has no reference', () => {
+  const engine = new LiveEngine([SYN_S, SYN_L]);
+  const states = ride21(engine, 0, 500);
+  const st = states[states.length - 1];
+  assert(st.track === null && st.phase === 'detecting' && st.gateFires === 0, `track ${st.track}, phase ${st.phase}, fires ${st.gateFires}`);
+});
+
+test('virgin-cycle21 01: L9 a picked short route scores its lap at its own FINISH — no 400 m evidence rule any more', () => {
+  const SYN_SHORT: TrackSpec = {
+    id: 'SyntheticShort', ref: buildSyntheticRef([[0, 0], [405, 0]]), gates: [50, 150, 250, 350],
+  };
+  const engine = new LiveEngine([SYN_SHORT]);
+  engine.start({ pickId: 'SyntheticShort' });
+  ride21(engine, 0, 360);
+  const mid = engine.getState();
+  assert(mid.track === 'SyntheticShort' && mid.phase === 'finished' && mid.lap !== null,
+    `track ${mid.track}, phase ${mid.phase}, lap ${JSON.stringify(mid.lap)}`);
+  assert(mid.sectors.length === 3 && mid.sectors.every((x) => x.kind === 'done'), `sectors ${mid.sectors.map((x) => x.kind)}`);
+  engine.finalize();
+  assert(engine.getState().track === 'SyntheticShort', 'finalize unmatched a finished ride');
 });

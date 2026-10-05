@@ -272,26 +272,27 @@ test('selfrace: selfsFeatureCollection — emits sortKey = 100 - rank and tier',
 
 // ============================================================ engine field (startGateT)
 
-test('selfrace: engine — startGateT is null before gate 0 fires and equals its crossing time once locked', () => {
+test('selfrace: engine — startGateT is null before gate 0 fires and equals its crossing time once it has (pick = reference from START)', () => {
   const f = loadFixture('clean_morning');
   const engine = new LiveEngine(fixtureSpecs());
   let sawPreLockNull = false;
   let badPreLock = false;
   const unsub = engine.subscribe((s) => {
-    if (s.track === null) {
+    if (s.gateFires === 0) {
       sawPreLockNull = true;
       if (s.startGateT !== null) badPreLock = true;
     }
   });
+  engine.start({ pickId: f.track });
   for (let i = 0; i < f.fixes.t.length; i++) {
     engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
   }
   unsub();
   const final = engine.getState();
-  assert(sawPreLockNull, 'expected at least one pre-lock state emission to check startGateT against');
-  assert(!badPreLock, 'startGateT must stay null on every emission before the engine locks a candidate');
-  assert(final.track === f.track, `expected the engine to lock ${f.track}, got ${final.track}`);
-  assert(final.startGateT !== null, 'expected startGateT to be set once locked and past its own gate 0');
+  assert(sawPreLockNull, 'expected at least one pre-gate-0 state emission to check startGateT against');
+  assert(!badPreLock, 'startGateT must stay null on every emission before gate 0 fires');
+  assert(final.track === f.track, `expected the engine's reference to be ${f.track}, got ${final.track}`);
+  assert(final.startGateT !== null, 'expected startGateT to be set once past the START gate');
 
   const spec = fixtureSpecs().find((s) => s.id === f.track)!;
   const { startS } = deriveGateCrossings({
@@ -304,7 +305,7 @@ test('selfrace: engine — startGateT is null before gate 0 fires and equals its
 
 // ============================================================ engine field (chainageM, follow-up)
 
-test('selfrace: engine — chainageM is null exactly while track === null, non-decreasing once locked', () => {
+test('selfrace: engine — chainageM is null exactly while track === null (a no-pick ride: always), non-decreasing under a pick', () => {
   const f = loadFixture('clean_morning');
   const engine = new LiveEngine(fixtureSpecs());
   let sawPreLockNull = false;
@@ -327,11 +328,27 @@ test('selfrace: engine — chainageM is null exactly while track === null, non-d
     engine.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
   }
   unsub();
-  assert(sawPreLockNull, 'expected at least one pre-lock state emission to check chainageM against');
+  // no-pick ride: no reference, chainageM null the whole ride (virgin-cycle21)
+  assert(sawPreLockNull && !badChainage, 'a no-pick ride must keep track and chainageM null for every emission');
+  assert(engine.getState().track === null && engine.getState().chainageM === null, 'no-pick ride ended with a reference');
+  // picked ride: track and chainageM are non-null from start(), chainage never decreases
+  const picked = new LiveEngine(fixtureSpecs());
+  picked.start({ pickId: f.track });
+  badChainage = false; badMonotonic = false; lastChainage = null;
+  const unsub2 = picked.subscribe((s) => {
+    if (s.track === null || s.chainageM === null) badChainage = true;
+    else {
+      if (lastChainage !== null && s.chainageM < lastChainage) badMonotonic = true;
+      lastChainage = s.chainageM;
+    }
+  });
+  for (let i = 0; i < f.fixes.t.length; i++) {
+    picked.feed(f.fixes.lat[i], f.fixes.lon[i], f.fixes.t[i] * 1000);
+  }
+  unsub2();
   assert(!badChainage, 'chainageM must be null exactly while track is null, non-null once locked');
   assert(!badMonotonic, 'chainageM must never decrease across emissions once locked');
-  const final = engine.getState();
-  assert(final.chainageM !== null, 'expected a non-null chainageM in the final locked state');
+  assert(picked.getState().chainageM !== null, 'expected a non-null chainageM in the final picked state');
 });
 
 // ============================================================ chainageM (Task A/B.7)

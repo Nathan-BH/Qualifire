@@ -182,6 +182,10 @@ const OFF_WAY_M = 120;
  * WP-E — the PNG rung's unscored ticks use CASING instead (see gate tick
  * rendering below). */
 const CASING = '#14120C';
+/** virgin-cycle21 03: the empty collection every always-mounted source falls back to
+ * (MapLibre paints sources in MOUNT order, so every source except the rider is
+ * mounted from the first render and the rider dot always paints last). */
+const EMPTY_FC = { type: 'FeatureCollection' as const, features: [] };
 
 /** MapLibre styles used for the tile rung, one per theme mode (Nathan
  * 2026-08-18): dark basemap at night (yellow line on black is the brand),
@@ -691,8 +695,8 @@ function MapLibreWayMap(props: WayMapProps & {
       >
         <M.Camera ref={cameraRef} {...cameraProps} />
         {/* virgin-cycle15 07: the ride's own trace, first source after the camera so it
-            mounts beneath everything else (route source is conditional and mounts later or
-            in the same render — either way above this). key === id per the cycle-025 rule. */}
+            mounts beneath everything else (every later source, route included, is always mounted
+            after it — virgin-cycle21 03). key === id per the cycle-025 rule. */}
         <M.GeoJSONSource key="ride-trace" id="ride-trace" data={rideTraceFC}>
           <M.Layer id="ride-trace-core" type="line"
             paint={{ 'line-color': colors.riderBlue, 'line-width': 2, 'line-opacity': 0.85 }}
@@ -700,17 +704,17 @@ function MapLibreWayMap(props: WayMapProps & {
         </M.GeoJSONSource>
         {/* Reverted 2026-08-24: one solid line, casing beneath a yellow
             core, the whole route — see the routeFC comment above for why
-            the dotted-ahead split was pulled back out. */}
-        {wayFC ? (
-          <M.GeoJSONSource key="route" id="route" data={wayFC}>
-            <M.Layer id="route-casing" type="line"
-              paint={{ 'line-color': CASING, 'line-width': 7 }}
-              layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
-            <M.Layer id="route-core" type="line"
-              paint={{ 'line-color': colors.neutral, 'line-width': 4 }}
-              layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
-          </M.GeoJSONSource>
-        ) : null}
+            the dotted-ahead split was pulled back out. virgin-cycle21 03: always
+            mounted (empty collection when there is no way) like every source
+            below except the rider — the rider dot must be the LAST mounted. */}
+        <M.GeoJSONSource key="route" id="route" data={wayFC ?? EMPTY_FC}>
+          <M.Layer id="route-casing" type="line"
+            paint={{ 'line-color': CASING, 'line-width': 7 }}
+            layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
+          <M.Layer id="route-core" type="line"
+            paint={{ 'line-color': colors.neutral, 'line-width': 4 }}
+            layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
+        </M.GeoJSONSource>
         {/* WP-J (breadcrumb trail): the rider's own ridden line, casing+core
             styled exactly like the route line above (same CASING/colors.neutral,
             same widths). Always mounted (see trailFC comment above for why —
@@ -735,13 +739,14 @@ function MapLibreWayMap(props: WayMapProps & {
             deviated. This also matters off the live map: WP-H's ride-detail
             screen passes the ride's own recorded fixes as `trail` into a
             variant="browse" map, so the same casing-hides-span problem existed
-            there too whenever the breadcrumb tracked the route line. Still
-            conditional (NOT always-mounted like the
-            trail): it must mount in the SAME render as the conditional route
-            source above, otherwise a late-resolving asset would put the yellow
-            route core on top of the spans. Live callers therefore pass a truthy
-            sectorColours (sectorTrailModel's ALL_YELLOW when the setting is off)
-            from their first render, never a toggled undefined.
+            there too whenever the breadcrumb tracked the route line.
+            virgin-cycle21 03: always mounted (empty collection when there are
+            no sector colours), in this slot after route and trail, so a
+            late-resolving asset can never put the yellow route core on top of
+            the spans, and the rider source stays the last one mounted. Live
+            callers still pass a truthy sectorColours (sectorTrailModel's
+            ALL_YELLOW when the setting is off) so the spans are populated
+            from their first render.
             Each sector's stretch of the line painted in the colour that sector
             earned, drawn OVER the base core at the SAME width-4 as the core
             (cycle9, 2026-09-16 -- Nathan: noticed the line visibly thickening
@@ -766,90 +771,83 @@ function MapLibreWayMap(props: WayMapProps & {
             The lead-in/lead-out features (properties.lead) always carry a
             colour, so they never fall through to the base line — they are
             grey by design, not "not yet run". */}
-        {sectorSpansFC ? (
-          <M.GeoJSONSource key="sector-spans" id="sector-spans" data={sectorSpansFC}>
-            <M.Layer id="sector-spans-core" type="line"
-              paint={{
-                'line-color': ['case', ['has', 'colour'], ['get', 'colour'], 'rgba(0,0,0,0)'],
-                'line-width': 4,
-              }}
-              layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
-          </M.GeoJSONSource>
-        ) : null}
-        {placeFC ? (
-          <M.GeoJSONSource key="place" id="place" data={placeFC}>
-            <M.Layer id="place-disc-fill" type="fill"
-              filter={['==', ['get', 'part'], 'disc']}
-              paint={{ 'fill-color': colors.neutral, 'fill-opacity': 0.18 }} />
-            <M.Layer id="place-disc-line" type="line"
-              filter={['==', ['get', 'part'], 'disc']}
-              paint={{ 'line-color': colors.neutral, 'line-width': 2, 'line-opacity': 0.9 }} />
-            <M.Layer id="place-centre" type="circle"
-              filter={['==', ['get', 'part'], 'centre']}
-              paint={{
-                'circle-radius': 4,
-                'circle-color': colors.neutral,
-                'circle-stroke-color': CASING,
-                'circle-stroke-width': 1.5,
-              }} />
-          </M.GeoJSONSource>
-        ) : null}
-        {gateTicksFC ? (
-          // WP-E: circles replaced with a short tick perpendicular to the
-          // route (gateTicksFeatureCollection). Casing+core like the route
-          // line so a tick is never invisible on the night basemap (Nathan
-          // 2026-08-24 device feedback — the earlier t.textDim fallback read
-          // as nothing).
-          // Gates-white (Nathan 2026-09-14, matching the marketing
-          // gates-saving render: yellow line, white gate across): the core
-          // is colors.white, a structural-marker colour that is not a tier
-          // colour. Gate ticks never change colour (STATE.md; cycle2 WP-E
-          // retired the tier-coloured tick 2026-09-05), so the old
-          // D-013/D-030 concern — an unscored yellow tick being
-          // pixel-identical to an earned yellow-tier tick — no longer arises
-          // and the thin/translucent fallback it justified is gone (opacity
-          // 1). The ['has','colour'] branch is kept only because the
-          // gateColours prop still exists; no caller supplies it.
-          // WP-N: line-cap round on both layers, matching the route line
-          // itself (which was already round) — was 'butt' on these two.
-          <M.GeoJSONSource
-            key="gate-ticks"
-            id="gate-ticks"
-            data={gateTicksFC}
-            onPress={props.gateSelect ? (e: GatePressEvent) => {
-              const name = String(e.nativeEvent.features?.[0]?.properties?.name ?? '');
-              const idx = asset ? asset.gates.findIndex((g) => g.name === name) : -1;
-              if (idx >= 0) props.gateSelect!.onPress(idx);
-            } : undefined}
-            hitbox={props.gateSelect ? { top: 24, right: 24, bottom: 24, left: 24 } : undefined}
-          >
-            <M.Layer id="gate-ticks-casing" type="line"
-              paint={{ 'line-color': CASING, 'line-width': 5 }}
-              layout={{ 'line-cap': 'round' }} />
-            <M.Layer id="gate-ticks" type="line" paint={{
-              'line-color': ['case', ['has', 'colour'], ['get', 'colour'], colors.white],
-              'line-width': ['case', ['has', 'colour'], 3, 2],
-              'line-opacity': 1,
-            }} layout={{ 'line-cap': 'round' }} />
-          </M.GeoJSONSource>
-        ) : null}
-        {/* WP-J (gate-adjust card): the selected-gate ring, mounted whenever
-            gateSelect is defined (not whenever something is actually
-            selected) so its mount slot is stable — see gateSelectedFC's
-            comment above. riderBlue is deliberately NOT the yellow
+        <M.GeoJSONSource key="sector-spans" id="sector-spans" data={sectorSpansFC ?? EMPTY_FC}>
+          <M.Layer id="sector-spans-core" type="line"
+            paint={{
+              'line-color': ['case', ['has', 'colour'], ['get', 'colour'], 'rgba(0,0,0,0)'],
+              'line-width': 4,
+            }}
+            layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
+        </M.GeoJSONSource>
+        <M.GeoJSONSource key="place" id="place" data={placeFC ?? EMPTY_FC}>
+          <M.Layer id="place-disc-fill" type="fill"
+            filter={['==', ['get', 'part'], 'disc']}
+            paint={{ 'fill-color': colors.neutral, 'fill-opacity': 0.18 }} />
+          <M.Layer id="place-disc-line" type="line"
+            filter={['==', ['get', 'part'], 'disc']}
+            paint={{ 'line-color': colors.neutral, 'line-width': 2, 'line-opacity': 0.9 }} />
+          <M.Layer id="place-centre" type="circle"
+            filter={['==', ['get', 'part'], 'centre']}
+            paint={{
+              'circle-radius': 4,
+              'circle-color': colors.neutral,
+              'circle-stroke-color': CASING,
+              'circle-stroke-width': 1.5,
+            }} />
+        </M.GeoJSONSource>
+        {/* virgin-cycle21 03: gate ticks always mounted (empty collection when
+            there is no asset). WP-E: circles replaced with a short tick perpendicular to the
+            route (gateTicksFeatureCollection). Casing+core like the route
+            line so a tick is never invisible on the night basemap (Nathan
+            2026-08-24 device feedback — the earlier t.textDim fallback read
+            as nothing).
+            Gates-white (Nathan 2026-09-14, matching the marketing
+            gates-saving render: yellow line, white gate across): the core
+            is colors.white, a structural-marker colour that is not a tier
+            colour. Gate ticks never change colour (STATE.md; cycle2 WP-E
+            retired the tier-coloured tick 2026-09-05), so the old
+            D-013/D-030 concern — an unscored yellow tick being
+            pixel-identical to an earned yellow-tier tick — no longer arises
+            and the thin/translucent fallback it justified is gone (opacity
+            1). The ['has','colour'] branch is kept only because the
+            gateColours prop still exists; no caller supplies it.
+            WP-N: line-cap round on both layers, matching the route line
+            itself (which was already round) — was 'butt' on these two. */}
+        <M.GeoJSONSource
+          key="gate-ticks"
+          id="gate-ticks"
+          data={gateTicksFC ?? EMPTY_FC}
+          onPress={props.gateSelect ? (e: GatePressEvent) => {
+            const name = String(e.nativeEvent.features?.[0]?.properties?.name ?? '');
+            const idx = asset ? asset.gates.findIndex((g) => g.name === name) : -1;
+            if (idx >= 0) props.gateSelect!.onPress(idx);
+          } : undefined}
+          hitbox={props.gateSelect ? { top: 24, right: 24, bottom: 24, left: 24 } : undefined}
+        >
+          <M.Layer id="gate-ticks-casing" type="line"
+            paint={{ 'line-color': CASING, 'line-width': 5 }}
+            layout={{ 'line-cap': 'round' }} />
+          <M.Layer id="gate-ticks" type="line" paint={{
+            'line-color': ['case', ['has', 'colour'], ['get', 'colour'], colors.white],
+            'line-width': ['case', ['has', 'colour'], 3, 2],
+            'line-opacity': 1,
+          }} layout={{ 'line-cap': 'round' }} />
+        </M.GeoJSONSource>
+        {/* WP-J (gate-adjust card): the selected-gate ring, always mounted
+            (virgin-cycle21 03: empty collection when gateSelect is absent or
+            nothing is selected) so its mount slot is stable — see
+            gateSelectedFC's comment above. riderBlue is deliberately NOT the yellow
             line/tick colour and not a tier colour; there is no rider on
             this surface (showRider={false} on the card's map), so it
             cannot be misread as the rider dot. */}
-        {props.gateSelect ? (
-          <M.GeoJSONSource key="gate-selected" id="gate-selected" data={gateSelectedFC}>
-            <M.Layer id="gate-selected-ring" type="circle" paint={{
-              'circle-radius': 15,
-              'circle-color': 'rgba(0,0,0,0)',
-              'circle-stroke-color': colors.riderBlue,
-              'circle-stroke-width': 3,
-            }} />
-          </M.GeoJSONSource>
-        ) : null}
+        <M.GeoJSONSource key="gate-selected" id="gate-selected" data={props.gateSelect ? gateSelectedFC : EMPTY_FC}>
+          <M.Layer id="gate-selected-ring" type="circle" paint={{
+            'circle-radius': 15,
+            'circle-color': 'rgba(0,0,0,0)',
+            'circle-stroke-color': colors.riderBlue,
+            'circle-stroke-width': 3,
+          }} />
+        </M.GeoJSONSource>
         {/* virgin-cycle6 (self racing): always-mounted, possibly-empty source
             (selfsFC — see its comment above) so it claims its mount slot
             BELOW the rider dot (mount order, same z-stacking rule as

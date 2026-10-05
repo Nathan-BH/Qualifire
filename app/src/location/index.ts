@@ -87,10 +87,13 @@ let sessionLoaded = false; // whether we've consulted the disk marker yet
 // `session` by the time it ran and skip re-arming entirely — leaving
 // liveEngine to auto-start itself via feed()'s idle check with NO options
 // (arming on), silently re-arming with the wrong options.
-// Living inside ensureSession() itself means every caller — the task
-// handler, getRecoveryState(), a future caller — shares one launch-scoped
-// re-arm, no matter which one restores the session first.
+// Since virgin-cycle21 04 it only guards the one-time relaunch bookkeeping
+// (event + interruptedRideId); the engine is never re-armed.
 let engineArmedThisLaunch = false;
+// virgin-cycle21 04 (Nathan 2026-10-04): the ride a fresh JS launch restored from disk.
+// It was interrupted (the process died) and is never resumed: no engine re-arm, no fix
+// appended or fed; RecordScreen saves what was recorded as a free activity.
+let interruptedRideId: string | null = null;
 // Cycle 025 (P4): heartbeat — refresh the session marker's lastAliveAtMs
 // every N fixes so a relaunch can measure HOW LONG the process was dead
 // (downS on the relaunch event), not just that it died. Cheap: one small
@@ -163,14 +166,10 @@ async function ensureSession(): Promise<ActiveSession | null> {
   if (!sessionLoaded) {
     session = await loadSession();
     sessionLoaded = true;
-    // WP-B fix B1 (second pass): a fresh JS launch's liveEngine singleton is
-    // phase==='idle'. Re-arm it in the mode this ride was actually started
-    // in (persisted on the session marker — session.ts) BEFORE anything can
-    // call liveEngine.feed()/liveEngine.getState() this launch, so feed()'s
-    // own idle-triggered auto-start (this.start() with NO options, defaulting
-    // to mode:'route') never fires. This runs exactly once per launch,
-    // regardless of which caller first restores a non-null session — see the
-    // engineArmedThisLaunch doc comment above.
+    // virgin-cycle21 04: a fresh launch that finds a marker is an interrupted
+    // ride. It is marked here, exactly once per launch whichever caller
+    // restores it first (see the engineArmedThisLaunch doc comment above), and
+    // is never re-armed; the engine stays idle.
     if (session && !engineArmedThisLaunch) {
       engineArmedThisLaunch = true;
       freshLaunchRestore = true;
@@ -186,7 +185,7 @@ async function ensureSession(): Promise<ActiveSession | null> {
         kind: 'relaunch', tUnixMs: nowMs,
         ...(downS !== undefined ? { downS } : {}),
       });
-      liveEngine.start({ pickId: null, wayIds: session.wayIds ?? null });
+      interruptedRideId = session.rideId;
     }
   }
   return session;
@@ -214,6 +213,18 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
     if (!s) {
       // Orphan: fixes arriving with no active ride (marker lost/cleared).
       // Stop the service rather than record into the void.
+      try {
+        await Location.stopLocationUpdatesAsync(LOCATION_TASK);
+      } catch {
+        /* already stopped */
+      }
+      return;
+    }
+    if (s.rideId === interruptedRideId) {
+      // virgin-cycle21 04: an interrupted ride is never resumed — stop the service
+      // (the marker stays on disk; RecordScreen files the recorded part as a free
+      // activity on the next mount) and drop this batch unrecorded.
+      stopRideNotification();
       try {
         await Location.stopLocationUpdatesAsync(LOCATION_TASK);
       } catch {
@@ -278,10 +289,8 @@ TaskManager.defineTask<{ locations: Location.LocationObject[] }>(
       // Live sectors (cycle 006): display-only derived state, fed AFTER the
       // raw append so the JSONL can never depend on it. Engine errors are
       // swallowed — the raw ride is worth strictly more than the live view.
-      // On a headless relaunch mid-ride the engine is explicitly re-armed in
-      // this ride's own mode above (WP-B fix B1) before this first feed() —
-      // a route ride re-locks with earlier sectors surfacing as
-      // estimated/missed (honest, D-016(b)).
+      // A ride restored by a fresh launch never reaches here (virgin-cycle21 04:
+      // interrupted rides are not resumed).
       try {
         liveEngine.feed(loc.coords.latitude, loc.coords.longitude, loc.timestamp, loc.coords.accuracy ?? undefined, flagged);
       } catch {
@@ -387,6 +396,8 @@ export async function startTracking(opts?: {
     // startRide) — see both files' headers.
     mode: 'route',
     wayIds: opts?.wayIds ?? null,
+    // virgin-cycle21: the START pick, restored on relaunch (see engineArmedThisLaunch).
+    pickId: opts?.wayPick ?? null,
     // WP-1: the ride's own sport, stamped once and never changed mid-ride.
     sportId: opts?.sportId,
   };
@@ -547,12 +558,12 @@ export async function stopTracking(): Promise<RideSummary | null> {
   } catch {
     /* service already gone (killed by OS) — still finalise the ride */
   }
-  // Cycle 024 (WP-D2): settle a route BEFORE the ride ends, so the last
-  // emitted state (and any caller reading getState() right after stopTracking
-  // resolves) carries the finalized route rather than a still-soft or
-  // never-locked one. Defensive here even though RecordScreen's onEnd also
+  // Settle the ride BEFORE it ends (virgin-cycle21: finalize() only unmatches
+  // a reference that never fired a gate), so the last emitted state (and any
+  // caller reading getState() right after stopTracking resolves) is final.
+  // Defensive here even though RecordScreen's onEnd also
   // calls finalize() itself first — this covers every OTHER stopTracking()
-  // caller (e.g. the relaunch-recovery "Save ride" path), and finalize() is
+  // caller (e.g. RecordScreen's interrupted-ride save), and finalize() is
   // idempotent, so calling it twice on the same ride is harmless.
   liveEngine.finalize();
   let summary: RideSummary | null = null;
@@ -562,6 +573,7 @@ export async function stopTracking(): Promise<RideSummary | null> {
   }
   await clearSession();
   session = null;
+  interruptedRideId = null;
   sessionLoaded = true;
   liveEngine.stop(); // derived state is discarded; the raw JSONL is the record
   emit();
@@ -575,6 +587,7 @@ export async function stopTracking(): Promise<RideSummary | null> {
 export async function dropStaleSession(): Promise<void> {
   await clearSession();
   session = null;
+  interruptedRideId = null;
   sessionLoaded = true;
   liveEngine.stop();
   emit();
@@ -620,9 +633,11 @@ liveEngine.subscribe((st) => {
 // subscription only hands it the zero + label. Subscribed at module
 // scope for the same headless-relaunch reason as the buzz above: the task
 // handler feeds the engine with the screen off, so a gate fire here reaches
-// the notification within a tick. `session` is the module truth (set before
-// liveEngine.start() in startTracking and ensureSession; null before
-// liveEngine.stop() in stopTracking, which resets the planner). Everything
+// the notification within a tick. `session` is the module truth (set just
+// before the engine starts in startTracking; restored from disk by
+// ensureSession for an interrupted ride, which is never re-armed or fed —
+// virgin-cycle21 04; null before liveEngine.stop() in stopTracking, which
+// resets the planner). Everything
 // after this line is display-only: the wrapper never throws, the policy is
 // pure (rideNotificationPolicy.ts), and installs without the native module
 // no-op.
@@ -647,43 +662,23 @@ export function noteButtonPress(button: 'pause' | 'resume'): void {
   if (session) logEvent(session.rideId, { kind: 'button', tUnixMs: Date.now(), button });
 }
 
-// GPX+ engine events (route lock + gate fires) — subscribed at module scope
+// GPX+ engine events (gate fires) — subscribed at module scope
 // for the same headless-relaunch reason as the buzz subscription above.
 liveEngine.subscribeEvents((ev) => {
-  if (!session) return; // cannot attribute; headless relaunch re-locks after ensureSession restores it
-  if (ev.type === 'lock') {
-    logEvent(session.rideId, {
-      kind: 'lock', tUnixMs: Math.round(ev.atT * 1000),
-      track: ev.track, atChainageM: ev.atChainageM, atT: ev.atT,
-      // ev.kind (soft/verified/finalized) persists as `lockKind` — `kind`
-      // itself is this RECORD's own discriminant ('lock'), see LockEvent's
-      // doc comment in storage/types.ts.
-      lockKind: ev.kind, pick: ev.pick,
-    });
-  } else if (ev.type === 'lockChange') {
-    // N9: one per LockKind transition — see engine.ts's noteLockChange and
-    // LockChangeEvent's doc comment in storage/types.ts.
-    logEvent(session.rideId, {
-      kind: 'lockChange', tUnixMs: Math.round(ev.atT * 1000),
-      track: ev.track, from: ev.from, to: ev.to, atChainageM: ev.atChainageM, atT: ev.atT,
-      reason: ev.reason, pick: ev.pick,
-    });
-  } else {
-    // ev.type === 'gate'
-    logEvent(session.rideId, {
-      kind: 'gate', tUnixMs: Math.round(ev.t * 1000),
-      track: ev.track, gateIndex: ev.gateIndex, t: ev.t, estimated: ev.estimated,
-    });
-  }
+  if (!session) return; // cannot attribute; headless relaunch resumes after ensureSession restores it
+  logEvent(session.rideId, {
+    kind: 'gate', tUnixMs: Math.round(ev.t * 1000),
+    track: ev.track, gateIndex: ev.gateIndex, t: ev.t, estimated: ev.estimated,
+  });
 });
 
 // Cycle 023 fix 5b: route-match diagnostics (a channel distinct from both the
-// live-state subscribe() above and the lock/gate ride-record subscribeEvents()
+// live-state subscribe() above and the gate ride-record subscribeEvents()
 // above it — see engine.ts's DiagnosticEvent doc comment) — appended to the
 // SAME sidecar file as every other GPX+ event, just a new kind. Subscribed at
-// module scope for the same headless-relaunch reason as the others: fired for
-// EVERY candidate, win or lose, so a ride that never locks still leaves a
-// diagnosable trail (unlike subscribeEvents, which only ever sees the winner).
+// module scope for the same headless-relaunch reason as the others: since
+// virgin-cycle21 there is exactly one candidate (the START pick), so these
+// are that candidate's anchor/retry attempts.
 liveEngine.subscribeDiagnostics((d) => {
   if (!session) return; // cannot attribute; headless relaunch resubscribes after ensureSession restores it
   logEvent(session.rideId, {
@@ -696,10 +691,10 @@ liveEngine.subscribeDiagnostics((d) => {
 /**
  * Call once on RecordScreen mount. Detects "app relaunched while a ride was
  * (or should have been) recording":
- *  - tracking === true  → the foreground service is still running; the task
- *    keeps appending. UI should resume the recording screen.
- *  - tracking === false → the service died (OS/battery saver). UI should
- *    offer to finalise the ride so its fixes aren't stranded.
+ *  - 'remount' && tracking → the process never died; RecordScreen keeps the
+ *    ride running. Anything else (a 'relaunch', or the service died) is an
+ *    interrupted ride: RecordScreen saves the recorded part as a free activity
+ *    (virgin-cycle21 04, Nathan 2026-10-04: no resume, no rescoring).
  * Cycle 025 (P5, Nathan 2026-08-26): this is ALSO the single shared
  * restoration predicate — the same call that decides the banner logs the
  * sidecar record, so the two can never disagree again. `restoration` says

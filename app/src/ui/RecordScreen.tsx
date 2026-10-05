@@ -35,7 +35,7 @@ import {
 import { liveEngine, type LiveEngineState } from '../live/engine';
 import { LiveSectorPane, realTimebase, viewModelFromEngine } from './liveView';
 import { LaunchAnimation } from './launchAnimation';
-import { effectiveFromId, endingSlotFor, isFullscreen, liveMapOverlayFor, namingOfferMode, recordPressAction, type RecordPhase } from './recordFlow';
+import { effectiveFromId, endingSlotFor, interruptedRideAction, isFullscreen, liveMapOverlayFor, namingOfferMode, recordPressAction, wayHintForPick, type RecordPhase } from './recordFlow';
 import { nextPollDelayMs, restartsBudget } from '../location/positionRetryPolicy';
 import { useTabNav } from './tabNav';
 import WayMapView from './wayMapView';
@@ -110,6 +110,11 @@ const PERM_FOREGROUND_ONLY_MSG = 'Allow location all the time';
 const PERM_FLASH_HOLD_MS = 5000;
 const NO_SPORT_MSG = 'No sport configured yet';
 const NO_SPORT_FLASH_HOLD_MS = 1000;
+/** virgin-cycle21 04 (Nathan 2026-10-04): the one trace of an interrupted ride (app killed,
+ * phone reset, battery dead) — never resumed, never scored, filed free. Flashed once in the
+ * RECORD sub-label on the mount that saved it. */
+const INTERRUPTED_MSG = 'Interrupted · saved as free activity';
+const INTERRUPTED_FLASH_HOLD_MS = 5000;
 
 /** Stationary detection (B-51, RecordScreen-owned): the live ribbon dims and
  * releases its zoom-bar lock while genuinely moving is not the same as at a
@@ -191,7 +196,7 @@ export default function RecordScreen({
   const [now, setNow] = useState(Date.now());
   const [busy, setBusy] = useState(false);
   const [lastSummary, setLastSummary] = useState<RideSummary | null>(null);
-  // OPEN-ITEMS item 2 (WP-F: any finished ride, not just unlocked ones):
+  // OPEN-ITEMS item 2 (WP-F: any finished ride, not just those without a reference):
   // the STOP-step naming offer for endpoints that match no existing way, or
   // that diverge >MATCHED_ENDPOINT_SLACK_M from the ride's own matched route
   // (null = no offer). While non-null the 'ending' phase shows the naming
@@ -245,9 +250,9 @@ export default function RecordScreen({
   // running underneath (D-042: raw time is the truth; no engine or location
   // changes happen here).
   const [pauseMenu, setPauseMenu] = useState(false);
-  // Start flow (§21): where from, where to. Detected-or-picked. The §8a route
-  // pick is a HARD lock (Nathan 2026-08-29): the picked route is the only one
-  // this ride can ever score against — see live/engine.ts's file header.
+  // Start flow (§21): where from, where to. Detected-or-picked. The §8a pick is
+  // the ride's one reference from START (virgin-cycle21): the picked way is the
+  // only one this ride can ever score against — see live/engine.ts's file header.
   // B-39 (empty-seed install path): the runtime catalog — shipped seed plus
   // this phone's own additions (store/catalogStore.ts) — read per render,
   // never captured at import: it can be empty at boot and grow later.
@@ -293,11 +298,11 @@ export default function RecordScreen({
   // §8a route pick (Nathan 2026-08-16, re-confirmed 2026-08-18): only asked
   // when the way has >1 ratified route. Stored WITH its wayId so a pick can
   // never leak onto a different way when START / GOING TO change — a stale
-  // pair silently falls back to the §8a default. A hard lock (Nathan
-  // 2026-08-29): the engine scores this route or nothing — it never
+  // pair silently falls back to the §8a default. The ride's one
+  // reference (virgin-cycle21): the engine scores this way or nothing — it never
   // reassigns the ride to the road actually ridden.
   const [wayPick, setWayPick] = useState<{ routeId: string; wayId: string } | null>(null);
-  // The pick frozen at START — the pre-lock candidate for the LIVE map. Frozen
+  // The pick frozen at START — the LIVE map's route line (virgin-cycle21: the only one it ever draws). Frozen
   // because `fromId` can drift mid-ride in auto mode (detected landmark goes
   // null once you leave the disc) while nothing has been tapped (N5), which
   // would silently change `way`.
@@ -440,16 +445,19 @@ export default function RecordScreen({
     return () => clearInterval(t);
   }, [session]);
 
-  // Relaunch recovery: ride marker on disk from a previous launch?
+  // Recovery on mount: a ride marker exists. Only a UI remount of a still-running
+  // ride continues; anything else is an interrupted ride (virgin-cycle21 04).
   useEffect(() => {
     (async () => {
       const rec = await getRecoveryState();
       if (!rec) return;
-      if (rec.tracking) {
-        // Service survived; keep recording, resume the UI. Banner kind comes
-        // from the SAME predicate that logged the sidecar record (P5) —
-        // banner and counter can no longer disagree.
+      if (rec.tracking && rec.restoration === 'remount') {
+        // The process never died (UI remount only): nothing was interrupted, the ride
+        // keeps running. RecordScreen state is fresh, so the route line is restored from
+        // the session's pick (virgin-cycle21 04; the old relaunch path lost it —
+        // INSPECTION MAJOR).
         setSession(rec.session);
+        setRideWayHint(wayHintForPick(currentCatalog().ways, rec.session.pickId ?? null));
         // WP-J §3 Step 4.4 (recovery hydration): replay the ride's own raw
         // fixes (the only record, D-023) through appendTrailPoint so the
         // trail doesn't restart empty after a relaunch mid-ride. Skips
@@ -473,15 +481,13 @@ export default function RecordScreen({
           });
         });
       } else {
-        // virgin-cycle20 brief 08 (Nathan, clutter review Q2): no dialog, no
-        // text. The service died (OS kill / force stop); what was captured is
-        // finalised exactly as the old save button did and then FILED FREE —
-        // an interrupted recording never counts for an official way: this
-        // path stores no result, and the free mark keeps it out of
-        // ACTIVITIES' backfill (ui/rideHomes.ts), the only path that could
-        // have matched it to a way. The setup screen's "Activity saved · …"
-        // line is the only trace. A marker whose ride file is gone cannot be
-        // saved and is dropped; any other failure leaves it for the next launch.
+        // virgin-cycle21 04 (Nathan 2026-10-04): an interrupted ride (the process died —
+        // app killed, phone reset, battery dead — or the service died) is never resumed
+        // and never scored. What was recorded is finalised and FILED FREE (no result, the
+        // free mark keeps ACTIVITIES' backfill from matching it to a way); under
+        // INTERRUPTED_MIN_FIXES it is discarded. One line flashes in the RECORD
+        // sub-label. A marker whose ride file is gone is dropped; any other failure
+        // leaves it for the next launch.
         if (recoveryAutoSaveStarted) return;
         recoveryAutoSaveStarted = true;
         try {
@@ -495,6 +501,18 @@ export default function RecordScreen({
           // this resolves, so a kill mid-wait just retries next launch.
           await whenStoresReady();
           const sum = await stopTracking();
+          if (sum && interruptedRideAction(sum.nFixes) === 'discard') {
+            // Too short to be an activity: nothing kept, nothing said.
+            try {
+              await deleteRide(sum.rideId);
+            } catch {
+              // Could not delete: file it free so it can never be matched to a way.
+              markRideFree(sum.rideId, rec.session.startedAtMs, Math.max(0, (sum.endMs - sum.startMs) / 1000),
+                effectiveRideSportId(rec.session.sportId, currentSports()));
+            }
+            setLastSummary(null);
+            return;
+          }
           if (sum) {
             markRideFree(
               sum.rideId,
@@ -502,6 +520,7 @@ export default function RecordScreen({
               Math.max(0, (sum.endMs - sum.startMs) / 1000),
               effectiveRideSportId(rec.session.sportId, currentSports()),
             );
+            flashSub(INTERRUPTED_MSG, INTERRUPTED_FLASH_HOLD_MS);
           }
           setLastSummary(sum);
         } catch (e) {
@@ -679,7 +698,7 @@ export default function RecordScreen({
       setRideWayHint(pickedWayRef.current?.refLineId ?? null);
       // WP-1 (C3): belt-and-braces engine scoping — the hard pick already
       // restricts scoring to one way, but this keeps the recovery path's
-      // session.wayIds honest for a sport-scoped re-arm too.
+      // session.wayIds honest.
       const s: ActiveSession = await startTracking({
         wayPick: pickedWayRef.current?.id ?? null,
         wayIds: [...(wayIdsOfSport(currentCatalog(), sportId, currentSports()) ?? [])],
@@ -703,9 +722,9 @@ export default function RecordScreen({
     setBusy(true);
     try {
       // Cycle 024 (WP-D2): settle a route BEFORE handing the ride to Result —
-      // a still-soft or never-locked ride otherwise misses the finalize()
-      // recovery that stopTracking() below runs too late for rememberRide's
-      // purposes (it reads the CURRENT state, not what stopTracking returns).
+      // finalize() unmatches a pick that never fired a gate (virgin-cycle21); it
+      // must run before rememberRide, which reads the CURRENT state, not what
+      // stopTracking returns.
       liveEngine.finalize();
       // Cycle 024 (WP-A1): a real session hands its rideId/startedAtMs through
       // so the finished ride gets a persistent store entry, not just an
@@ -720,7 +739,7 @@ export default function RecordScreen({
       const finalState = liveEngine.getState();
       // An unmatched ride has track===null/lap===null, so rememberRide() harmlessly
       // clears `last` — desired: Result must not show a stale route ride as
-      // "the ride you just finished" when nothing locked.
+      // "the ride you just finished" when the ride has no reference.
       rememberRide(finalState, s ? { rideId: s.rideId, startedAtMs: s.startedAtMs } : undefined);
       // virgin-cycle11 ranking reveal: built HERE, right after rememberRide has
       // already stored today's ride — buildRankingReveal's own default window
@@ -750,9 +769,9 @@ export default function RecordScreen({
       const draft = s
         ? await draftRouteFromRide(s.rideId, s.startedAtMs, finalState.track, createExpoFsAdapter(), s.sportId ?? activeSportId())
         : null;
-      // virgin-cycle18 brief 04 (decision 3): nothing locked AND nothing to
+      // virgin-cycle18 brief 04 (decision 3): no reference AND nothing to
       // offer (no draft: unreadable / too short) — no card will ask, so the
-      // ride is filed free right here. A locked ride already has a stored
+      // ride is filed free right here. A ride with a reference already has a stored
       // result from rememberRide above; a draftable ride gets the card.
       if (s && finalState.track === null && draft === null) {
         const e = endedRef.current;
@@ -775,8 +794,8 @@ export default function RecordScreen({
       // the next ride's setup — the next setup gets a fresh suggestion.
       setFromExplicit(false);
       // virgin-cycle15 06 (D3): these five are ride-scoped by their own
-      // comments above ("frozen at START", "the pre-lock candidate for the
-      // LIVE map") and none feeds the post-ride setup suggestion (unlike
+      // comments above ("frozen at START", "the
+      // LIVE map's route line") and none feeds the post-ride setup suggestion (unlike
       // from/to, deliberately left alone — D4). Reset here, at ride end, not
       // at the next ride's START, so any future consumer that reads them
       // between rides (results, ride-detail hand-off, a future "last ride"
@@ -1048,16 +1067,17 @@ export default function RecordScreen({
   // slot is gone. The only live status text left is "GPS live", shown while
   // the last fix is <= 5 s old (the same rule that chose it before) and
   // nothing otherwise — no fix-wait or fix-age lines, no
-  // route/way lines. The engine's lock logic is untouched; it is simply not
+  // route/way lines. The engine's route logic is untouched; it is simply not
   // narrated here any more.
   const gpsLive = status.lastFixMs != null && lastFixAgeS != null && lastFixAgeS <= 5;
   // Cycle-2 WP-A: reference line vs live trail, mutually exclusive — see
   // recordFlow.ts liveMapOverlayFor. Derived per render (no effect/state):
-  // live.track (lock) outranks the START-frozen pick hint.
-  const mapOverlay = liveMapOverlayFor({ track: live.track, wayHint: rideWayHint });
+  // virgin-cycle21: the overlay is the START pick, frozen — never what the engine
+  // decides, so no way you did not pick is ever drawn.
+  const mapOverlay = liveMapOverlayFor({ wayHint: rideWayHint });
 
-  // Colour comes from the ghost history for the LOCKED route only: before the
-  // lock there is nothing honest to compare against, so everything stays
+  // Colour comes from the ghost history of the ride's reference (the START pick)
+  // only: with no reference there is nothing honest to compare against, so everything stays
   // neutral (D-025). Sector index 0 means "the whole lap". The rule itself is
   // colourModel.liveTierFor (headless-tested); the current ride is excluded by
   // id so the lap chip cannot change colour between the FINISH gate and the
@@ -1078,7 +1098,7 @@ export default function RecordScreen({
 
   // WP-K (phase 2): sector spans on the live map — the segment BETWEEN gates,
   // never the tick (Nathan: "they are gates"). Same comparison window tierOf()
-  // uses (sectorValues on the LOCKED track, [] before the lock — D-025), the
+  // uses (sectorValues on the reference, [] without one — D-025), the
   // store's own sectorHistory predicate (clean AND interrupted sectors on the
   // scored clock, virgin-cycle20 brief 10 — no longer clean-only), painted
   // through tierLineColour (the map-line source of truth, never
@@ -1145,16 +1165,16 @@ export default function RecordScreen({
   pickedWayRef.current = pickedWay;
 
   // virgin-cycle20 06 (Nathan 2026-10-01, START-gate lag): the selfs belong to the
-  // way that is ON SCREEN, not to the lock — during a ride the engine's display
-  // candidate (the pick from START press, the lock afterwards: the same id, so
-  // nothing reloads at START or at the lock), on the setup/armed screen the pick
+  // way that is ON SCREEN, not to the engine — during a ride the engine's
+  // reference (virgin-cycle21: the START pick, fixed at START and never
+  // switched, so nothing reloads at START or mid-ride), on the setup/armed screen the pick
   // itself. So the window is read from disk while the rider is still choosing /
   // arming, and is already on the map (parked at the START gate) when START is
   // pressed. Reload triggers: another way picked, a gate-set edit (new cache
   // keys), or the window itself changing — a ride just saved joins ghostsFor()'s
   // slice the moment rememberRide stores it. ghostsFor is a filter over the
   // in-memory results (ghostCount above already calls it per render).
-  const selfWayId = live.displayTrack ?? pickedWay?.id ?? null;
+  const selfWayId = live.track ?? pickedWay?.id ?? null;
   const selfGateSetVersion = selfWayId === null ? 1 : (gateSetFor(currentCatalog(), selfWayId)?.version ?? 1);
   const selfWindowKey = selfWayId === null ? '' : ghostsFor(selfWayId).map((r) => r.rideId).join(',');
   const [selfTracks, setSelfTracks] = useState<SelfTrack[]>([]);
@@ -1174,7 +1194,7 @@ export default function RecordScreen({
   // per GPS fix; four frames a second is smooth enough for a 5 px dot and
   // keeps the map re-render cheap). Skipped entirely when there is nothing
   // to animate. live.startGateT is a plain number|null, so this effect only
-  // restarts the interval when it actually changes (lock/gate-0 fire), not
+  // restarts the interval when it actually changes (gate-0 fire), not
   // on every fix.
   const [selfDots, setSelfDots] = useState<SelfDot[]>([]);
   useEffect(() => {

@@ -8,6 +8,7 @@ import * as path from 'node:path';
 import { assert, test, TESTS_DIR } from './lib.ts';
 import {
   canTransition, effectiveFromId, endingSlotFor, isFullscreen, liveMapOverlayFor, namingOfferMode, recordPressAction, type RecordPhase,
+  wayHintForPick, interruptedRideAction, INTERRUPTED_MIN_FIXES,
 } from '../src/ui/recordFlow.ts';
 import { addSport, emptySports } from '../src/store/sports.ts';
 
@@ -108,36 +109,36 @@ test('effectiveFromId: tapping `new` in auto mode now takes hold (was previously
   );
 });
 
-test('liveMapOverlayFor: route mode, nothing picked, nothing locked -> no route line, trail shown (writing history)', () => {
-  const r = liveMapOverlayFor({ track: null, wayHint: null });
+test('liveMapOverlayFor: route mode, nothing picked -> no route line, trail shown (writing history)', () => {
+  const r = liveMapOverlayFor({ wayHint: null });
   assert(r.wayId === null && r.showTrail === true, `expected {routeId:null, showTrail:true}, got ${JSON.stringify(r)}`);
 });
 
 test('liveMapOverlayFor: a picked known route shows its line and hides the trail from the first frame', () => {
-  const r = liveMapOverlayFor({ track: null, wayHint: 'HomeWork' });
+  const r = liveMapOverlayFor({ wayHint: 'HomeWork' });
   assert(r.wayId === 'HomeWork' && r.showTrail === false, `expected {routeId:'HomeWork', showTrail:false}, got ${JSON.stringify(r)}`);
 });
 
-test('liveMapOverlayFor: a lock outranks the pick hint and hides the trail', () => {
-  const r = liveMapOverlayFor({ track: 'HomeWork', wayHint: null });
-  assert(r.wayId === 'HomeWork' && r.showTrail === false, `expected {routeId:'HomeWork', showTrail:false}, got ${JSON.stringify(r)}`);
-  // documents existing precedence (track wins over hint) — the engine's hard-pick
-  // rule never actually produces a differing pair, but the derivation must be total
-  const r2 = liveMapOverlayFor({ track: 'EveningA', wayHint: 'HomeWork' });
-  assert(r2.wayId === 'EveningA', `track must outrank routeHint, got ${JSON.stringify(r2)}`);
+test('virgin-cycle21 03: the overlay is the pick whatever the engine does — there is no engine input', () => {
+  assert(liveMapOverlayFor.length === 1, `liveMapOverlayFor takes ${liveMapOverlayFor.length} parameters, want exactly 1 (wayHint)`);
+  assert(liveMapOverlayFor({ wayHint: 'HomeWork' }).wayId === 'HomeWork', 'the overlay is not the pick');
+  // an extra engine-shaped field is ignored: the pick still decides
+  const r = liveMapOverlayFor({ wayHint: 'HomeWork', track: 'EveningA' } as unknown as { wayHint: string | null });
+  assert(r.wayId === 'HomeWork', `an engine track changed the overlay: ${JSON.stringify(r)}`);
+  const src = fs.readFileSync(path.join(TESTS_DIR, '..', 'src', 'ui', 'RecordScreen.tsx'), 'utf8');
+  assert(src.includes('liveMapOverlayFor({ wayHint: rideWayHint })'), 'RecordScreen no longer feeds the overlay the START-frozen pick alone');
+  const calls = src.match(/liveMapOverlayFor\([^)]*\)/g) ?? [];
+  assert(calls.length > 0 && calls.every((c) => !c.includes('live.track')), `a liveMapOverlayFor call reads live.track: ${calls.join(' | ')}`);
 });
 
 test('liveMapOverlayFor: trail and route line are mutually exclusive in every reachable state', () => {
-  const tracks: Array<string | null> = [null, 'A'];
   const hints: Array<string | null> = [null, 'B'];
-  for (const track of tracks) {
-    for (const wayHint of hints) {
-      const r = liveMapOverlayFor({ track, wayHint });
-      assert(
-        r.showTrail === (r.wayId === null),
-        `mutual exclusivity violated for track=${track} routeHint=${wayHint}: ${JSON.stringify(r)}`,
-      );
-    }
+  for (const wayHint of hints) {
+    const r = liveMapOverlayFor({ wayHint });
+    assert(
+      r.showTrail === (r.wayId === null),
+      `mutual exclusivity violated for routeHint=${wayHint}: ${JSON.stringify(r)}`,
+    );
   }
 });
 
@@ -334,4 +335,42 @@ test('virgin-cycle20 08: clutter text is gone (CLUTTER-REVIEW §1 + Nathan\'s §
     assert(hits.length === 0, `${f} still has an em dash in a visible string:\n${hits.join('\n')}`);
   }
   assert(read('src', 'location', 'index.ts').includes("notificationTitle: 'Recording activity'"), 'notification title is the bare noun');
+});
+
+test('virgin-cycle21 04: wayHintForPick maps the pick to its refLineId; null/undefined/unknown -> null', () => {
+  const ways = [{ id: 'A', refLineId: 'refA' }, { id: 'B', refLineId: 'B' }];
+  assert(wayHintForPick(ways, 'A') === 'refA', 'A -> refA');
+  assert(wayHintForPick(ways, 'B') === 'B', 'B -> B');
+  assert(wayHintForPick(ways, null) === null, 'null -> null');
+  assert(wayHintForPick(ways, undefined) === null, 'undefined -> null');
+  assert(wayHintForPick(ways, 'Z') === null, 'unknown -> null');
+});
+
+test('virgin-cycle21 04: interruptedRideAction discards under 30 fixes, files free from 30', () => {
+  assert(INTERRUPTED_MIN_FIXES === 30, 'threshold is 30');
+  assert(interruptedRideAction(0) === 'discard' && interruptedRideAction(29) === 'discard', '0 and 29 discard');
+  assert(interruptedRideAction(30) === 'free' && interruptedRideAction(5000) === 'free', '30 and 5000 free');
+});
+
+test('virgin-cycle21 04: RecordScreen only continues a remounted live ride; every other recovery is saved free and flashed', () => {
+  const src = fs.readFileSync(path.resolve(TESTS_DIR, '..', 'src', 'ui', 'RecordScreen.tsx'), 'utf8');
+  const head = "if (rec.tracking && rec.restoration === 'remount') {";
+  const at = src.indexOf(head);
+  assert(at > 0, 'remount-only continue branch missing');
+  assert(!src.includes('if (rec.tracking) {'), 'the old unconditional resume branch must be gone');
+  const guard = src.indexOf('recoveryAutoSaveStarted = true;', at);
+  assert(guard > at, 'recovery guard missing');
+  assert(src.slice(at, guard).includes('setRideWayHint(wayHintForPick(currentCatalog().ways, rec.session.pickId ?? null));'),
+    'the remount branch must restore the route line from the pick');
+  const end = src.indexOf('catch (e)', guard);
+  assert(end > guard, 'catch (e) after the guard missing');
+  const block = src.slice(guard, end);
+  const order = ['await stopTracking();', 'interruptedRideAction(sum.nFixes) === \'discard\'', 'await deleteRide(sum.rideId);', 'markRideFree(\n', 'flashSub(INTERRUPTED_MSG, INTERRUPTED_FLASH_HOLD_MS);'];
+  let last = -1;
+  for (const o of order) {
+    const i = block.indexOf(o, last + 1);
+    assert(i > last, `missing or out of order in the interrupted path: ${o}`);
+    last = i;
+  }
+  assert(src.includes("const INTERRUPTED_MSG = 'Interrupted · saved as free activity';"), 'INTERRUPTED_MSG constant');
 });

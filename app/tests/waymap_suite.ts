@@ -352,3 +352,31 @@ test('routemap: map credits are an "i" button, never an always-visible label, an
   assert(/attribution=\{false\}/.test(openTag) && /logo=\{false\}/.test(openTag),
     'native attribution/logo must stay off — the JS <Credit> is the only credit, so both halves of this test guard the licence together');
 });
+
+// -------------------------------------------------- virgin-cycle21 03
+
+test('virgin-cycle21 03: the rider source is the last <M.GeoJSONSource> in wayMapView.tsx and no other source is conditionally mounted', () => {
+  // MapLibre paints sources in MOUNT order. A source that mounts after the
+  // rider source (a late-appearing route, sector spans, gate ticks) paints
+  // over the dot, so every source except the rider is mounted from the first
+  // render (empty collection when there is nothing to draw) and the rider is last.
+  const src = fs.readFileSync(path.join(TESTS_DIR, '..', 'src', 'ui', 'wayMapView.tsx'), 'utf8');
+  const found: { key: string; idx: number }[] = [];
+  const re = /<M\.GeoJSONSource\b/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(src)) !== null) {
+    const key = /\bkey="([^"]+)"/.exec(src.slice(m.index, m.index + 300))?.[1];
+    assert(key !== undefined, `a GeoJSONSource at ${m.index} has no literal key within 300 chars`);
+    found.push({ key: key!, idx: m.index });
+  }
+  assert(found.length >= 6, `only ${found.length} GeoJSONSource elements found`);
+  assert(found[found.length - 1].key === 'rider', `the last source is "${found[found.length - 1].key}", want "rider"`);
+  for (const f of found) {
+    if (f.key === 'rider') continue;
+    const before = src.slice(Math.max(0, f.idx - 120), f.idx);
+    assert(!/\?\s*\(\s*$/.test(before) && !/&&\s*\(\s*$/.test(before),
+      `source "${f.key}" is conditionally mounted (${JSON.stringify(before.slice(-60))}) — it would mount after the rider and paint over the dot`);
+  }
+  const emptyRefs = src.match(/\bEMPTY_FC\b/g) ?? [];
+  assert(emptyRefs.length >= 5, `EMPTY_FC referenced ${emptyRefs.length} times, want >= 5`);
+});

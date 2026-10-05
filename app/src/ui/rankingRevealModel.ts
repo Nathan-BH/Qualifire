@@ -9,7 +9,7 @@
  *
  * R4 (no reveal): `buildRankingReveal` returns null — the 'ending' screen
  * then behaves exactly as it did before this cycle — whenever there is
- * nothing honest to climb: no way locked (`track === null`), no lap
+ * nothing honest to climb: no reference way (`track === null`), no lap
  * (`lap === null`), an estimated lap (D-028: estimated never ranks), no
  * real scored time (`scoredS(lap) === null`, honoured in both timing
  * modes), or the comparison window is empty (ride 1 of a way — STATE.md's

@@ -67,8 +67,8 @@ export interface RideFacts {
 
 /** WP-F: on a ride the engine attributed to route X, an endpoint fix within
  * this many metres OUTSIDE X's own landmark disc is that landmark, not a new
- * place. Aligned with live/engine.ts's ANCHOR_M (not imported — store code
- * must not depend on live/). Measured: latelock_20260805 sits 75 m past the
+ * place. This is routeCreation's own value (it was once aligned with an engine
+ * ANCHOR_M that cycle 21 retired; store code must not depend on live/). Measured: latelock_20260805 sits 75 m past the
  * edge. [ASSUMPTION — tune on device.] */
 export const MATCHED_ENDPOINT_SLACK_M = 300;
 

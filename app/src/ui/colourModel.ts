@@ -183,7 +183,7 @@ export function tierFor(value: number | null, history: number[]): UiTier {
  * convention). One place, headless-testable, used by the lap chip, the sector
  * flash and the strip, so they can never disagree.
  *
- *  - no locked way, or no real time → 'neutral' (D-025: before the lock there is
+ *  - no reference way, or no real time → 'neutral' (D-025: with no reference there is
  *    nothing honest to compare against; a null time never earns a colour);
  *  - otherwise tierFor() over lapValues()/sectorValues() for the locked way,
  *    EXCLUDING the current ride by id (B-44 for the live screen): before STOP the

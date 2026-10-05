@@ -5,8 +5,7 @@
  *
  * Division of labour (working rule: adapt the session side, never the engine):
  *  - core/live.ts   LiveProjector + GateDetector — gate firing, D-016(a)/(b),
- *                   'estimated' marks. Used verbatim, one instance per track
- *                   candidate.
+ *                   'estimated' marks. Used verbatim, one instance per candidate.
  *  - core/timing.ts + kinematics.ts — once a gate fires, the completed
  *                   sectors' numbers (raw/stopped/moving, interrupted/offroute
  *                   flags) are recomputed by the OFFLINE pipeline over the
@@ -15,88 +14,35 @@
  *                   ~1e5 ops — negligible). Live events supply the instant of
  *                   firing and the 'estimated' mark; offline supplies the
  *                   times shown.
- *  - this file      route auto-detection, sector/lap state assembly, and a
- *                   subscribe() feed for the UI.
+ *  - this file      sector/lap state assembly and a subscribe() feed for the UI.
  *
- * Route auto-detection (cycle 024, WP-D2, Nathan's 2026-08-20 B-65 ruling):
- * EVERY ratified catalog route runs as a live candidate (catalogTrackSpecs(),
- * tracks.ts) — not just the four legacy commute tracks. Several of those 20
- * routes share almost their whole corridor with another (Morning inside
- * HomeStationPreferred's corridor; StationHomeWet/StationHomePreferred join
- * EveningB/EveningA mid-line), which breaks a flat "leader + 200 m margin"
- * rule outright — the shared-corridor sibling can never open a margin, or
- * only opens one hundreds of metres past the true split. Two mechanisms fix
- * this without ever weakening the underlying 400 m evidence rule:
- *
- *  - ANCHORED: a candidate is "anchored" once some fix lands on its own
- *    corridor within ANCHOR_M of ITS OWN start. An unanchored rival (a
- *    mid-line shadow that only joins the leader's corridor far downstream)
- *    never blocks an anchored leader — so EveningA/EveningB and Morning/
- *    MorningB still hard-lock at ~400 m exactly as before cycle 024, even
- *    with 16 more candidates running.
- *  - HARD PICK lock-then-verify (Nathan 2026-08-29, superseding cycle 024's
- *    pick-as-hint): the RECORD-tab route pick (§8a) is the ONLY route a
- *    picked ride can ever lock. Once the pick's own candidate has >=400 m of
- *    corridor-verified advance it gets a SOFT lock: displayed and scored
- *    like a real lock (LiveEngineState.lockKind='soft'), every candidate
- *    still running underneath. If it goes on to be the unblocked leader it
- *    is promoted to VERIFIED with no second lock event (a `lockChange`
- *    event records the promotion — N9). The engine NEVER
- *    switches to a different candidate, however far ahead one pulls — the
- *    rider leaving the picked road is scored as missed sectors on the pick,
- *    never as a silent reassignment to another named route. finalize()
- *    (called once at ride end) settles only the pick's candidate: from its
- *    FINISH gate if it completed, by promoting a still-soft lock otherwise,
- *    or — if the pick never earned even a soft lock — leaves the ride
- *    unmatched. With NO pick, finalize() recovers whichever candidate
- *    completed its own route — every gate accounted for AND >=400 m of
- *    corridor-verified advance before its FINISH gate, so an arming skip
- *    alone never counts (longest advance wins).
- *    A VERIFIED lock never unlocks or switches (today's invariant, unchanged).
- *
- * Advance is CORRIDOR-VERIFIED travel only: a D-016(a) re-acquisition jump,
- * or any advance made while the rider was off this candidate's corridor,
- * moves a candidate's chainage but earns it no lock evidence (REACQ_JUMP_M
- * and feedCandidate's wasOnRoute — cycle 024 WP-D1 and cycle-2 WP-D; see
- * REACQ_JUMP_M's doc comment).
+ * The START pick is the ONE reference (virgin-cycle21, Nathan 2026-10-03:
+ * "never lock any ways into the ride; the absolute reference is the user pick
+ * at the start"). start({pickId}) builds exactly one candidate, the pick's, and
+ * it is the reference from the first call; a ride with no pick (or a pick
+ * outside the wayIds-scoped set) has NO reference for the whole ride. There is
+ * no route detection, no lock, no switching, and finalize() never recovers
+ * another way: a rider who leaves the picked road is scored as missed sectors
+ * on the pick (rule since 2026-08-29). The only ride-end verdict: a reference
+ * whose candidate never fired a single gate is unmatched. History: README.md
+ * of cycles/virgin-cycle21.
  *
  * Honesty rules surfaced to the UI (D-013 / D-016(b) / D-021):
  *  - a sector whose bounding events include an 'estimated' fire shows ~raw
  *    time only, never a moving time, never a colour;
  *  - gates skipped by late GPS lock => sector 'missed';
  *  - an off-corridor excursion inside a sector => 'missed' (detour, D-015);
- *  - a soft lock is NOT a colour input — the displayed route id is honest
- *    (it IS what's shown), so live.track's ordinary colour path is unaffected;
- *    a soft lock only changes what's on screen, never invents a verdict;
  *  - no benchmark store exists yet, so every clean sector is NEUTRAL and
  *    deltas are blank (D-008 warm-up / D-021 no-reference rule) — tiers and
  *    deltas arrive with the benchmark work, not fake numbers here.
  *
  * Buzz (D-019): unchanged mechanism (gateFires delta, src/location/index.ts).
- * Under a soft lock the buzzes are the soft candidate's — the pick's — own
- * fires, and the pick is never switched away from, so a buzz always belongs
- * to the route that stays on screen; if the soft lock is never promoted the
- * buzzes still stand — a gate WAS physically crossed on that road.
  *
  * D-023 (raw forever): everything here is DERIVED and in-memory only; nothing
  * is persisted. The ride JSONL stays untouched.
  *
- * FREE MODE — retired (virgin-cycle16 04, Nathan 2026-09-28). WP-B's
- * start({mode:'free'}) — every candidate armed at 0, every fire collected
- * into freeCrossings/freeSectors for a gates-only live map — is gone: a
- * "free ride" is now a post-ride label (store/freeRides.ts), never an
- * engine mode. One mode remains: the lock/verify machinery below.
- *
- * DISPLAY CANDIDATE (virgin-cycle20 06, Nathan 2026-10-01 "S1 and the selfs
- * only show 1-2 minutes into the ride"): the lock needs 400 m of evidence
- * measured from the first good fix — ~110-240 m PAST every START gate — so
- * nothing about the way used to be displayed until then. Under a RECORD-tab
- * pick the pick's own candidate is the only one this ride can ever display,
- * so getState() now describes it from start() on (`displayTrack`,
- * currentSector, lastDone, sectors, startGateT, chainageM). Display-only:
- * `track` is still the lock verdict, no event is emitted before the lock, the
- * lock race / finalize() / the ride record are untouched, and recompute()
- * scores a lap (D-022) only for the LOCKED candidate.
+ * FREE MODE — retired (virgin-cycle16 04, Nathan 2026-09-28): a "free ride" is
+ * a post-ride label (store/freeRides.ts), never an engine mode.
  */
 import {
   DEFAULT_LIVE_OPTIONS,
@@ -117,42 +63,6 @@ import {
 } from '../../core/src/index.ts';
 import { catalogTrackSpecs } from './tracks.ts';
 
-export const LOCK_MIN_ADVANCE_M = 400;
-export const LOCK_MARGIN_M = 200;
-/** Cycle 024 (WP-D1 adjudication, 2026-08-20): a candidate's `adv` must mean
- * CORRIDOR-VERIFIED travel — metres of this track the engine actually watched
- * the rider cover. D-016(a) re-acquisition can move a candidate's chainage
- * forward by hundreds of metres in ONE fix (that is its job: it recovers a
- * recording gap that rejoined the line downstream). Counting such a jump as
- * "advance" hands the lock race its strongest evidence for a road nobody was
- * observed riding. Measured failure: with MorningB's reference promoted onto
- * Nathan's real home>work route-B ride, a genuine Morning commute leaves
- * MorningB's corridor after ~50 m, rides 400 m of Morning's road, and then
- * passes back within 40 m of MorningB's line — re-acquisition jumps MorningB
- * from 45.9 m to 624.1 m in a single fix, and the 400 m/200 m rule locks
- * MorningB over Morning (which is sitting at a correct, honest 405.0 m).
- * A forward move much larger than the projector's own search window can only
- * be a re-acquisition — ordinary windowed projection reaches at most one
- * reference segment past windowFwd (a ~5 m margin at this app's resampling),
- * so jumps above windowFwd+5 are discounted from `adv` (the candidate keeps
- * the new chainage; it simply earns no lock evidence for ground it never
- * showed). Below that margin a re-acquisition hop is indistinguishable by
- * size from ordinary windowed advance (cycle 024 measured up to ~138 m
- * slipping through; WP-D cycle 2 measured 65-90 m hops on four wrong
- * catalog routes across the fixture corpus), so WP-D (cycle 2) closes the
- * residual by CAUSE instead of size: the projector only moves chainage on an
- * on-route fix, and a D-016(a) hit is always preceded by >= 4 off-route
- * fixes, so any advance landing on the first on-route fix after an
- * off-route one is ground covered outside this candidate's corridor and is
- * discounted regardless of size (feedCandidate's `wasOnRoute`). That also
- * covers the smaller windowed rejoin after 1-4 off-corridor fixes. The size
- * threshold is kept as belt-and-braces; it is subsumed. A sparse-fix gap
- * with NO off-route fix in between (one fix, then the next 40 s later 200 m
- * down the same corridor) is still ordinary windowed advance and still
- * counts — that is the invariant the >240 m margin test protects.
- * This is a lock-race rule only: gate firing, chainage and every displayed
- * time are untouched. */
-export const REACQ_JUMP_M = DEFAULT_LIVE_OPTIONS.windowFwd + 5;
 /** Memory guard: 4 h at 1 Hz. Past this the engine stops (recording doesn't). */
 const MAX_BUFFERED_FIXES = 14400;
 /** Cycle 023 fix 2: a candidate's very first fix seeds LiveProjector's
@@ -162,12 +72,6 @@ const MAX_BUFFERED_FIXES = 14400;
  * accuracy (metres) that anchor is untrustworthy enough to warrant a retry
  * once a better fix arrives. */
 export const POOR_ACCURACY_M = 50;
-/** Cycle 024 (WP-D2): "anchored" = this candidate was joined at its OWN
- * start, not picked up mid-line by re-acquisition far downstream. Covers
- * START gates (~160-290 m into each track) plus D-016(b)'s 50 m arming slack
- * plus resampling noise; far below the >=2500 m mid-line joins measured for
- * every corridor-subset shadow pair in the 20-route catalog. */
-export const ANCHOR_M = 300;
 
 export type LiveSector =
   | { kind: 'pending' }
@@ -190,18 +94,6 @@ export interface LiveLap {
   estimated: boolean;
 }
 
-/** none = never locked; soft = the RECORD-tab pick is displayed but not yet
- * corridor-confirmed (every candidate still running underneath); verified =
- * today's clean 400 m/200 m lock, never unlocks; finalized = settled by
- * finalize() at ride end (either promoted from a still-soft lock, or picked
- * fresh from whichever candidate(s) reached their own FINISH gate). */
-export type LockKind = 'none' | 'soft' | 'verified' | 'finalized';
-
-/** N9 (2026-09-02, GPX+ pick/lock-change logging): every mechanism that can
- * drive a `LockKind` transition — see EngineEvent's 'lockChange' member and
- * gpxPlusExport.ts's rendering of it. */
-export type LockChangeReason = 'pickAdvance' | 'unblockedLeader' | 'wayCompleted' | 'rideEndPromotion';
-
 /** One live candidate's route: id + reference polyline + gate chainages.
  * catalogTrackSpecs() (tracks.ts) builds one per ratified catalog route;
  * tests inject a smaller legacy set (tests/lib.ts's fixtureSpecs()). */
@@ -211,63 +103,38 @@ export interface TrackSpec {
   gates: number[];
 }
 
+
 export interface EngineStartOptions {
-  /** the RECORD-tab route pick (a TrackSpec id), or null/omitted for
-   * auto-detect only. A pick is a HARD lock: the only route this ride can
-   * settle on, once its own 400 m of corridor evidence exists (see the file
-   * header). */
+  /** the RECORD-tab pick (a TrackSpec id), or null/omitted for a ride with no
+   * reference. The pick is the one and only reference from START (see the
+   * file header); it is never changed. */
   pickId?: string | null;
-  /** WP-B coordinator addendum: restricts `cands` to specs whose id is in
-   * this list. `undefined`/`null` = every spec (today's behaviour). */
+  /** WP-B coordinator addendum: restricts the spec set to specs whose id is in
+   * this list. `undefined`/`null` = every spec. A pick outside the filtered
+   * set is "no reference". */
   wayIds?: string[] | null;
 }
 
-/** Raw engine events for the GPX+ sidecar: emitted only for the currently
- * displayed (soft, verified or finalized) candidate — at its one lock event,
- * that candidate's pre-lock history is replayed (a soft->verified promotion
- * or a soft->finalized relabel emits nothing new). */
+/** Raw engine events for the GPX+ sidecar: gate fires of the pick's candidate
+ * (virgin-cycle21: the old 'lock' / 'lockChange' members are retired; saved
+ * rides still carry them, storage/types.ts keeps reading them). */
 export type EngineEvent =
-  | {
-      type: 'lock';
-      track: TrackId;
-      atChainageM: number;
-      atT: number;
-      /** cycle 024: which kind of lock this is (never 'none' — a lock event
-       * only ever fires when actually settling on soft/verified/finalized). */
-      kind: Exclude<LockKind, 'none'>;
-      /** the RECORD-tab pick in effect when this lock fired, or null */
-      pick: string | null;
-    }
-  | { type: 'gate'; track: TrackId; gateIndex: number; t: number; estimated: boolean }
-  | {
-      /** N9: emitted once per `LockKind` transition (see LockChangeReason and
-       * the file header's HARD PICK section) — includes the soft->verified
-       * promotion that a `lock` event never reports a second time. */
-      type: 'lockChange';
-      track: TrackId;
-      from: LockKind;
-      to: Exclude<LockKind, 'none'>;
-      atChainageM: number;
-      atT: number;
-      reason: LockChangeReason;
-      pick: string | null;
-    };
+  { type: 'gate'; track: TrackId; gateIndex: number; t: number; estimated: boolean };
 
 /** Route-match diagnostics (cycle 023 fix 5a) — a DISTINCT channel from both
  * the live-state feed (subscribe) and the ride-record events (subscribeEvents):
  * diagnostics are a different consumer (troubleshooting, not display or the
- * ride record) at a different cadence (once per candidate anchor/retry, plus
- * once on lock), and forcing every live-state listener to filter this noise
- * out would be the wrong coupling. Fired for EVERY candidate, not just the
- * eventual winner — the whole point is to see attempts that never lock. */
+ * ride record) at a different cadence (once per anchor/retry of the pick's
+ * candidate), and forcing every live-state listener to filter this noise
+ * out would be the wrong coupling. */
 export type DiagnosticEvent = {
   type: 'wayMatchAttempt';
   track: TrackId;
-  /** 'anchor' = a candidate's first fix (or its post-retry re-anchor) seeded
+  /** 'anchor' = the candidate's first fix (or its post-retry re-anchor) seeded
    * its chainage; 'retry' = the single post-settle re-anchor itself (fired
-   * alongside the 'anchor' that follows it, same tick); 'lock' = this
-   * candidate just settled a lock (soft, verified, or finalized). */
-  phase: 'anchor' | 'retry' | 'lock';
+   * alongside the 'anchor' that follows it, same tick). ('lock' existed
+   * before virgin-cycle21; the engine no longer emits it.) */
+  phase: 'anchor' | 'retry';
   /** accuracy (metres) of the fix that triggered this attempt; null if unknown */
   accuracyM: number | null;
   thresholdM: number;
@@ -283,9 +150,14 @@ export type DiagnosticEvent = {
 };
 
 export interface LiveEngineState {
+  /** 'locked' = running with the START pick as the reference; 'detecting' =
+   * running with NO reference (virgin-cycle21: no detection happens, the name
+   * is kept for the union's sake); 'finished' once the pick's FINISH fires. */
   phase: 'idle' | 'detecting' | 'locked' | 'finished';
+  /** the START pick (the reference for the whole ride), or null when the ride
+   * has none (or finalize() found the pick never fired a gate) */
   track: TrackId | null;
-  /** one entry per sector of the (locked or presumed) track */
+  /** one entry per sector of the reference track (or the default four, pending) */
   sectors: LiveSector[];
   /** 1-based sector currently being ridden; null pre-start / post-finish */
   currentSector: number | null;
@@ -296,46 +168,26 @@ export interface LiveEngineState {
   /** total gate events fired so far — the buzz counter (one buzz per fire) */
   gateFires: number;
   fixesFed: number;
-  /** last fix was within the corridor of the locked / leading track */
+  /** last fix was within the corridor of the reference track */
   onWay: boolean;
-  /** cycle 024 (WP-D2): see LockKind's doc comment */
-  lockKind: LockKind;
-  /** the RECORD-tab pick this ride started with, or null */
+  /** the RECORD-tab pick this ride started with, or null (logged) */
   pick: string | null;
-  /** true once the locked candidate's track equals `pick` (the pick turned
-   * out to be the ridden route); always false while pick is null */
-  pickHonoured: boolean;
-  /** true once ANY still-running candidate has anchored (joined at its own
-   * start — see ANCHOR_M). Display-only: RecordScreen's status line says
-   * "writing history" instead of "detecting route…" while this is false —
-   * a "nothing known recognised so far" indicator, never a verdict. */
-  anyAnchored: boolean;
-  /** virgin-cycle6 (self racing): epoch SECONDS the displayed candidate
+  /** virgin-cycle6 (self racing): epoch SECONDS the reference candidate
    * (`track`) crossed gate 0, estimated crossings included; null before
    * that crossing, and whenever `track` is null. Read-only
    * mirror of that candidate's own gate-0 event — never feeds any timing
    * arithmetic. */
   startGateT: number | null;
-  /** follow-up (live PX): the displayed candidate's current monotonic chainage in metres
+  /** follow-up (live PX): the reference candidate's current monotonic chainage in metres
    *  (its LiveProjector.chainage), null whenever `track` is null. Display-only mirror —
    *  never feeds gate logic or timing. */
   chainageM: number | null;
-  /** virgin-cycle20 06: the candidate whose live progress is on screen — `track`
-   * once locked; before any lock, under a RECORD-tab pick, the pick's own
-   * candidate (the only one a picked ride can ever display — see the file
-   * header's DISPLAY CANDIDATE). null with no pick and no lock, and after
-   * finalize() left the ride unmatched. currentSector / lastDone / sectors /
-   * startGateT / chainageM describe THIS candidate. Display-only presumption:
-   * `track`, the lock race, the event record and finalize() are untouched. */
-  displayTrack: TrackId | null;
-  /** virgin-cycle20 brief 02: DISPLAY-ONLY nearest point on the DISPLAY
-   *  candidate's reference (displayCand(): the lock, else the pick's own
-   *  pre-lock candidate — the same candidate chainageM reads) for the live
-   *  rider dot — degrees of the projection of the last fed fix plus that fix's
-   *  cross-track distance (m). null whenever `displayTrack` is null, or the
-   *  projector's search window was empty for that fix. A read-only mirror like
-   *  chainageM: never feeds chainage, gates or timing (those read LiveProjector
-   *  exactly as before). ui/riderDotModel.ts decides what to draw from it. */
+  /** virgin-cycle20 brief 02: DISPLAY-ONLY nearest point on the reference
+   *  candidate's reference line for the live rider dot — degrees of the
+   *  projection of the last fed fix plus that fix's cross-track distance (m).
+   *  null whenever `track` is null, or the projector's search window was empty
+   *  for that fix. A read-only mirror like chainageM: never feeds chainage,
+   *  gates or timing. ui/riderDotModel.ts decides what to draw from it. */
   riderSnap: { lat: number; lon: number; xtdM: number } | null;
 }
 
@@ -346,13 +198,9 @@ interface Candidate {
   proj: LiveProjector;
   det: GateDetector;
   events: GateEvent[];
-  /** chainage at the first fix — advance is measured from here */
+  /** chainage at the first fix (null until one is fed) — see the retry rule */
   baseS: number | null;
-  adv: number;
   onWay: boolean;
-  /** cycle 024: true once this candidate was joined at ITS OWN start
-   * (see ANCHOR_M's doc comment) */
-  anchored: boolean;
   /** accuracy (metres) of the fix that set baseS; null if unknown at the time */
   baseAccuracyM: number | null;
   /** cycle 023 fix 2: at most one post-settle re-anchor per candidate */
@@ -396,18 +244,16 @@ export class LiveEngine {
    * module-scope singleton must never snapshot it at construction). */
   private readonly specs: TrackSpec[] | null;
   private phase: LiveEngineState['phase'] = 'idle';
+  /** zero or one candidate: the START pick's */
   private cands: Candidate[] = [];
+  /** the reference candidate (the START pick's); null = no reference. Name kept
+   * from the lock era to limit churn. */
   private locked: Candidate | null = null;
-  private lockKind: LockKind = 'none';
   private pick: string | null = null;
-  private pickHonoured = false;
   private sectors: LiveSector[] = pendingSectors(N_SECTORS_DEFAULT);
   private lap: LiveLap | null = null;
   private fixesFed = 0;
   private onWay = false;
-  /** virgin-cycle20 06: true from finalize() until the next start() — ends the
-   * pre-lock display presumption (displayCand() then returns only `locked`). */
-  private ended = false;
   private tBuf: number[] = [];
   private latBuf: number[] = [];
   private lonBuf: number[] = [];
@@ -415,21 +261,37 @@ export class LiveEngine {
   private evListeners = new Set<(e: EngineEvent) => void>();
   private diagListeners = new Set<(e: DiagnosticEvent) => void>();
 
-  /** Default: one candidate per ratified catalog route (catalogTrackSpecs(),
-   * tracks.ts). Tests inject a smaller/legacy set explicitly. */
+  /** Default: specs from catalogTrackSpecs() (tracks.ts), of which only the
+   * pick's becomes a candidate. Tests inject a smaller/legacy set explicitly. */
   constructor(specs?: TrackSpec[]) {
     this.specs = specs ?? null;
   }
 
   start(opts?: EngineStartOptions): void {
-    this.phase = 'detecting';
     this.pick = opts?.pickId ?? null;
-    this.locked = null;
-    this.lockKind = 'none';
-    this.pickHonoured = false;
-    this.ended = false;
     const allSpecs = this.specs ?? catalogTrackSpecs();
-    const pickSpec = this.pick !== null ? allSpecs.find((s) => s.id === this.pick) : undefined;
+    // WP-B coordinator addendum: wayIds (undefined/null => every spec) scopes
+    // the spec set FIRST, so a pick outside the scoped set is "no reference".
+    const specs = opts?.wayIds ? allSpecs.filter((s) => opts.wayIds!.includes(s.id)) : allSpecs;
+    const pickSpec = this.pick !== null ? specs.find((s) => s.id === this.pick) : undefined;
+    this.cands = pickSpec
+      ? [{
+          track: pickSpec.id,
+          ref: pickSpec.ref,
+          gates: pickSpec.gates,
+          proj: new LiveProjector(pickSpec.ref),
+          det: new GateDetector(pickSpec.gates),
+          events: [],
+          baseS: null,
+          onWay: false,
+          baseAccuracyM: null,
+          retried: false,
+          lastXtd: 999,
+          lastSnap: null,
+        }]
+      : [];
+    this.locked = this.cands[0] ?? null;
+    this.phase = this.locked ? 'locked' : 'detecting';
     this.sectors = pendingSectors(pickSpec ? pickSpec.gates.length - 1 : N_SECTORS_DEFAULT);
     this.lap = null;
     this.fixesFed = 0;
@@ -437,26 +299,6 @@ export class LiveEngine {
     this.tBuf = [];
     this.latBuf = [];
     this.lonBuf = [];
-    // WP-B coordinator addendum: routeIds (undefined/null => every spec, the
-    // unfiltered default) restricts which specs even get a candidate — see
-    // the file header.
-    const specs = opts?.wayIds ? allSpecs.filter((s) => opts.wayIds!.includes(s.id)) : allSpecs;
-    this.cands = specs.map((spec) => ({
-      track: spec.id,
-      ref: spec.ref,
-      gates: spec.gates,
-      proj: new LiveProjector(spec.ref),
-      det: new GateDetector(spec.gates),
-      events: [],
-      baseS: null,
-      adv: 0,
-      onWay: false,
-      anchored: false,
-      baseAccuracyM: null,
-      retried: false,
-      lastXtd: 999,
-      lastSnap: null,
-    }));
     this.emit();
   }
 
@@ -464,9 +306,7 @@ export class LiveEngine {
     this.phase = 'idle';
     this.cands = [];
     this.locked = null;
-    this.lockKind = 'none';
     this.pick = null;
-    this.pickHonoured = false;
     this.emit();
   }
 
@@ -475,16 +315,14 @@ export class LiveEngine {
    * "unknown", never as poor. `flagged` (cycle 025 WP-stale-first-fix P1,
    * record-but-flag) marks a pre-START / warm-up fix the recording loop
    * already classified: it contributes NOTHING derived — not buffered, no
-   * candidate anchoring (on 2026-08-25 all 20 candidates anchored 9 s before
-   * START on a stale cached fix), not even the idle auto-start below. The
+   * candidate anchoring, not even the idle auto-start below. The
    * raw JSONL still records it (location/index.ts appends before feeding).
    * Never throws into the caller's recording loop — display state is worth
    * strictly less than the raw ride. */
   feed(lat: number, lon: number, tUnixMs: number, accuracyM?: number, flagged?: boolean): void {
     if (flagged === true) return;
-    // Headless relaunch mid-ride: module state is fresh but fixes keep coming.
-    // Auto-start; gates already behind resolve via D-016(b) arming/skip, so
-    // earlier sectors surface honestly as estimated/missed.
+    // Defensive: a feed with no start() (should not happen since virgin-cycle21 04 —
+    // an interrupted ride is never fed) auto-starts with NO options = no reference.
     if (this.phase === 'idle') this.start();
     if (this.fixesFed >= MAX_BUFFERED_FIXES) return;
     const tSec = tUnixMs / 1000;
@@ -493,250 +331,112 @@ export class LiveEngine {
     this.lonBuf.push(lon);
     this.fixesFed += 1;
 
-    let lockedFired = false;
-    let displayDirty = false; // virgin-cycle20 06: see `disp` below
-
-    if (this.lockKind === 'verified' || this.lockKind === 'finalized') {
-      // Today's exact fast path: only the winner is fed once verified — and
-      // finalize() is always immediately followed by stop() in the intended
-      // wiring, but a stray post-finalize feed() must not re-open the lock
-      // race either (a finalized ride is just as settled as a verified one).
-      const evs = this.feedCandidate(this.locked!, lat, lon, tSec);
-      lockedFired = evs.length > 0;
-      for (const e of evs) {
-        this.emitEvent({
-          type: 'gate', track: this.locked!.track, gateIndex: e.gateIndex, t: e.time, estimated: e.estimated,
-        });
-      }
-      this.onWay = this.locked!.onWay;
-    } else {
-      // Detecting, or soft-locked: every candidate keeps running (soft is a
-      // display choice, not a narrowing of the evidence).
-      const poorNow = accuracyM !== undefined && accuracyM > POOR_ACCURACY_M;
-      // virgin-cycle20 06: the pre-lock display candidate (the pick's own, or
-      // null). Its gate fires / re-seeds rebuild `sectors` below exactly as a
-      // locked candidate's do — display only, nothing is emitted for it.
-      const disp = this.locked === null ? this.displayCand() : null;
-      for (const c of this.cands) {
-        // Cycle 023 fix 2: the FIRST fix anchors this candidate's chainage via
-        // a global nearest-vertex search (core/live.ts LiveProjector) — if
-        // that fix's accuracy was poor, the anchor can land on the wrong part
-        // of the polyline entirely, and forward-only projection can never
-        // correct it afterwards. Guarded to fire at most once, and only when
-        // the ORIGINAL anchor was actually poor (never for a candidate that
-        // anchored well and merely sees noisy accuracy later).
-        if (
-          c.baseS !== null && !c.retried &&
-          c.baseAccuracyM !== null && c.baseAccuracyM > POOR_ACCURACY_M &&
-          !poorNow
-        ) {
-          c.proj = new LiveProjector(c.ref);
-          c.det = new GateDetector(c.gates);
-          c.events = [];
-          c.baseS = null;
-          c.anchored = false; // the re-seeded chainage needs its own fresh anchor check
-          c.retried = true;
-          c.lastXtd = 999; // fresh candidate: nothing fed yet this instant
-          c.lastSnap = null;
-          if (c === disp) displayDirty = true; // re-seeded: its kept events are gone
-          this.emitDiagnostic({
-            type: 'wayMatchAttempt', track: c.track, phase: 'retry',
-            accuracyM: accuracyM ?? null, thresholdM: POOR_ACCURACY_M, poorAccuracy: false,
-            xtdM: null, atT: tSec,
-          });
-        }
-        const wasAnchored = c.baseS !== null;
-        // Speculative fires from a candidate that is not (yet) the displayed
-        // one must not enter the record — only the currently locked (soft or
-        // verified) candidate's fires are emitted/recomputed.
-        const evs = this.feedCandidate(c, lat, lon, tSec);
-        if (c === this.locked && evs.length > 0) {
-          lockedFired = true;
-          for (const e of evs) {
-            this.emitEvent({
-              type: 'gate', track: c.track, gateIndex: e.gateIndex, t: e.time, estimated: e.estimated,
-            });
-          }
-        }
-        if (c === disp && evs.length > 0) displayDirty = true;
-        if (!wasAnchored && c.baseS !== null) {
-          c.baseAccuracyM = accuracyM ?? null;
-          this.emitDiagnostic({
-            type: 'wayMatchAttempt', track: c.track, phase: 'anchor',
-            accuracyM: accuracyM ?? null, thresholdM: POOR_ACCURACY_M, poorAccuracy: poorNow,
-            xtdM: c.lastXtd, atT: tSec,
-          });
-        }
-      }
-      // A verified lock never unlocks or switches; once FINISH has scored the
-      // lap for the current candidate, stop re-evaluating entirely (a switch
-      // after finish cannot happen).
-      if (this.phase !== 'finished') this.evaluateLockState(tSec, accuracyM, poorNow);
-      this.onWay = this.locked ? this.locked.onWay : (this.pickLeader()?.onWay ?? false);
+    const c = this.locked;
+    if (c === null) {
+      // No reference: only the buffers advance.
+      this.emit();
+      return;
     }
-    if (lockedFired && this.locked) this.recompute();
-    // virgin-cycle20 06: a display-candidate fire/re-seed with STILL no lock
-    // (a lock on this same fix already recomputed inside commitLock).
-    else if (displayDirty && this.locked === null && !this.ended) this.recompute();
+    let dirty = false;
+    const poorNow = accuracyM !== undefined && accuracyM > POOR_ACCURACY_M;
+    // Cycle 023 fix 2: the FIRST fix anchors the candidate's chainage via a
+    // global nearest-vertex search (core/live.ts LiveProjector) — if that
+    // fix's accuracy was poor, the anchor can land on the wrong part of the
+    // polyline entirely, and forward-only projection can never correct it
+    // afterwards. Guarded to fire at most once, only when the ORIGINAL anchor
+    // was actually poor, and (virgin-cycle21) only while no gate has fired:
+    // a re-seed discards c.events, and the one candidate lives the whole ride.
+    if (
+      c.baseS !== null && !c.retried &&
+      c.baseAccuracyM !== null && c.baseAccuracyM > POOR_ACCURACY_M &&
+      !poorNow && c.events.length === 0
+    ) {
+      c.proj = new LiveProjector(c.ref);
+      c.det = new GateDetector(c.gates);
+      c.events = [];
+      c.baseS = null;
+      c.retried = true;
+      c.lastXtd = 999; // fresh candidate: nothing fed yet this instant
+      c.lastSnap = null;
+      dirty = true;
+      this.emitDiagnostic({
+        type: 'wayMatchAttempt', track: c.track, phase: 'retry',
+        accuracyM: accuracyM ?? null, thresholdM: POOR_ACCURACY_M, poorAccuracy: false,
+        xtdM: null, atT: tSec,
+      });
+    }
+    const wasAnchored = c.baseS !== null;
+    const evs = this.feedCandidate(c, lat, lon, tSec);
+    for (const e of evs) {
+      this.emitEvent({
+        type: 'gate', track: c.track, gateIndex: e.gateIndex, t: e.time, estimated: e.estimated,
+      });
+    }
+    if (!wasAnchored && c.baseS !== null) {
+      c.baseAccuracyM = accuracyM ?? null;
+      this.emitDiagnostic({
+        type: 'wayMatchAttempt', track: c.track, phase: 'anchor',
+        accuracyM: accuracyM ?? null, thresholdM: POOR_ACCURACY_M, poorAccuracy: poorNow,
+        xtdM: c.lastXtd, atT: tSec,
+      });
+    }
+    this.onWay = c.onWay;
+    if (evs.length > 0 || dirty) this.recompute();
     this.emit();
   }
 
   /** Called once when the ride ends (src/location/index.ts's stopTracking(),
-   * and defensively again from RecordScreen's onEnd before it). Recovers a
-   * route from the FINISH gate for a ride that never cleared a verified (or
-   * even soft) lock, and promotes a still-soft lock that never got the
-   * chance to clear its margin. Idempotent — safe to call more than once. */
+   * and defensively again from RecordScreen's onEnd before it): a reference
+   * that never fired a gate = unmatched. Idempotent. */
   finalize(): void {
-    this.ended = true;
-    if (this.lockKind === 'verified') return; // nothing to do
-    // N9: captured up front (before either branch below reassigns
-    // this.lockKind) so both can report the transition they actually made.
-    const prevKind = this.lockKind;
-    const atT = this.tBuf.length > 0 ? this.tBuf[this.tBuf.length - 1] : 0;
-    // "Completed its own route" needs BOTH every gate accounted for AND
-    // >= LOCK_MIN_ADVANCE_M of corridor-verified advance BEFORE its FINISH
-    // gate — the same 400 m evidence rule every live lock obeys, measured up
-    // to the gate that defines completion. nextGateIndex alone is not
-    // evidence: D-016(b) arming resolves every gate a candidate's FIRST fix
-    // already lies past, so a ride that merely STARTS near a route's far end
-    // (2026-09-01 ride 2: Work->Home ridden against the only catalog route,
-    // Home->Work) skips all five gates on fix #1 — nextGateIndex ===
-    // gates.length before a metre was ridden. `baseS` is the chainage this
-    // candidate's CURRENT projector was seeded at (carried forward past any
-    // discounted re-acquisition jump), so FINISH - baseS is the advance the
-    // engine watched before the finish line (a post-FINISH jump only makes
-    // it stricter): <= 0 for the ride-2 artifact, and never satisfiable by
-    // riding a route's polyline tail past FINISH (EveningB's runs 601 m — a
-    // bare `adv >= 400` would count it). NOT `anchored`: the cycle 023 retry
-    // re-seeds the projector wherever the first good fix lands and resets
-    // `anchored`, and forward-only projection can never re-anchor from past
-    // ANCHOR_M — that guard (WP-A, 447c2ba) threw away gate-verified
-    // finishes whose first ~400 m had poor accuracy (2026-09-02 Inspect).
-    // Under a RECORD-tab pick (hard lock, Nathan 2026-08-29) only the pick's
-    // own candidate can ever be settled — another candidate having finished
-    // its own route is never a reason to reassign the ride.
-    const finished = this.cands.filter((c) =>
-      c.det.nextGateIndex >= c.gates.length &&
-      c.baseS !== null && c.gates[c.gates.length - 1] - c.baseS >= LOCK_MIN_ADVANCE_M &&
-      (this.pick === null || c.track === this.pick));
-    if (finished.length === 0) {
-      // Nothing completed its own route. A still-soft lock's display already
-      // stood — just relabel it as settled. No pick/never-anchored-anywhere
-      // means the ride stays genuinely unmatched, exactly as today.
-      if (this.lockKind === 'soft') {
-        this.lockKind = 'finalized';
-        // N9: the ride-end settle was completely invisible before this WP —
-        // no lock event (finalize()'s relabel never emitted one) and no
-        // other trace either.
-        this.noteLockChange('soft', this.locked!, atT, 'rideEndPromotion');
-      } else if (this.lockKind === 'none') {
-        // virgin-cycle20 06: never locked → the pre-lock display presumption is
-        // withdrawn with the ride (nothing provisional reaches rememberRide/Result).
-        // brief 12: 'none' ONLY — a bare `else` also ran for 'finalized', so the
-        // defensive second finalize() (RecordScreen onEnd, then stopTracking) wiped
-        // a soft-promoted ride's done sectors back to pending.
-        this.sectors = pendingSectors(this.sectors.length);
-      }
-      this.emit();
-      return;
+    const c = this.locked;
+    if (c !== null && c.events.length === 0) {
+      this.locked = null;
+      this.sectors = pendingSectors(this.sectors.length);
     }
-    // Several completed candidates => the longest completed route subsumes
-    // its prefix (a longer ride can fire a shorter corridor-subset route's
-    // FINISH en route); exact-adv ties break toward the pick.
-    let winner = finished[0];
-    for (let i = 1; i < finished.length; i++) {
-      const c = finished[i];
-      if (c.adv > winner.adv) winner = c;
-      else if (c.adv === winner.adv && c.track === this.pick && winner.track !== this.pick) winner = c;
-    }
-    const alreadyDisplayed = this.locked === winner;
-    this.locked = winner;
-    this.lockKind = 'finalized';
-    this.pickHonoured = this.pick !== null && this.pick === winner.track;
-    this.cands = [winner];
-    if (!alreadyDisplayed) {
-      // Establishing a NEW display target at ride end: nothing was locked
-      // before (under a pick the only settleable candidate IS the soft one,
-      // so this branch is the no-pick, never-locked path). Same replay
-      // sequence a live lock uses.
-      this.phase = 'locked';
-      // Cycle 024 B1 fix, kept defensively: a stale `this.lap` from a
-      // different, previously displayed candidate must never survive under
-      // the winner's name (D-025/D-030: an uncaveated real number that was
-      // never earned). Since the hard pick (Nathan 2026-08-29) no path
-      // reaches here with a different candidate displayed, so this is a
-      // no-op guard — cheap, and the invariant it protects is worth stating.
-      this.lap = null;
-      this.emitEvent({
-        type: 'lock', track: winner.track, atChainageM: winner.proj.chainage, atT, kind: 'finalized', pick: this.pick,
-      });
-      this.emitDiagnostic({
-        type: 'wayMatchAttempt', track: winner.track, phase: 'lock',
-        accuracyM: null, thresholdM: POOR_ACCURACY_M, poorAccuracy: false,
-        xtdM: winner.lastXtd, atT,
-      });
-      for (const e of winner.events) {
-        this.emitEvent({ type: 'gate', track: winner.track, gateIndex: e.gateIndex, t: e.time, estimated: e.estimated });
-      }
-      this.recompute();
-    }
-    // else: already the displayed candidate (soft, its own FINISH already
-    // fired mid-ride, phase already 'finished') — relabelling as finalized
-    // changes nothing on screen, so no new event, no re-replay, no recompute.
-    // N9: either way (already displayed or not) this settles a transition —
-    // soft->finalized (the pick's own route completed) or none->finalized
-    // (no live lock ever formed) — both named routeCompleted per the design.
-    this.noteLockChange(prevKind, winner, atT, 'wayCompleted');
     this.emit();
   }
 
   getState(): LiveEngineState {
-    // virgin-cycle20 06: everything positional below reads the DISPLAY candidate
-    // (locked, else the pick's own pre-lock); `track`/`gateFires` keep today's rule.
-    const disp = this.displayCand();
-    const det = disp?.det ?? null;
+    // Everything positional below reads the one reference candidate.
+    const c = this.locked;
+    const det = c?.det ?? null;
     const next = det ? det.nextGateIndex : 0;
-    const nGates = disp ? disp.gates.length : this.sectors.length + 1;
+    const nGates = c ? c.gates.length : this.sectors.length + 1;
     let currentSector: number | null = null;
     if (det && next >= 1 && next < nGates) currentSector = next;
     let lastDone: number | null = null;
-    if (disp) {
-      for (const e of disp.events) {
+    if (c) {
+      for (const e of c.events) {
         if (e.gateIndex >= 1) lastDone = Math.max(lastDone ?? 0, e.gateIndex);
       }
     }
-    const gateFires = this.locked
-      ? this.locked.events.length
-      : this.cands.reduce((m, c) => Math.max(m, c.events.length), 0);
-    // virgin-cycle6 (self racing): the displayed candidate's own gate-0
+    // virgin-cycle6 (self racing): the reference candidate's own gate-0
     // event, if it has fired one yet.
     let startGateT: number | null = null;
-    if (disp) {
-      const g0 = disp.events.find((e) => e.gateIndex === 0);
+    if (c) {
+      const g0 = c.events.find((e) => e.gateIndex === 0);
       if (g0) startGateT = g0.time;
     }
     return {
       phase: this.phase,
-      track: this.locked ? this.locked.track : null,
-      displayTrack: disp ? disp.track : null,
+      track: c ? c.track : null,
       sectors: [...this.sectors],
       currentSector,
       lastDone,
       lap: this.lap,
-      gateFires,
+      gateFires: c ? c.events.length : 0,
       fixesFed: this.fixesFed,
       onWay: this.onWay,
-      lockKind: this.lockKind,
       pick: this.pick,
-      pickHonoured: this.pickHonoured,
-      anyAnchored: this.cands.some((c) => c.anchored),
       startGateT,
-      chainageM: disp ? disp.proj.chainage : null,
-      riderSnap: this.riderSnapOf(disp),
+      chainageM: c ? c.proj.chainage : null,
+      riderSnap: this.riderSnapOf(c),
     };
   }
 
-  /** virgin-cycle20 brief 02: the display candidate's last display projection
+
+  /** virgin-cycle20 brief 02: the reference candidate's last display projection
    * in degrees — interp1 over the 5 m-resampled reference gives the exact point
    * on the hit segment; xyToLatLon is the inverse of the toXY the fix went
    * through. Pure read of stored state; no projector call. */
@@ -762,7 +462,7 @@ export class LiveEngine {
   }
 
   /** Cycle 023 fix 5a — route-match diagnostics, a channel distinct from both
-   * subscribe() (live state) and subscribeEvents() (the ride's lock/gate
+   * subscribe() (live state) and subscribeEvents() (the ride's gate
    * record): see DiagnosticEvent's doc comment for why. */
   subscribeDiagnostics(fn: (e: DiagnosticEvent) => void): () => void {
     this.diagListeners.add(fn);
@@ -775,177 +475,21 @@ export class LiveEngine {
     this.evListeners.forEach((fn) => { try { fn(e); } catch { /* diagnostics only */ } });
   }
 
-  /** N9: emits a `lockChange` for the transition just committed by
-   * commitLock()/finalize() — a no-op when the kind didn't actually change
-   * (idempotent finalize()) or when it settled back to 'none' (never
-   * happens today, but the guard states the invariant). */
-  private noteLockChange(prev: LockKind, cand: Candidate, atT: number, reason: LockChangeReason): void {
-    if (prev === this.lockKind || this.lockKind === 'none') return;
-    this.emitEvent({
-      type: 'lockChange', track: cand.track, from: prev, to: this.lockKind,
-      atChainageM: cand.proj.chainage, atT, reason, pick: this.pick,
-    });
-  }
-
   private emitDiagnostic(e: DiagnosticEvent): void {
     this.diagListeners.forEach((fn) => { try { fn(e); } catch { /* diagnostics only */ } });
-  }
-
-  /** virgin-cycle20 06: the candidate getState()/recompute() describe — the lock
-   * when there is one; otherwise, under a RECORD-tab pick and until finalize(),
-   * the pick's own candidate (display-only presumption, see the file header). */
-  private displayCand(): Candidate | null {
-    if (this.locked) return this.locked;
-    if (this.pick === null || this.ended) return null;
-    return this.cands.find((c) => c.track === this.pick) ?? null;
-  }
-
-  /** The overall leader by corridor-verified advance. Exact ties (rare) break
-   * anchored first, then toward the RECORD-tab pick, then by spec order
-   * (the first-encountered candidate is kept unless a later one scores
-   * strictly higher). */
-  private pickLeader(): Candidate | null {
-    let best: Candidate | null = null;
-    for (const c of this.cands) {
-      if (!best) { best = c; continue; }
-      if (c.adv > best.adv) { best = c; continue; }
-      if (c.adv < best.adv) continue;
-      const cScore = (c.anchored ? 2 : 0) + (c.track === this.pick ? 1 : 0);
-      const bestScore = (best.anchored ? 2 : 0) + (best.track === this.pick ? 1 : 0);
-      if (cScore > bestScore) best = c;
-    }
-    return best;
-  }
-
-  /** The lock rule (cycle 024 WP-D2 anchored rule + the hard pick, Nathan
-   * 2026-08-29 — see the file header for the full design). Runs every fix
-   * while lockKind is 'none' or 'soft'. With a pick it owns none -> soft ->
-   * verified for the PICK's candidate only; with no pick, none -> verified
-   * for the unblocked leader. There are no mid-ride switches: the displayed
-   * candidate never changes once set. The 400 m evidence rule is never
-   * shortcut: no lock of any kind fires before the candidate being locked
-   * has >=400 m of corridor-verified advance, and verified additionally
-   * needs it to be the leader with no blocking rival inside the 200 m
-   * margin (an unanchored rival never blocks an anchored leader). */
-  private evaluateLockState(tSec: number, accuracyM: number | undefined, poorNow: boolean): void {
-    const lead = this.pickLeader();
-    if (!lead || lead.adv < LOCK_MIN_ADVANCE_M) return;
-
-    // An unanchored rival never blocks an anchored leader — it is a mid-line
-    // shadow (e.g. StationHomeWet under a true EveningB ride), not a genuine
-    // competing route.
-    const blockers = this.cands.filter((c) => {
-      if (c === lead) return false;
-      if (lead.adv - c.adv >= LOCK_MARGIN_M) return false;
-      return c.anchored || !lead.anchored;
-    });
-
-    if (this.pick !== null) {
-      // HARD PICK (Nathan 2026-08-29: "what you pick should stay locked until
-      // the end"): the RECORD-tab pick's own candidate is the ONLY candidate
-      // this ride can ever lock. Soft once ITS OWN corridor-verified advance
-      // reaches 400 m; promoted to verified once it is the unblocked leader
-      // (same target => commitLock emits no second lock event); never
-      // switched away from. A rival pulling ahead is not evidence for a
-      // different route — it means the rider left the picked one, and
-      // finalize() then scores the pick (partial sectors, honestly missed)
-      // or leaves the ride unmatched if the pick never earned even a soft
-      // lock. The 400 m evidence rule is unchanged, merely measured on the
-      // pick's own candidate.
-      const pickCand = this.cands.find((c) => c.track === this.pick);
-      if (!pickCand || pickCand.adv < LOCK_MIN_ADVANCE_M) return;
-      if (pickCand === lead && blockers.length === 0) {
-        this.commitLock(pickCand, 'verified', tSec, accuracyM, poorNow);
-      } else if (this.lockKind === 'none') {
-        this.commitLock(pickCand, 'soft', tSec, accuracyM, poorNow);
-      }
-      return;
-    }
-
-    // No pick: today's exact behaviour — a verified lock the instant the
-    // leader has 400 m of advance and no blocker inside the 200 m margin;
-    // otherwise keep waiting. A soft lock only ever exists under a pick, so
-    // there is no soft state to promote or switch from here.
-    if (blockers.length === 0) this.commitLock(lead, 'verified', tSec, accuracyM, poorNow);
-  }
-
-  /** Settle on `cand` as the displayed candidate at kind `kind`. A no-op
-   * target change (promotion of the already-displayed soft candidate) emits
-   * no new lock event and replays nothing — its own fires have been emitted
-   * and recomputed continuously since it became the soft pick. A NEW target
-   * (the ride's one fresh lock — there are no switches under the hard pick)
-   * emits one lock event and replays that candidate's kept-but-not-yet-
-   * emitted events, exactly as today's single lock path did. */
-  private commitLock(
-    cand: Candidate, kind: 'soft' | 'verified', tSec: number,
-    accuracyM: number | undefined, poorNow: boolean,
-  ): void {
-    const isNewTarget = this.locked !== cand;
-    const prevKind = this.lockKind; // N9: captured before reassignment, for noteLockChange below
-    this.locked = cand;
-    this.lockKind = kind;
-    this.phase = 'locked';
-    this.pickHonoured = this.pick !== null && this.pick === cand.track;
-    if (kind === 'verified') this.cands = [cand]; // drop the rest, exactly today's behaviour
-    if (isNewTarget) {
-      // Cycle 024 B1 fix, kept defensively: `this.lap` is written once by
-      // recompute() and never cleared (D-022's "score once" rule for a
-      // SINGLE candidate's own FINISH). Re-pointing the display at a
-      // DIFFERENT candidate must never let a stale lap survive under the new
-      // name. Since the hard pick (Nathan 2026-08-29) the displayed
-      // candidate is never switched, so a new target here is always the
-      // ride's FIRST lock with `this.lap` still null — the reset is a no-op
-      // that states the invariant. phase is already forced to 'locked'
-      // above, so recompute() below scores from this candidate's own events
-      // once (and only once) its own FINISH fires.
-      this.lap = null;
-      this.emitEvent({
-        type: 'lock', track: cand.track, atChainageM: cand.proj.chainage, atT: tSec, kind, pick: this.pick,
-      });
-      this.emitDiagnostic({
-        type: 'wayMatchAttempt', track: cand.track, phase: 'lock',
-        accuracyM: accuracyM ?? null, thresholdM: POOR_ACCURACY_M, poorAccuracy: poorNow,
-        xtdM: cand.lastXtd, atT: tSec,
-      });
-      for (const e of cand.events) {
-        this.emitEvent({ type: 'gate', track: cand.track, gateIndex: e.gateIndex, t: e.time, estimated: e.estimated });
-      }
-      this.recompute();
-    }
-    // N9: emits the lockChange for this transition — the none->soft/verified
-    // first lock (kind's own 'lock' event fires above) AND the soft->verified
-    // promotion (which emits no second 'lock' event, only this).
-    this.noteLockChange(prevKind, cand, tSec, kind === 'soft' ? 'pickAdvance' : 'unblockedLeader');
   }
 
   private feedCandidate(c: Candidate, lat: number, lon: number, tSec: number): GateEvent[] {
     // Per-fix planar transform in this candidate's track frame (same toXY as
     // the parity pipeline; two tiny arrays per call — negligible at 1 Hz).
     const xy = toXY([lat], [lon], c.ref.lat0, c.ref.lon0);
-    const sBefore = c.proj.chainage;
-    // WP-D (cycle 2): the PREVIOUS fix's verdict — c.onRoute is only rewritten
-    // below, but read it here explicitly so the ordering is not load-bearing.
-    const wasOnWay = c.onWay;
     const fix = c.proj.update(xy.x[0], xy.y[0], tSec);
     c.lastXtd = fix.xtd; // WP-G Part 2 gap-fill: per-candidate deviation for diagnostics
     // virgin-cycle20 brief 02: display-only rider-dot projection around the
     // chainage the projector just settled on (see displayProjection).
     c.lastSnap = displayProjection(c.ref, c.proj.chainage, xy.x[0], xy.y[0]);
-    if (c.baseS === null) {
-      c.baseS = fix.s;
-    } else {
-      // Discount unobserved ground from the lock evidence by carrying baseS
-      // forward with it (see REACQ_JUMP_M's doc comment): a jump past the
-      // projector's window (WP-D1, cycle 024) OR any advance landing on the
-      // first on-route fix after an off-route one (WP-D, cycle 2) — the
-      // projector only moves chainage on on-route fixes, so such a jump is
-      // ground covered while the rider was outside this candidate's corridor.
-      const jump = c.proj.chainage - sBefore;
-      if (jump > REACQ_JUMP_M || !wasOnWay) c.baseS += jump;
-    }
-    c.adv = c.proj.chainage - c.baseS;
+    if (c.baseS === null) c.baseS = fix.s;
     c.onWay = fix.onRoute;
-    if (!c.anchored && fix.onRoute && fix.s <= ANCHOR_M) c.anchored = true;
     const events = c.det.update(tSec, fix.s);
     if (events.length === 0) return events;
     c.events.push(...events);
@@ -956,7 +500,7 @@ export class LiveEngine {
    * the offline parity pipeline over the buffer says HOW LONG (raw/stopped/
    * moving) and catches interrupted/offroute. */
   private recompute(): void {
-    const cand = this.displayCand();
+    const cand = this.locked;
     if (!cand) return;
     const gates = cand.gates;
     const nSec = gates.length - 1;
@@ -1028,10 +572,8 @@ export class LiveEngine {
     // D-022 handover: FINISH gate fired => the lap is scored once.
     const evStart = ev[0];
     const evFin = ev[nSec];
-    // virgin-cycle20 06: D-022's handover is the LOCKED candidate's alone — a
-    // pre-lock display candidate shows its sectors but never scores a lap nor
-    // flips phase (phase==='finished' gates evaluateLockState; finalize() rules).
-    if (evFin && this.lap === null && cand === this.locked) {
+    // D-022's handover: the reference candidate's FINISH scores the lap once.
+    if (evFin && this.lap === null) {
       const anyDirty = out.some(
         (s) => s.kind === 'missed' || (s.kind === 'done' && s.estimated),
       );

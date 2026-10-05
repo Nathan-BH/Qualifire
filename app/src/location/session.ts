@@ -14,6 +14,7 @@
  * needed. [UNTESTED ON DEVICE]
  */
 import * as FileSystem from 'expo-file-system/legacy';
+import { parseSession } from './sessionMarker';
 
 export interface ActiveSession {
   rideId: string;
@@ -40,6 +41,11 @@ export interface ActiveSession {
    * the outage, not just counting it. Optional: a marker written before this
    * field existed still loads (downS is then simply omitted). */
   lastAliveAtMs?: number;
+  /** virgin-cycle21: the START pick (a TrackSpec id). Read only by a UI remount of a still-running ride
+   * (RecordScreen restores the map's route line from it). Since virgin-cycle21 04 it is NEVER used to
+   * re-arm the engine after a relaunch: an interrupted ride is not resumed. null = no pick; absent in a
+   * pre-cycle-21 marker. */
+  pickId?: string | null;
 }
 
 function markerUri(): string {
@@ -58,17 +64,9 @@ export async function loadSession(): Promise<ActiveSession | null> {
     const info = await FileSystem.getInfoAsync(markerUri());
     if (!info.exists) return null;
     const raw = await FileSystem.readAsStringAsync(markerUri());
-    const parsed = JSON.parse(raw) as Partial<ActiveSession>;
-    if (typeof parsed.rideId === 'string' && typeof parsed.startedAtMs === 'number') {
-      const mode = parsed.mode === 'free' ? 'free' : parsed.mode === 'route' ? 'route' : undefined;
-      const wayIds = Array.isArray(parsed.wayIds) ? parsed.wayIds : parsed.wayIds === null ? null : undefined;
-      const lastAliveAtMs =
-        typeof parsed.lastAliveAtMs === 'number' && Number.isFinite(parsed.lastAliveAtMs)
-          ? parsed.lastAliveAtMs
-          : undefined;
-      const sportId = typeof parsed.sportId === 'string' ? parsed.sportId : undefined;
-      return { rideId: parsed.rideId, startedAtMs: parsed.startedAtMs, mode, wayIds, lastAliveAtMs, sportId };
-    }
+    // The parse itself lives in sessionMarker.ts (pure, headless-testable).
+    const parsed = parseSession(raw);
+    if (parsed) return parsed;
     // Corrupt marker: discard rather than crash the task forever.
     await clearSession();
     return null;

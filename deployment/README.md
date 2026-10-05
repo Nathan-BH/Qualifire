@@ -16,24 +16,29 @@ folder; this folder just keeps the standing state, the options, and the running 
 Nothing in here changes app behaviour. The app's ground rules (`STATE.md`, root) still win
 if anything here disagrees with them. **Status as of 2026-09-10: route and signing are fully
 decided** (Google Play closed testing, 5–10 Android testers, clean package name, Play
-generates the signing key) — `QUESTIONS-FOR-NATHAN.md` is fully answered, nothing left open.
-What's left is execution: the repo-prep and Play Console steps in `DEPLOYMENT-OPTIONS.md` §0.
+generates the signing key) — `rounds/round1/questions-and-rulings.md` is fully answered, nothing left open.
+What's left is execution: the repo-prep and Play Console steps in `rounds/round1/review.md` §0.
+**Round 2 (2026-10-05):** Nathan's Expo questions answered in `rounds/round2/review.md`;
+`scripts/publish-play.ps1` now exists and the `play` EAS profile is drafted but deliberately NOT in `app/eas.json` (it is fingerprint-hashed; `rounds/round2/INSPECTION.md`); `fingerprint.config.js`,
+the version bump and `-Promote` wait for the Sentry / disclosure-UI native build.
 
 ## Files
 
 | File | What it is |
 |---|---|
 | `README.md` | This index. |
+| `rounds/` | Decision rounds (same convention as `marketing/monetization/rounds/`). `roundN/ideas.md` is Nathan's; `review.md` and `questions-and-rulings.md` are Claude's analysis. Round 1 holds the Play route options and the Q1-Q10 record; round 2 is for new questions. See `rounds/README.md`. |
 | `CURRENT-STATE.md` | Factual inventory of where deployment stands today: Expo/EAS config, build + OTA scripts, what's proven vs. untested, what does not exist at all (no store presence, no CI, no crash reporting). Facts not directly quoted from the repo are tagged `[UNVERIFIED]`. |
-| `DEPLOYMENT-OPTIONS.md` | The actual thinking: each distribution route as its own section — what it requires, what it buys, what it costs in money, time and ongoing commitment. Now staged as a concrete plan (§0) since the route is decided: Google Play closed testing, clean package, Play-generated signing key. |
-| `QUESTIONS-FOR-NATHAN.md` | All ten questions, all answered — the canonical, fully-resolved record (quotes + what each settled). Kept even though nothing's open, as the decision log; a future question would get appended here rather than starting a new file. |
+| `rounds/round1/review.md` | The actual thinking: each distribution route as its own section — what it requires, what it buys, what it costs in money, time and ongoing commitment. Now staged as a concrete plan (§0) since the route is decided: Google Play closed testing, clean package, Play-generated signing key. |
+| `rounds/round1/questions-and-rulings.md` | All ten questions, all answered — the canonical, fully-resolved record (quotes + what each settled). Kept even though nothing's open, as the decision log; a future question would get appended here rather than starting a new file. |
+| `rounds/round2/ideas.md`, `review.md`, `DIGEST.md`, `PLAN.md`, `BRIEF-01-*.md`, `EXECUTION.md` | Round 2 (2026-10-05): Nathan's two Expo questions (updates/builds once the Play key is in play; is Expo free for good), the reviewed answers, and the plan + brief + execution + inspection record that added `publish-play.ps1` (the `play` profile was backed out after inspection, see `INSPECTION.md`). `PLAN.md` §4 holds the checklist for the deferred native-build cycle. |
 | `TOKEN-USAGE.md` | Running readout table (tier / model / mandate / tokens / outcome) for every agent dispatch spent on deployment work. The coordinator appends a row per dispatch. |
 | `CYCLE-LOG.md` | Most-recent-first log of deployment work sessions: what was done, what landed, what's still open. |
 
 ## How to use this folder
 
 - **Starting a deployment session:** read `CURRENT-STATE.md`, then the top entry of
-  `CYCLE-LOG.md`, then check whether `QUESTIONS-FOR-NATHAN.md` has unanswered blockers.
+  `CYCLE-LOG.md`, then check whether `rounds/round1/questions-and-rulings.md` has unanswered blockers.
 - **After a session:** update `CURRENT-STATE.md` if anything factual changed (a new build
   went out, a keystore was exported, a Play account was created), add a `CYCLE-LOG.md`
   entry, append the dispatch rows to `TOKEN-USAGE.md`.
@@ -43,12 +48,12 @@ What's left is execution: the repo-prep and Play Console steps in `DEPLOYMENT-OP
 
 **Housekeeping note (2026-09-10):** `QUESTIONS-FOR-NATHAN2.md` and
 `QUESTIONS-FOR-NATHAN(answered before update).md` are stray leftovers from answering
-in-place — their content is fully folded into the canonical `QUESTIONS-FOR-NATHAN.md` above.
+in-place — their content is fully folded into the canonical `rounds/round1/questions-and-rulings.md` above.
 No agent this session could reach `device_bash` to move them to `safe_to_delete/`; safe for
 Nathan to delete or move whenever convenient.
 
 Related, elsewhere in the repo:
-- `scripts/README.md` — the build-script lineage (build3 → build7, publish-preview).
+- `scripts/README.md` — the build-script lineage (build3 → build8, publish-preview, publish-play).
 - `scripts/OTA-TROUBLESHOOTING.md` — EAS Update fingerprint debugging.
 - `app/README-dev.md` — one-time developer machine setup.
 - `app/eas.json`, `app/app.json`, `app/app.config.js` — the actual build/update config.

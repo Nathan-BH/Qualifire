@@ -941,3 +941,40 @@ test('gpx+: N9 — decoder rejects malformed pick/lockChange lines, keeps well-f
   assert(dec.nDropped === 8, `nDropped ${dec.nDropped}, want 8 (the eight malformed lines)`);
   assert(dec.events.every((e) => e.kind === 'pick' || e.kind === 'lockChange'), 'wrong events survived validation');
 });
+
+// ---------------------------------------------------------------- virgin-cycle21 02
+// The engine no longer writes lock/lockChange events: a NEW-style sidecar has
+// a `pick` event plus gate events (track = the START pick). Old sidecars (lock
+// events) keep exporting byte-identically — see the tests above, unchanged.
+
+test('gpx+: virgin-cycle21 02: a new-style sidecar (pick + gate events, no lock) exports wayDistanceM and wayFidelity, and no <qf:wayLock>', async () => {
+  const src = loadFixture('clean_morning');
+  const { storage, clock } = makeEnv(src.fixes.t[0] * 1000, /* withRefFor */ true);
+  const rideId = await storage.startRide();
+  for (let i = 0; i < src.fixes.t.length; i++) {
+    clock.t = src.fixes.t[i] * 1000;
+    await storage.appendFix(rideId, { tUnixMs: clock.t, lat: src.fixes.lat[i], lon: src.fixes.lon[i] });
+  }
+  await storage.appendEvent(rideId, { kind: 'pick', tUnixMs: src.fixes.t[0] * 1000, mode: 'route', wayId: 'Morning' });
+  await storage.appendEvent(rideId, {
+    kind: 'gate', tUnixMs: clock.t, track: 'Morning', gateIndex: 0, t: clock.t / 1000, estimated: false,
+  });
+  await storage.endRide(rideId);
+  const gpx = await storage.exportGpxPlus(rideId);
+  assert(!gpx.includes('<qf:wayLock'), 'a wayLock element was emitted for a sidecar with no lock event');
+  assert(gpx.includes('<qf:wayDistanceM>5325</qf:wayDistanceM>'), 'wayDistanceM missing/wrong for the picked Morning');
+  const m = gpx.match(/<qf:wayFidelity track="Morning" corridorM="40" onRoutePct="([\d.]+)" maxXtdM="[\d.]+">/);
+  assert(m !== null && Number(m[1]) > 90, `wayFidelity missing or low:\n${gpx}`);
+});
+
+test('gpx+: virgin-cycle21 02: a sidecar with a pick and no gate and no lock exports <qf:wayLock>none</qf:wayLock>', async () => {
+  const { storage, clock } = makeEnv(1755167000000, /* withRefFor */ true);
+  const rideId = await storage.startRide();
+  clock.t += 1000;
+  await storage.appendFix(rideId, { tUnixMs: clock.t, lat: 50.8, lon: 4.6 });
+  await storage.appendEvent(rideId, { kind: 'pick', tUnixMs: clock.t, mode: 'route', wayId: 'Morning' });
+  await storage.endRide(rideId);
+  const gpx = await storage.exportGpxPlus(rideId);
+  assert(gpx.includes('<qf:wayLock>none</qf:wayLock>'), 'a ride that never fired a gate must say wayLock none');
+  assert(!gpx.includes('<qf:wayDistanceM') && !gpx.includes('<qf:wayFidelity'), 'distance/fidelity claimed for a ride that fired nothing');
+});

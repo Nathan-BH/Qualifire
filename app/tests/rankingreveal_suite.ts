@@ -54,10 +54,9 @@ function stateWith(over: Partial<LiveEngineState>): LiveEngineState {
   return {
     phase: 'finished', track: 'Morning', sectors: [], currentSector: null, lastDone: 4,
     lap: { rawS: 900, stoppedS: 20, movingS: 880, estimated: false },
-    gateFires: 5, fixesFed: 900, onWay: true, anyAnchored: false,
+    gateFires: 5, fixesFed: 900, onWay: true,
     startGateT: null,
     chainageM: null,
-    displayTrack: null,
     ...over,
   } as LiveEngineState;
 }

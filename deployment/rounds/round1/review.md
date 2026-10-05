@@ -8,7 +8,7 @@ tour.
 **Framing (revised 2026-09-10).** This file started as a survey with no recommendation,
 became a recommendation after the 2026-09-09 pivot (Qualifire is meant to be something
 other people can try — `STATE.md`, "The goal"), and is now a **plan with nothing left to
-decide**: Nathan answered all ten questions in `QUESTIONS-FOR-NATHAN.md` (eight on
+decide**: Nathan answered all ten questions in `questions-and-rulings.md` (eight on
 2026-09-09, the two signing questions on 2026-09-10 once the terms were explained) and the
 coordinator folds the answers into `STATE.md` / `OPEN-ITEMS.md`. What's decided:
 
@@ -532,7 +532,7 @@ Google holds the app-signing key, so a Play install stays updatable even if the 
 were lost, and there is nothing for Nathan to export or store. The one thing an EAS export
 would still protect is his own `.preview` install (signed with EAS's `.preview` key, of which
 Expo holds the only copy) — and Step 3 retires that install. Optional, ten minutes via `eas
-credentials`, not scheduled. Full reasoning in `QUESTIONS-FOR-NATHAN.md` Q7.
+credentials`, not scheduled. Full reasoning in `questions-and-rulings.md` Q7.
 
 ### The package-name split — **decided (Q5): clean `com.nathanbonher.qualifire`, "Qualifire"**
 Nathan: "clean name, it should be called qualifire only (no preview/virgin name) as that is

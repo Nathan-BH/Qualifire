@@ -791,6 +791,14 @@
     {
       "file": "src/ui/RecordScreen.tsx",
       "kind": "literal",
+      "text": "Interrupted · saved as free activity",
+      "reason": "virgin-cycle21 04: only trace of a killed ride (Nathan 2026-10-04), one flash in the RECORD sub-label",
+      "since": "2026-10-04",
+      "by": "virgin-cycle21 04"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "literal",
       "text": "Location (GPS) is turned off",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",

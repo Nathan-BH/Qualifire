@@ -135,7 +135,7 @@ there's genuinely nothing left to do without his input. Otherwise decide and kee
 he can always override.
 
 **How to ask (standing convention, added 2026-09-02 at Nathan's request):** collect every
-open question for a cycle in one `QUESTIONS-FOR-NATHAN.md` file inside that cycle's folder
+open question for a cycle in one `deployment/rounds/round1/questions-and-rulings.md` file inside that cycle's folder
 (`cycles/<cycle-name>/QUESTIONS-FOR-NATHAN.md`) — never only in chat, where it's easy to lose
 track of and impossible for a different session to see. Model it on `main`'s
 `cycles/cycle-025-briefs/QUESTIONS-FOR-NATHAN.md`: a short intro, a "ready to execute now — no

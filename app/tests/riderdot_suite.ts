@@ -18,7 +18,7 @@ import { CORRIDOR_M, DEFAULT_LIVE_OPTIONS, toXY, xyToLatLon, type RefLine } from
 // live_suite's registerHooks JSON shim is installed — so a DYNAMIC import after
 // link time, never a static one (a static import hoists past the hook and fails
 // with ERR_IMPORT_ATTRIBUTE_MISSING).
-const { LiveEngine, LOCK_MIN_ADVANCE_M } = await import('../src/live/engine.ts');
+const { LiveEngine } = await import('../src/live/engine.ts');
 
 const APP_DIR = path.resolve(TESTS_DIR, '..');
 // A generic local frame — any origin works; nothing here is a real route.
@@ -137,61 +137,45 @@ function straightRef(lengthM: number): RefLine {
   return { rx, ry, ch, lat0: LAT0, lon0: LON0, length: (n - 1) * 5 };
 }
 
-test('riderdot: engine exposes riderSnap for the display candidate only, display-only', () => {
+test('riderdot: engine exposes riderSnap for the reference candidate only (the START pick), display-only', () => {
   const ref = straightRef(1500);
   const engine = new LiveEngine([{ id: 'T', ref, gates: [50, 700, 1400] }]);
+  // No pick = no reference (virgin-cycle21): riderSnap stays null for the whole ride.
   engine.start();
   assert(engine.getState().riderSnap === null, 'nothing fed → null');
-  // Ride along the line 3 m to the "north" (y = +3), 10 m per fix at 1 Hz.
-  // No pick: the display candidate IS the lock (displayTrack === track), so
-  // riderSnap is null until the 400 m lock and present from then on.
   let t = 1_700_000_000_000;
-  let lockedAt: number | null = null;
-  for (let s = 0; s <= 900; s += 10, t += 1000) {
+  for (let s = 0; s <= 300; s += 10, t += 1000) {
     const [lat, lon] = xyToLatLon(s, 3, LAT0, LON0);
     engine.feed(lat, lon, t, 5);
     const st = engine.getState();
-    if (st.displayTrack === null) {
-      assert(st.track === null, `s=${s}: no pick → displayTrack follows track`);
-      assert(st.riderSnap === null, `s=${s}: no display candidate → riderSnap null`);
-    } else {
-      if (lockedAt === null) lockedAt = s;
-      assert(st.track === 'T', `s=${s}: no pick → display candidate is the lock`);
-      assert(st.riderSnap !== null, `s=${s}: display candidate → riderSnap present`);
-      assert(Math.abs(st.riderSnap.xtdM - 3) < 0.01, `s=${s}: xtd ≈ 3 m, got ${st.riderSnap.xtdM}`);
-      const back = toXY([st.riderSnap.lat], [st.riderSnap.lon], LAT0, LON0);
-      assert(Math.abs(back.x[0] - s) < 0.05 && Math.abs(back.y[0]) < 0.05, `s=${s}: projected point on the line at s`);
-      assert(st.chainageM !== null && Math.abs(st.chainageM - s) < 0.05, `s=${s}: chainage untouched`);
-    }
+    assert(st.track === null && st.riderSnap === null, `s=${s}: no pick → no reference → riderSnap null`);
   }
-  assert(lockedAt !== null && lockedAt >= LOCK_MIN_ADVANCE_M, `lock only after ${LOCK_MIN_ADVANCE_M} m (got ${lockedAt})`);
+  engine.stop();
+  // Under a pick the pick's candidate is the reference from START: riderSnap
+  // follows it fix by fix.
+  const pe = new LiveEngine([{ id: 'T', ref, gates: [50, 700, 1400] }]);
+  pe.start({ pickId: 'T' });
+  assert(pe.getState().riderSnap === null, 'pick, nothing fed → null');
+  t = 1_700_000_000_000;
+  for (let s = 0; s <= 900; s += 10, t += 1000) {
+    const [lat, lon] = xyToLatLon(s, 3, LAT0, LON0);
+    pe.feed(lat, lon, t, 5);
+    const st = pe.getState();
+    assert(st.track === 'T', `s=${s}: the pick is the reference from START`);
+    assert(st.riderSnap !== null, `s=${s}: reference candidate → riderSnap present`);
+    assert(Math.abs(st.riderSnap.xtdM - 3) < 0.01, `s=${s}: xtd ≈ 3 m, got ${st.riderSnap.xtdM}`);
+    const back = toXY([st.riderSnap.lat], [st.riderSnap.lon], LAT0, LON0);
+    assert(Math.abs(back.x[0] - s) < 0.05 && Math.abs(back.y[0]) < 0.05, `s=${s}: projected point on the line at s`);
+    assert(st.chainageM !== null && Math.abs(st.chainageM - s) < 0.05, `s=${s}: chainage untouched`);
+  }
   // A clearly off-route fix: riderSnap still reports the nearest point and the
   // honest distance (the UI rule turns that into "raw"); chainage does not move.
-  const before = engine.getState().chainageM;
+  const before = pe.getState().chainageM;
   const [lat, lon] = xyToLatLon(905, 60, LAT0, LON0);
-  engine.feed(lat, lon, t, 5);
-  const st = engine.getState();
+  pe.feed(lat, lon, t, 5);
+  const st = pe.getState();
   assert(st.riderSnap !== null && Math.abs(st.riderSnap.xtdM - 60) < 0.01, `off-route xtd ≈ 60, got ${st.riderSnap?.xtdM}`);
   assert(st.chainageM === before, 'an off-route fix never moves chainage (projector unchanged)');
-  engine.stop();
-  assert(engine.getState().riderSnap === null, 'stopped → null');
-
-  // Ruling 2026-10-03 (brief 06 display candidate): under a RECORD-tab pick the
-  // dot snaps to the pick's own reference from START — the map already draws
-  // that line (wayHint) before the lock — so riderSnap is present while `track`
-  // is still null, exactly like chainageM. The lock verdict itself is untouched.
-  const picked = new LiveEngine([{ id: 'T', ref, gates: [50, 700, 1400] }]);
-  picked.start({ pickId: 'T' });
-  assert(picked.getState().riderSnap === null, 'pick, nothing fed → null');
-  let tp = 1_700_000_000_000;
-  for (let s = 0; s <= 100; s += 10, tp += 1000) {
-    const [plat, plon] = xyToLatLon(s, 3, LAT0, LON0);
-    picked.feed(plat, plon, tp, 5);
-    const ps = picked.getState();
-    assert(ps.track === null && ps.displayTrack === 'T', `pick s=${s}: pre-lock (track ${ps.track}, displayTrack ${ps.displayTrack})`);
-    assert(ps.riderSnap !== null && Math.abs(ps.riderSnap.xtdM - 3) < 0.01, `pick s=${s}: riderSnap from the pick's candidate before the lock`);
-    const pb = toXY([ps.riderSnap.lat], [ps.riderSnap.lon], LAT0, LON0);
-    assert(Math.abs(pb.x[0] - s) < 0.05 && Math.abs(pb.y[0]) < 0.05, `pick s=${s}: projected point on the line at s`);
-  }
-  picked.stop();
+  pe.stop();
+  assert(pe.getState().riderSnap === null, 'stopped → null');
 });

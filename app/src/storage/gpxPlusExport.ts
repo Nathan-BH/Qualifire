@@ -283,9 +283,14 @@ function buildSessionBlock(
       : `   <qf:fixOrder outOfOrder="${outOfOrder}" maxBackstepS="${num(maxBackstepMs / 1000)}"/>`,
   );
 
+  // virgin-cycle21: gate events hoisted above the route facts — a NEW-style
+  // sidecar has no lock events, only gate fires whose `track` is the START pick.
+  const gateEvs = evs.filter((e): e is GateFireEvent => e.kind === 'gate');
   if (events !== null) {
     const lockEvs = evs.filter((e): e is LockEvent => e.kind === 'lock');
-    if (lockEvs.length > 0) {
+    // LEGACY (sidecars of rides recorded before cycle 21): every lock event is
+    // exported as before; a new-style sidecar has none and emits no wayLock.
+    {
       // Cycle 025 (P3): EVERY lock event is exported, in sidecar order — the
       // old evs.find() took only the FIRST lock, silently discarding the
       // rest (e.g. the settled lock that followed a transient soft display
@@ -304,29 +309,35 @@ function buildSessionBlock(
           `   <qf:wayLock track="${escapeXml(l.track)}" atChainageM="${num(l.atChainageM)}" atT="${isoTime(l.atT * 1000)}"${lk}${pk}/>`,
         );
       }
+    }
+    // The ride's track: the first lock's (old sidecar) or the first gate's
+    // (new-style: the START pick) — null = nothing was ever locked or fired.
+    const rideTrack: string | null = lockEvs.length > 0 ? lockEvs[0].track : (gateEvs[0]?.track ?? null);
+    if (rideTrack !== null) {
       // Cycle 023 fix 4 (semantics unchanged by P3): distance keyed to the
-      // FIRST lock's track; only emitted when that track is recognized — an
+      // ride's track; only emitted when that track is recognized — an
       // old/renamed track id degrades to no field, never an export failure.
-      const dist = wayDistanceM(lockEvs[0].track);
+      const dist = wayDistanceM(rideTrack);
       if (dist !== null) lines.push(`   <qf:wayDistanceM>${num(dist)}</qf:wayDistanceM>`);
-      // WP-G Part 4: session-level route fidelity — only emitted when the
-      // ride actually SETTLED on a route, not merely soft-locked (a soft
-      // lock is "a display choice, not a narrowing of the evidence" per
-      // engine.ts — publishing a fidelity % against it would be an unearned
-      // claim, D-025/D-028). Take the LAST lock event whose lockKind isn't
-      // 'soft' (undefined lockKind = pre-WP-D2 sidecar, treated as settled;
-      // there was only one kind of lock then).
+      // WP-G Part 4: session-level route fidelity. LEGACY sidecars (lock
+      // events): only emitted when the ride actually SETTLED on a route, not
+      // merely soft-locked — take the LAST lock event whose lockKind isn't
+      // 'soft' (undefined lockKind = pre-WP-D2 sidecar, treated as settled).
+      // New-style sidecars (virgin-cycle21, no lock events): the START pick
+      // IS the reference, so the gate events' track is used.
       // AND a refFor lookup was actually injected (see RefLookup's doc
       // comment). Session-level + off-route segments, not per-point
       // (cheapest honest option: derivable at export time, no per-trkpt
       // bloat). refFor() throws for an unrecognized/renamed track id —
       // caught, block omitted, never an export failure (same doctrine as
       // routeDistanceM above).
-      const settledLockEv = [...lockEvs].reverse().find((e) => e.lockKind !== 'soft');
+      const settledTrack: string | null = lockEvs.length > 0
+        ? ([...lockEvs].reverse().find((e) => e.lockKind !== 'soft')?.track ?? null)
+        : rideTrack;
       try {
         if (!refFor) throw new Error('no refFor injected');
-        if (!settledLockEv) throw new Error('no settled (non-soft) lock');
-        const ref = refFor(settledLockEv.track);
+        if (settledTrack === null) throw new Error('no settled (non-soft) lock');
+        const ref = refFor(settledTrack);
         // Cycle 025 (WP-stale-first-fix P1): fidelity is a derived stat too —
         // a stale at-the-door fix must not count as an off-route excursion.
         const lats = cleanFixes.map((f) => f.lat);
@@ -345,7 +356,7 @@ function buildSessionBlock(
           const maxXtdCapped = Math.min(maxXtd, 999).toFixed(1);
           const segs = findOffWaySegments(cleanFixes, xtd, CORRIDOR_M).slice(0, 20);
           lines.push(
-            `   <qf:wayFidelity track="${escapeXml(settledLockEv.track)}" corridorM="${num(CORRIDOR_M)}"` +
+            `   <qf:wayFidelity track="${escapeXml(settledTrack)}" corridorM="${num(CORRIDOR_M)}"` +
               ` onRoutePct="${onWayPct}" maxXtdM="${maxXtdCapped}">`,
           );
           for (const s of segs) {
@@ -361,12 +372,13 @@ function buildSessionBlock(
            track id: omit the block, no export failure */
       }
     } else {
+      // never locked and never fired a gate: honestly "none"
       lines.push(`   <qf:wayLock>none</qf:wayLock>`);
     }
   }
 
-  // N9: one <qf:lockChange> per LockKind transition (engine.ts's
-  // noteLockChange), in sidecar order — omitted entirely when there are none
+  // LEGACY (virgin-cycle21: the engine no longer emits lockChange; old sidecars
+  // still carry them). N9: one <qf:lockChange> per LockKind transition, in sidecar order — omitted entirely when there are none
   // (a ride that never transitioned must never fabricate one). Closes the
   // two transitions (soft->verified promotion, soft/none->finalized ride-end
   // settle) that left no trace in the sidecar before this WP.
@@ -383,7 +395,6 @@ function buildSessionBlock(
     lines.push(`   </qf:lockChanges>`);
   }
 
-  const gateEvs = evs.filter((e): e is GateFireEvent => e.kind === 'gate');
   if (gateEvs.length > 0) {
     lines.push(`   <qf:gates>`);
     for (const g of gateEvs) {

@@ -1,4 +1,4 @@
-# Deployment — current state (as of 2026-09-10)
+# Deployment — current state (as of 2026-10-05)
 
 Factual inventory of where distribution stands. Everything below is drawn from the repo's
 own config, scripts and `STATE.md`; anything inferred rather than read is tagged
@@ -9,13 +9,13 @@ that goes in `CYCLE-LOG.md`.
 
 Qualifire is distributed **only as an Android APK that Nathan builds on EAS Build and
 installs on his own phone.** No tester has received a build: Nathan, 2026-09-09 (Q10 of
-`QUESTIONS-FOR-NATHAN.md`): "I have not sent anyone anything so far." Updates to
+`rounds/round1/questions-and-rulings.md`): "I have not sent anyone anything so far." Updates to
 JavaScript/assets go out over the air via EAS Update on the `preview` channel; native changes
 need a fresh APK. There is no store presence of any kind, no iOS build, no CI, no crash
 reporting. The `STATE.md` ground rule that said *no store distribution* was superseded on
 2026-09-09 (§2). Everything a new tester *would* need today is: the APK file (or an EAS
 install link), "install unknown apps" enabled on their phone, and an explanation of what the
-app is — the plan is that no tester ever goes through that (`DEPLOYMENT-OPTIONS.md` §0).
+app is — the plan is that no tester ever goes through that (`rounds/round1/review.md` §0).
 
 ## 2. Governing rule on record
 
@@ -24,7 +24,7 @@ record this morning's inventory was written against; it no longer applies. Natha
 not a personal app for myself anymore, but something i want people to be able to try out."
 Store distribution is now in scope; `no accounts, no social` still stands (that's a separate,
 undecided question about the in-app model, not distribution reach). See
-`DEPLOYMENT-OPTIONS.md` §0 for the resulting staged plan.
+`rounds/round1/review.md` §0 for the resulting staged plan.
 
 `STATE.md` (root, source of truth), ground-rules section, ~lines 143–176, as it read before
 the pivot:
@@ -37,8 +37,8 @@ which is what just happened.
 The "except blank-install capability" clause is what the blank-seed-by-default work
 (2026-09-06 / 2026-09-08) delivered: a stranger installing the APK gets a working, empty app
 rather than Nathan's data. That is the current mechanism for "someone else can use this" and
-it does not involve a store. `DEPLOYMENT-OPTIONS.md` treats the ground rule as a decision to
-be revisited, not a fact of nature; `QUESTIONS-FOR-NATHAN.md` Q1 asks about it directly.
+it does not involve a store. `rounds/round1/review.md` treats the ground rule as a decision to
+be revisited, not a fact of nature; `rounds/round1/questions-and-rulings.md` Q1 asks about it directly.
 
 ## 3. Expo / EAS configuration (what the repo says)
 
@@ -68,9 +68,13 @@ be revisited, not a fact of nature; `QUESTIONS-FOR-NATHAN.md` Q1 asks about it d
 | `development` | internal, `developmentClient: true` | `development` | apk | — | Defined; `app/README-dev.md` documents building it. `[UNVERIFIED]` whether a dev-client build has actually been produced and used recently — no script targets it and no cycle doc mentions one. |
 | `preview` | internal | `preview` | apk | `APP_VARIANT=preview`, `EXPO_PUBLIC_SEED_MODE=empty` | **Live.** The profile every current install came from — which, per Q10, means Nathan's own phone(s); no tester install exists. Blank-seed permanent since 2026-09-06. |
 | `virgin` | internal | `virgin` | apk | same seed env | Dormant per `STATE.md`. |
+| `play` | store | `play` | app-bundle (`.aab`), `autoIncrement: true` | `EXPO_PUBLIC_SEED_MODE=empty` only — **no `APP_VARIANT`**, so `app.config.js` yields the clean `com.nathanbonher.qualifire` / "Qualifire" | **Drafted, NOT in `app/eas.json`**: backed out 2026-10-05 after inspection (`eas.json` is hashed by the fingerprint, so adding it would stop preview OTAs reaching installed build 7). Text kept in `deployment/rounds/round2/DEFERRED-eas.json-with-play-profile.json`; lands in the native-build cycle. The Play line. OTA script: `scripts/publish-play.ps1`. No `submit` section yet (needs a Play Console app + service-account JSON; first `.aab` upload is manual by Google's rule). |
 
-All three profiles are `distribution: internal` and `buildType: apk`. **No profile produces
-an `.aab` (Android App Bundle)**, which is the format Google Play requires for new apps.
+The three original profiles are `distribution: internal` and `buildType: apk`. The `play` profile
+(added 2026-10-05) is the only one that produces the `.aab` Google Play requires for new apps — it has
+not been built yet. Its fingerprint will differ from `.preview`'s until `app/fingerprint.config.js`
+lands (deferred to the Sentry / disclosure-UI native build, `deployment/rounds/round2/PLAN.md` §4), so
+a bundle tested on `.preview` cannot yet be promoted as-is to channel `play`.
 
 ### Signing
 
@@ -81,7 +85,7 @@ the `.preview` package uses vs. the base package — EAS keeps credentials per a
 so the preview variant and base package likely have separate keystores. For the Play route
 this is now settled (Q6, 2026-09-10): Google will generate the app-signing key for the clean
 package at first upload, and the EAS keystore that signs the uploaded `.aab` serves only as
-the upload key (see `DEPLOYMENT-OPTIONS.md` §6, "signing continuity"). No Play upload has
+the upload key (see `rounds/round1/review.md` §6, "signing continuity"). No Play upload has
 been made yet, so no Play key exists today.
 
 ## 4. Build and release tooling (what's proven)
@@ -93,6 +97,7 @@ All manual, all PowerShell, all run on Nathan's Windows PC. Nothing runs in CI.
 | `scripts/build8.ps1` | Current APK build: preflight for the app as it is now (blank seed + Metro seed redirect, native layer, `.easignore` upload archive), then the `build4.ps1` engine; EAS Build, profile `preview`, ~10-20 min, needs `-ExecutionPolicy Bypass` | Wraps the proven build4 engine; its first build is build 8. Installed today: build 7 (cycle-18 rebuild, fingerprint `610cfe83…` in `scripts/OTA-TROUBLESHOOTING.md`) |
 | `scripts/build4.ps1` | The engine build8 calls (builds 5-7, now in `scripts/legacy/`, called it too): preflight (node/tsc/tests, native slate, variant, icons), `eas login` check, `eas build`. Its route-PNG section was removed 2026-10-03 | Yes — ran builds 5, 6, 7 |
 | `scripts/publish-preview.ps1` | OTA publish: `npx eas-cli update --channel preview --environment preview --platform android`; sets `APP_VARIANT=preview` + `EXPO_PUBLIC_SEED_MODE=empty` locally so the fingerprint matches the build; runs tsc + tests first; ~1–2 min, no build slot | Yes — Build 6 / Build 7 fingerprints recorded; `scripts/OTA-TROUBLESHOOTING.md` exists precisely because this has been exercised and debugged |
+| `scripts/publish-play.ps1` | OTA publish to the Play line: `npx eas-cli update --channel play --environment production --platform android`; removes `APP_VARIANT` from the environment (base identity) + sets `EXPO_PUBLIC_SEED_MODE=empty`; same tsc + tests preflight; checks `eas.json build.play` (channel, `app-bundle`, no `APP_VARIANT`) | **No** — written 2026-10-05 (round 2), never run. Its step 0 fails until the `play` profile is back in `app/eas.json` (deferred, fail-safe); nothing to land on until a `play` build is on a Play track. First run should be `-DryRun`. |
 | `scripts/OTA-TROUBLESHOOTING.md` | Fingerprint-mismatch playbook (`eas update:list`, `eas fingerprint:compare`) | Doc, not a script |
 | `scripts/README.md` | What is in `scripts/` now; lineage build3 → build8 (builds 3, 5-7 in `scripts/legacy/`) | Doc |
 | `app/README-dev.md` | `npm install -g eas-cli`, `eas login`, `eas build --platform android --profile development`; seed-mode env switch | Doc |
@@ -149,7 +154,7 @@ Not deployment work as such, but they'd surface in a Play review or a data-safet
     foreground permission first, then background.
   This is the real background-location pattern, not a foreground-only `watchPositionAsync`.
   What it means for Play (disclosure, justification, demo video) is in
-  `DEPLOYMENT-OPTIONS.md` §3; whether the background permission is strictly needed given the
+  `rounds/round1/review.md` §3; whether the background permission is strictly needed given the
   foreground service is `[UNVERIFIED]` and noted there as a possible lever.
 - **Data stays on device.** No accounts, no server, no analytics (`STATE.md`). Makes the
   data-safety form simple ("collects location, not shared, stored on device") but it still
@@ -184,3 +189,7 @@ Not deployment work as such, but they'd surface in a Play review or a data-safet
   identity (Google has described a free/limited tier for hobbyists alongside the paid Play
   Console identity). This is the one thing that could force a decision rather than leave it
   open.
+
+**Decision (round 2, 2026-10-05):** stay on EAS Free. Free has no overage — builds stop until the 1st
+when the 15 Android builds/month are used up; 5–10 testers are far below the 1,000 update MAU. Revisit
+only if builds exceed ~12/month for two consecutive months (`deployment/rounds/round2/review.md` §2).

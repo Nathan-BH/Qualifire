@@ -62,7 +62,7 @@ test('bootstrap: RecordScreen\'s relaunch recovery awaits the gate before stopTr
   assert(waitAt < stopAt && stopAt < markAt, 'order must be: await gate -> stopTracking -> markRideFree');
   assert((src.match(/whenStoresReady\(\)/g) ?? []).length === 1, 'exactly one await site (the recovery)');
   // the live-recovery branch (service survived) is NOT gated — it only resumes the UI
-  const tracking = src.indexOf('if (rec.tracking) {');
+  const tracking = src.indexOf("if (rec.tracking && rec.restoration === 'remount') {");
   assert(tracking > 0 && src.slice(tracking, guard).includes('setSession(rec.session);') && !src.slice(tracking, guard).includes('whenStoresReady'),
-    'the service-survived branch resumes the UI at once, ungated');
+    'the remount branch resumes the UI at once, ungated');
 });

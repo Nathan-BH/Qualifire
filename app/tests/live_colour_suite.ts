@@ -60,13 +60,12 @@ function stateWith(over: Partial<LiveEngineState>): LiveEngineState {
   return {
     phase: 'finished', track: 'Morning', sectors: [], currentSector: null, lastDone: 4,
     lap: { rawS: 900, stoppedS: 20, movingS: 880, estimated: false },
-    gateFires: 5, fixesFed: 900, onWay: true, anyAnchored: false,
+    gateFires: 5, fixesFed: 900, onWay: true,
     // virgin-cycle6: additive, rememberRide() never reads it — added so this
     // helper's `as LiveEngineState` cast keeps describing a real, complete
     // state rather than silently omitting a required field.
     startGateT: null,
     chainageM: null,
-    displayTrack: null,
     ...over,
   } as LiveEngineState;
 }
@@ -378,8 +377,8 @@ test('cycle024: pick wrong — a HARD pick that never locks records NOTHING: the
   // used to assert the opposite (cycle 024 pick-as-hint: the ride ranked
   // against EveningB's ghosts). Under the hard pick, clean_eveningb with
   // pick=EveningA ends UNMATCHED — EveningA was never ridden, so the pick's
-  // own candidate never earns even a soft lock (measured: track null,
-  // lockKind 'none', zero engine events; live_suite.ts's sibling test covers
+  // own candidate never fires a gate (measured: track null after
+  // finalize(), zero engine events; live_suite.ts's sibling test covers
   // the engine side). rememberRide() then treats the unmatched finish exactly
   // like an abort: `last` cleared, nothing pushed into the comparison window.
   // The cost of a wrong pick is that ride's history — NEVER a lap credited
@@ -396,8 +395,8 @@ test('cycle024: pick wrong — a HARD pick that never locks records NOTHING: the
   const st = engine.getState();
   assert(st.track !== 'EveningB', 'a hard pick of EveningA must never end up displaying EveningB');
   assert(st.track === null,
-    `final track ${st.track}, want null — if the pick now soft-locks on the shared EveningA/EveningB prefix, revisit this test together with live_suite.ts's "pick wrong" case`);
-  assert(st.pick === 'EveningA' && !st.pickHonoured, `pick ${st.pick}, pickHonoured ${st.pickHonoured}`);
+    `final track ${st.track}, want null — if the pick's candidate now fires a gate on the shared EveningA/EveningB prefix, revisit this test together with live_suite.ts's "pick wrong" case`);
+  assert(st.pick === 'EveningA', `pick ${st.pick}`);
   rememberRide(st);
 
   const last = getLastRide();
@@ -413,17 +412,6 @@ test('cycle024: pick wrong — a HARD pick that never locks records NOTHING: the
     'EveningB\'s lap history changed — a wrong pick must not be silently reassigned to the ridden road');
 
   resetRecordedForTests();
-});
-
-test('cycle024: soft lock never colours before scoring — tiers for a soft-locked state match a verified one with identical sectors', () => {
-  const soft = stateWith({ lockKind: 'soft', pick: 'Morning', pickHonoured: true } as Partial<LiveEngineState>);
-  const verified = stateWith({ lockKind: 'verified', pick: 'Morning', pickHonoured: true } as Partial<LiveEngineState>);
-  assert(soft.track === verified.track && soft.lap?.movingS === verified.lap?.movingS, 'test setup: states differ');
-  const hist = lapValues(soft.track!);
-  const tSoft = tierFor(soft.lap!.movingS, hist);
-  const tVerified = tierFor(verified.lap!.movingS, hist);
-  assert(tSoft === tVerified,
-    `soft-lock tier "${tSoft}" != verified tier "${tVerified}" — colour must be keyed only to the displayed route/sectors, never to lockKind`);
 });
 
 // ================================================================ WP-B (free ride)

@@ -8,7 +8,7 @@ redundant copies and can be cleared out.
 Per `process/CONVENTIONS.md`'s escalation convention the answers were given inline, and the
 coordinator folds them into `STATE.md` / `OPEN-ITEMS.md`; Q1–Q5, Q8–Q10 were folded in on
 2026-09-09 and Q6/Q7 are for the coordinator to fold in now. Background for every question is
-in `DEPLOYMENT-OPTIONS.md`; section numbers refer to it. Each entry below records the
+in `review.md`; section numbers refer to it. Each entry below records the
 question as it was asked, Nathan's words verbatim, and what the answer settles.
 
 **How it went.** Nathan answered all ten on 2026-09-09; he answered the *original* wording
@@ -25,7 +25,7 @@ clean package `com.nathanbonher.qualifire` named "Qualifire" (Q5), **Play genera
 app-signing key — Play-only distribution from then on** (Q6), **no keystore backup for now**
 (Q7), Sentry yes (Q8), background location confirmed by code (Q9), no testers have anything
 yet (Q10). Nothing about the distribution route or signing is open; what remains is work,
-sequenced in `DEPLOYMENT-OPTIONS.md` §0.
+sequenced in `review.md` §0.
 
 ---
 
@@ -407,7 +407,7 @@ front — which a ride recorder in a pocket needs. So the code's choice is the r
 the product; it just costs more at Play review. **What it settles:** Play's
 background-location requirements now apply for certain — a prominent in-app disclosure
 before the permission prompt, a written justification in the console, and usually a short
-demo video — see `DEPLOYMENT-OPTIONS.md` §3. That was the "weekend or a month" swing factor,
+demo video — see `review.md` §3. That was the "weekend or a month" swing factor,
 and it swung toward "more than a weekend". Nothing for you to decide; it's work.
 
 ## Q10 — Have you been sending testers the APK file, or the EAS build page/QR link?

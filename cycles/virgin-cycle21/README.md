@@ -44,7 +44,7 @@ the dot. Removing the lock removes today's trigger, but the layer-order hole sta
 **Counter-arguments I tested, and what they become:**
 - *Crash/relaunch recovery uses auto-detect* (`location/index.ts:189` restarts the engine with
   `pickId:null`). Removing detection would silently turn a recovered ride into an unmatched one ->
-  **brief 02 persists the pick in the session marker** and restores it.
+  **brief 02 persists the pick in the session marker** and restores it. (2026-10-04, brief 04: superseded — an interrupted ride is not resumed; it is saved as a free activity.)
 - *A ride on a known way started with 'new' no longer gets recognised.* True and intended: your rule is
   that the START pick is the reference. The post-ride naming flow (`draftRouteFromRide`) already
   handles "new" rides; it keeps working because `track` is null for them.
@@ -67,6 +67,7 @@ Recommendation: execute 01 -> 02 -> 03 in that order.
 | 01 | `01-engine-pick-is-the-reference.md` | engine has exactly one candidate (the pick) from START; no race, no soft/verified, no finalize recovery, no lock events | `app/src/live/engine.ts`, engine/live tests | JS only |
 | 02 | `02-persist-pick-remove-lock-plumbing.md` | pick survives relaunch; stop writing lock events/`qf:wayLock`; rename comments/docs; consumers of removed fields | `location/session.ts`, `location/index.ts`, `storage/gpxPlusExport.ts`, `ui/RecordScreen.tsx` (+ comments in colourModel/rankingRevealModel), `process/*.md` | JS only |
 | 03 | `03-overlay-is-the-pick-and-dot-on-top.md` | live overlay = pick only; the rider dot is always the topmost layer | `ui/recordFlow.ts`, `ui/RecordScreen.tsx`, `ui/wayMapView.tsx`, tests | JS only |
+| 04 | `04-interrupted-ride-no-resume.md` | interrupted ride (app killed, reset, battery) never resumed/rescored: saved as free activity, one flash line; remount keeps the route line; inspector minors | `location/index.ts`, `ui/RecordScreen.tsx`, `ui/recordFlow.ts` | JS only |
 
 Order matters: 01 changes `LiveEngineState` (removes `lockKind`, `pickHonoured`, `anyAnchored`,
 `displayTrack`); 02 and 03 fix the consumers. Run tsc after each.
@@ -85,7 +86,7 @@ baseline. Do not commit/stash anything; do not run these briefs before Nathan sa
 
 - Changes (after publish): picked rides show the pick's line, S1 and selfs from START (as cycle 20),
   and NEVER switch to another way; no-pick rides ('new' ends) show only your trail (no foreign way, no
-  lock) and finish in the naming flow; the blue dot is always on top of the lines.
+  lock) and finish in the naming flow; the blue dot is always on top of the lines; an interrupted ride (app killed, phone reset, battery dead) is no longer resumed: what was recorded is saved as a free activity and one line says so (brief 04).
 - Does NOT change: gate firing, sector/lap maths (same offline pipeline), colours rules, ride storage
   format (old rides open unchanged), notification, PAUSE, settings (there is no way-lock setting).
 - Not on the phone yet: all of it. Cycle 20 is not on the phone either (needs build 8 for the native

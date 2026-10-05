@@ -70,21 +70,34 @@ export function effectiveFromId(input: {
   return input.detectedId ?? input.from;
 }
 
-/** Cycle-2 WP-A (Nathan 2026-09-04): what the RUNNING map overlays, derived
- * per render from the engine state + the pick frozen at START. Two states:
- *  1. route mode, nothing picked, no lock   -> no route line, trail shown
- *  2. a known route (picked or locked)      -> that route's line, trail HIDDEN
+/** Cycle-2 WP-A (Nathan 2026-09-04), rewritten virgin-cycle21 (Nathan 2026-10-03):
+ * what the RUNNING map overlays. It is the way picked at START (frozen in
+ * `rideWayHint`) and NOTHING the engine detects can change it. Two states:
+ *  1. nothing picked (a 'new' end)   -> no route line, trail shown the whole ride
+ *  2. a way picked                   -> that way's line, trail HIDDEN, from the first frame
  * The trail is shown exactly when no reference line is — never both (the
- * "two yellow lines overlap" bug), never neither. `track` (the engine's locked
- * route) outranks `routeHint` (the pick), same precedence the map already
- * used; a lock appearing or dropping mid-ride flips the state live. */
+ * "two yellow lines overlap" bug), never neither. */
 export type LiveMapOverlay = { wayId: string | null; showTrail: boolean };
-export function liveMapOverlayFor(input: {
-  track: string | null;
-  wayHint: string | null;
-}): LiveMapOverlay {
-  const wayId = input.track ?? input.wayHint;
-  return { wayId, showTrail: wayId === null };
+export function liveMapOverlayFor(input: { wayHint: string | null }): LiveMapOverlay {
+  return { wayId: input.wayHint, showTrail: input.wayHint === null };
+}
+
+/** virgin-cycle21 04: the running map's route line after a UI remount of a still-running
+ * ride (RecordScreen state is gone, the engine is not). The pick is a TrackSpec/way id;
+ * the map wants that way's refLineId (as rideWayHint does at START). Unknown/absent -> null. */
+export function wayHintForPick(
+  ways: readonly { id: string; refLineId: string }[], pickId: string | null | undefined,
+): string | null {
+  if (pickId === null || pickId === undefined) return null;
+  return ways.find((w) => w.id === pickId)?.refLineId ?? null;
+}
+
+/** virgin-cycle21 04 (Nathan 2026-10-04): an interrupted ride is never resumed or scored.
+ * What was recorded is saved as a free activity, unless it is too short to mean anything
+ * (under INTERRUPTED_MIN_FIXES raw fixes, ~30 s at 1 Hz): then it is discarded. */
+export const INTERRUPTED_MIN_FIXES = 30;
+export function interruptedRideAction(nFixes: number): 'free' | 'discard' {
+  return nFixes >= INTERRUPTED_MIN_FIXES ? 'free' : 'discard';
 }
 
 /** virgin-cycle20 brief 08 (Nathan, clutter review Q4): what the big RECORD

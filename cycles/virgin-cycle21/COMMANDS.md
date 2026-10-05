@@ -27,6 +27,10 @@ powershell -ExecutionPolicy Bypass -File .\scripts\publish-preview.ps1
 2. **Work -> New ride (no pick):** pick 'new' at one end, START. No yellow way line, no S-label, no
    selfs; only your own trail. After STOP the naming flow appears as for any new ride, and the ride is
    NOT filed under an existing way.
-3. **Relaunch mid-ride (optional):** swipe the app away during a picked ride, reopen: the picked way is
-   still the line on the map.
+3. **Interrupted ride (optional):** during a picked ride, force-stop Qualifire (Android Settings > Apps >
+   Qualifire > Force stop) after > 1 min of riding. Reopen the app: the RECORD button's sub-label flashes
+   "Interrupted · saved as free activity"; ACTIVITIES shows the ride up to the force-stop, filed as a free
+   activity, no times; delete it there if you want. Under ~30 s of riding nothing is kept. A plain
+   swipe-away may keep recording (the process can stay alive): if the ride is still running when you
+   reopen, the picked way's line must be on the map.
 4. Anything odd: write it in `cycles\virgin-cycle21\PROGRESS.md` (create it).
