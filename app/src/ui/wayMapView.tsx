@@ -99,7 +99,7 @@ import {
 import { trailLineFeature, type TrailPoint } from './trailModel.ts';
 import { selfsFeatureCollection, type SelfDot } from './selfRaceModel.ts';
 import { tierLineColour } from './tierColour.ts';
-import { offlineMapStyle, patchMapStyle } from './wayMapStyle.ts';
+import { mapStyleFor, offlineMapStyle, patchMapStyle } from './wayMapStyle.ts';
 import { colors, radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
 import { CREDIT_AUTO_HIDE_MS, creditFor, type MapRung } from './mapCreditModel.ts';
@@ -489,8 +489,9 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
   // offlineMapStyle(): an empty basemap in the frame colour on which every
   // local source below (route, gates, trail, spans, selfs, rider) still draws.
   // The fetch retries (STYLE_RETRY_MS) so the real style takes over when the
-  // connection returns; patchedStyles always wins once set.
-  const [patchedStyles, setPatchedStyles] = useState<{ labelsOn: unknown; labelsOff: unknown } | null>(null);
+  // connection returns; patchedStyles always wins once set. Each change of
+  // the chosen style remounts the native view (mapStyleFor, virgin-cycle22 09).
+  const [patchedStyles, setPatchedStyles] = useState<{ url: string; labelsOn: unknown; labelsOff: unknown } | null>(null);
   const [styleFailed, setStyleFailed] = useState(false);
   const styleLoadedRef = useRef(false);
   useEffect(() => {
@@ -504,6 +505,7 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
         const json: unknown = await res.json();
         if (cancelled) return;
         setPatchedStyles({
+          url: styleUrl,
           labelsOn: patchMapStyle(json, { hideLabels: false }),
           labelsOff: patchMapStyle(json, { hideLabels: true }),
         });
@@ -520,9 +522,32 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
     };
   }, [styleUrl]);
   const hideLabels = !unlocked;
-  const mapStyle = patchedStyles
-    ? (hideLabels ? patchedStyles.labelsOff : patchedStyles.labelsOn)
-    : styleFailed ? offlineMapStyle(t.race.bg) : styleUrl;
+  // virgin-cycle22 09 (Nathan 2026-10-06): the style AND the <M.Map> key come
+  // from one pure call — see mapStyleFor's doc. A mounted native view must
+  // never be handed a different mapStyle prop: on Android that re-adds the
+  // sources in HashMap order (gates under the line, spans over the dot) or,
+  // if the first style is still loading, drops the queued layers (no line at
+  // all) — exactly the RECORD cold-start picture. Keyed, every rung change
+  // (url -> patched, labels on <-> off at START/finish, url -> offline ->
+  // patched) remounts the native view and a fresh mount adds the children in
+  // JSX order, like every screen that was already right.
+  const { style: mapStyle, key: mapStyleKey } = mapStyleFor({
+    styleUrl,
+    // A patched style belongs to the theme URL it was fetched for: after a day/night flip the old
+    // one must not be used, or the new fetch would swap the style in place on the mounted view.
+    patched: patchedStyles?.url === styleUrl ? patchedStyles : null,
+    styleFailed,
+    hideLabels,
+    offline: offlineMapStyle(t.race.bg),
+  });
+  // A remount is a new camera: in 'free' mode cameraTargetFor pushes nothing
+  // and the fresh view would open on MapLibre's world default, so every key
+  // change restarts from initialMode (the phase/zoom/way effect above already
+  // does this for START and the finish; this covers the fetch arriving).
+  useEffect(() => {
+    setMode(initialMode);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mapStyleKey]);
 
   // Reverted 2026-08-24 (Nathan, live device feedback on WP-E): the
   // dotted-ahead/solid-behind split below used to call routeSplitFeatures()
@@ -677,13 +702,14 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
           does not reliably tear down and reapply a whole style on a bare prop
           change — it can end up holding a half-applied style (day mode
           rendering broken until some unrelated remount). Keying the element
-          on styleUrl forces React to unmount/remount the native view itself
-          whenever the underlying style URL changes, guaranteeing a full
-          reload rather than a partial one. Rendering-layer only: `mode` /
+          on mapStyleKey (virgin-cycle22 09: the style rung + the URL) forces
+          React to unmount/remount the native view itself whenever the chosen
+          style changes — URL, fetched copy, labels on/off, offline fallback —
+          guaranteeing a full reload rather than a partial one. Rendering-layer only: `mode` /
           `camZoom` / `bearing` etc. all live in this component, above this
           element, and are untouched by remounting the child. */}
       <M.Map
-        key={styleUrl}
+        key={mapStyleKey}
         mapStyle={mapStyle as never}
         style={{ flex: 1 }}
         onDidFinishLoadingStyle={() => { styleLoadedRef.current = true; }}

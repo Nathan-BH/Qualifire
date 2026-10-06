@@ -10,7 +10,7 @@
  * in-band green swatch below is '#44CC44' (hue 120, S ~57%) for that reason.
  */
 import { assert, test } from './lib.ts';
-import { offlineMapStyle, patchMapStyle } from '../src/ui/wayMapStyle.ts';
+import { mapStyleFor, offlineMapStyle, patchMapStyle } from '../src/ui/wayMapStyle.ts';
 
 function buildStyle() {
   return {
@@ -149,4 +149,31 @@ test('virgin-cycle22 05: offlineMapStyle is a self-contained background-only sty
   assert((layers[0].paint as Record<string, unknown>)['background-color'] === '#17171b', 'background is the frame colour passed in');
   const other = offlineMapStyle('#FFFFFF') as { layers: Array<{ paint: Record<string, unknown> }> };
   assert(other.layers[0].paint['background-color'] === '#FFFFFF', 'day frame colour goes through unchanged');
+});
+
+test('virgin-cycle22 09: mapStyleFor — one rung per style, the key changes exactly when the style does', () => {
+  // A mounted MapLibre view must never get a different mapStyle prop (the native side re-adds the
+  // sources from a HashMap, in hash order: gates under the line, spans over the dot, or no layers at
+  // all when the first style is still loading). The key therefore follows the chosen style.
+  const day = 'https://tiles.example/day';
+  const night = 'https://tiles.example/night';
+  const patched = { labelsOn: { version: 8, layers: [{ id: 'on' }] }, labelsOff: { version: 8, layers: [{ id: 'off' }] } };
+  const fallback = offlineMapStyle('#17171b');
+  const url = mapStyleFor({ styleUrl: day, patched: null, styleFailed: false, hideLabels: false, offline: fallback });
+  assert(url.style === day, 'nothing fetched, nothing failed: the native view loads the plain URL itself');
+  assert(url.key.includes(day), 'the key carries the URL (cycle 023 day<->night remount)');
+  const offline = mapStyleFor({ styleUrl: day, patched: null, styleFailed: true, hideLabels: false, offline: fallback });
+  assert(offline.style === fallback, 'failed with nothing fetched: the bundled background-only style the caller built');
+  assert(offline.key !== url.key, 'url -> offline is a different key (remount)');
+  const on = mapStyleFor({ styleUrl: day, patched, styleFailed: true, hideLabels: false, offline: fallback });
+  assert(on.style === patched.labelsOn, 'patched wins over failed');
+  const off = mapStyleFor({ styleUrl: day, patched, styleFailed: false, hideLabels: true, offline: fallback });
+  assert(off.style === patched.labelsOff, 'hideLabels picks the labels-off copy');
+  const keys = [url.key, offline.key, on.key, off.key];
+  assert(new Set(keys).size === 4, `four rungs, four distinct keys: ${keys.join(' | ')}`);
+  const nightOn = mapStyleFor({ styleUrl: night, patched, styleFailed: false, hideLabels: false, offline: fallback });
+  assert(nightOn.key !== on.key, 'same rung, other URL: different key');
+  const again = mapStyleFor({ styleUrl: day, patched, styleFailed: false, hideLabels: false, offline: offlineMapStyle('#000000') });
+  assert(again.key === on.key, 'same rung, same URL: same key — the fallback object (built per render) is never part of the key');
+  for (const k of keys) assert(!/[A-Za-z]{2,}[^A-Za-z]+[A-Za-z]{2,}/.test(k.slice(day.length)), `rung suffix must not read as prose (ui-strings Tier B): ${k}`);
 });

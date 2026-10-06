@@ -176,3 +176,39 @@ export function offlineMapStyle(backgroundColor: string): unknown {
     layers: [{ id: 'background', type: 'background', paint: { 'background-color': backgroundColor } }],
   };
 }
+
+/** virgin-cycle22 09 (Nathan 2026-10-06, RECORD map on a cold start: white gates
+ * under the yellow line, or no line at all, until a remount). Which style the
+ * tile rung runs on, and a React key that changes whenever that choice changes:
+ *  - `patched` (the fetched + patchMapStyle'd copies) always wins; `hideLabels`
+ *    picks the labels-off copy ('nolabels') or the labels-on one ('labels');
+ *  - else `styleFailed` -> the caller's `offline` fallback (offlineMapStyle(frame
+ *    colour), built by wayMapView.tsx) ('offline');
+ *  - else the plain `styleUrl` string, which the native view loads itself,
+ *    from its own cache when there is no signal ('url').
+ * The key exists because maplibre-react-native (11.3.6, Android) answers a
+ * CHANGED mapStyle prop on a mounted view by removing every source and
+ * re-adding them from a HashMap, in hash order, not mount order (route over
+ * gate-ticks, sector-spans over the rider); and if the first style is still
+ * loading, the queued layers are dropped and nothing draws at all. Keying
+ * <M.Map> on this value remounts the native view instead, and a fresh mount
+ * adds the children in JSX order. The key carries the URL too (day<->night,
+ * cycle 023). Rung names are single words on purpose (the ui-strings scanner
+ * reads two words as prose). Pure. */
+export type MapStyleRung = 'url' | 'offline' | 'labels' | 'nolabels';
+
+export function mapStyleFor(input: {
+  styleUrl: string;
+  patched: { labelsOn: unknown; labelsOff: unknown } | null;
+  styleFailed: boolean;
+  hideLabels: boolean;
+  offline: unknown;
+}): { style: unknown; key: string; rung: MapStyleRung } {
+  const rung: MapStyleRung = input.patched
+    ? (input.hideLabels ? 'nolabels' : 'labels')
+    : input.styleFailed ? 'offline' : 'url';
+  const style: unknown = input.patched
+    ? (input.hideLabels ? input.patched.labelsOff : input.patched.labelsOn)
+    : input.styleFailed ? input.offline : input.styleUrl;
+  return { style, key: `${input.styleUrl}#${rung}`, rung };
+}

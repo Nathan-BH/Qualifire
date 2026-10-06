@@ -248,9 +248,11 @@ test('routemap: MapLibre <M.Map> remounts on a style-URL change (cycle 023 fix 1
   const nextChild = src.indexOf('<M.Camera', mapStart);
   assert(nextChild > mapStart, '<M.Camera> (first child) not found after <M.Map>');
   const openTag = src.slice(mapStart, nextChild);
-  assert(/\bkey=\{styleUrl\}/.test(openTag),
-    '<M.Map> must be keyed on styleUrl so a day<->night theme flip fully remounts the native view ' +
-    'instead of a prop-only style update (the cycle 023 day-mode rendering bug)');
+  // virgin-cycle22 09: the key is the style RUNG + URL (mapStyleFor), which still changes on a
+  // day<->night flip — the cycle-023 guarantee holds through the pure helper (waymapstyle_suite).
+  assert(/\bkey=\{mapStyleKey\}/.test(openTag),
+    '<M.Map> must be keyed on mapStyleKey (mapStyleFor: rung + styleUrl) so a day<->night theme flip ' +
+    'AND every style-rung change fully remount the native view instead of a prop-only style update');
   assert(/\bmapStyle=\{/.test(openTag), 'mapStyle prop no longer present on <M.Map> — sanity check of the slice');
 });
 
@@ -401,4 +403,23 @@ test('virgin-cycle22 06: the MapLibre zoom bar has ONE FIT/ME toggle (fitMeNextM
   assert(src.includes('fitMeNextMode') && src.includes("from './wayMapGeo.ts'"), 'helper imported from wayMapGeo.ts');
   const pressables = (bar.match(/<Pressable/g) ?? []).length;
   assert(pressables === 4, `four Pressables in the bar (+, −, FIT/ME, ↑), got ${pressables}`);
+});
+
+test('virgin-cycle22 09: the native map is never handed a different mapStyle — key and style come from ONE mapStyleFor call, and a remount resets the mode', () => {
+  const src = fs.readFileSync(path.join(TESTS_DIR, '..', 'src', 'ui', 'wayMapView.tsx'), 'utf8');
+  assert(src.includes("import { mapStyleFor, offlineMapStyle, patchMapStyle } from './wayMapStyle.ts';"), 'helper imported next to the two it already used');
+  assert(/const \{ style: mapStyle, key: mapStyleKey \} = mapStyleFor\(\{/.test(src), 'mapStyle and mapStyleKey are destructured from one mapStyleFor call');
+  assert(!/const mapStyle = patchedStyles/.test(src), 'the old inline ternary is gone');
+  assert(!/\bkey=\{styleUrl\}/.test(src), 'no element is keyed on styleUrl alone any more');
+  const mapStart = src.indexOf('<M.Map');
+  const openTag = src.slice(mapStart, src.indexOf('<M.Camera', mapStart));
+  assert(/\bkey=\{mapStyleKey\}/.test(openTag) && /\bmapStyle=\{mapStyle as never\}/.test(openTag), '<M.Map> keyed on mapStyleKey, style from the same call');
+  assert(/useEffect\(\(\) => \{\s*setMode\(initialMode\);[\s\S]{0,200}\}, \[mapStyleKey\]\);/.test(src), 'a key change (native remount) resets the mode to initialMode, so a free-dragged camera never lands on the world default');
+  assert((src.match(/setMode\(initialMode\)/g) ?? []).length === 2, 'exactly two reset sites: the phase/zoom/way effect and the remount effect');
+});
+
+test('virgin-cycle22 09: a patched style is only used for the theme URL it was fetched for (no in-place style swap after a day/night flip)', () => {
+  const src = fs.readFileSync(path.join(TESTS_DIR, '..', 'src', 'ui', 'wayMapView.tsx'), 'utf8');
+  assert(src.includes('url: styleUrl,'), 'the fetched patch is stored with its URL');
+  assert(src.includes('patched: patchedStyles?.url === styleUrl ? patchedStyles : null'), 'a stale-theme patch is never handed to mapStyleFor');
 });
