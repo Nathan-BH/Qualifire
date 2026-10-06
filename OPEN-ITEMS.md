@@ -33,6 +33,7 @@ replaced. Vocabulary is post-WP-3: a route is the from→to path, a way is one v
   folded into an "i" button, DEMO tab text cleanup + RESULTS scatterplot, RECORD button
   slogan. 638 -> 676 tests, `tsc` clean, one fresh Opus Inspect pass, no blocking defects —
   `cycles/virgin-cycle14/README.md`.
+- virgin-cycle22 (2026-10-06, in the tree, uncommitted, not published): 8 briefs executed and inspected — one ACTIVITIES yellow line, no ‖ / "GPS live", readable tier text colours, time-only gate + finish flash (also DEMO/REPLAY), PNG map rung retired, single FIT/ME toggle, keep-screen-awake while riding — `cycles/virgin-cycle22/README.md`, `PROGRESS.md`; Nathan's publish + on-device checklist is `COMMANDS.md`.
 
 ## The virgin-prototype path, in order
 
@@ -183,7 +184,7 @@ Nathan answered most of `deployment/rounds/round1/questions-and-rulings.md` on 2
   `deployment/rounds/round1/review.md` §0: a `play` EAS build profile, the background-location
   in-app disclosure UI (can ride along with the Sentry native build), a privacy policy page,
   the Play Console setup itself, and the written background-location justification for review.
-- **Round 2 landed 2026-10-05 (`deployment/rounds/round2/`):** `scripts/publish-play.ps1` exists (never run; its step 0 stops until the `play` profile is back). The `play` profile in `app/eas.json` (store, `.aab`, channel `play`, `autoIncrement`, no `APP_VARIANT`) was drafted, then **backed out the same day**: inspection showed `eas.json` is hashed by the fingerprint, so it would have stopped preview OTAs reaching installed build 7. Draft kept in `deployment/rounds/round2/DEFERRED-eas.json-with-play-profile.json`. **Deferred to one native-build cycle** (adds the `play` profile back, (own `cycles/`
+- **Round 2 landed 2026-10-05 (`deployment/rounds/round2/`):** `scripts/publish-play.ps1` exists (never run; its step 0 stops until the `play` profile is back). The `play` profile in `app/eas.json` (store, `.aab`, channel `play`, `autoIncrement`, no `APP_VARIANT`) was drafted, then **backed out the same day**: inspection showed `eas.json` is hashed by the fingerprint, so it would have stopped preview OTAs reaching installed build 8. Draft kept in `deployment/rounds/round2/DEFERRED-eas.json-with-play-profile.json`. **Deferred to one native-build cycle** (adds the `play` profile back, (own `cycles/`
   folder; trigger = the next native build, i.e. Sentry): `app/fingerprint.config.js` (skip name +
   package, probably version, so `.preview` and Play hash the same), `app.json` version bump,
   Sentry, background-location disclosure UI, build `preview` + `play`, verify with
@@ -350,3 +351,5 @@ Nathan answered most of `deployment/rounds/round1/questions-and-rulings.md` on 2
   brief 15 actually landed the forward-mark change there, unrelated to cycle17's own edits
   (RecordScreen.tsx's diff for this cycle is empty). Purely cosmetic, worth a chore-sized
   cleanup pass whenever convenient.
+
+- **virgin-cycle22 (2026-10-06) — open decisions / loose ends, non-blocking.** (1) RESOLVED 2026-10-06 (Nathan): REPLAY never flashes a missed sector (`– did not traverse –`); the clock just keeps running (`replayModel.ts`, one-line guard + test; suite 867/0 fail). (2) Brief 04 also changed DEMO/REPLAY lap behaviour (the LAP chip no longer stays; the lap flashes once, then the clock returns) — brief 08 builds on it; the brief-04 text saying DEMO/REPLAY don't change is wrong. (3) Run `publish-preview.ps1 -DryRun` (brief 07's keep-awake: expected no fingerprint drift; `build8.ps1` is the fallback). (4) Follow-up chores: drop the PNG rows from `metro.seedRedirect.js`/`seedstubs_suite.ts` and move `app/assets/ways/*.png` to `safe_to_delete/`; `virginmanifest_suite.ts`'s static guard passes vacuously (pre-existing); a stray `$HOME/wayMapView.c22-05.orig` sits outside the repo; daylight `accentText` is 3.13:1 on white (left for Nathan).

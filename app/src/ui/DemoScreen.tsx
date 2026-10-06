@@ -39,8 +39,8 @@
  * top, the shared LiveSectorPane, a status line, REPLAY's control row (speed
  * dial · scrub bar · play/pause — virgin-cycle16 brief 07). The scripted clock
  * rolls past the lap by `DEMO_ROLL_OUT_S` sim-seconds and then auto-STOPs
- * into an 'ending' screen. Lap chip is neutral before the run ends, exactly as the
- * real screen since the ranking reveal. FIRST RIDE's SAVE now continues into
+ * into an 'ending' screen. At the line the LAP time flashes in its real tier like a
+ * sector, then the clock runs on (virgin-cycle22 08, same pane behaviour as the real screen). FIRST RIDE's SAVE now continues into
  * the real `GateAdjustCard` on a reference line built from the demo path
  * (brief D); KEEP/SAVE GATES are theatre too, nothing is written.
  * virgin-cycle14 brief 06 (Nathan #9): mode subtext removed, caveat line reworded.
@@ -419,8 +419,9 @@ export default function DemoScreen({ onFullscreenChange }: {
   // Simulated seconds = real elapsed × rate, read off the wall clock anchor
   // each tick — the tick only sets how OFTEN the dot redraws, never how
   // fast simulated time advances (setInterval drift cannot slow the ride).
-  // R3: the clock keeps running DEMO_ROLL_OUT_S past the lap (long enough
-  // to read the neutral lap chip) and then ends the run into 'ending'.
+  // R3: the clock keeps running DEMO_ROLL_OUT_S past the lap (long enough for
+  // the S4 flash, the lap flash and a second of running clock at 25x — virgin-cycle22 08)
+  // and then ends the run into 'ending'.
   const startTick = () => {
     clearTimer();
     timer.current = setInterval(() => {
@@ -569,7 +570,7 @@ export default function DemoScreen({ onFullscreenChange }: {
 
   // View model built by hand — the demo has no engine, but it feeds the very
   // same pane, so what you see here is what the Record screen would draw.
-  // Used by SECOND/TENTH RIDE only. R5: the lap chip stays neutral until STOP.
+  // Used by SECOND/TENTH RIDE only. Flashes at each gate and at the line like the real screen (virgin-cycle22 08).
   // Depth (R2): judged against the LAST DEMO_PRIOR_LAPS[mode] pinned laps.
   const vm = demoLiveViewModel(script, clockS, Date.now(), livePos, DEMO_PRIOR_LAPS[mode]);
 
@@ -670,7 +671,7 @@ export default function DemoScreen({ onFullscreenChange }: {
         </View>
         {mode === 'first'
           ? <Text style={styles.trackLine}>{FIRST_RIDE_STATUS} · {demoFmtMS(clockS)}</Text>
-          : <LiveSectorPane vm={vm} showLap clockSize={56} />}
+          : <LiveSectorPane vm={vm} clockSize={56} />}
         <Text style={styles.trackLine}>demo · nothing is recorded</Text>
         {/* virgin-cycle16 07 (Nathan 2026-09-28): REPLAY's control row, exactly —
             speed dial (taps cycle DEMO_RATES), the scrub bar, play/pause with

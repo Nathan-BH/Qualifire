@@ -16,6 +16,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Animated, AppState, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import {
   ActiveSession,
   RideSummary,
@@ -130,6 +131,10 @@ const MOVE_EPS_M = 10;
  * from work>>new for example, or from new>>home"), never a catalog entry —
  * the catalog validator would rightly reject a coordinate-less place. */
 const NEW_ID = '~new';
+/** virgin-cycle22 07: the one expo-keep-awake tag this screen holds while a ride
+ * runs. A single word on purpose: the ui-strings scanner reads a hyphenated
+ * literal as rider prose. */
+const KEEP_AWAKE_TAG = 'QualifireRide';
 /** virgin-cycle20 08: the silent interrupted-recording finaliser runs once per JS launch. */
 let recoveryAutoSaveStarted = false;
 
@@ -244,7 +249,6 @@ export default function RecordScreen({
   const postRevealRef = useRef<'card' | 'rev'>('rev');
   const revealHoldRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [live, setLive] = useState<LiveEngineState>(liveEngine.getState());
-  const [showLap, setShowLap] = useState(false);
   // PAUSE → RESUME | END (Cycle 020, Nathan 2026-08-19): an accidental-stop
   // guard, NOT a real pause — the recording service and lap clock keep
   // running underneath (D-042: raw time is the truth; no engine or location
@@ -426,17 +430,8 @@ export default function RecordScreen({
     setRiderDot({ lat: r.lat, lon: r.lon });
   }, [status.lastLat, status.lastLon, live.riderSnap]);
 
-  // LAYOUT §2a: the lap chip appears ~1.1 s after the final gate, with the
-  // lap earcon — never simultaneously with the sector chip.
-  const lapScored = live.lap !== null;
-  useEffect(() => {
-    if (!lapScored) {
-      setShowLap(false);
-      return;
-    }
-    const id = setTimeout(() => setShowLap(true), 1100);
-    return () => clearTimeout(id);
-  }, [lapScored]);
+  // virgin-cycle22 04: the final-gate handover (1.1 s, LAP_HANDOVER_MS) is timed by LiveSectorPane
+  // itself now — nothing to sequence here.
 
   // 1 s clock while recording.
   useEffect(() => {
@@ -558,6 +553,26 @@ export default function RecordScreen({
     // the ride ends and focus moves elsewhere (WP-A2 fix B1).
     return () => onFullscreenChange?.(false);
   }, [phase, showAnim, onFullscreenChange]);
+
+  // virgin-cycle22 07 (Nathan 2026-10-05, tester feedback): keep the screen on
+  // while a ride is RUNNING and only then — not in setup/armed/ending, not on
+  // any other tab (Shell mounts one screen at a time, App.tsx: RecordScreen is
+  // unmounted there, and this cleanup runs), not after STOP/discard/a failed
+  // stop that lost the session (phase leaves 'running'). A red light is still
+  // phase 'running' (only the map's liveState flips to 'stopped') and keeps it.
+  // Relaunch recovery re-enters 'running' through the session-sync effect
+  // above and re-acquires it; a killed process never holds it (the flag dies
+  // with the window). No AppState handling: Android FLAG_KEEP_SCREEN_ON is a
+  // property of OUR window and is inert while the app is in the background.
+  // Promise.resolve() wraps both calls so a void-returning build of the module
+  // can never throw on `.catch`.
+  useEffect(() => {
+    if (phase !== 'running') return;
+    void Promise.resolve(activateKeepAwakeAsync(KEEP_AWAKE_TAG)).catch(() => {});
+    return () => {
+      void Promise.resolve(deactivateKeepAwake(KEEP_AWAKE_TAG)).catch(() => {});
+    };
+  }, [phase]);
 
   // Hardware back (Cycle 024, WP-A2): registered here so it runs BEFORE
   // Shell's own handler (RN calls the most-recently-mounted listener first —
@@ -1060,16 +1075,12 @@ export default function RecordScreen({
   const hasFix = status.lastLat !== null && status.lastLon !== null;
   const stationary = recording && hasFix && lastMovedRef.current !== null
     && (now - lastMovedRef.current) > STOPPED_AFTER_MS;
-  const lastFixAgeS =
-    status.lastFixMs != null ? Math.round((now - status.lastFixMs) / 1000) : null;
 
   // virgin-cycle20 brief 08 (Nathan, clutter review): the rotating status
-  // slot is gone. The only live status text left is "GPS live", shown while
-  // the last fix is <= 5 s old (the same rule that chose it before) and
-  // nothing otherwise — no fix-wait or fix-age lines, no
-  // route/way lines. The engine's route logic is untouched; it is simply not
-  // narrated here any more.
-  const gpsLive = status.lastFixMs != null && lastFixAgeS != null && lastFixAgeS <= 5;
+  // slot is gone. virgin-cycle22 02 (Nathan 2026-10-05): the last status text
+  // (the fix-is-fresh label) is gone too — the slot below only carries the
+  // 5 s permission flash (flashMsg) and is otherwise empty. The engine's route
+  // logic is untouched; it is simply not narrated here any more.
   // Cycle-2 WP-A: reference line vs live trail, mutually exclusive — see
   // recordFlow.ts liveMapOverlayFor. Derived per render (no effect/state):
   // virgin-cycle21: the overlay is the START pick, frozen — never what the engine
@@ -1218,8 +1229,8 @@ export default function RecordScreen({
   }, []);
 
   // follow-up (live PX, R10): 'P4' among the selfs on the map, by chainage —
-  // null before START, once the lap lands (the handover PosChip then owns
-  // the fact), off the route, or with self dots off.
+  // null before START, once the lap lands (the rank is the tower's after
+  // STOP, cycle11 R1), off the route, or with self dots off.
   const livePos = useMemo(() => {
     if (!settings.selfDots || live.startGateT === null || live.lap !== null) return null;
     const p = selfLivePosition(selfDots, live.chainageM);
@@ -1419,8 +1430,9 @@ export default function RecordScreen({
         {/* LIVE surface v2 (LAYOUT §2/§2a) — real engine feed, real clock:
             rate-1 timebase anchored at recording start (whole-ride elapsed,
             per Nathan's lap-clock ruling). virgin-cycle11 R1: posChip is
-            always null now — the rank is revealed after STOP by the timing
-            tower, never announced here. */}
+            always null — the rank is revealed after STOP by the timing
+            tower, never announced here. virgin-cycle22 04: at the finish the
+            LAP time flashes like a sector, then this clock runs on until STOP. */}
         <LiveSectorPane
           vm={viewModelFromEngine(
             live,
@@ -1429,13 +1441,12 @@ export default function RecordScreen({
             tierOf, // brief 07: real lap tier at the line (cycle11 R1 revert)
             livePos,
           )}
-          showLap={showLap}
         />
-        {/* virgin-cycle20 08: one quiet slot — "GPS live" or nothing; also the
-            5 s flash of the foreground-only permission ask (Q5b). Storage
+        {/* virgin-cycle20 08 / virgin-cycle22 02: one quiet slot — the 5 s flash
+            of the foreground-only permission ask (Q5b) or nothing. Storage
             errors stay permanent below. */}
         <Animated.Text style={[styles.trackLine, flashMsg !== null ? { opacity: flashOpacity } : null]}>
-          {flashMsg ?? (gpsLive ? 'GPS live' : '')}
+          {flashMsg ?? ''}
         </Animated.Text>
         {status.storageErrors > 0 && (
           <Text style={styles.warn}>

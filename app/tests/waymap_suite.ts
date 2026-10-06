@@ -1,11 +1,10 @@
 /**
  * Route-asset suite — the "fake it" map (no native module, no tiles).
  *
- * The load-bearing check is cross-language: the PNG is drawn by a Python
- * renderer, the dot is placed by TypeScript at runtime. If those two ever
- * disagree about where a lat/lon lands, the dot drifts off the road and
- * nothing else in the app notices. So every gate's stored pixel — written by
- * the renderer — must be reproduced by projectToPixel() to sub-pixel accuracy.
+ * The projection checks are cross-language history: the seed assets' px/py were written by a
+ * Python renderer and must still be reproduced by projectToPixel() (wayAssetRuntime.ts builds
+ * runtime assets in the same frame). The PNG fallback rung itself was retired in virgin-cycle22 05;
+ * the static guards below pin the one remaining (MapLibre) rung.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -289,8 +288,8 @@ test('routemap: routeId={null} draws NO route — the catalog-wide defaultRouteI
   assert(!src.includes('defaultMapRouteId'),
     'defaultMapRouteId (the store/defaultRoute.ts helper it wrapped) must no longer be imported/consumed here');
   const idAssignments = src.match(/const id = props\.wayId;/g) ?? [];
-  assert(idAssignments.length === 2,
-    `expected exactly 2 occurrences of "const id = props.wayId;" (one per rung: MapLibre + PNG), got ${idAssignments.length}`);
+  assert(idAssignments.length === 1,
+    `expected exactly 1 occurrence of "const id = props.wayId;" (one rung since virgin-cycle22 05), got ${idAssignments.length}`);
   assert(!src.includes('props.wayId ??'),
     'no rung may fall back off props.wayId with ?? any more');
 });
@@ -315,26 +314,28 @@ test('routemap: <M.Map> carries touchRotate={rotateEnabled} (not a literal false
     'onRegionDidChange handler not found on <M.Map> — WP-M reads the rider\'s rotation back through it');
 });
 
-test('routemap: the MapLibre zoom bar has exactly one compass reset button; the PNG zoom bar has none', () => {
+test('routemap: exactly one zoom bar (MapLibre) with exactly one compass reset button — the PNG rung is gone (virgin-cycle22 05)', () => {
   // Same static-guard doctrine as the tests above.
   const src = fs.readFileSync(
     path.join(TESTS_DIR, '..', 'src', 'ui', 'wayMapView.tsx'), 'utf8');
-  const firstZoomBar = src.indexOf('st.zoomBar');
-  assert(firstZoomBar >= 0, 'st.zoomBar not found — has the MapLibre zoom bar moved/been renamed?');
+  const bars = src.match(/st\.zoomBar\b/g) ?? [];
+  assert(bars.length === 1, `st.zoomBar must appear exactly once (the MapLibre bar; the style definition is the bare key zoomBar:), got ${bars.length}`);
+  const firstZoomBar = src.indexOf('<View style={st.zoomBar}>');
+  assert(firstZoomBar >= 0, 'the MapLibre zoom bar <View style={st.zoomBar}> not found');
   const creditTag = src.indexOf('<Credit rung="maplibre"', firstZoomBar);
-  assert(creditTag > firstZoomBar, '<Credit rung="maplibre" ...> not found after the first zoomBar');
-  const mapLibreBar = src.slice(firstZoomBar, creditTag);
-  const mapLibreResets = mapLibreBar.match(/onPress=\{resetNorth\}/g) ?? [];
+  assert(creditTag > firstZoomBar, '<Credit rung="maplibre" ...> not found after the zoom bar');
+  const mapLibreResets = src.slice(firstZoomBar, creditTag).match(/onPress=\{resetNorth\}/g) ?? [];
   assert(mapLibreResets.length === 1,
     `expected exactly one onPress={resetNorth} in the MapLibre zoom bar, got ${mapLibreResets.length}`);
-
-  const secondZoomBar = src.indexOf('st.zoomBar', creditTag);
-  assert(secondZoomBar > creditTag, 'second st.zoomBar (PNG rung) not found');
-  const failedTag = src.indexOf('MAP IMAGE FAILED', secondZoomBar);
-  assert(failedTag > secondZoomBar, "'MAP IMAGE FAILED' not found after the second zoomBar");
-  const pngBar = src.slice(secondZoomBar, failedTag);
-  assert(!/resetNorth/.test(pngBar),
-    'the PNG zoom bar must have no compass button — the PNG rung is a cropped bitmap and cannot rotate');
+  // Code tokens only (history comments may still say "PNG rung", see the file header).
+  // (the asset path is concatenated so easignore_suite's relative-require scanner does not read this line as a require).
+  for (const gone of ['PngWayMap', 'setImgFailed', 'setMapFailed', 'onMapFailed', 'const IMAGES', 'MAP IMAGE FAILED', 'needs the tile map', "require('" + '../../assets/ways/', 'rung="png"', 'cropFor(', 'gateTickPx(', 'nearestOnPath(', 'LayoutChangeEvent']) {
+    assert(!src.includes(gone), `PNG rung remnant in wayMapView.tsx: ${gone}`);
+  }
+  assert((src.match(/bundledForSeedMode\(\s*SEED_MODE\b/g) ?? []).length === 1, 'ASSETS is the one remaining bundledForSeedMode(SEED_MODE, ...) site');
+  assert(src.includes('offlineMapStyle(t.race.bg)'), 'style-load failure must fall back to offlineMapStyle(t.race.bg)');
+  assert(src.includes('onDidFinishLoadingStyle=') && src.includes('onDidFailLoadingMap='), 'both style load callbacks wired on <M.Map>');
+  assert(src.includes('>map unavailable<'), 'the ML === null frame carries the map unavailable badge');
 });
 
 test('routemap: map credits are an "i" button, never an always-visible label, and the native attribution stays off (virgin-cycle14 brief 05)', () => {
@@ -346,7 +347,7 @@ test('routemap: map credits are an "i" button, never an always-visible label, an
   assert(src.includes('accessibilityLabel={`Map data sources: ${label}`}'), 'the "i" button must carry the full credit as its accessibility label');
   assert(src.includes('CREDIT_AUTO_HIDE_MS'), 'the opened card must auto-hide');
   assert((src.match(/<Credit rung="maplibre"/g) ?? []).length === 1, 'MapLibre rung must mount exactly one <Credit>');
-  assert((src.match(/<Credit rung="png"/g) ?? []).length === 2, 'PNG rung must mount <Credit> in its place frame (virgin-cycle15 brief 12) and its image frame');
+  assert((src.match(/<Credit rung="png"/g) ?? []).length === 0, 'no PNG-rung credit may remain (virgin-cycle22 05)');
   const mapStart = src.indexOf('<M.Map');
   const openTag = src.slice(mapStart, src.indexOf('<M.Camera', mapStart));
   assert(/attribution=\{false\}/.test(openTag) && /logo=\{false\}/.test(openTag),
@@ -379,4 +380,25 @@ test('virgin-cycle21 03: the rider source is the last <M.GeoJSONSource> in wayMa
   }
   const emptyRefs = src.match(/\bEMPTY_FC\b/g) ?? [];
   assert(emptyRefs.length >= 5, `EMPTY_FC referenced ${emptyRefs.length} times, want >= 5`);
+});
+
+test('virgin-cycle22 06: the MapLibre zoom bar has ONE FIT/ME toggle (fitMeNextMode) and no separate ME button', () => {
+  const src = fs.readFileSync(path.join(TESTS_DIR, '..', 'src', 'ui', 'wayMapView.tsx'), 'utf8');
+  const barStart = src.indexOf('<View style={st.zoomBar}>');
+  const barEnd = src.indexOf('<Credit rung="maplibre"', barStart);
+  assert(barStart >= 0 && barEnd > barStart, 'MapLibre zoom bar not found');
+  const bar = src.slice(barStart, barEnd);
+  assert((bar.match(/setMode\(fitMeNext\)/g) ?? []).length === 1, 'exactly one toggle press sets fitMeNext');
+  assert(!bar.includes("setMode('fit')"), 'no standalone FIT button left');
+  assert(!/onPress=\{\(\) => setMode\('follow'\)\}/.test(bar), 'no standalone ME button left');
+  assert((bar.match(/setMode\('follow'\)/g) ?? []).length === 2, "+ and − still set 'follow' (and nothing else does)");
+  assert((bar.match(/>FIT</g) ?? []).length === 1 && (bar.match(/>ME</g) ?? []).length === 1,
+    'FIT and ME each appear once, as literal JSX text (ui-strings entries stay valid)');
+  assert(bar.includes("fitMeNext === 'fit'"), 'the label branches on fitMeNext');
+  assert(/fitMeNext === 'fit'\s*\?\s*<Text[^>]*>FIT<\/Text>\s*:\s*<Text[^>]*>ME<\/Text>/.test(bar), "label = the NEXT action: fitMeNext 'fit' shows FIT, otherwise ME");
+  assert((bar.match(/onPress=\{resetNorth\}/g) ?? []).length === 1, 'compass untouched');
+  assert(src.includes('const fitMeNext = fitMeNextMode(mode, showRider);'), 'fitMeNext comes from the pure helper');
+  assert(src.includes('fitMeNextMode') && src.includes("from './wayMapGeo.ts'"), 'helper imported from wayMapGeo.ts');
+  const pressables = (bar.match(/<Pressable/g) ?? []).length;
+  assert(pressables === 4, `four Pressables in the bar (+, −, FIT/ME, ↑), got ${pressables}`);
 });

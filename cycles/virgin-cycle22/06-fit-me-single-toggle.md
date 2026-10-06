@@ -16,7 +16,8 @@ any test failing for a reason this brief does not name, any extra tsc error -> s
 
 **Run order: AFTER 05.** 05 removes the PNG rung (and its own three-button bar) from the same file;
 this brief then edits the ONLY remaining `<View style={st.zoomBar}>`. If `grep -c "st.zoomBar"
-app/src/ui/wayMapView.tsx` is not 2 (one use + the style definition) 05 has not landed: STOP. Every
+app/src/ui/wayMapView.tsx` is not 1 (the one use; the style key `zoomBar:` has no `st.` prefix and does
+not match — Plan fix 2026-10-06, it used to say 2) 05 has not landed (2 = PNG bar still there): STOP. Every
 anchor below is by content and survives 05 unchanged (05 does not touch the zoom bar, `mode`,
 `cameraProps` or wayMapGeo.ts); line numbers are the PRE-05 tree and shift by about +30 after 05.
 
@@ -116,7 +117,7 @@ expected), IDEAS.md, STATE.md, OPEN-ITEMS.md.
 ## Steps (anchors by quoted content)
 
 **Pre-flight.** `GIT_OPTIONAL_LOCKS=0 git status --short`; `grep -c "st.zoomBar" app/src/ui/wayMapView.tsx`
--> 2 (else STOP: 05 not landed). Baseline tests: the post-05 count (**0 fail / 3 skip**; 860 total if
+-> 1 (2 = PNG bar still present: STOP, 05 not landed). Baseline tests: the post-05 count (**0 fail / 3 skip**; 860 total if
 01-05 all landed, 857 if the flash brief 04 did not — record what you measure) and tsc exit 0.
 
 **Step 1 — tests first (failed-before).**

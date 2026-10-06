@@ -298,6 +298,27 @@ test('ridehistory: buildSectorRows — estimated ~raw, missed did-not-traverse, 
   assert(s3.tier === 'est', `S3 (missed) must carry the est tier, got ${s3.tier}`);
 });
 
+test('virgin-cycle22 02: buildSectorRows — an interrupted sector keeps its tier and time but its label carries no ‖ glyph', () => {
+  // Nathan 2026-10-04/05: the pause mark means nothing to the rider; only the glyph goes,
+  // the interrupted flag and scoring stay (core/timing untouched).
+  const result = makeResult('r1', 'Morning', 1000, { movingS: 850, rawS: 900, quality: 'interrupted' }, [
+    { index: 1, movingS: 200, rawS: 230, quality: 'interrupted' },
+    { index: 2, movingS: 210, rawS: 210, quality: 'clean' },
+  ]);
+  const hist = [190, 195, 205, 210, 215];
+  const rows = buildSectorRows(result, () => hist);
+  const s1 = rows.find((r) => r.index === 1)!;
+  const s2 = rows.find((r) => r.index === 2)!;
+  assert(s1.label === 'S1', `interrupted label must be the bare S1, got "${s1.label}"`);
+  assert(s2.label === 'S2', `clean label is S2, got "${s2.label}"`);
+  assert(s1.tier !== 'est', `interrupted keeps a real tier (history of 5), got ${s1.tier}`);
+  // timeLabel is fmt(scoredS(sec), 1) exactly as before this work: under the default
+  // timing mode (store/timing.ts DEFAULT_TIMING = 'raw') scoredS returns rawS (230),
+  // not movingS — the glyph removal changes nothing about the printed time.
+  assert(s1.timeLabel === fmt(230, 1), `interrupted keeps its scored (raw-mode) time, got ${s1.timeLabel}`);
+  for (const r of rows) assert(!r.label.includes('‖') && !r.timeLabel.includes('‖'), `no ‖ in row ${r.index}`);
+});
+
 // ============================================================= buildPbRows
 
 test('ridehistory: buildPbRows omits zero-count routes and preserves the given order', () => {

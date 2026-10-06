@@ -20,7 +20,7 @@
  * scatterplot at the end of every demo ride — demoPlotResults / demoPlotPosLabel /
  * demoPlotCaption hand the real ResultsPlot the store's own shapes, nothing stored.
  */
-import { WINDOW_PREV, tierFor, type UiTier } from './colourModel.ts';
+import { WINDOW_PREV, fmt, tierFor, type UiTier } from './colourModel.ts';
 import type { LiveViewModel } from './liveView.tsx';   // type-only, house precedent towerModel.ts:22-23
 import type { Tier } from './chips.tsx';
 import type { RouteNames } from '../store/routeCreation.ts';  // type-only
@@ -123,9 +123,10 @@ export function demoSectorColours(
 }
 
 /** R3: simulated seconds the clock keeps running past the lap before the run auto-STOPs
- *  (~2.4 real s at the default 25x). Long enough to read the neutral lap chip; brief C also needs
- *  every slower self to reach its finish inside it. */
-export const DEMO_ROLL_OUT_S = 60;
+ *  (5.0 real s at the fastest 25x: the 1.1 s handover + 2.5 s lap flash + ~1.4 s of running clock,
+ *  virgin-cycle22 08 — was 60 = 2.4 s, enough for a fixed lap chip, not for a flash that hands the
+ *  slot back). Brief C also needs every slower self to reach its finish inside it (>= 30). */
+export const DEMO_ROLL_OUT_S = 125;
 /** sim second at which the run auto-STOPs (R3). */
 export function demoRunEndS(script: DemoScript): number { return script.lap + DEMO_ROLL_OUT_S; }
 
@@ -345,9 +346,10 @@ export function demoFmtMS(s: number): string {
 
 /**
  * The hand-built LiveViewModel the demo feeds to LiveSectorPane — the same pane the Record
- * screen draws, so what the demo shows IS what the rider sees. R5: the lap chip is
- * 'neutral' once the lap lands (cycle11 R1 — the tier is the rank in disguise and is
- * revealed after STOP by the tower, brief B); sectors keep their tiers; posChip null.
+ * screen draws, so what the demo shows IS what the rider sees. virgin-cycle22 08: the
+ * pane flashes exactly as on the bike — the last done sector (m:ss.d, its demoTier) at each
+ * gate via flashKey = gatesDone, and the lap in its REAL demoTier at the line (cycle11 R5's
+ * forced neutral is retired, as cycle20 07 did on the real screen); posChip null.
  * `nowMs` anchors the frozen timebase (Date.now() on the screen; fixed in tests).
  * `livePos` is brief C's; default null renders nothing.
  */
@@ -359,10 +361,13 @@ export function demoLiveViewModel(
   return {
     clock: { anchorRealMs: nowMs, anchorClockMs: clockS * 1000, rate: 1, running: false },
     contextLabel: gatesDone < 4 ? `S${gatesDone + 1}` : '',
-    flash: null,
-    flashKey: 0,
+    // virgin-cycle22 08: the flash is the last done sector — same depth (priorLaps) as its strip slot.
+    flash: gatesDone >= 1
+      ? { tier: demoTier(gatesDone, script.secs[gatesDone - 1], priorLaps) as Tier, time: fmt(script.secs[gatesDone - 1], 1) }
+      : null,
+    flashKey: gatesDone,
     lap: gatesDone >= 4
-      ? { tier: 'neutral' as Tier, time: demoFmtMS(script.lap), delta: '' }
+      ? { tier: demoTier(0, script.lap, priorLaps) as Tier, time: demoFmtMS(script.lap) }
       : null,
     posChip: null,
     livePos,

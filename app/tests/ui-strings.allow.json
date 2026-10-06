@@ -3,7 +3,7 @@
   "rule": "Every string a rider can see must be listed here with a reason. Nathan owns this file. Agents may APPEND an entry only with a one-line justification and must say so in their report; they never regenerate this file. Budgets (process/CONVENTIONS.md § Rider-facing text): 40 chars unless long:true; alert body <= 20 words; no em dash (use ' · '); warnings flash in the yellow button's sub-label, never a banner.",
   "generatedAt": "2026-10-02",
   "generatedFrom": "ae911bb",
-  "legacyCount": 33,
+  "legacyCount": 32,
   "banners": [],
   "entries": [
     {
@@ -776,14 +776,6 @@
       "file": "src/ui/RecordScreen.tsx",
       "kind": "literal",
       "text": "DETECTED START",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RecordScreen.tsx",
-      "kind": "literal",
-      "text": "GPS live",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"
@@ -1724,14 +1716,6 @@
       "by": "bootstrap"
     },
     {
-      "file": "src/ui/chips.tsx",
-      "kind": "text",
-      "text": "LAP",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
       "file": "src/ui/demoModel.ts",
       "kind": "literal",
       "text": "demo:prior-{…}",
@@ -1845,23 +1829,6 @@
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/mapCreditModel.ts",
-      "kind": "literal",
-      "text": "Esri, HERE, Garmin",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/mapCreditModel.ts",
-      "kind": "literal",
-      "text": "Esri, HERE, Garmin, © OpenStreetMap contributors",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap",
-      "long": true
     },
     {
       "file": "src/ui/mapCreditModel.ts",
@@ -3884,18 +3851,6 @@
     {
       "file": "src/ui/wayMapView.tsx",
       "kind": "text",
-      "text": "MAP IMAGE FAILED — drawing the line",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap",
-      "legacy": true,
-      "violates": [
-        "em-dash"
-      ]
-    },
-    {
-      "file": "src/ui/wayMapView.tsx",
-      "kind": "text",
       "text": "ME",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
@@ -3920,18 +3875,10 @@
     {
       "file": "src/ui/wayMapView.tsx",
       "kind": "text",
-      "text": "map needs the tile map",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/wayMapView.tsx",
-      "kind": "text",
-      "text": "place map needs the tile map",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
+      "text": "map unavailable",
+      "reason": "virgin-cycle22 05: the only thing shown when the MapLibre native module is missing (PNG rung retired); Nathan owns the wording",
+      "since": "2026-10-05",
+      "by": "virgin-cycle22 05"
     },
     {
       "file": "src/ui/wayMapView.tsx",

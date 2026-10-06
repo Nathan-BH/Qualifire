@@ -284,8 +284,9 @@ test('virgin-cycle20 08: clutter text is gone (CLUTTER-REVIEW §1 + Nathan\'s §
     'Unfinished ', 'Discard for now', 'No sport set up', 'That way already exists', 'Recovered after relaunch', 'nothing was lost on disk', '— last:',
     'Location permission was denied', 'Background location', 'Open app settings', 'warnBox', 'problemStates',
     'statusItemsFor', 'PIN_MS', 'WRITING_HISTORY_AFTER_FIXES', 'gpsFlash', 'flashGpsOff', 'settings.liveMap',
+    'GPS live',
   ]) assert(!rec.includes(gone), `RecordScreen still contains "${gone}"`);
-  for (const kept of ["'GPS live'", 'PERM_DENIED_MSG', 'PERM_FOREGROUND_ONLY_MSG', 'PERM_FLASH_HOLD_MS = 5000', 'NO_SPORT_MSG', 'NO_SPORT_FLASH_HOLD_MS = 1000', 'GPS_FLASH_HOLD_MS = 2000', "tabNav.go('settings')", 'recoveryAutoSaveStarted', 'dropStaleSession', 'markRideFree(', 'Activity saved · '])
+  for (const kept of ['PERM_DENIED_MSG', 'PERM_FOREGROUND_ONLY_MSG', 'PERM_FLASH_HOLD_MS = 5000', 'NO_SPORT_MSG', 'NO_SPORT_FLASH_HOLD_MS = 1000', 'GPS_FLASH_HOLD_MS = 2000', "tabNav.go('settings')", 'recoveryAutoSaveStarted', 'dropStaleSession', 'markRideFree(', 'Activity saved · '])
     assert(rec.includes(kept), `RecordScreen lacks "${kept}"`);
   assert(!fs.existsSync(path.resolve(TESTS_DIR, '..', 'src', 'ui', 'firstSportPrompt.tsx')), 'firstSportPrompt.tsx moved out');
   const flow = read('src', 'ui', 'recordFlow.ts');
@@ -373,4 +374,146 @@ test('virgin-cycle21 04: RecordScreen only continues a remounted live ride; ever
     last = i;
   }
   assert(src.includes("const INTERRUPTED_MSG = 'Interrupted · saved as free activity';"), 'INTERRUPTED_MSG constant');
+});
+
+test('virgin-cycle22 01: the ACTIVITIES route card draws one yellow line (the reference) — the raw trail only on cards with no reference', () => {
+  // Nathan 2026-10-05: the ridden trail (same casing+core style as the reference) doubled the
+  // reference line at bends; the reference carries sectors and gates and is what ROUTES shows.
+  const src = fs.readFileSync(path.resolve(TESTS_DIR, '..', 'src', 'ui', 'RideDetailScreen.tsx'), 'utf8');
+  const maps = src.split('<WayMapView').slice(1).map((chunk) => chunk.slice(0, chunk.indexOf('/>')));
+  assert(maps.length === 4, `RideDetailScreen mounts 4 WayMapViews, found ${maps.length}`);
+  const routeCard = maps.filter((m) => m.includes('sectorColours='));
+  assert(routeCard.length === 1, `exactly one WayMapView carries sectorColours (the route card), found ${routeCard.length}`);
+  assert(!routeCard[0].includes('trail='), 'the route card must not pass a trail (one yellow line = the reference)');
+  assert(routeCard[0].includes('wayId={model.wayId}'), 'the route card draws the matched way');
+  const noRef = maps.filter((m) => !m.includes('sectorColours='));
+  assert(noRef.length === 3 && noRef.every((m) => m.includes('trail={fixes ?? undefined}') && m.includes('wayId={null}')),
+    'the three no-reference cards keep the ridden trail');
+  assert(/if \(model\.kind === 'route'\) \{\s*setFixes\(null\);\s*return;\s*\}/.test(src),
+    'the fixes effect skips the read for a route-kind ride');
+});
+
+test('virgin-cycle22 02: no ‖ pause glyph and no "GPS live" anywhere a rider looks', () => {
+  const read = (...p: string[]) => fs.readFileSync(path.resolve(TESTS_DIR, '..', ...p), 'utf8');
+  for (const f of ['liveView.tsx', 'chips.tsx', 'rideHistoryModel.ts', 'RecordScreen.tsx', 'RideDetailScreen.tsx', 'RidesScreen.tsx', 'ReplayScreen.tsx', 'DemoScreen.tsx']) {
+    assert(!read('src', 'ui', f).includes('‖'), `${f} still contains the ‖ glyph`);
+  }
+  const rec = read('src', 'ui', 'RecordScreen.tsx');
+  assert(!rec.includes('GPS live') && !rec.includes('gpsLive') && !rec.includes('lastFixAgeS'), 'RecordScreen: GPS live label and its two dead consts are gone');
+  assert(rec.includes('{flashMsg ?? \'\'}'), 'the quiet slot still carries the permission flash');
+  const chips = read('src', 'ui', 'chips.tsx');
+  assert(!chips.includes('glyph'), 'LiveBigChip has no glyph prop');
+  assert(!read('src', 'ui', 'liveView.tsx').includes('glyph'), 'BigChipModel has no glyph field');
+  const allow = read('tests', 'ui-strings.allow.json');
+  assert(!allow.includes('"text": "GPS live"'), 'allow-list entry removed with the code');
+});
+
+test('virgin-cycle22 03: RideDetailScreen colours text through tierTextColour only — no chipColors().text on a card, label white, time coloured, today row = lap tier', () => {
+  const det = fs.readFileSync(path.resolve(TESTS_DIR, '..', 'src', 'ui', 'RideDetailScreen.tsx'), 'utf8');
+  assert(!det.includes('chipColors'), 'chipColors (chip palette: purple text = PURPLE_INK) must not colour text on a card');
+  assert(!det.includes("from './chips.tsx'"), 'no chips import left');
+  assert(!/function tierColour\(/.test(det), 'the screen-local tierColour is gone (one shared helper)');
+  assert(det.includes("import { tierTextColour } from './tierColour.ts';"), 'imports the shared helper');
+  assert((det.match(/tierTextColour\(/g) ?? []).length >= 3, 'big lap + SECTORS time + today row all use it');
+  assert(det.includes('[styles.secPos, { color: t.text }]'), 'SECTORS label is plain white');
+  assert(det.includes('[styles.secTime, { color: tierTextColour(sec.tier, t) }]'), 'SECTORS time is tier-coloured');
+  assert(det.includes('[styles.secAvg, { color: t.textDim }]'), 'SECTORS avg stays dim');
+  assert(det.includes('todayTier={model.lapTier}'), 'PbDetail receives this ride\'s lap tier');
+  assert(det.includes('const todayColour = tierTextColour(todayTier, t);'), 'today row colour comes from the helper');
+  assert(!det.includes('row.today ? t.accentText'), 'the today row is no longer accentText');
+});
+
+test('virgin-cycle22 04: the gate flash and the finish flash are time only — clock typography, tier text colour, no chip box, no label, no delta, no rank', () => {
+  const read = (...p: string[]) => fs.readFileSync(path.resolve(TESTS_DIR, '..', ...p), 'utf8');
+  const lv = read('src', 'ui', 'liveView.tsx');
+  const chips = read('src', 'ui', 'chips.tsx');
+  // the two chips and the rank chip are gone, with their styles
+  for (const gone of ['LiveBigChip', 'BigChipModel', 'LiveLapChip', 'LapChipModel', 'PosChip', 'liveBig', 'liveRow1', 'slbl', 'sdelta', 'stime', 'liveLap', 'llbl', 'posChipText', 'lapRow'])
+    assert(!chips.includes(gone) && !lv.includes(gone), `"${gone}" still exists in chips.tsx or liveView.tsx`);
+  // one model for both flashes: (tier, time) and nothing else
+  assert(lv.includes('export interface FlashModel {\n  tier: Tier;\n  time: string;\n}'), 'FlashModel is exactly { tier, time }');
+  assert(lv.includes('flash: FlashModel | null;') && lv.includes('lap: FlashModel | null;'), 'flash and lap share FlashModel');
+  assert(lv.includes("return { tier: 'est', time: `~${fmtSec(sec.rawS)}` };"), 'estimated flash: ~m:ss, dim, nothing else');
+  assert(lv.includes('return { tier: tierOf(k, scoredS(sec)), time: fmtSec(scoredS(sec) ?? sec.rawS, 1) };'), 'done flash: tier + m:ss.d');
+  assert(lv.includes("return { tier: 'est', time: '– –' };"), 'missed flash: – –');
+  const builder = lv.slice(lv.indexOf('function bigFromSector('), lv.indexOf('export function viewModelFromEngine('));
+  for (const gone of ['delta', 'lbl', 'pb', 'waiting', 'glyph'])
+    assert(!builder.includes(gone), `bigFromSector still produces "${gone}"`);
+  const lapBuilder = lv.slice(lv.indexOf('let lap: FlashModel | null = null;'), lv.indexOf('const contextLabel ='));
+  assert(lapBuilder.length > 0 && !lapBuilder.includes('delta'), 'the lap builder carries no delta');
+  assert(lapBuilder.includes('time: fmtSec(scoredS(st.lap) ?? st.lap.rawS ?? 0)'), 'lap time string unchanged (no decimal)');
+  for (const gone of ['lbl', 'pb?:', 'waiting?:', 'delta: string'])
+    assert(!lv.includes(gone), `a model still carries "${gone}"`);
+  // one Text, styled like the clock it replaces, coloured by the shared helper
+  assert(lv.includes("import { tierTextColour } from './tierColour';"), 'liveView imports tierTextColour');
+  assert(lv.includes('function LiveFlash({ time, tier, clockSize }'), 'LiveFlash component exists');
+  const flashBody = lv.slice(lv.indexOf('function LiveFlash('), lv.indexOf('const clockStyles'));
+  assert(flashBody.includes('clockStyles.clock') && flashBody.includes('{ color: tierTextColour(tier, t) }'), 'LiveFlash uses the clock style + tierTextColour');
+  for (const gone of ['<View', 'border', 'backgroundColor', 'padding', 'chipColors', '●', 'LAP'])
+    assert(!flashBody.includes(gone), `LiveFlash must not contain "${gone}" (no box, no fill, no marker, no label)`);
+  // the pane: lap flash first (after the 1.1 s handover, for one hold), then sector flash, then the clock
+  assert(lv.includes('export const LAP_HANDOVER_MS = 1100;') && lv.includes('export const FLASH_HOLD_MS = 2500;'), 'handover + hold constants');
+  assert(lv.includes('<LiveFlash time={vm.lap.time} tier={vm.lap.tier} clockSize={clockSize} />'), 'lap flash renders LiveFlash');
+  assert(lv.includes('<LiveFlash time={vm.flash.time} tier={vm.flash.tier} clockSize={clockSize} />'), 'sector flash renders LiveFlash');
+  assert(lv.includes('<LapClock tb={vm.clock} clockSize={clockSize} />'), 'the clock branch is untouched');
+  assert(lv.indexOf('lapFlashOn && vm.lap ?') < lv.indexOf('flashOn && vm.flash ?'), 'lap flash outranks the sector flash in the slot');
+  assert(lv.includes('setTimeout(() => setLapFlashOn(false), FLASH_HOLD_MS)'), 'the lap flash ends after one hold — the clock runs again');
+  assert(!lv.includes('lapTakesSlot') && !lv.includes('terminal'), 'the lap result is no longer terminal in the slot');
+  assert(lv.includes('{ vm: LiveViewModel; clockSize?: number }'), 'LiveSectorPane props: vm + clockSize only (showLap gone)');
+  // RecordScreen no longer owns the handover; the engine is untouched
+  const rec = read('src', 'ui', 'RecordScreen.tsx');
+  assert(!rec.includes('showLap') && !rec.includes('setShowLap') && !rec.includes('lapScored'), 'RecordScreen: showLap state/effect/prop gone');
+  for (const f of ['DemoScreen.tsx', 'ReplayScreen.tsx']) assert(!read('src', 'ui', f).includes('showLap'), `${f} still passes showLap`);
+  assert(read('src', 'live', 'engine.ts').includes("this.phase = 'finished';"), 'engine untouched: one-shot lap, phase finished');
+  // the stale allow-list entry went with the chip; the tower keeps its own LAP
+  const allow = read('tests', 'ui-strings.allow.json');
+  assert(!allow.includes('"file": "src/ui/chips.tsx"'), 'no chips.tsx allow-list entry left (LAP went with LiveLapChip)');
+  assert(allow.includes('"file": "src/ui/tower.tsx",\n      "kind": "text",\n      "text": "LAP"'), 'tower.tsx keeps its LAP entry');
+});
+
+test('virgin-cycle22 04: the flash never reads the Sector colours setting — tier and theme are its only inputs (pinned, D8)', () => {
+  const read = (...p: string[]) => fs.readFileSync(path.resolve(TESTS_DIR, '..', ...p), 'utf8');
+  for (const f of ['liveView.tsx', 'chips.tsx', 'tierColour.ts']) {
+    const src = read('src', 'ui', f);
+    for (const forbidden of ['sectorColours', 'useSettings', 'settings'])
+      assert(!src.includes(forbidden), `${f} reads "${forbidden}" — the flash must not depend on a setting`);
+  }
+  const lv = read('src', 'ui', 'liveView.tsx');
+  assert(lv.includes("import { StripSlot, Tier } from './chips';"), 'liveView takes only the strip slot and Tier from chips');
+});
+
+test('virgin-cycle22 07: RecordScreen keeps the screen awake ONLY while phase === running (expo-keep-awake, same tag released in the cleanup)', () => {
+  // Nathan 2026-10-05 (tester): screen on like a video, but only on RECORD and only during the ride.
+  const src = fs.readFileSync(path.resolve(TESTS_DIR, '..', 'src', 'ui', 'RecordScreen.tsx'), 'utf8');
+  assert(src.includes("import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';"),
+    'imports exactly the two imperative calls');
+  assert(!src.includes('useKeepAwake('), 'the unconditional hook is not used (it would hold the lock in setup/armed/ending too)');
+  assert(src.includes("const KEEP_AWAKE_TAG = 'QualifireRide';"), 'one tag constant, a single word (ui-strings scanner)');
+  const effect = /useEffect\(\(\) => \{\s*if \(phase !== 'running'\) return;\s*void Promise\.resolve\(activateKeepAwakeAsync\(KEEP_AWAKE_TAG\)\)\.catch\(\(\) => \{\}\);\s*return \(\) => \{\s*void Promise\.resolve\(deactivateKeepAwake\(KEEP_AWAKE_TAG\)\)\.catch\(\(\) => \{\}\);\s*\};\s*\}, \[phase\]\);/;
+  assert(effect.test(src), 'the keep-awake effect: guard on running, activate, release in the cleanup, deps [phase]');
+  assert((src.match(/activateKeepAwakeAsync\(/g) ?? []).length === 1 && (src.match(/deactivateKeepAwake\(/g) ?? []).length === 1,
+    'exactly one activate and one deactivate call site');
+  const pkg = JSON.parse(fs.readFileSync(path.resolve(TESTS_DIR, '..', 'package.json'), 'utf8')) as { dependencies: Record<string, string> };
+  assert(pkg.dependencies['expo-keep-awake'] === '~56.0.3', `package.json declares expo-keep-awake ~56.0.3 (got ${pkg.dependencies['expo-keep-awake']})`);
+  const lock = JSON.parse(fs.readFileSync(path.resolve(TESTS_DIR, '..', 'package-lock.json'), 'utf8')) as { packages: Record<string, { dependencies?: Record<string, string> }> };
+  assert(lock.packages['']?.dependencies?.['expo-keep-awake'] === '~56.0.3', 'package-lock root block matches package.json');
+});
+
+test('virgin-cycle22 08: DEMO and REPLAY feed the pane a real flash — no `flash: null` left, replay passes the ride\'s lap tier', () => {
+  const read = (...p: string[]) => fs.readFileSync(path.resolve(TESTS_DIR, '..', ...p), 'utf8');
+  const demo = read('src', 'ui', 'demoModel.ts');
+  const replay = read('src', 'ui', 'replayModel.ts');
+  for (const [name, src] of [['demoModel.ts', demo], ['replayModel.ts', replay]] as const) {
+    assert(!src.includes('flash: null'), `${name} still hands the pane flash: null`);
+    assert(!src.includes('flashKey: 0'), `${name} still hands the pane flashKey: 0`);
+    assert(src.includes('flashKey: gatesDone'), `${name}: flashKey is the gates-done count`);
+    assert(!src.includes("'neutral' as Tier, time"), `${name}: the lap tier is no longer forced neutral`);
+  }
+  assert(demo.includes('time: fmt(script.secs[gatesDone - 1], 1)'), 'demo flash time is m:ss.d via the shared fmt');
+  assert(demo.includes('tier: demoTier(0, script.lap, priorLaps)'), 'demo lap tier is demoTier(0, …)');
+  assert(demo.includes('export const DEMO_ROLL_OUT_S = 125;'), 'demo roll-out lengthened for the lap flash');
+  assert(replay.includes('lapTier: Tier = \'neutral\'') && replay.includes('time: lastRow.timeLabel'), 'replay flash = the row (lastRow); lapTier param');
+  const screen = read('src', 'ui', 'ReplayScreen.tsx');
+  assert(screen.includes('detail.lapTier,') && screen.includes('detail.lapTier]') , 'ReplayScreen passes detail.lapTier and lists it in the memo deps');
+  assert(!read('src', 'ui', 'DemoScreen.tsx').includes('stays neutral'), 'DemoScreen comments no longer promise a neutral lap chip');
 });

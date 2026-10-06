@@ -134,10 +134,10 @@ export default function ReplayScreen(props: {
     () => (ready
       ? replayLiveViewModel(
         rider as ReplayRider, detail.sectorRows, detail.lapLabel, clockS,
-        replayTimebase(anchor), livePos,
+        replayTimebase(anchor), livePos, detail.lapTier,
       )
       : null),
-    [ready, rider, detail.sectorRows, detail.lapLabel, clockS, anchor, livePos],
+    [ready, rider, detail.sectorRows, detail.lapLabel, clockS, anchor, livePos, detail.lapTier],
   );
 
   const sectorColours = ready && settings.sectorColours
@@ -245,7 +245,7 @@ export default function ReplayScreen(props: {
         />
       </View>
 
-      {vm ? <LiveSectorPane vm={vm} showLap clockSize={56} /> : null}
+      {vm ? <LiveSectorPane vm={vm} clockSize={56} /> : null}
 
       <Text style={styles.trackLine}>{statusLine}</Text>
 

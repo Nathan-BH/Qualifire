@@ -30,7 +30,6 @@ import { useSettings } from './settings.tsx';
 import { PaddockTheme, colors, radius } from './theme.ts';
 import WayMapView from './wayMapView.tsx';
 import { appendTrailPoint, type TrailPoint } from './trailModel.ts';
-import { chipColors } from './chips.tsx';
 import { dateTimeLabel, buildPbDetail } from './rideHistoryModel.ts';
 import {
   lapValues, ownLapBarredFromRanking, rankingPoolFor, sectorValues, type UiTier,
@@ -39,6 +38,7 @@ import { rideDetailFor } from './rideDetailModel.ts';
 import ReplayScreen from './ReplayScreen.tsx';
 import { loadReplayRider } from './replayModel.ts';
 import { ALL_YELLOW } from './sectorTrailModel.ts';
+import { tierTextColour } from './tierColour.ts';
 import { currentCatalog, userCatalog } from '../store/catalogStore.ts';
 import { effectiveRideSportId, scopeCatalog } from '../store/sports.ts';
 import { activeCatalog, currentSports } from '../store/sportStore.ts';
@@ -68,16 +68,6 @@ import { deleteRide, exportGpxPlus, listRides } from '../storage';
 import type { PickEvent, RideMeta } from '../storage/types';
 import { gpxBaseName, saveGpx } from './saveGpx.ts';
 
-function tierColour(tier: UiTier, t: PaddockTheme): string {
-  switch (tier) {
-    case 'purple': return colors.purple;
-    case 'green': return colors.green;
-    case 'yellow': return colors.neutral;
-    case 'neutral': return t.accentText;
-    default: return t.textDim;
-  }
-}
-
 function fmtWhen(ms: number): string {
   const d = new Date(ms);
   const p = (n: number) => String(n).padStart(2, '0');
@@ -93,10 +83,12 @@ function fmtDur(ms: number): string {
 /** ResultScreen.tsx's PbDetail, lifted in verbatim — the ride-detail's own
  * "ON THIS ROUTE" section, scoped to this ride's route (§3.4).
  * virgin-cycle20 08: ranking only — the sector-bests block is gone
- * (Nathan: rolling comparison, no records). */
-function PbDetail(props: { wayId: string; lastRideId: string | null; t: PaddockTheme }) {
-  const { wayId, lastRideId, t } = props;
+ * (Nathan: rolling comparison, no records).
+ * virgin-cycle22 03: the today row is coloured with THIS ride's lap tier (date + time cells), not accentText. */
+function PbDetail(props: { wayId: string; lastRideId: string | null; todayTier: UiTier; t: PaddockTheme }) {
+  const { wayId, lastRideId, todayTier, t } = props;
   const detail = buildPbDetail(rankingPoolFor(wayId, lastRideId), lastRideId);
+  const todayColour = tierTextColour(todayTier, t);
   return (
     <View style={st.pbDetail}>
       {detail.ranking.length > 0 ? (
@@ -105,10 +97,10 @@ function PbDetail(props: { wayId: string; lastRideId: string | null; t: PaddockT
           {detail.ranking.map((row) => (
             <View key={row.posLabel} style={st.pbRow}>
               <Text style={[st.pbPos, { color: t.text }]}>{row.posLabel}</Text>
-              <Text style={{ flex: 1, color: row.today ? t.accentText : t.textDim, fontSize: 13 }}>
+              <Text style={{ flex: 1, color: row.today ? todayColour : t.textDim, fontSize: 13 }}>
                 {row.dateLabel}
               </Text>
-              <Text style={[st.pbNum, { color: t.text }]}>{row.timeLabel}</Text>
+              <Text style={[st.pbNum, { color: row.today ? todayColour : t.text }]}>{row.timeLabel}</Text>
               <Text style={[st.pbNum, { color: t.textDim }]}>{row.gapLabel}</Text>
             </View>
           ))}
@@ -162,9 +154,31 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request.rideId]);
 
+  const model = useMemo(
+    () => rideDetailFor(request.rideId, request.startedAtMs, {
+      result: getStoredResult(request.rideId),
+      free: freeRideNear(freeRideResults(), request.startedAtMs),
+      ways: currentCatalog().ways,
+      userWays: userCatalog().ways,
+      laps: (wayId) => lapValues(wayId, request.rideId),
+      sectors: (wayId, i) => sectorValues(wayId, i, request.rideId),
+      barred: (wayId) => ownLapBarredFromRanking(wayId, request.rideId),
+    }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [request.rideId, request.startedAtMs, tick],
+  );
+
   // The true ridden trace: the raw fixes, decimated through WP-J's own
   // min-distance rule rather than pushing every raw fix into the map.
+  // virgin-cycle22 01: only for a ride with NO reference (the three cards
+  // below the route card) — the route card draws the reference alone, so
+  // the file is not read for it. Re-runs when the kind changes (naming card
+  // makes a route; "Not a free activity" makes a plain ride again).
   useEffect(() => {
+    if (model.kind === 'route') {
+      setFixes(null);
+      return;
+    }
     let cancelled = false;
     (async () => {
       const raw = await readRideFixes(request.rideId, createExpoFsAdapter());
@@ -180,21 +194,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
     return () => {
       cancelled = true;
     };
-  }, [request.rideId]);
-
-  const model = useMemo(
-    () => rideDetailFor(request.rideId, request.startedAtMs, {
-      result: getStoredResult(request.rideId),
-      free: freeRideNear(freeRideResults(), request.startedAtMs),
-      ways: currentCatalog().ways,
-      userWays: userCatalog().ways,
-      laps: (wayId) => lapValues(wayId, request.rideId),
-      sectors: (wayId, i) => sectorValues(wayId, i, request.rideId),
-      barred: (wayId) => ownLapBarredFromRanking(wayId, request.rideId),
-    }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [request.rideId, request.startedAtMs, tick],
-  );
+  }, [request.rideId, model.kind]);
 
   const replayWayId = model.wayId ?? model.referenceOf?.id ?? null; // a matched ride, or a way's own reference ride
   // virgin-cycle20 08 (Q1): the Replay button only when a replay exists —
@@ -484,7 +484,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
       {model.kind === 'route' ? (
         <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder, alignItems: 'center' }]}>
           <Text style={{ color: t.textDim }}>{wayLabelIn(currentCatalog(), model.wayId as string)}</Text>
-          <Text style={[st.big, { color: tierColour(model.lapTier, t) }]}>{model.lapLabel}</Text>
+          <Text style={[st.big, { color: tierTextColour(model.lapTier, t) }]}>{model.lapLabel}</Text>
           <Text style={{ color: t.textDim, fontSize: 12.5 }}>{model.rankLine}</Text>
           {model.referenceOf ? (
             <Text style={{ color: t.textDim, fontSize: 11.5, marginTop: 4 }}>
@@ -505,24 +505,27 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
               // RecordScreen and the RIDES row — ALL_YELLOW (truthy, all-null)
               // when off, no leadColour when off (pixel-identical to a map
               // with no sectorColours prop at all — sectorTrailModel.ts).
+              // virgin-cycle22 01 (Nathan 2026-10-05): no `trail` here — the
+              // reference line IS this ride's line (sectors, gates, what ROUTES
+              // shows); the raw ridden trail doubled it at every bend. The
+              // trail is drawn only by the cards below, which have no reference.
               sectorColours={s.sectorColours ? model.sectorColours : ALL_YELLOW}
               leadColour={s.sectorColours ? colors.grey : undefined}
-              trail={fixes ?? undefined}
             />
           </View>
 
           <View style={{ alignSelf: 'stretch', marginTop: 14 }}>
             <Text style={[st.h2, { color: t.textDim }]}>SECTORS</Text>
-            {model.sectorRows.map((sec) => {
-              const col = chipColors(sec.tier, t).text;
-              return (
-                <View key={sec.index} style={styles.secRow}>
-                  <Text style={[styles.secPos, { color: col }]}>{sec.label}</Text>
-                  <Text style={[styles.secTime, { color: col }]}>{sec.timeLabel}</Text>
-                  <Text style={[styles.secAvg, { color: t.textDim }]}>{sec.avgLabel}</Text>
-                </View>
-              );
-            })}
+            {model.sectorRows.map((sec) => (
+              // virgin-cycle22 03: label plain, only the TIME carries the tier colour (same
+              // layout as ON THIS WAY below); avg stays dim. tierTextColour, never the
+              // chip palette's .text (purple's is the chip ink, unreadable on the card).
+              <View key={sec.index} style={styles.secRow}>
+                <Text style={[styles.secPos, { color: t.text }]}>{sec.label}</Text>
+                <Text style={[styles.secTime, { color: tierTextColour(sec.tier, t) }]}>{sec.timeLabel}</Text>
+                <Text style={[styles.secAvg, { color: t.textDim }]}>{sec.avgLabel}</Text>
+              </View>
+            ))}
           </View>
 
           <View style={{ alignSelf: 'stretch', marginTop: 14 }}>
@@ -530,6 +533,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
             <PbDetail
               wayId={model.wayId as string}
               lastRideId={request.rideId}
+              todayTier={model.lapTier}
               t={t}
             />
           </View>

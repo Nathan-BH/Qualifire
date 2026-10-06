@@ -10,7 +10,7 @@
  * in-band green swatch below is '#44CC44' (hue 120, S ~57%) for that reason.
  */
 import { assert, test } from './lib.ts';
-import { patchMapStyle } from '../src/ui/wayMapStyle.ts';
+import { offlineMapStyle, patchMapStyle } from '../src/ui/wayMapStyle.ts';
 
 function buildStyle() {
   return {
@@ -134,4 +134,19 @@ test('routemapstyle: patching twice is idempotent', () => {
   const once = patchMapStyle(buildStyle(), { hideLabels: true });
   const twice = patchMapStyle(once, { hideLabels: true });
   assert(JSON.stringify(once) === JSON.stringify(twice), 'a second patch pass must not change the output');
+});
+
+test('virgin-cycle22 05: offlineMapStyle is a self-contained background-only style (loads with no network, no sources, no glyphs, no sprite)', () => {
+  // The PNG fallback rung is retired; when the online style cannot load this is what the
+  // MapLibre view gets, and every local GeoJSON layer (route, gates, trail, rider) draws on it.
+  const s = offlineMapStyle('#17171b') as Record<string, unknown>;
+  assert(s.version === 8, 'MapLibre style spec version 8');
+  assert(JSON.stringify(s.sources) === '{}', 'no sources: nothing to fetch when offline');
+  assert(!('glyphs' in s) && !('sprite' in s) && !('name' in s), 'no glyphs/sprite URL, no prose name');
+  const layers = s.layers as Array<Record<string, unknown>>;
+  assert(Array.isArray(layers) && layers.length === 1, 'exactly one layer');
+  assert(layers[0].type === 'background' && layers[0].id === 'background', 'the one layer is a background layer');
+  assert((layers[0].paint as Record<string, unknown>)['background-color'] === '#17171b', 'background is the frame colour passed in');
+  const other = offlineMapStyle('#FFFFFF') as { layers: Array<{ paint: Record<string, unknown> }> };
+  assert(other.layers[0].paint['background-color'] === '#FFFFFF', 'day frame colour goes through unchanged');
 });

@@ -298,12 +298,45 @@ test('replay: replayLiveViewModel fills the strip as gates are crossed and revea
 
   const done = replayLiveViewModel(r, sectorRows, '10:15', 400, tb, null);
   assert(done.contextLabel === '', 'contextLabel must be empty once every gate is done');
-  assert(done.lap !== null && done.lap.tier === 'neutral' && done.lap.time === '10:15' && done.lap.delta === '',
-    `expected the lap chip once finished, got ${JSON.stringify(done.lap)}`);
+  assert(done.lap !== null && done.lap.tier === 'neutral' && done.lap.time === '10:15',
+    `expected the lap once finished, got ${JSON.stringify(done.lap)}`);
 
   const noFinish: ReplayRider = { ...r, finishMs: null };
   const doneNoFinish = replayLiveViewModel(noFinish, sectorRows, '10:15', 400, tb, null);
   assert(doneNoFinish.lap === null, 'lap must stay null when the ride never crossed FINISH, even with every gate done');
+});
+
+test('virgin-cycle22 08: the replay flashes each crossed gate from the ride\'s own rows and the lap in its real tier — same FlashModel as the live screen', () => {
+  const sectorRows = [
+    { index: 0, label: 'S1', timeLabel: '3:05.2', tier: 'purple' as const, avgLabel: '3:10' },
+    { index: 1, label: 'S2', timeLabel: '2:40.0', tier: 'green' as const, avgLabel: '2:50' },
+    { index: 2, label: 'S3', timeLabel: '~3:20', tier: 'est' as const, avgLabel: '3:00' },
+    { index: 3, label: 'S4', timeLabel: '1:10.9', tier: 'yellow' as const, avgLabel: '1:15' },
+  ];
+  const r: ReplayRider = {
+    rideId: 'vm-flash', startMs: 0, finishMs: 400000, endMs: 400000,
+    gateMs: [0, 100000, 200000, 300000, 400000],
+    fixes: [{ tUnixMs: 0, lat: 0, lon: 0, sM: 0 }, { tUnixMs: 400000, lat: 0, lon: 0, sM: 0 }],
+  };
+  const tb = replayTimebase({ clockS: 0, realMs: 0, rate: 10, playing: true });
+  const before = replayLiveViewModel(r, sectorRows, '10:15.3', 50, tb, null, 'purple');
+  assert(before.flash === null && before.flashKey === 0, 'before gate 1: no flash, flashKey 0');
+  const one = replayLiveViewModel(r, sectorRows, '10:15.3', 100, tb, null, 'purple');
+  assert(one.flashKey === 1 && one.flash !== null && one.flash.tier === 'purple' && one.flash.time === '3:05.2', `gate 1: the row's tier + m:ss.d, got ${JSON.stringify(one.flash)}`);
+  const three = replayLiveViewModel(r, sectorRows, '10:15.3', 350, tb, null, 'purple');
+  assert(three.flashKey === 3 && three.flash !== null && three.flash.tier === 'est' && three.flash.time === '~3:20', `gate 3 estimated: est ~m:ss, got ${JSON.stringify(three.flash)}`);
+  assert(three.lap === null, 'no lap before the finish');
+  const done = replayLiveViewModel(r, sectorRows, '10:15.3', 400, tb, null, 'purple');
+  assert(done.flashKey === 4 && done.flash !== null && done.flash.tier === 'yellow' && done.flash.time === '1:10.9', `finish gate: S4 yellow, got ${JSON.stringify(done.flash)}`);
+  assert(done.lap !== null && done.lap.tier === 'purple' && done.lap.time === '10:15.3' && !('delta' in done.lap), `lap = (lapTier, lapLabel), got ${JSON.stringify(done.lap)}`);
+  // scrub back before the finish: lap null again (the pane cancels a pending lap flash), flashKey follows gatesDone
+  const back = replayLiveViewModel(r, sectorRows, '10:15.3', 250, tb, null, 'purple');
+  assert(back.lap === null && back.flashKey === 2 && back.flash !== null && back.flash.tier === 'green', 'scrub back: lap null, flash = gate 2');
+  // default lapTier (6-arg callers) stays neutral; a gate without a row (rows shorter than gates) flashes nothing
+  const noTier = replayLiveViewModel(r, sectorRows, '10:15.3', 400, tb, null);
+  assert(noTier.lap !== null && noTier.lap.tier === 'neutral', 'lapTier default is neutral');
+  const fewRows = replayLiveViewModel(r, sectorRows.slice(0, 2), '10:15.3', 300, tb, null, 'green');
+  assert(fewRows.flashKey === 3 && fewRows.flash === null, 'no row for the crossed gate -> no flash, key still counts');
 });
 
 // ============================================================ priorWindowFor
@@ -420,4 +453,9 @@ test('replay: clampClockS clamps to [0, endS]', () => {
   assert(clampClockS(150, 100) === 100, `expected 100, got ${clampClockS(150, 100)}`);
   assert(clampClockS(42, 100) === 42, `expected 42 unchanged, got ${clampClockS(42, 100)}`);
   assert(clampClockS(42, 0) === 0, `expected 0 when endS is 0, got ${clampClockS(42, 0)}`);
+});
+
+test('virgin-cycle22 08: REPLAY never flashes a missed sector (no time to show; the clock keeps running)', () => {
+  const src = nodeFs.readFileSync(fileURLToPath(import.meta.url).replace(/tests[\\/]replay_suite\.ts$/, 'src/ui/replayModel.ts'), 'utf8');
+  assert(/lastRow && \/\\d\/\.test\(lastRow\.timeLabel\)/.test(src), 'the flash needs a digit-bearing time label, so a missed row never flashes');
 });

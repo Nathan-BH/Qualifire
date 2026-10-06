@@ -62,3 +62,8 @@ executor's EXECUTION.md was not trusted. No file other than this one was written
 Informational, not counted: inherited bare `npx eas-cli` hints in publish-play.ps1 (same as preview, per brief); DIGEST.md quotes relative-path lines verbatim.
 
 VERDICT: FAIL (2 defects)
+
+---
+## Coordinator addendum (2026-10-06)
+
+The inspector could not match its local hashes to "build 7" (`610cfe83...`) because build 7 is not the installed build. Nathan's installed build is **build 8**, fingerprint `f52e438f6e11965500739e4371c4e020d8ec69e5` (`cycles/virgin-cycle20/POST-EXECUTION-FEEDBACK.md`). The inspector's local hash for the *committed* `eas.json` was `f52e438f...`, i.e. identical to build 8, so the baseline is confirmed and D1 stands: the `play` profile edit moved it to `b64062a9...`.

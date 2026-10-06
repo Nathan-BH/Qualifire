@@ -108,8 +108,7 @@ runner, dirty-tree warning, message fallback + quote fix, `eas-cli whoami`/login
 
 ## 3. Fingerprint-risk analysis (why the executed items cannot move the installed build's fingerprint)
 
-The installed Preview APK is build 7 (cycle-18 rebuild), fingerprint `610cfe837448add1ccdd3c045eb550c3ac6dcdd3`
-(digest §6). It keeps receiving `publish-preview.ps1` updates only while the project's computed
+The installed Preview APK is **build 8** (2026-10-03), fingerprint `f52e438f6e11965500739e4371c4e020d8ec69e5` (`cycles/virgin-cycle20/POST-EXECUTION-FEEDBACK.md`). The original plan and digest said build 7 / `610cfe83...` (the repo docs were stale); corrected 2026-10-06 on Nathan's report. It keeps receiving `publish-preview.ps1` updates only while the project's computed
 fingerprint under `APP_VARIANT=preview` stays equal to that hash.
 
 `@expo/fingerprint` (the `runtimeVersion.policy: "fingerprint"` engine) hashes: the **resolved
@@ -118,7 +117,7 @@ files (none -- managed workflow), the native-relevant parts of `package.json` de
 config plugins and patches. It does **not** hash `eas.json`, anything under `scripts/`, or
 Markdown. Therefore:
 
-| Executed item | Fingerprint source? | Effect on `610cfe83...` |
+| Executed item | Fingerprint source? | Effect on build 8 (`f52e438f...`) |
 |---|---|---|
 | `eas.json` new `play` profile | **WRONG in the original plan: yes.** `@expo/fingerprint` hashes `eas.json` as a whole file (found by inspection, `INSPECTION.md` D1). | moves the preview hash; **backed out** 2026-10-05, deferred to the native-build cycle |
 | `scripts/publish-play.ps1` | No (outside `app/`, not a config input) | none |
@@ -198,7 +197,7 @@ Pipeline run 2026-10-05/06: Haiku Digest (`DIGEST.md`) -> Fable Plan (this file 
 |---|---|
 | `scripts/publish-play.ps1` | **Landed, kept.** Inspector: byte-identical to brief, only intended diffs vs `publish-preview.ps1`, never sets `APP_VARIANT`. Never run. Its step 0 stops until the `play` profile is back in `eas.json` (fail-safe). |
 | `scripts/README.md` row, CURRENT-STATE, deployment/README, OPEN-ITEMS | **Landed**, then corrected after inspection to say the `play` profile is not in `eas.json` yet. |
-| `app/eas.json` `play` profile | **Executed, then backed out.** Inspection D1 (critical): `eas.json` is hashed whole (measured locally: preview hash `b64062a9...` with the edit vs `f52e438f...` without), so the edit would have silently stopped preview OTAs reaching installed build 7. Restored to the committed version (`git diff` empty). Draft kept in `DEFERRED-eas.json-with-play-profile.json` for the native-build cycle. |
+| `app/eas.json` `play` profile | **Executed, then backed out.** Inspection D1 (critical): `eas.json` is hashed whole (measured locally: preview hash `b64062a9...` with the edit vs `f52e438f...` without; `f52e438f...` is exactly build 8's recorded fingerprint, which independently confirms the inspector's measurement and that the committed `eas.json` is what build 8 was built from), so the edit would have silently stopped preview OTAs reaching installed build 8. Restored to the committed version (`git diff` empty). Draft kept in `DEFERRED-eas.json-with-play-profile.json` for the native-build cycle. |
 | `fingerprint.config.js`, version bump, `-Promote`, `submit` | Deferred as planned (section 4). |
 | Tests / tsc | 848 tests, 0 fail, 3 skip; `tsc --noEmit` exit 0 (executor and inspector both). |
 

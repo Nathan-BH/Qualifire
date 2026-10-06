@@ -125,7 +125,7 @@ Run: this test FAILs (no import yet); everything else passes. Record the failure
 **Step 3 — `app/package-lock.json`.** In the ROOT block only (`"packages": { "": { ... "dependencies": {`,
 lines ~10-23), after the line `        "expo-file-system": "~56.0.9",` (:15) insert
 `        "expo-keep-awake": "~56.0.3",`. Do NOT touch the second occurrence (:3052, inside
-`node_modules/expo`'s own block) or anything else. This is byte-for-byte what `npm install` writes for a
+`node_modules/expo`'s own block, :3054 on the current tree) or anything else. This is byte-for-byte what `npm install` writes for a
 package that is already resolved at that version; Nathan's `npm install` in COMMANDS.md § 3 then produces
 no diff (that is the check).
 
@@ -231,7 +231,7 @@ armed/ending), run (the test FAILs on the effect regex), restore with `cp` and `
 - `grep -n "KeepAwake\|KEEP_AWAKE_TAG" app/src/ui/RecordScreen.tsx` -> the import, the constant (+ its
   comment), one activate, one deactivate; nothing else in app/src (`grep -rln "KeepAwake" app/src` -> RecordScreen.tsx only).
 - `grep -n "expo-keep-awake" app/package.json app/package-lock.json` -> package.json:1 hit, lock: the root
-  line + the pre-existing `node_modules/expo` dependency line (:3052) + the pre-existing
+  line + the pre-existing `node_modules/expo` dependency line (:3054) + the pre-existing
   `"node_modules/expo-keep-awake": {` block — no new resolved entry.
 - `node app/node_modules/expo-modules-autolinking/bin/expo-modules-autolinking.js resolve -p android --json`
   (run from `app/`, ~10 s) still lists `expo-keep-awake` `56.0.3` and the same 26 modules — the autolinking

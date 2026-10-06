@@ -276,7 +276,7 @@ test('static guard: routes.json and the route PNGs are referenced only inside ro
   // at both definition sites — a hardcoded mode argument would pass a bare
   // `bundledForSeedMode(` count and silently re-expose the manifest.
   const guardHits = (viewSrc.match(/bundledForSeedMode\(\s*SEED_MODE\b/g) ?? []).length;
-  assert(guardHits >= 2, `expected bundledForSeedMode(SEED_MODE, ...) at least twice in routeMapView.tsx, got ${guardHits}`);
+  assert(guardHits === 1, `expected bundledForSeedMode(SEED_MODE, ...) exactly once in wayMapView.tsx (ASSETS; the PNG IMAGES site went with the PNG rung, virgin-cycle22 05), got ${guardHits}`);
   assert(
     viewSrc.includes('import { SEED_MODE, bundledForSeedMode }'),
     'routeMapView.tsx must import SEED_MODE and bundledForSeedMode from store/seed.ts',

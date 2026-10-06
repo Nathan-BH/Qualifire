@@ -66,6 +66,8 @@ day (below).
   0 fail, 3 skip**. `tsc --noEmit`: clean, exit 0. Last verified 2026-09-28 (virgin-cycle15,
   all 15 briefs landed; previously 676/673/0/3 on 2026-09-26, virgin-cycle14's 8 tester-
   feedback briefs).
+- **virgin-cycle22 landed in the tree 2026-10-06 (all 8 briefs, Sonnet-executed, Opus-inspected, NOT committed, NOT published):** `app/tests/` now **866 tests, 863 pass, 0 fail, 3 skip**, `tsc --noEmit` exit 0 (supersedes the older count above). ACTIVITIES route card draws one yellow line; the sector ‖ glyph and "GPS live" are gone; shared `tierTextColour` for SECTORS / ON THIS WAY / big lap; gate AND finish flash are time-only in the clock's typography (lap flash, then the clock runs again), also in DEMO and REPLAY; PNG map rung retired; single FIT/ME toggle; screen stays on while a ride runs (`expo-keep-awake`, expected OTA-safe — `publish-preview.ps1 -DryRun` is the proof). Publish + on-device checklist: `cycles/virgin-cycle22/COMMANDS.md`.
+
 - **The empty-seed install path is built.** `store/seed.ts` + `store/catalogStore.ts`: the
   runtime catalog is the shipped seed merged read-side with an on-phone
   `catalog.user.json` (never copied to disk, so a seed edit still reaches every install).
@@ -82,7 +84,7 @@ day (below).
   catalog does so at call time
   (`currentCatalog()`/`shippedResults()`), not import time, so a stranger's blank install
   no longer leaks Nathan's home/work/Morning-route data.
-- **Maps:** MapLibre + OpenFreeMap live on every screen including the live ride.
+- **Maps:** MapLibre + OpenFreeMap live on every screen including the live ride. virgin-cycle22 (2026-10-06, JS only, not yet published): the PNG fallback rung is retired — offline/style-load failure draws a bundled background-only style plus route/gates/trail/rider, `map unavailable` badge when the native module is missing; the zoom bar has ONE FIT/ME toggle labelled with the next tap's action (browse surfaces keep a plain FIT).
 - **Live self-racing is built (virgin-cycle6).** Every ride in the way's existing comparison
   window (`colourModel.ts`'s `ghostsFor`, unchanged, ≤ 9 rides) is replayed as a small dot on
   the live map from its own stored fixes, timed from the live rider's own START-gate crossing

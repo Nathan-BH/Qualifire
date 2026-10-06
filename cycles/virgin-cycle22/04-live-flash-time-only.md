@@ -26,6 +26,23 @@ hold and, unlike today's terminal lap chip, hands the slot BACK to the running c
 tier (Fable) on 2026-10-05 after re-verifying every anchor against the tree (HEAD 38002ff + uncommitted;
 baseline re-measured 848/845/0/3, tsc exit 0). Nothing is executed yet.
 
+**Plan-tier consistency fix (Fable, 2026-10-06, after brief 03's stop on the same class of defect):**
+step 2f's `LAP_HANDOVER_MS` comment used to contain the word `showLap` and step 2j's grep expected 0 hits
+for `delta` although the brief's own comments (2b, 2g, 2i) and the untouched header line :5 contain it.
+Comment reworded; 2j split into the file-wide list and a scoped `delta` check matching what the step 1a
+test actually enforces. No intent change.
+
+**Plan-tier ruling (Fable, 2026-10-06, after the executor's stop on step 7):** the pre-existing test
+`virgin-cycle20 07: RecordScreen wires the real lap tier and the session exclusion`
+(`app/tests/live_colour_suite.ts:~587`) pinned the 1.1 s handover as RecordScreen's
+`setTimeout(() => setShowLap(true), 1100)`, which step 4b deletes by design. Ruled a brief omission, not
+an executor or code error: the assertion is retargeted to the pane-owned mechanism (`export const
+LAP_HANDOVER_MS = 1100;` and `}, LAP_HANDOVER_MS);` in `liveView.tsx`) — same intent (the ~1.1 s handover
+is untouched), new owner. `app/tests/live_colour_suite.ts` is added to the scope (step 1e below). Also
+the RecordScreen `livePos` comment (≈:1207, "the handover PosChip then owns the fact") was reworded to
+"the rank is the tower's after STOP, cycle11 R1" because the Verification grep (`PosChip` -> 0 hits in
+`app/src`) would otherwise fail on a comment (step 4e). No intent change.
+
 **Tier:** Execute = Sonnet, alone. STOP-ON-AMBIGUITY (EXECUTOR-RULES.md): any quoted anchor not found,
 any test failing for a reason this brief does not name, any extra tsc error -> stop and report verbatim.
 
@@ -167,7 +184,8 @@ to `LapClock`, pane state/effects/render, imports, header comments), `app/src/ui
 and `app/src/ui/replayModel.ts` (drop `delta: ''` from the lap literal; replayModel doc line), `app/src/ui/preview/PreviewScreen.tsx`
 (TWO object literals, type-only), `app/tests/ui-strings.allow.json` (remove ONE entry), `app/tests/recordflow_suite.ts`
 (2 source tests), `app/tests/ridedetail_suite.ts` (1 pure pin test), `app/tests/replay_suite.ts` (one
-assertion loses `&& done.lap.delta === ''`).
+assertion loses `&& done.lap.delta === ''`), `app/tests/live_colour_suite.ts` (one assertion retargeted,
+step 1e).
 OUT: `chipColors`, `PURPLE_INK`, `StripSlot` (byte-identical); `LapClock`, `FLASH_HOLD_MS`, the sector
 flash effect, `bigSlot`; `tierColour.ts` (03's helper is consumed, not changed); the engine
 (`live/engine.ts`), `live/towerSource.ts`, `tower.tsx` (post-STOP reveal), `rankingRevealModel.ts`;
@@ -305,6 +323,18 @@ d. Run the suite: the two recordflow tests FAIL (first assertion: `"LiveBigChip"
    liveView still imports `LiveBigChip`); the ridedetail pin PASSES already (it pins 03's helper on a
    ground 03 did not test — a pin, not a failed-before; say so in the report); replay_suite stays green.
    Record the two failure lines. (856 -> 859 tests, 2 fail.)
+e. `app/tests/live_colour_suite.ts`, test `virgin-cycle20 07: RecordScreen wires the real lap tier and
+   the session exclusion`: replace the last two lines of its body
+   `// the cut from the sector flash to the lap chip is unchanged (LAYOUT §2a)` +
+   `assert(src.includes('setTimeout(() => setShowLap(true), 1100)'), 'the ~1.1 s lap handover delay is untouched');`
+   with
+```ts
+  // the cut from the sector flash to the lap flash is unchanged (LAYOUT §2a) — since virgin-cycle22 04
+  // the pane owns the 1.1 s (LAP_HANDOVER_MS in liveView.tsx), RecordScreen no longer times it
+  const lv = nodeFs.readFileSync(path.resolve(TESTS_DIR, '..', 'src', 'ui', 'liveView.tsx'), 'utf8');
+  assert(lv.includes('export const LAP_HANDOVER_MS = 1100;') && lv.includes('}, LAP_HANDOVER_MS);'), 'the ~1.1 s lap handover delay is untouched (pane-owned)');
+```
+   (This one FAILS after step 1 and PASSES after step 2f/2h; it is the third failed-before.)
 
 **Step 2 — `app/src/ui/liveView.tsx`.**
 a. Imports (`:33`): `import { LiveBigChip, LiveLapChip, PosChip, StripSlot, Tier } from './chips';` ->
@@ -359,7 +389,7 @@ e. Flash type at `:183` -> `const flash: FlashModel | null =`. Lap builder (`:18
 f. Constants: after `export const FLASH_HOLD_MS = 2500;` (`:116`) add
 ```ts
 /** LAYOUT §2a: the lap flash follows the final gate's sector flash by this much (cutting it short,
- * §2a.1) — the handover the screens used to time themselves (RecordScreen's showLap, until
+ * §2a.1) — the handover the screens used to time themselves (RecordScreen's own state + effect, until
  * virgin-cycle22 04). Owned by the pane now, so every surface (RECORD, DEMO, REPLAY) sequences alike. */
 export const LAP_HANDOVER_MS = 1100;
 ```
@@ -452,9 +482,17 @@ i. Header comments (`:1-29`). Replace the sentence starting "At each gate the" (
    reads; the exact wrap is yours). In the Honesty paragraph (`:26-28`) replace "estimated renders
    dashed-grey ~time, delta suppressed; interrupted keeps its earned tier, unmarked." (post-02 text) with
    "estimated flashes a dim ~time; there is no delta anywhere in a flash (D-021); interrupted keeps its
-   earned tier, unmarked." No "dashed", "grey", "box", "chip", "terminal" or "delta blank" wording about
-   the flash may remain in this file (the source test forbids the word `terminal` file-wide).
-j. `grep -n "LiveBigChip\|LiveLapChip\|PosChip\|BigChipModel\|LapChipModel\|lbl\|waiting\|pb\b\|delta\|showLap\|lapTakesSlot\|lapRow\|terminal" app/src/ui/liveView.tsx` -> 0 hits.
+   earned tier, unmarked." The header must no longer describe the flash as dashed/grey/a box/a chip
+   (wording guidance only); what the source test enforces file-wide is: the word `terminal` (any case
+   form containing it, e.g. "terminally"), `lbl`, `pb?:`, `waiting?:`, `delta: string`, `lapTakesSlot`,
+   `showLap`, `lapRow` and the deleted chip names must not remain anywhere in liveView.tsx. The word
+   `delta` on its own MAY remain in comments (header :5 "no target/benchmark/delta", :27 "blank delta",
+   the FlashModel and LiveFlash doc comments) — the test forbids it only inside `bigFromSector` and
+   inside the lap builder (between `let lap: FlashModel | null = null;` and `const contextLabel =`).
+j. `grep -n "LiveBigChip\|LiveLapChip\|PosChip\|BigChipModel\|LapChipModel\|lbl\|waiting\|pb\b\|showLap\|lapTakesSlot\|lapRow\|terminal" app/src/ui/liveView.tsx` -> 0 hits.
+   `grep -n "delta" app/src/ui/liveView.tsx` -> comment lines only (header, FlashModel doc, LiveFlash
+   doc); no hit between `function bigFromSector(` and `export function viewModelFromEngine(`, and none
+   between `let lap: FlashModel | null = null;` and `const contextLabel =` (the step 1a test's two slices).
 
 **Step 3 — `app/src/ui/chips.tsx`.**
 a. Delete the doc comment + function `LiveBigChip` (`/** The big last-completed-sector chip (LAYOUT §2):
@@ -490,7 +528,11 @@ c. Delete the line `showLap={showLap}` (`:1432`). In the JSX comment above the p
    tower, never announced here." to "virgin-cycle11 R1: posChip is always null — the rank is revealed
    after STOP by the timing tower, never announced here. virgin-cycle22 04: at the finish the LAP time
    flashes like a sector, then this clock runs on until STOP."
-d. `grep -n "showLap\|setShowLap\|lapScored" app/src/ui/RecordScreen.tsx` -> 0 hits. `useState` is still
+d. `grep -n "showLap\|setShowLap\|lapScored" app/src/ui/RecordScreen.tsx` -> 0 hits.
+e. The `livePos` comment (≈:1207): `// null before START, once the lap lands (the handover PosChip then owns` /
+   `// the fact), off the route, or with self dots off.` -> `// null before START, once the lap lands (the
+   rank is the tower's after` / `// STOP, cycle11 R1), off the route, or with self dots off.` (comment only;
+   the Verification grep for `PosChip` in `app/src` must be 0). `useState` is still
    imported/used elsewhere (many). `live.lap` reads at ≈:1224-1227 and ≈:1415 untouched.
 
 **Step 5 — DEMO / REPLAY screens and models (type-only + one token each; 08 does the real work).**
@@ -517,7 +559,7 @@ commas). Do not touch the header, `legacyCount`, the tower.tsx "LAP" entry or an
 recordflow, 1 ridedetail; replay_suite count unchanged). ui-strings suite green (no STALE/UNLISTED). tsc
 exit 0. `git diff --stat`: exactly `liveView.tsx`, `chips.tsx`, `RecordScreen.tsx`, `DemoScreen.tsx`,
 `ReplayScreen.tsx`, `demoModel.ts`, `replayModel.ts`, `PreviewScreen.tsx`, `ui-strings.allow.json`,
-`recordflow_suite.ts`, `ridedetail_suite.ts`, `replay_suite.ts` beyond the pre-existing modifications.
+`recordflow_suite.ts`, `ridedetail_suite.ts`, `replay_suite.ts`, `live_colour_suite.ts` beyond the pre-existing modifications.
 
 ## Failed-before procedure (never git stash)
 Step 1d is the record. To re-prove later that the box test bites: `cp app/src/ui/liveView.tsx

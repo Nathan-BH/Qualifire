@@ -110,7 +110,10 @@ test('virgin-cycle22 02: buildSectorRows — an interrupted sector keeps its tie
   assert(s1.label === 'S1', `interrupted label must be the bare S1, got "${s1.label}"`);
   assert(s2.label === 'S2', `clean label is S2, got "${s2.label}"`);
   assert(s1.tier !== 'est', `interrupted keeps a real tier (history of 5), got ${s1.tier}`);
-  assert(s1.timeLabel === fmt(200, 1), `interrupted keeps its moving time, got ${s1.timeLabel}`);
+  // timeLabel is fmt(scoredS(sec), 1) exactly as before this work: under the default
+  // timing mode (store/timing.ts DEFAULT_TIMING = 'raw') scoredS returns rawS (230),
+  // not movingS — the glyph removal changes nothing about the printed time.
+  assert(s1.timeLabel === fmt(230, 1), `interrupted keeps its scored (raw-mode) time, got ${s1.timeLabel}`);
   for (const r of rows) assert(!r.label.includes('‖') && !r.timeLabel.includes('‖'), `no ‖ in row ${r.index}`);
 });
 ```
@@ -183,10 +186,10 @@ a. Delete :1063-1064 (`const lastFixAgeS = ...` two lines) and :1072 (`const gps
    comment block :1066-1071 with:
 ```ts
   // virgin-cycle20 brief 08 (Nathan, clutter review): the rotating status
-  // slot is gone. virgin-cycle22 02 (Nathan 2026-10-05): the last status text,
-  // "GPS live", is gone too — the slot below only carries the 5 s permission
-  // flash (flashMsg) and is otherwise empty. The engine's route logic is
-  // untouched; it is simply not narrated here any more.
+  // slot is gone. virgin-cycle22 02 (Nathan 2026-10-05): the last status text
+  // (the fix-is-fresh label) is gone too — the slot below only carries the
+  // 5 s permission flash (flashMsg) and is otherwise empty. The engine's route
+  // logic is untouched; it is simply not narrated here any more.
 ```
    Check `now` (:1062 `stationary`) is still used — yes; do not remove it.
 b. :1434-1439: JSX comment -> `{/* virgin-cycle20 08 / virgin-cycle22 02: one quiet slot — the 5 s flash

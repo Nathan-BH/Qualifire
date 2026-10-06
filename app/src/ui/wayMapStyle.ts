@@ -160,3 +160,19 @@ export function patchMapStyle(style: unknown, opts: PatchStyleOptions): unknown 
   });
   return copy;
 }
+
+/** virgin-cycle22 05 (Nathan 2026-10-05, PNG fallback rung retired): the style the
+ * tile rung falls back to when the online style cannot be loaded at all (first open
+ * with no signal and nothing in MapLibre's own cache). One background layer in the
+ * frame colour, no sources, no glyphs, no sprite — loads instantly and offline, and
+ * every local GeoJSON source wayMapView.tsx mounts (route line, gates, trail, sector
+ * spans, selfs, rider) renders on top of it: the Google Maps / Waze offline look, an
+ * empty basemap with the line and the dot still there. No `name` on purpose (the
+ * ui-strings scanner would read a hyphenated name as rider prose). Pure. */
+export function offlineMapStyle(backgroundColor: string): unknown {
+  return {
+    version: 8,
+    sources: {},
+    layers: [{ id: 'background', type: 'background', paint: { 'background-color': backgroundColor } }],
+  };
+}

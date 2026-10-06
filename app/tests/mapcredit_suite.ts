@@ -3,8 +3,10 @@
  * button; the WORDING is a licence obligation and must not drift. Headless,
  * pure (mapCreditModel.ts has no RN import).
  */
-import { assert, test } from './lib.ts';
-import { creditFor, MAPLIBRE_CREDIT, PNG_CREDIT, CREDIT_AUTO_HIDE_MS } from '../src/ui/mapCreditModel.ts';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { assert, test, TESTS_DIR } from './lib.ts';
+import { creditFor, MAPLIBRE_CREDIT, CREDIT_AUTO_HIDE_MS } from '../src/ui/mapCreditModel.ts';
 
 test('mapcredit: tile-rung wording is byte-identical to the pre-brief-05 credit line and names all three projects', () => {
   const c = creditFor('maplibre');
@@ -17,12 +19,12 @@ test('mapcredit: tile-rung wording is byte-identical to the pre-brief-05 credit 
   assert(c.rows.every((r) => r.role.length > 0), 'every row carries a role');
 });
 
-test('mapcredit: PNG-rung wording is byte-identical and still credits OpenStreetMap contributors', () => {
-  const c = creditFor('png');
-  assert(c.label === 'Esri, HERE, Garmin, © OpenStreetMap contributors', `label drifted: ${c.label}`);
-  assert(c.label === PNG_CREDIT, 'creditFor("png").label must be PNG_CREDIT');
-  assert(c.rows.some((r) => r.source === '© OpenStreetMap contributors' && r.role === 'data'), 'OSM data row missing');
-  assert(c.rows.some((r) => r.source === 'Esri, HERE, Garmin' && r.role === 'imagery'), 'imagery row missing');
+test('mapcredit: one rung only — the Esri/HERE/Garmin imagery credit went with the PNG rung (virgin-cycle22 05)', () => {
+  const src = fs.readFileSync(path.join(TESTS_DIR, '..', 'src', 'ui', 'mapCreditModel.ts'), 'utf8');
+  for (const gone of ['Esri', 'HERE', 'Garmin', 'PNG_CREDIT', "'png'"]) {
+    assert(!src.includes(gone), `${gone} must be gone from mapCreditModel.ts: nothing displays that imagery any more`);
+  }
+  assert(src.includes("export type MapRung = 'maplibre';"), 'MapRung is the single tile rung');
 });
 
 test('mapcredit: auto-hide is long enough to read three rows and short enough to self-heal on the bike', () => {

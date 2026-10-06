@@ -3,15 +3,16 @@
  * the big slot carries the ticking LAP CLOCK, F1-style — whole-ride elapsed,
  * m:ss.d at 0.1 s, the majority of the screen, ink — NEVER tier-coloured
  * while ticking, no target/benchmark/delta anywhere near it (a live position
- * `P4` on the context row is a fact under D-028, like the handover chip —
- * not a benchmark; follow-up brief R10). At each gate the
- * completed sector's frozen time FLASHES over it in the earned tier colour
- * for ~2.5 s — masking, never pausing: the clock runs underneath and
- * reappears already honest. Estimated flashes grey/dashed/colourless;
- * interrupted keeps its earned tier + ‖. At the final gate the LAP result
- * takes the slot terminally (~1.1 s after the gate, cutting the sector flash
- * short per §2a.1), plus a static tower-position chip when a tower source
- * exists (B-28 UNBUILT on the real screen — see live/towerSource.ts).
+ * `P4` on the context row is a fact under D-028, like the lap flash —
+ * not a benchmark; follow-up brief R10). At each gate the completed sector's
+ * frozen time REPLACES the digits in its tier's text colour for ~2.5 s
+ * (virgin-cycle22 04: same clock typography, no box/label/delta — only the
+ * colour says the tier; estimated = dim ~time; interrupted keeps its earned
+ * tier, unmarked) — masking, never pausing: the clock runs underneath and
+ * reappears already honest. At the final gate the LAP time flashes the same
+ * way, LAP_HANDOVER_MS after that gate (cutting the sector flash short, §2a.1),
+ * for one hold — then the whole-ride clock runs again until STOP (the lap chip
+ * used to stay in the slot; the rank is revealed after STOP by the tower, R1).
  *
  * ONE render path (hard rule, §3.8): the clock is driven by a Timebase with
  * a rate multiplier —
@@ -24,14 +25,16 @@
  *    accelerated emulation of the race screen, never a fork.
  *
  * Honesty (D-008/D-013/D-021): no benchmark store yet, so from the engine
- * every clean sector/lap is NEUTRAL with a blank delta; estimated renders
- * dashed-grey ~time, delta suppressed; interrupted keeps earned tier + ‖.
+ * every clean sector/lap is NEUTRAL with a blank delta; estimated flashes
+ * a dim ~time; there is no delta anywhere in a flash (D-021); interrupted keeps its
+ * earned tier, unmarked.
  */
 import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import type { LiveEngineState, LiveSector } from '../live/engine';
-import { LiveBigChip, LiveLapChip, PosChip, StripSlot, Tier } from './chips';
+import { StripSlot, Tier } from './chips';
 import { useTheme } from './themeContext';
+import { tierTextColour } from './tierColour';
 import { scoredS } from '../store/timing';
 
 /* ---------------- timebase: one clock, two speeds ---------------- */
@@ -70,20 +73,14 @@ export function fmtClock(ms: number): string {
 
 /* ---------------- view model ---------------- */
 
-export interface BigChipModel {
-  tier: Tier;
-  waiting?: boolean;
-  lbl: string;
-  glyph: string;
-  time: string;
-  delta: string;
-  pb?: boolean;
-}
-
-export interface LapChipModel {
+/** A flash in the clock's slot (virgin-cycle22 04, Nathan 2026-10-04/05): the frozen time and the
+ * tier that colours it — nothing else. No label, no delta, no PB marker, no rank, no box: a flash is
+ * the lap clock's own digits in another colour for FLASH_HOLD_MS. Used for BOTH the sector flash at
+ * each gate (`time` = `m:ss.d`; `~m:ss` for an estimated sector, D-011/D-013; `– –` for a missed gate)
+ * and the lap flash at the finish (`time` = `m:ss`, no decimal, as the lap has always been shown). */
+export interface FlashModel {
   tier: Tier;
   time: string;
-  delta: string;
 }
 
 export interface StripSlotModel {
@@ -100,11 +97,14 @@ export interface LiveViewModel {
   /** small context line: current sector label, e.g. 'S3' (never a benchmark) */
   contextLabel: string;
   /** latest gate result — flashes over the clock for FLASH_HOLD_MS */
-  flash: BigChipModel | null;
+  flash: FlashModel | null;
   /** increments per gate fire; each change retriggers the flash */
   flashKey: number;
-  lap: LapChipModel | null;
-  /** tower position at the handover ('P3'); null = render nothing (B-28) */
+  /** the lap result once the FINISH gate scored it (one-shot) — flashes LAP_HANDOVER_MS after that
+   *  gate for FLASH_HOLD_MS, then the clock runs again until STOP */
+  lap: FlashModel | null;
+  /** tower position at the handover ('P3'); null = render nothing (B-28). virgin-cycle22 04: accepted, NOT rendered — the rank is revealed
+   *  after STOP by the tower (cycle11 R1); kept so the three producers need no signature change. */
   posChip: string | null;
   /** live position among the selfs on the map ('P4'); null/undefined =
    *  render nothing (follow-up R10). A fact, never a benchmark. */
@@ -114,6 +114,11 @@ export interface LiveViewModel {
 
 /** Hold of the gate flash over the clock. [ASSUMPTION §2 — tune on device] */
 export const FLASH_HOLD_MS = 2500;
+
+/** LAYOUT §2a: the lap flash follows the final gate's sector flash by this much (cutting it short,
+ * §2a.1) — the handover the screens used to time themselves (RecordScreen's own state + effect, until
+ * virgin-cycle22 04). Owned by the pane now, so every surface (RECORD, DEMO, REPLAY) sequences alike. */
+export const LAP_HANDOVER_MS = 1100;
 
 /** m:ss(.d) — sector times get one decimal, lap/estimated times none. */
 export function fmtSec(s: number, decimals: 0 | 1 = 0): string {
@@ -132,24 +137,18 @@ export type TierSource = (sectorIndex: number, timeS: number | null) => Tier;
 
 const NEUTRAL_SOURCE: TierSource = () => 'neutral';
 
-function bigFromSector(k: number, sec: LiveSector, tierOf: TierSource): BigChipModel {
-  const lbl = `S${k}`;
+function bigFromSector(k: number, sec: LiveSector, tierOf: TierSource): FlashModel {
   if (sec.kind === 'done') {
     if (sec.estimated) {
-      // D-011/D-013: gap-derived — ~raw, colourless, dashed, delta suppressed.
-      return { tier: 'est', lbl, glyph: '', time: `~${fmtSec(sec.rawS)}`, delta: '– –' };
+      // D-011/D-013: gap-derived — ~raw, no decimal; 'est' -> textDim, no verdict.
+      return { tier: 'est', time: `~${fmtSec(sec.rawS)}` };
     }
-    return {
-      // cycle 008: real tier from the ghost history, via the injected source
-      tier: tierOf(k, scoredS(sec)),
-      lbl,
-      glyph: sec.interrupted ? '‖' : '',
-      time: fmtSec(scoredS(sec) ?? sec.rawS, 1),
-      delta: '', // D-021: no reference on this track yet → delta blank
-    };
+    // cycle 008: real tier from the ghost history, via the injected source.
+    // virgin-cycle22 04: the time alone; no label row, nothing to compare against (D-021: no reference yet).
+    return { tier: tierOf(k, scoredS(sec)), time: fmtSec(scoredS(sec) ?? sec.rawS, 1) };
   }
-  // 'missed' (skipped gate / offroute): no data — grey, no numbers.
-  return { tier: 'est', lbl, glyph: '', time: '– –', delta: '' };
+  // 'missed' (skipped gate / offroute): no data — dim dashes.
+  return { tier: 'est', time: '– –' };
 }
 
 export function viewModelFromEngine(
@@ -161,13 +160,14 @@ export function viewModelFromEngine(
 ): LiveViewModel {
   const strip: StripSlotModel[] = st.sectors.map((sec, i) => {
     const label = `S${i + 1}`;
+    // virgin-cycle22 02 (Nathan 2026-10-04): no pause mark (U+2016) on an interrupted sector; the flag only drives scoring.
     switch (sec.kind) {
       case 'done':
         return sec.estimated
           ? { tier: 'est' as Tier, label: `${label} ~`, time: `~${fmtSec(sec.rawS)}` }
           : {
               tier: tierOf(i + 1, scoredS(sec)),
-              label: sec.interrupted ? `${label} ‖` : label,
+              label,
               time: fmtSec(scoredS(sec) ?? sec.rawS), // frozen m:ss — decimal lives in the flash
             };
       case 'current':
@@ -180,24 +180,22 @@ export function viewModelFromEngine(
   });
 
   const lastDone = st.lastDone;
-  const flash: BigChipModel | null =
+  const flash: FlashModel | null =
     lastDone === null || st.sectors[lastDone - 1] === undefined
       ? null // no gate yet — the clock owns the slot
       : bigFromSector(lastDone, st.sectors[lastDone - 1], tierOf);
 
-  let lap: LapChipModel | null = null;
+  let lap: FlashModel | null = null;
   if (st.lap !== null) {
     lap = st.lap.estimated
       ? {
           tier: 'est',
           time: st.lap.rawS !== null ? `~${fmtSec(st.lap.rawS)}` : '– –',
-          delta: '– –',
         }
       : {
           // lap tier: sector index 0 is the convention for "the whole lap"
           tier: tierOf(0, scoredS(st.lap) ?? st.lap.rawS ?? null),
           time: fmtSec(scoredS(st.lap) ?? st.lap.rawS ?? 0),
-          delta: '', // no lap reference yet (D-021)
         };
   }
 
@@ -237,6 +235,28 @@ function LapClock({ tb, clockSize }: { tb: Timebase | null; clockSize?: number }
   );
 }
 
+/** A flash (virgin-cycle22 04): a frozen time — the completed sector's at a gate, the lap's at the
+ * finish — set EXACTLY like the lap clock it masks (same clockStyles.clock, same clockSize override)
+ * and coloured by the shared tier text colour. One Text: no box, no frame, no fill, no label, no
+ * delta, no marker, no rank; identical shape for every tier and both themes. (The source test greps
+ * this component for box/fill words — keep this comment free of them.) The "Sector colours" setting is the live MAP's
+ * (D8, 2026-10-05); it is not read here and must never be. Nathan 2026-10-04: "sector time in tier
+ * colour on the timer digits"; 2026-10-05: the finish flashes only the lap time the same way. */
+function LiveFlash({ time, tier, clockSize }: { time: string; tier: Tier; clockSize?: number }) {
+  const { t } = useTheme();
+  return (
+    <Text
+      style={[
+        clockStyles.clock,
+        clockSize != null ? { fontSize: clockSize } : null,
+        { color: tierTextColour(tier, t) },
+      ]}
+    >
+      {time}
+    </Text>
+  );
+}
+
 const clockStyles = StyleSheet.create({
   clock: {
     fontSize: 92,
@@ -249,12 +269,11 @@ const clockStyles = StyleSheet.create({
 
 /* ---------------- the pane ---------------- */
 
-/** The pane. `showLap` gates the lap result so callers can honour the §2a
- * sequencing (~1.1 s after the final gate, with the lap earcon); when it
- * lands it cuts any running sector flash short (§2a.1) and is terminal. */
-export function LiveSectorPane({
-  vm, showLap = true, clockSize,
-}: { vm: LiveViewModel; showLap?: boolean; clockSize?: number }) {
+/** The pane. Owns both flash timers: a sector
+ * flash at each gate fire (FLASH_HOLD_MS), and at the finish the lap flash LAP_HANDOVER_MS after the
+ * final gate (LAYOUT §2a — it cuts the sector flash short, §2a.1) for one FLASH_HOLD_MS; then the slot
+ * is the running clock's again (virgin-cycle22 04 — the lap result used to be fixed in the slot). */
+export function LiveSectorPane({ vm, clockSize }: { vm: LiveViewModel; clockSize?: number }) {
   const { t } = useTheme();
   const [flashOn, setFlashOn] = useState(false);
 
@@ -270,7 +289,27 @@ export function LiveSectorPane({
     return () => clearTimeout(id);
   }, [vm.flashKey]);
 
-  const lapTakesSlot = vm.lap !== null && showLap; // terminal — the counter never resumes
+  // Finish: the lap is scored once (engine phase 'finished'); LAP_HANDOVER_MS after that gate the lap
+  // flash takes the slot from the sector flash (which does not come back), holds FLASH_HOLD_MS, then
+  // the whole-ride clock runs again until STOP. Nathan 2026-10-05: same look as the sector flash.
+  const [lapFlashOn, setLapFlashOn] = useState(false);
+  const lapScored = vm.lap !== null;
+  useEffect(() => {
+    if (!lapScored) {
+      setLapFlashOn(false);
+      return;
+    }
+    let hold: ReturnType<typeof setTimeout> | null = null;
+    const handover = setTimeout(() => {
+      setFlashOn(false);
+      setLapFlashOn(true);
+      hold = setTimeout(() => setLapFlashOn(false), FLASH_HOLD_MS);
+    }, LAP_HANDOVER_MS);
+    return () => {
+      clearTimeout(handover);
+      if (hold) clearTimeout(hold);
+    };
+  }, [lapScored]);
 
   return (
     <View style={paneStyles.pane}>
@@ -283,25 +322,10 @@ export function LiveSectorPane({
         ) : null}
       </Text>
       <View style={paneStyles.bigSlot}>
-        {lapTakesSlot && vm.lap ? (
-          <View style={paneStyles.lapRow}>
-            <View style={{ flex: 1 }}>
-              <LiveLapChip tier={vm.lap.tier} time={vm.lap.time} delta={vm.lap.delta} />
-            </View>
-            {/* static position chip, no new earcon (Nathan 2026-08-15);
-                null on the real screen until B-28 → nothing renders */}
-            {vm.posChip ? <PosChip label={vm.posChip} /> : null}
-          </View>
+        {lapFlashOn && vm.lap ? (
+          <LiveFlash time={vm.lap.time} tier={vm.lap.tier} clockSize={clockSize} />
         ) : flashOn && vm.flash ? (
-          <LiveBigChip
-            tier={vm.flash.tier}
-            waiting={vm.flash.waiting}
-            lbl={vm.flash.lbl}
-            glyph={vm.flash.glyph}
-            time={vm.flash.time}
-            delta={vm.flash.delta}
-            pb={vm.flash.pb}
-          />
+          <LiveFlash time={vm.flash.time} tier={vm.flash.tier} clockSize={clockSize} />
         ) : (
           <LapClock tb={vm.clock} clockSize={clockSize} />
         )}
@@ -326,6 +350,5 @@ const paneStyles = StyleSheet.create({
   },
   // Fixed-height slot: clock / flash / lap swap with zero layout jump.
   bigSlot: { minHeight: 190, justifyContent: 'center', alignSelf: 'stretch' },
-  lapRow: { flexDirection: 'row', alignItems: 'center', gap: 12, alignSelf: 'stretch' },
   strip: { flexDirection: 'row', gap: 10, justifyContent: 'center', marginTop: 24 },
 });

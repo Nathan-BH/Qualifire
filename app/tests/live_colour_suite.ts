@@ -583,8 +583,10 @@ test('virgin-cycle20 07: RecordScreen wires the real lap tier and the session ex
   assert(!src.includes('tierOfLive'), 'cycle11 R1 lap-neutral override must be gone (tierOfLive)');
   assert(src.includes('liveTierFor(live.track, sectorIndex, timeS, session?.rideId)'), 'tierOf delegates to liveTierFor with the session exclusion');
   assert(!src.includes('lapValues(live.track)') && !src.includes('sectorValues(live.track, sectorIndex)'), 'no unexcluded live tierOf history read survives');
-  // the cut from the sector flash to the lap chip is unchanged (LAYOUT §2a)
-  assert(src.includes('setTimeout(() => setShowLap(true), 1100)'), 'the ~1.1 s lap handover delay is untouched');
+  // the cut from the sector flash to the lap flash is unchanged (LAYOUT §2a) — since virgin-cycle22 04
+  // the pane owns the 1.1 s (LAP_HANDOVER_MS in liveView.tsx), RecordScreen no longer times it
+  const lv = nodeFs.readFileSync(path.resolve(TESTS_DIR, '..', 'src', 'ui', 'liveView.tsx'), 'utf8');
+  assert(lv.includes('export const LAP_HANDOVER_MS = 1100;') && lv.includes('}, LAP_HANDOVER_MS);'), 'the ~1.1 s lap handover delay is untouched (pane-owned)');
 });
 
 // ------------------------------------------------- virgin-cycle20 brief 10 (2026-10-02)

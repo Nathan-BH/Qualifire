@@ -201,10 +201,10 @@ export default function PreviewScreen() {
     contextLabel: lap || curSlot === -1 ? '' : `S${curSlot + 1}`,
     flash:
       gateIdx > 0
-        ? { tier: st.tier, lbl: st.lbl, glyph: st.glyph, time: st.time, delta: st.delta, pb: st.pb }
+        ? { tier: st.tier, time: st.time }
         : null,
     flashKey: gateIdx,
-    lap: lap ? { tier: lap.tier, time: lap.t, delta: lap.d } : null,
+    lap: lap ? { tier: lap.tier, time: lap.t } : null,
     posChip: lap ? sc.posChip : null, // scrappy (estimated) carries null — no rank, no chip
     strip: st.strip.map((k, i) => ({
       tier: SLOT_TIER[k],

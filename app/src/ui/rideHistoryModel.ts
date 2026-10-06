@@ -238,10 +238,11 @@ export function buildSectorRows(
           timeLabel: `~${fmt(sec.rawS)}`, tier: 'est', avgLabel,
         };
       }
-      // clean or interrupted, with a real time (store/timing.ts).
+      // clean or interrupted, with a real time (store/timing.ts). virgin-cycle22 02
+      // (Nathan 2026-10-04): no pause mark (U+2016) on an interrupted sector any more;
+      // the flag still drives scoring (scoredS) and sector colours, the rider is not told.
       const tier = tierFor(v, h);
-      const label = sec.quality === 'interrupted' ? `S${sec.index} ‖` : `S${sec.index}`;
-      return { index: sec.index, label, timeLabel: fmt(v, 1), tier, avgLabel };
+      return { index: sec.index, label: `S${sec.index}`, timeLabel: fmt(v, 1), tier, avgLabel };
     });
 }
 

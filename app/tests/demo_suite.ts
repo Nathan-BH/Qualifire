@@ -186,21 +186,48 @@ test('demoModel: after the reveal, TENTH RIDE plays the end mark by itself; SECO
   assert(demoPostReveal('first') === 'card', `demoPostReveal('first') expected 'card', got ${demoPostReveal('first')}`);
 });
 
-test('demoModel: the lap chip is neutral at the line (R5)', () => {
+test('virgin-cycle22 08: the demo lap flashes its REAL tier at the line (fixture: green), time m:ss — R5 neutral retired as on the real screen (cycle20 07)', () => {
   const script = buildDemoScript();
   const T = 5000;
   const before = demoLiveViewModel(script, 835, T);
   assert(before.lap === null, `at 835 (before the line) expected lap === null, got ${JSON.stringify(before.lap)}`);
 
   const atLine = demoLiveViewModel(script, 836, T);
-  assert(atLine.lap !== null, 'at 836 (the line) expected a lap chip');
-  assert(atLine.lap!.tier === 'neutral', `expected tier 'neutral', got ${atLine.lap!.tier}`);
+  assert(atLine.lap !== null, 'at 836 (the line) expected a lap');
+  assert(atLine.lap!.tier === 'green', `expected the fixture's real lap tier 'green', got ${atLine.lap!.tier}`);
   assert(atLine.lap!.time === '13:56', `expected time '13:56', got ${atLine.lap!.time}`);
+  assert(!('delta' in atLine.lap!), 'the lap is a FlashModel: tier + time only');
   assert(atLine.posChip === null, `expected posChip null, got ${atLine.posChip}`);
   assert(atLine.livePos === null, `expected livePos null, got ${atLine.livePos}`);
 
   const rollOut = demoLiveViewModel(script, 900, T);
-  assert(rollOut.lap !== null && rollOut.lap.tier === 'neutral', 'roll-out (900) should keep the neutral lap chip');
+  assert(rollOut.lap !== null && rollOut.lap.tier === 'green', 'roll-out (900) keeps the lap (the pane decides how long it flashes)');
+  // SECOND RIDE depth (1 prior lap): the lap tier follows demoTier against that window, never a forced neutral
+  const second = demoLiveViewModel(script, 836, T, null, 1);
+  assert(second.lap !== null && second.lap.tier === demoTier(0, 836, 1) && second.lap.tier !== 'neutral', `second-ride lap tier = demoTier(0, 836, 1), got ${second.lap?.tier}`);
+});
+
+test('virgin-cycle22 08: the demo gate flash follows the fixture — flashKey = gates done, flash = the last done sector in m:ss.d and its tier; roll-out long enough for the lap flash at 25x', () => {
+  const script = buildDemoScript();
+  const T = 5000;
+  const start = demoLiveViewModel(script, 100, T);
+  assert(start.flash === null && start.flashKey === 0, `before gate 1: no flash, flashKey 0, got ${JSON.stringify([start.flash, start.flashKey])}`);
+  const one = demoLiveViewModel(script, 185, T);
+  assert(one.flashKey === 1 && one.flash !== null && one.flash.tier === 'purple' && one.flash.time === '3:05.0', `at gate 1: purple 3:05.0, got ${JSON.stringify(one.flash)} key ${one.flashKey}`);
+  const two = demoLiveViewModel(script, 400, T);
+  assert(two.flashKey === 2 && two.flash !== null && two.flash.tier === 'green' && two.flash.time === '3:27.0', `at 400 (2 gates): green 3:27.0, got ${JSON.stringify(two.flash)}`);
+  const three = demoLiveViewModel(script, 700, T);
+  assert(three.flashKey === 3 && three.flash !== null && three.flash.tier === 'yellow' && three.flash.time === '3:57.0', `at 700 (3 gates): yellow 3:57.0, got ${JSON.stringify(three.flash)}`);
+  const line = demoLiveViewModel(script, 836, T);
+  assert(line.flashKey === 4 && line.flash !== null && line.flash.tier === 'green' && line.flash.time === '3:27.0', `at the line: S4 green 3:27.0, got ${JSON.stringify(line.flash)}`);
+  // the strip keeps m:ss (no decimal) — the decimal lives in the flash, as on the real screen
+  assert(line.strip[0].time === '3:05', `strip keeps m:ss, got ${line.strip[0].time}`);
+  // depth: SECOND RIDE (1 prior lap) flashes with the same depth as its strip
+  const second = demoLiveViewModel(script, 400, T, null, 1);
+  assert(second.flash !== null && second.flash.tier === second.strip[1].tier, 'flash tier == strip tier for the same sector and depth');
+  // DEMO_ROLL_OUT_S: at the fastest rate the pane must stay up for the 1.1 s handover + 2.5 s lap flash + ~1 s of clock
+  const fastest = Math.max(...DEMO_RATES);
+  assert(DEMO_ROLL_OUT_S / fastest >= 4.6, `DEMO_ROLL_OUT_S ${DEMO_ROLL_OUT_S} gives ${(DEMO_ROLL_OUT_S / fastest).toFixed(1)} real s at ${fastest}x; need >= 4.6`);
 });
 
 test('demoModel: the strip is the pinned fixture', () => {

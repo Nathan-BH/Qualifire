@@ -16,3 +16,13 @@ Builds on round 1: `../round1/ideas.md`.
 ## 2. Is Expo free for good?
 
 > "is there a limit to expo being free, will i hit a paywall eventually, good to know in advance ?"
+
+---
+
+## 3. Status update (2026-10-06)
+
+> Today I created a Google Play developer account successfully.
+
+> To publish apps, I need to finish setting up the developer account, which includes: verify my identity, verify that I have access to an Android mobile device, verify my contact phone number.
+
+Nathan will do these three verification steps on another day. Nothing else is planned until then.

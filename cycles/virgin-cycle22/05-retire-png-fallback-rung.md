@@ -13,6 +13,31 @@ mapCreditModel.ts, metro.seedRedirect.js, store/seed.ts and every test that name
 anchor below was re-verified against the current tree (D9 is not trusted blindly — see § D9 errata).
 Nothing is executed yet.
 
+**Plan-tier consistency fix (Fable, 2026-10-06):** step 3's header-comment replacement for
+mapCreditModel.ts used to contain "Esri/HERE/Garmin", which step 1c's own test forbids in that file;
+reworded to "satellite-imagery credit". The Verification grep over app/tests also expected 0 hits although
+the new mapcredit test's `gone` list contains those words; expectation corrected. No intent change.
+
+**Plan-tier consistency fix 2 (Fable, 2026-10-06, audit after brief 04's stop):** step 1b's new zoom-bar
+test and the Verification grep expected `st.zoomBar` twice after this brief ("one use + the style
+definition") — but the style definition is the bare key `zoomBar:` and never matches `st.zoomBar`;
+today's two hits are the two `<View style={st.zoomBar}>` uses, so after the PNG bar goes there is
+exactly ONE. Both expectations corrected to 1 (brief 06's pre-flight too). No intent change.
+
+**Plan-tier rulings 3-5 (Fable, 2026-10-06, after the executor's stop at step 6 with 3 FAILs; all three
+were brief defects, applied in the tree by Plan):**
+(3) Step 5 missed that `ui-strings.allow.json` also lists the two `src/ui/mapCreditModel.ts` [literal]
+entries `"Esri, HERE, Garmin"` and `"Esri, HERE, Garmin, © OpenStreetMap contributors"` (the PNG credit
+row + `PNG_CREDIT`), which step 3 deletes -> STALE. Both removed. Neither is `legacy: true`, so the
+accounting is unchanged: `legacyCount` 33 -> 32 (only `MAP IMAGE FAILED` was legacy). Five entries
+removed in total, one added. (4) The hygiene test (`ui_strings_suite.ts` "header and entry hygiene")
+requires entries sorted by file, kind, text with plain code-point comparison; "append at the end" was
+wrong. `map unavailable` goes between `OFF ROUTE · >120 m from the route line` and `waiting for GPS`
+(uppercase sorts before lowercase). (5) The new zoom-bar test's `gone` item
+`"require('../../assets/ways/"` is itself matched by `easignore_suite.ts` "virgin-cycle19 02: no relative
+import/require in app code resolves outside app/" (regex over every test file). The literal is split
+(`"require('" + '../../assets/ways/'`) so the scanner does not see a require; the older test is untouched.
+
 **Tier:** Execute = Sonnet, alone. STOP-ON-AMBIGUITY (EXECUTOR-RULES.md): any quoted anchor not found,
 any test failing for a reason this brief does not name, any extra tsc error -> stop and report verbatim.
 Never rule yourself.
@@ -123,7 +148,8 @@ OUT (do not touch): `app/assets/ways/*` (files stay on disk, see decision 3), `a
    mounted and stops.
 4. `mapCreditModel.ts` knows one rung; the OSM/OpenMapTiles/OpenFreeMap wording is byte-identical;
    no `Esri`/`HERE`/`Garmin` string remains anywhere in app/src (the imagery is no longer shown).
-5. Allow-list: three entries removed, `legacyCount` 33 -> 32, one entry added (`map unavailable`).
+5. Allow-list: five entries removed (three wayMapView.tsx texts, two mapCreditModel.ts literals), `legacyCount`
+   33 -> 32 (only `MAP IMAGE FAILED` was legacy), one entry added (`map unavailable`) in sorted position.
 6. `ASSETS`/`assetFor` and the `ways.json` import are unchanged; `bundledForSeedMode(SEED_MODE, ...)`
    appears exactly once in the file.
 
@@ -177,7 +203,7 @@ b. `app/tests/waymap_suite.ts`:
        const src = fs.readFileSync(
          path.join(TESTS_DIR, '..', 'src', 'ui', 'wayMapView.tsx'), 'utf8');
        const bars = src.match(/st\.zoomBar\b/g) ?? [];
-       assert(bars.length === 2, `st.zoomBar must appear exactly twice (one use + the style definition), got ${bars.length}`);
+       assert(bars.length === 1, `st.zoomBar must appear exactly once (the MapLibre bar; the style definition is the bare key zoomBar:), got ${bars.length}`);
        const firstZoomBar = src.indexOf('<View style={st.zoomBar}>');
        assert(firstZoomBar >= 0, 'the MapLibre zoom bar <View style={st.zoomBar}> not found');
        const creditTag = src.indexOf('<Credit rung="maplibre"', firstZoomBar);
@@ -186,7 +212,8 @@ b. `app/tests/waymap_suite.ts`:
        assert(mapLibreResets.length === 1,
          `expected exactly one onPress={resetNorth} in the MapLibre zoom bar, got ${mapLibreResets.length}`);
        // Code tokens only (history comments may still say "PNG rung", see the file header).
-       for (const gone of ['PngWayMap', 'setImgFailed', 'setMapFailed', 'onMapFailed', 'const IMAGES', 'MAP IMAGE FAILED', 'needs the tile map', "require('../../assets/ways/", 'rung="png"', 'cropFor(', 'gateTickPx(', 'nearestOnPath(', 'LayoutChangeEvent']) {
+       // (the asset path is concatenated so easignore_suite's relative-require scanner does not read this line as a require).
+       for (const gone of ['PngWayMap', 'setImgFailed', 'setMapFailed', 'onMapFailed', 'const IMAGES', 'MAP IMAGE FAILED', 'needs the tile map', "require('" + '../../assets/ways/', 'rung="png"', 'cropFor(', 'gateTickPx(', 'nearestOnPath(', 'LayoutChangeEvent']) {
          assert(!src.includes(gone), `PNG rung remnant in wayMapView.tsx: ${gone}`);
        }
        assert((src.match(/bundledForSeedMode\(\s*SEED_MODE\b/g) ?? []).length === 1, 'ASSETS is the one remaining bundledForSeedMode(SEED_MODE, ...) site');
@@ -264,7 +291,10 @@ export function offlineMapStyle(backgroundColor: string): unknown {
 
 **Step 3 — `app/src/ui/mapCreditModel.ts`.**
 - Header comment: replace `* (OpenStreetMap / OpenMapTiles /\n * OpenFreeMap on the tile rung, Esri/HERE/Garmin + OSM on the PNG rung)` with
-  `* (OpenStreetMap / OpenMapTiles /\n * OpenFreeMap on the tile rung — the PNG rung and its Esri/HERE/Garmin credit were\n * retired in virgin-cycle22 05)`.
+  `* (OpenStreetMap / OpenMapTiles /\n * OpenFreeMap on the tile rung — the PNG rung and its satellite-imagery credit were\n * retired in virgin-cycle22 05)`.
+  (Plan fix 2026-10-06: the earlier wording of this replacement named the three imagery providers,
+  which the step 1c test forbids anywhere in mapCreditModel.ts, comments included. After this step
+  the words `Esri`, `HERE`, `Garmin`, `PNG_CREDIT` and `'png'` must not appear in the file at all.)
 - `export type MapRung = 'maplibre' | 'png';` -> `export type MapRung = 'maplibre';`
 - Delete the block `/** PNG fallback rung. Drawn as an overlay ... */\nexport const PNG_CREDIT = 'Esri, HERE, Garmin, © OpenStreetMap contributors';` (:16-19, four lines).
 - Delete the `png: { ... },` entry of `CREDITS` (:33-39, seven lines). `MAPLIBRE_CREDIT`, the maplibre rows and `creditFor` stay byte-identical.
@@ -418,8 +448,13 @@ comments (header lines ~10 and ~68, the props docs, the layer comments) — fine
 
 **Step 5 — `app/tests/ui-strings.allow.json`.**
 - Remove the three whole objects for `"file": "src/ui/wayMapView.tsx"` with `"text"`: `"MAP IMAGE FAILED — drawing the line"` (the one with `"legacy": true, "violates": ["em-dash"]`), `"map needs the tile map"`, `"place map needs the tile map"`. Keep the JSON valid (neighbouring commas).
-- Header: `"legacyCount": 33` -> `"legacyCount": 32` (one legacy entry removed; the suite's legacy-count rule).
-- Append ONE entry at the end of `"entries"` (after the last object, keep the array valid):
+- Remove the two whole objects for `"file": "src/ui/mapCreditModel.ts"`, `"kind": "literal"`: `"Esri, HERE, Garmin"`
+  and `"Esri, HERE, Garmin, © OpenStreetMap contributors"` (step 3 deletes both strings; neither is legacy).
+- Header: `"legacyCount": 33` -> `"legacyCount": 32` (one legacy entry removed; the suite's legacy-count rule;
+  `legacyCount` must equal the number of objects carrying `"legacy": true`, nothing else).
+- Insert ONE entry in SORTED position (the hygiene test orders by file, kind, text with plain `<` on the
+  strings, so uppercase sorts before lowercase): directly after the `src/ui/wayMapView.tsx` / `text` /
+  `OFF ROUTE · >120 m from the route line` object and before the `waiting for GPS` object:
 ```json
     {
       "file": "src/ui/wayMapView.tsx",
@@ -431,8 +466,9 @@ comments (header lines ~10 and ~68, the props docs, the layer comments) — fine
     }
 ```
 15 chars, no em dash, not a banner (it is the existing `st.badge` slot). Report in your final message:
-"removed 3 entries (MAP IMAGE FAILED, map needs the tile map, place map needs the tile map), legacyCount
-33->32, added 1 entry: wayMapView.tsx text 'map unavailable'".
+"removed 5 entries (MAP IMAGE FAILED, map needs the tile map, place map needs the tile map, and the two
+mapCreditModel.ts Esri/HERE/Garmin literals), legacyCount 33->32, added 1 entry: wayMapView.tsx text
+'map unavailable'".
 
 **Step 6 — run everything.** Tests: every test from Step 1e now passes; totals = baseline **−1 (mapcredit
 PNG test replaced 1:1 = 0) +1 (waymapstyle) = baseline + 1** (e.g. 860 / 857 / 0 / 3 on the post-04 tree; 857 / 854 / 0 / 3 if only 01-03 landed;
@@ -444,13 +480,16 @@ modifications.
 Step 1e is the failed-before record. To re-prove later: `cp app/src/ui/wayMapView.tsx
 safe_to_delete/wayMapView.c22-05.bak`, re-insert a line `// const IMAGES = 1; PngWayMap` anywhere, run
 (the zoom-bar test FAILs on the remnant check), restore with `cp` and `cmp`.
+Done by Plan 2026-10-06: 1 FAIL `PNG rung remnant in wayMapView.tsx: PngWayMap` (860/856/1/3), restored
+cmp-identical, suite back to 860 / 857 / 0 / 3.
 
 ## Verification (the inspector reruns all of it)
 - Tests 0 FAIL with counts; tsc exit 0.
-- `grep -c "st.zoomBar" app/src/ui/wayMapView.tsx` -> 2 (one use, one style definition).
+- `grep -c "st.zoomBar" app/src/ui/wayMapView.tsx` -> 1 (the one remaining use; the style key is `zoomBar:` without the `st.` prefix and does not match).
 - `grep -n "const id = props.wayId;" app/src/ui/wayMapView.tsx` -> 1 hit.
-- `grep -rn "Esri\|PNG_CREDIT\|'png'" app/src app/tests --include=*.ts --include=*.tsx` -> 0 hits
-  (the only pre-brief hits were mapCreditModel.ts, wayMapView.tsx, mapcredit_suite.ts, waymap_suite.ts).
+- `grep -rn "Esri\|PNG_CREDIT\|'png'" app/src --include=*.ts --include=*.tsx` -> 0 hits; the same grep over
+  `app/tests` -> only the `gone` list line of the new mapcredit_suite.ts test (which names them on purpose)
+  (the pre-brief hits were mapCreditModel.ts, wayMapView.tsx, mapcredit_suite.ts, waymap_suite.ts).
 - `grep -rn "assets/ways/.*\.png\|Morning.png" app/src` -> 0 hits (the PNGs are no longer required by any
   module; `app/metro.seedRedirect.js` and `tests/seedstubs_suite.ts` still name them — expected, untouched).
 - `ls app/assets/ways` -> the four files are still there (decision 3); `git status` shows none of them.
@@ -460,7 +499,8 @@ safe_to_delete/wayMapView.c22-05.bak`, re-insert a line `// const IMAGES = 1; Pn
 
 ## Added visible text
 `map unavailable` (wayMapView.tsx, text, 15 chars — the ML === null frame). Removed: `MAP IMAGE FAILED —
-drawing the line` (legacy, em-dash), `map needs the tile map`, `place map needs the tile map`. Unchanged:
+drawing the line` (legacy, em-dash), `map needs the tile map`, `place map needs the tile map`, and the two
+mapCreditModel.ts literals `Esri, HERE, Garmin` / `Esri, HERE, Garmin, © OpenStreetMap contributors`. Unchanged:
 `OFF ROUTE · >120 m from the route line`, `waiting for GPS`, `FIT`, `ME`, the credit strings.
 
 ## What changes on the phone / what does not

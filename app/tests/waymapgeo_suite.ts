@@ -8,7 +8,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { assert, loadJson, test, TESTS_DIR } from './lib.ts';
 import {
-  bearingBetween, cameraTargetFor, gatesFeatureCollection,
+  bearingBetween, cameraTargetFor, fitMeNextMode, gatesFeatureCollection,
   gateTicksFeatureCollection, metresBetween, riderFeature, rotateEnabledFor, wayBounds,
   wayLineFeature, waySplitFeatures, sectorSpansFeatureCollection, trailBounds,
   placeFeatureCollection, placeBounds,
@@ -578,5 +578,16 @@ test('routemapgeo/routeMapView: no hardcoded Leuven literal (4.68/50.85) survive
   for (const [name, src] of [['wayMapGeo.ts', geoSrc], ['wayMapView.tsx', viewSrc]] as const) {
     assert(!src.includes('4.68'), `${name}: found the old Leuven-fallback longitude literal (4.68)`);
     assert(!src.includes('50.85'), `${name}: found the old Leuven-fallback latitude literal (50.85)`);
+  }
+});
+
+test('virgin-cycle22 06: fitMeNextMode — the one FIT/ME button names the ACTION of the next tap, never the state', () => {
+  // Nathan 2026-10-05: follow -> "FIT" (tap fits the way); fit or free (after a drag/pinch) -> "ME"
+  // (tap follows the rider); browse surfaces have no rider, so always FIT.
+  assert(fitMeNextMode('follow', true) === 'fit', 'following -> next tap fits (label FIT)');
+  assert(fitMeNextMode('fit', true) === 'follow', 'fitted -> next tap follows (label ME)');
+  assert(fitMeNextMode('free', true) === 'follow', 'after a gesture -> next tap follows (label ME)');
+  for (const m of ['follow', 'fit', 'free'] as const) {
+    assert(fitMeNextMode(m, false) === 'fit', `browse surface (${m}) -> plain FIT`);
   }
 });

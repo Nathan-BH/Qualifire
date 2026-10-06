@@ -142,11 +142,13 @@ export function replaySectorColours(all: readonly (string | null)[], gatesDone: 
 /** The LiveSectorPane model (DemoScreen's demoLiveViewModel, but from real stored rows):
  * strip[k] = sectorRows[k] tier/timeLabel once k+1 <= gatesDone ('none', no time, current
  * = k === gatesDone otherwise); contextLabel 'S<gatesDone+1>' until all done then '';
- * lap = every gate done AND r.finishMs !== null ? {tier: 'neutral', time: lapLabel, delta: ''} : null;
- * flash null, flashKey 0, posChip null, livePos passed through, clock = tb. */
+ * lap = every gate done AND r.finishMs !== null ? {tier: lapTier (the ride's real lap tier from the
+ * detail model; default 'neutral'), time: lapLabel} : null; flash = the last crossed gate's row (tier +
+ * timeLabel, m:ss.d / ~m:ss) or null before gate 1, flashKey = gatesDone (virgin-cycle22 08 — the pane
+ * flashes it exactly as on the bike); posChip null, livePos passed through, clock = tb. */
 export function replayLiveViewModel(
   r: ReplayRider, sectorRows: readonly SectorRowModel[], lapLabel: string,
-  clockS: number, tb: Timebase, livePos: string | null,
+  clockS: number, tb: Timebase, livePos: string | null, lapTier: Tier = 'neutral',
 ): LiveViewModel {
   const gatesDone = replayGatesDone(r, clockS);
   const totalSectors = sectorRows.length > 0 ? sectorRows.length : r.gateMs.length - 1;
@@ -161,12 +163,18 @@ export function replayLiveViewModel(
   }
   const allDone = gatesDone >= totalSectors;
   const contextLabel = allDone ? '' : `S${gatesDone + 1}`;
-  const lap = allDone && r.finishMs !== null ? { tier: 'neutral' as Tier, time: lapLabel, delta: '' } : null;
+  const lap = allDone && r.finishMs !== null ? { tier: lapTier, time: lapLabel } : null;
+  // virgin-cycle22 08: the flash is the last crossed gate's own row — the same tier rule (tierFor via
+  // the detail model) and the same m:ss.d label the SECTORS list shows; no second implementation.
+  const lastRow = gatesDone >= 1 ? sectorRows[gatesDone - 1] : undefined;
+  // A sector the ride never traversed has no time to show (its label is `– did not traverse –`): no flash,
+  // the clock just keeps running (Nathan 2026-10-06: never show the rider a failure). Real labels carry digits.
+  const flash = lastRow && /\d/.test(lastRow.timeLabel) ? { tier: lastRow.tier as Tier, time: lastRow.timeLabel } : null;
   return {
     clock: tb,
     contextLabel,
-    flash: null,
-    flashKey: 0,
+    flash,
+    flashKey: gatesDone,
     lap,
     posChip: null,
     livePos,

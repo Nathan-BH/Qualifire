@@ -14,6 +14,14 @@ already runs the one shared tier rule `tierFor` from colourModel.ts); DEMO from 
 `demoTier`. Written by the Plan tier (Fable) on 2026-10-05 after reading the code; anchors verified
 against the tree (HEAD 38002ff + uncommitted). Nothing is executed yet.
 
+**Plan-tier consistency fix (Fable, 2026-10-06):** step 1c's recordflow test used to require the
+substring `time: sectorRows[gatesDone - 1].timeLabel` while step 4c writes the flash through a `lastRow`
+local (`time: lastRow.timeLabel`); the test now pins the `lastRow` form. Step 3's DemoScreen comment
+anchors (a, c) were quoted as single lines although they wrap over two comment lines in the file; now
+quoted as they are. Expected values of the demo tests were re-derived on the current tree
+(demoTier: S1 purple, S2 green, S3 yellow, S4 green, lap green; lap with 1 prior lap = purple, not
+neutral; fmt(185,1) = 3:05.0, fmt(207,1) = 3:27.0, fmt(237,1) = 3:57.0) — they hold. No intent change.
+
 **Tier:** Execute = Sonnet, alone. STOP-ON-AMBIGUITY (EXECUTOR-RULES.md): any quoted anchor not found,
 any test failing for a reason this brief does not name, any extra tsc error -> stop and report verbatim.
 
@@ -131,7 +139,8 @@ DEMO/REPLAY maps and their `sectorColours`; `ui/preview/`; any allow-list entry 
    3:27.0 / yellow 3:57.0 / green 3:27.0, lap green 13:56.
 2. `replayLiveViewModel(r, sectorRows, lapLabel, clockS, tb, livePos, lapTier: Tier = 'neutral')`:
    `flashKey = gatesDone`; `flash = gatesDone >= 1 && sectorRows[gatesDone - 1] ? { tier:
-   sectorRows[gatesDone - 1].tier as Tier, time: sectorRows[gatesDone - 1].timeLabel } : null`; `lap =
+   sectorRows[gatesDone - 1].tier as Tier, time: sectorRows[gatesDone - 1].timeLabel } : null` (written
+   via a `lastRow` local in step 4c — the step 1c test pins `time: lastRow.timeLabel`); `lap =
    allDone && r.finishMs !== null ? { tier: lapTier, time: lapLabel } : null`. ReplayScreen passes
    `detail.lapTier`. Strip/contextLabel/livePos/clock unchanged. No second tier implementation: the
    tiers are the rows' (`tierFor` via the detail model).
@@ -253,7 +262,7 @@ test('virgin-cycle22 08: DEMO and REPLAY feed the pane a real flash — no `flas
   assert(demo.includes('time: fmt(script.secs[gatesDone - 1], 1)'), 'demo flash time is m:ss.d via the shared fmt');
   assert(demo.includes('tier: demoTier(0, script.lap, priorLaps)'), 'demo lap tier is demoTier(0, …)');
   assert(demo.includes('export const DEMO_ROLL_OUT_S = 125;'), 'demo roll-out lengthened for the lap flash');
-  assert(replay.includes('lapTier: Tier = \'neutral\'') && replay.includes('time: sectorRows[gatesDone - 1].timeLabel'), 'replay flash = the row; lapTier param');
+  assert(replay.includes('lapTier: Tier = \'neutral\'') && replay.includes('time: lastRow.timeLabel'), 'replay flash = the row (lastRow); lapTier param');
   const screen = read('src', 'ui', 'ReplayScreen.tsx');
   assert(screen.includes('detail.lapTier,') && screen.includes('detail.lapTier]') , 'ReplayScreen passes detail.lapTier and lists it in the memo deps');
   assert(!read('src', 'ui', 'DemoScreen.tsx').includes('stays neutral'), 'DemoScreen comments no longer promise a neutral lap chip');
@@ -299,13 +308,18 @@ e. `grep -n "neutral" app/src/ui/demoModel.ts` -> only pre-existing hits unrelat
    (e.g. tierFor docs); `grep -n "flash" app/src/ui/demoModel.ts` -> the new lines only.
 
 **Step 3 — `app/src/ui/DemoScreen.tsx` (comments only).**
-a. `:42-43` "Lap chip is neutral before the run ends, exactly as the real screen since the ranking
-   reveal." -> "At the line the LAP time flashes in its real tier like a sector, then the clock runs on
-   (virgin-cycle22 08, same pane behaviour as the real screen)."
+a. `:42-43`, a sentence wrapped over two comment lines: ` * into an 'ending' screen. Lap chip is neutral before the run ends, exactly as the`
+   / ` * real screen since the ranking reveal. FIRST RIDE's SAVE now continues into` -> replace the
+   sentence "Lap chip is neutral before the run ends, exactly as the real screen since the ranking
+   reveal." with "At the line the LAP time flashes in its real tier like a sector, then the clock runs on
+   (virgin-cycle22 08, same pane behaviour as the real screen)." and rewrap the two lines as you like;
+   the sentences before and after it stay.
 b. `:572` "Used by SECOND/TENTH RIDE only. R5: the lap chip stays neutral until STOP." -> "Used by
    SECOND/TENTH RIDE only. Flashes at each gate and at the line like the real screen (virgin-cycle22 08)."
-c. `:422-423` "(long enough to read the neutral lap chip)" -> "(long enough for the S4 flash, the lap flash
-   and a second of running clock at 25x — virgin-cycle22 08)".
+c. `:422-423`, wrapped over two comment lines: `  // R3: the clock keeps running DEMO_ROLL_OUT_S past the lap (long enough`
+   / `  // to read the neutral lap chip) and then ends the run into 'ending'.` -> the parenthetical
+   "(long enough to read the neutral lap chip)" becomes "(long enough for the S4 flash, the lap flash
+   and a second of running clock at 25x — virgin-cycle22 08)"; rewrap as needed.
 d. `grep -n "neutral lap\|stays neutral" app/src/ui/DemoScreen.tsx` -> 0 hits. No code change in this file.
 
 **Step 4 — `app/src/ui/replayModel.ts`.**

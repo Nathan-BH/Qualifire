@@ -11,6 +11,13 @@ only the time is coloured, avg stays dim; the today row takes THIS ride's lap ti
 computed (WCAG 2.x relative luminance), not eyeballed — table in §0. Written by the Plan tier (Fable)
 on 2026-10-05. Nothing is executed yet.
 
+**Plan-tier fix (Fable, 2026-10-06), after the executor's stop:** step 3d's replacement comment used to
+contain the word `chipColors`, which step 1b's test and step 3g / Verification forbid anywhere in
+`RideDetailScreen.tsx`. The comment now says "the chip palette's .text" instead; nothing else changed.
+Rule for this file: the word `chipColors` must not appear in RideDetailScreen.tsx at all, comments included
+(the tierColour.ts doc comment in step 2 may name it: that file is not grepped). Step 3g's grep expectation
+was also corrected (it returns 0 hits, not the `tierTextColour(` lines).
+
 **Tier:** Execute = Sonnet, alone. STOP-ON-AMBIGUITY (EXECUTOR-RULES.md): any quoted anchor not found,
 any test failing for a reason this brief does not name, any extra tsc error -> stop and report verbatim.
 
@@ -236,8 +243,8 @@ d. SECTORS (:516-525): replace the map body with
 ```tsx
             {model.sectorRows.map((sec) => (
               // virgin-cycle22 03: label plain, only the TIME carries the tier colour (same
-              // layout as ON THIS WAY below); avg stays dim. tierTextColour, never
-              // chipColors().text (purple's is the chip ink, unreadable on the card).
+              // layout as ON THIS WAY below); avg stays dim. tierTextColour, never the
+              // chip palette's .text (purple's is the chip ink, unreadable on the card).
               <View key={sec.index} style={styles.secRow}>
                 <Text style={[styles.secPos, { color: t.text }]}>{sec.label}</Text>
                 <Text style={[styles.secTime, { color: tierTextColour(sec.tier, t) }]}>{sec.timeLabel}</Text>
@@ -260,7 +267,8 @@ e. `PbDetail` (:97-119): signature -> `function PbDetail(props: { wayId: string;
               <Text style={[st.pbNum, { color: t.textDim }]}>{row.gapLabel}</Text>
 ```
 f. Mount (:530-534): add `todayTier={model.lapTier}` between `lastRideId={request.rideId}` and `t={t}`.
-g. `grep -n "chipColors\|tierColour(" app/src/ui/RideDetailScreen.tsx` -> only `tierTextColour(` hits (3+);
+g. `grep -n "chipColors\|tierColour(" app/src/ui/RideDetailScreen.tsx` -> 0 hits (`tierTextColour(` does not
+   contain `tierColour(`); `grep -c "tierTextColour(" app/src/ui/RideDetailScreen.tsx` -> 3 or more;
    `grep -n "UiTier" app/src/ui/RideDetailScreen.tsx` -> the import and the PbDetail prop only.
 
 **Step 4 — nothing else.** Do not touch chips.tsx, theme.ts, rideHistoryModel.ts, wayMapView.tsx.

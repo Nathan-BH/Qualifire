@@ -1,10 +1,12 @@
 /**
- * The live route map (B-50, Nathan 2026-08-17). MapLibre + real tiles is the
- * primary rung now; the pre-rendered PNG compositor (the original "faked
- * live map" — no native module, no tiles, no network) is the fallback rung
- * for whenever the native module isn't there or the map fails to load. A
- * third rung — the ridden line drawn as segments — lives inside the PNG
- * rung itself (`imgFailed`) for when even the bundled image is unavailable.
+ * The live route map (B-50, Nathan 2026-08-17): MapLibre + real tiles. The
+ * pre-rendered PNG compositor that used to be the fallback rung (and its
+ * draw-the-line-as-segments sub-rung) was retired in virgin-cycle22 05 (Nathan
+ * 2026-10-05): offline the map now behaves like Google Maps / Waze — the style
+ * falls back to a bundled background-only style (wayMapStyle.ts
+ * offlineMapStyle) and the route line, gates, trail and rider dot still draw
+ * on it; a missing native module shows one `map unavailable` badge. Mentions
+ * of "the PNG rung" further down this file are history, kept as written.
  *
  * Honesty (D-025): on EVERY rung, the rider is placed from the TRUE
  * position — projectToPixel() for the PNG rung, the raw lat/lon for the
@@ -82,22 +84,22 @@
  * PNG rung untouched — a cropped bitmap cannot rotate.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Image, LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import manifest from '../../assets/ways/ways.json';
-import { cropFor, gateTickPx, offWayM, projectToPixel, type WayAsset } from './wayMapMath.ts';
+import { offWayM, type WayAsset } from './wayMapMath.ts';
 import { currentCatalog } from '../store/catalogStore.ts';
 import { SEED_MODE, bundledForSeedMode } from '../store/seed.ts';
 import { refFor } from '../live/refs.ts';
 import { resolveWayAsset, type WayAssetDeps } from './wayAssetRuntime.ts';
 import {
-  bearingBetween, cameraTargetFor,
-  gateHalfLenM, gateTicksFeatureCollection, metresBetween, nearestOnPath, riderFeature, rotateEnabledFor, wayBounds,
+  bearingBetween, cameraTargetFor, fitMeNextMode,
+  gateHalfLenM, gateTicksFeatureCollection, metresBetween, riderFeature, rotateEnabledFor, wayBounds,
   wayLineFeature, sectorSpansFeatureCollection, trailBounds, placeFeatureCollection, placeBounds,
 } from './wayMapGeo.ts';
 import { trailLineFeature, type TrailPoint } from './trailModel.ts';
 import { selfsFeatureCollection, type SelfDot } from './selfRaceModel.ts';
 import { tierLineColour } from './tierColour.ts';
-import { patchMapStyle } from './wayMapStyle.ts';
+import { offlineMapStyle, patchMapStyle } from './wayMapStyle.ts';
 import { colors, radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
 import { CREDIT_AUTO_HIDE_MS, creditFor, type MapRung } from './mapCreditModel.ts';
@@ -133,10 +135,10 @@ type GatePressEvent = { nativeEvent: { features?: { properties?: Record<string, 
 // Lazy native-module load, at module scope: the dev client installed before
 // build 4 has no MapLibre native module, so a bare `import` would crash the
 // whole bundle. `require` inside a try/catch fails soft instead — this file
-// then falls back to the PNG rung, and Fast Refresh keeps working, never a
-// red screen. Build 4 (the dev-client rebuild, 2026-08-17) makes ML real;
-// once it's on the phone this try/catch (and the PNG rung) can eventually
-// retire.
+// then renders one `map unavailable` badge (virgin-cycle22 05; the PNG rung
+// that used to take over is retired), and Fast Refresh keeps working, never a
+// red screen. Build 4 (the dev-client rebuild, 2026-08-17) made ML real on
+// every build since; this try/catch is the last guard for an old dev client.
 let ML: typeof import('@maplibre/maplibre-react-native') | null = null;
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -166,14 +168,6 @@ function assetDeps(): WayAssetDeps {
 function assetFor(id: string | null): WayAsset | null {
   return id === null ? null : resolveWayAsset(id, assetDeps());
 }
-/** WP-E: same guard as ASSETS — a virgin build has no route PNGs either;
- * the PNG rung then draws `asset.path` (its existing no-image fallback). */
-const IMAGES: Record<string, number> = bundledForSeedMode(SEED_MODE, {
-  Morning: require('../../assets/ways/Morning.png'),
-  EveningA: require('../../assets/ways/EveningA.png'),
-  EveningB: require('../../assets/ways/EveningB.png'),
-});
-
 /** Beyond this the rider is drawn as off-route rather than on the line. */
 const OFF_WAY_M = 120;
 
@@ -197,6 +191,12 @@ const MAP_STYLE_DAY = 'https://tiles.openfreemap.org/styles/positron';
 /** Course-up bearing holds until a fix has actually moved this far — cheap
  * jitter guard against a GPS fix wobbling the heading while stationary. */
 const BEARING_MIN_MOVE_M = 8;
+
+/** virgin-cycle22 05: the style fetch retries while this map is mounted, so a
+ * map opened with no signal picks the real (patched) style up when the
+ * connection returns. Three attempts after the first, then it stops; a
+ * remount (next tab visit, next ride) starts over. */
+const STYLE_RETRY_MS: readonly number[] = [5000, 15000, 45000];
 
 type WayMapVariant = 'live' | 'browse';
 type LiveMapState = 'prestart' | 'moving' | 'stopped' | 'finished';
@@ -290,14 +290,27 @@ type WayMapProps = {
 };
 
 export default function WayMapView(props: WayMapProps) {
-  const [mapFailed, setMapFailed] = useState(false);
-  if (ML === null || mapFailed) return <PngWayMap {...props} />;
-  return <MapLibreWayMap {...props} maplibre={ML} onMapFailed={() => setMapFailed(true)} />;
+  const { t } = useTheme();
+  if (ML === null) {
+    // virgin-cycle22 05: no native module = no map renderer at all (the PNG
+    // rung that used to take over is retired). One honest badge, nothing drawn.
+    const h = props.height ?? 190;
+    return (
+      <View style={[
+        st.frame,
+        props.fill ? { flex: 1, alignSelf: 'stretch' } : { height: h },
+        { backgroundColor: t.race.bg, borderColor: t.cardBorder },
+      ]}>
+        <Text style={[st.badge, { color: t.textDim, backgroundColor: t.race.card }]}>map unavailable</Text>
+      </View>
+    );
+  }
+  return <MapLibreWayMap {...props} maplibre={ML} />;
 }
 
 // --------------------------------------------------------------- attribution
 
-/** Shared by both rungs. virgin-cycle14 brief 05 (Nathan #8, tester
+/** virgin-cycle14 brief 05 (Nathan #8, tester
  * feedback): the credit is a small round "i" in the bottom-right corner,
  * not a line of text across the map. Tapping it opens the "Map data
  * sources" card in-frame (no Modal, no backdrop — nothing may eat map
@@ -354,11 +367,8 @@ function Credit(props: { rung: MapRung; locked: boolean }) {
 
 // -------------------------------------------------------------- MapLibre rung
 
-function MapLibreWayMap(props: WayMapProps & {
-  maplibre: NonNullable<typeof ML>;
-  onMapFailed: () => void;
-}) {
-  const { maplibre: M, onMapFailed } = props;
+function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> }) {
+  const { maplibre: M } = props;
   const { t, mode: themeMode } = useTheme();
   const styleUrl = themeMode === 'night' ? MAP_STYLE_NIGHT : MAP_STYLE_DAY;
   const id = props.wayId;
@@ -469,14 +479,26 @@ function MapLibreWayMap(props: WayMapProps & {
   };
 
   // Runtime style patch (design contract B): fetch the online style once,
-  // memoize BOTH a labels-on and a labels-off copy. A fetch/parse failure
-  // falls back to the plain styleUrl (day/night pick) — the online, unpatched style —
-  // exactly as before B-51; that is not a map failure (onMapFailed is only
-  // for the Map component's own onDidFailLoadingMap).
+  // memoize BOTH a labels-on and a labels-off copy. Until it arrives (or if
+  // it never does) the native view is handed the plain styleUrl and loads it
+  // itself — from MapLibre's own cache when offline, which is why a region
+  // seen before stays detailed with no signal.
+  // virgin-cycle22 05 (Nathan 2026-10-05, PNG rung retired): if the NATIVE
+  // load fails too (onDidFailLoadingMap before any onDidFinishLoadingStyle —
+  // first open with no signal, nothing cached) the view keeps running on
+  // offlineMapStyle(): an empty basemap in the frame colour on which every
+  // local source below (route, gates, trail, spans, selfs, rider) still draws.
+  // The fetch retries (STYLE_RETRY_MS) so the real style takes over when the
+  // connection returns; patchedStyles always wins once set.
   const [patchedStyles, setPatchedStyles] = useState<{ labelsOn: unknown; labelsOff: unknown } | null>(null);
+  const [styleFailed, setStyleFailed] = useState(false);
+  const styleLoadedRef = useRef(false);
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    setStyleFailed(false);
+    styleLoadedRef.current = false;
+    const attempt = async (n: number) => {
       try {
         const res = await fetch(styleUrl);
         const json: unknown = await res.json();
@@ -486,15 +508,21 @@ function MapLibreWayMap(props: WayMapProps & {
           labelsOff: patchMapStyle(json, { hideLabels: true }),
         });
       } catch {
-        // acceptable rung — plain online style, unpatched (see comment above)
+        // offline or the server is down: native keeps whatever it has; retry.
+        if (cancelled || n >= STYLE_RETRY_MS.length) return;
+        timer = setTimeout(() => { timer = null; void attempt(n + 1); }, STYLE_RETRY_MS[n]);
       }
-    })();
-    return () => { cancelled = true; };
+    };
+    void attempt(0);
+    return () => {
+      cancelled = true;
+      if (timer !== null) clearTimeout(timer);
+    };
   }, [styleUrl]);
   const hideLabels = !unlocked;
   const mapStyle = patchedStyles
     ? (hideLabels ? patchedStyles.labelsOff : patchedStyles.labelsOn)
-    : styleUrl;
+    : styleFailed ? offlineMapStyle(t.race.bg) : styleUrl;
 
   // Reverted 2026-08-24 (Nathan, live device feedback on WP-E): the
   // dotted-ahead/solid-behind split below used to call routeSplitFeatures()
@@ -612,6 +640,11 @@ function MapLibreWayMap(props: WayMapProps & {
     : place ? placeBounds(place.lat, place.lon, place.radiusM)
     : hasTrail ? trailBounds(props.trail!) : null;
 
+  // virgin-cycle22 06: what the ONE FIT/ME button does on its next tap (and
+  // therefore reads) — see fitMeNextMode's doc. Not a hook (sits after the
+  // riderOnly early return above).
+  const fitMeNext = fitMeNextMode(mode, showRider);
+
   // WP-D §3.1c: the camera-target rule itself lives in routeMapGeo.ts
   // (headlessly testable) — this is just wiring the live inputs through.
   // 'free' (Cycle 020, after a user drag/pinch) is handled inside
@@ -653,7 +686,8 @@ function MapLibreWayMap(props: WayMapProps & {
         key={styleUrl}
         mapStyle={mapStyle as never}
         style={{ flex: 1 }}
-        onDidFailLoadingMap={onMapFailed}
+        onDidFinishLoadingStyle={() => { styleLoadedRef.current = true; }}
+        onDidFailLoadingMap={() => { if (!styleLoadedRef.current) setStyleFailed(true); }}
         // Cycle 020 (Nathan 2026-08-19): D-006 "no controls while moving" is
         // relaxed for map GESTURES — the race-mode map must be draggable and
         // zoomable like the RECORD tab's preview map. Labels stay hidden and
@@ -903,12 +937,21 @@ function MapLibreWayMap(props: WayMapProps & {
           onPress={() => { setCamZoom((z) => Math.max(11, z - 1)); setMode('follow'); }}>
           <Text style={[st.zoomText, { color: t.text }]}>−</Text>
         </Pressable>
+        {/* virgin-cycle22 06 (Nathan 2026-10-05): ONE button where FIT and ME
+            were, labelled with the ACTION the next tap performs, never the
+            current state (fitMeNextMode): follow -> "FIT", fit/free -> "ME";
+            +/− above still set follow, so right after a zoom tap it reads FIT.
+            Browse surfaces (no rider) always read FIT. Two literal <Text>
+            branches on purpose: the ui-strings scanner only sees JSX text, so
+            the existing "FIT"/"ME" allow-list entries stay valid. */}
         <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
-          onPress={() => setMode('fit')}>
-          <Text style={[st.zoomText, { color: t.textDim, fontSize: 10.5 }]}>FIT</Text>
+          onPress={() => setMode(fitMeNext)}>
+          {fitMeNext === 'fit'
+            ? <Text style={[st.zoomText, { color: t.textDim, fontSize: 10.5 }]}>FIT</Text>
+            : <Text style={[st.zoomText, { color: t.textDim, fontSize: 10.5 }]}>ME</Text>}
         </Pressable>
         {/* WP-M: compass reset — shown whenever rotation is enabled (even
-            north-up already, dim like FIT/ME; a button that only appears
+            north-up already, dim like the FIT/ME toggle; a button that only appears
             after a gesture the rider may not know exists would be
             undiscoverable). Absent on moving/stopped: it would be a no-op
             there and D-006's spirit is "no controls while moving". */}
@@ -920,12 +963,6 @@ function MapLibreWayMap(props: WayMapProps & {
               color: (userBearing ?? effectiveBearing) === 0 ? t.textDim : t.text,
               transform: [{ rotate: `${-(userBearing ?? effectiveBearing)}deg` }],
             }]}>↑</Text>
-          </Pressable>
-        ) : null}
-        {showRider ? (
-          <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
-            onPress={() => setMode('follow')}>
-            <Text style={[st.zoomText, { color: t.textDim, fontSize: 10.5 }]}>ME</Text>
           </Pressable>
         ) : null}
       </View>
@@ -942,237 +979,11 @@ function MapLibreWayMap(props: WayMapProps & {
   );
 }
 
-// ------------------------------------------------------------------ PNG rung
-
-// The PNG rung's credit string lives in mapCreditModel.ts (PNG_CREDIT) — drawn as an
-// overlay by <Credit>, never baked into the PNG (see that file for why).
-
-function PngWayMap(props: WayMapProps) {
-  const { t } = useTheme();
-  const [box, setBox] = useState({ w: 0, h: 0 });
-  // Zoom is the rider's, not the app's: +/- step it, FIT drops back to the
-  // whole route. Defaults to the tight live crop the ride screen asks for.
-  const [zoom, setZoom] = useState(props.zoom ?? 4);
-  // If the bundled PNG fails to load (Metro asset cache, a mid-run rewrite),
-  // say so and draw the route from `path` instead of showing black.
-  const [imgFailed, setImgFailed] = useState(false);
-  useEffect(() => { setZoom(props.zoom ?? 4); }, [props.zoom]);
-  const id = props.wayId;
-  const asset = props.asset ?? assetFor(id) ?? undefined;
-  const img = id !== null ? IMAGES[id] : undefined;
-  const h = props.height ?? 190;
-
-  const variant = props.variant ?? 'live';
-  const liveState = props.liveState ?? 'moving';
-  const showRider = props.showRider ?? true;
-  // B-51: this rung is not rebuilt for the full behaviour matrix — it only
-  // honours showRider, the stopped-dim and the dimmed credit button while
-  // the live ribbon is locked (zoom bar always shown since cycle 020).
-  const locked = variant === 'live' && (liveState === 'moving' || liveState === 'stopped');
-  const dimmed = variant === 'live' && liveState === 'stopped';
-
-  // virgin-cycle15 brief 12: this rung is one pre-rendered PNG per route and
-  // has no way to draw a metres-accurate disc without tiles — say so plainly
-  // rather than drawing nothing.
-  if (props.place) {
-    return (
-      <View style={[
-        st.frame,
-        props.fill ? { flex: 1, alignSelf: 'stretch' } : { height: h },
-        { backgroundColor: t.race.bg, borderColor: t.cardBorder },
-        dimmed && st.dimmedFrame,
-      ]}>
-        <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card }]}>
-          place map needs the tile map
-        </Text>
-        <Credit rung="png" locked={locked} />
-      </View>
-    );
-  }
-
-  // WP-D §3.3: a degraded frame instead of returning null, for a live
-  // surface (showRider) with no route asset —
-  // this rung genuinely cannot draw a basemap without a per-route PNG (no
-  // tiles, no path to project the dot onto), so there is nothing to show but
-  // the frame + a message. Browse surfaces (no rider) still render nothing —
-  // same rule as the MapLibre rung's `riderOnly` guard. No Credit: no image
-  // was drawn, so there is no imagery source to attribute.
-  if (!asset) {
-    if (!showRider) return null;
-    return (
-      <View style={[
-        st.frame,
-        props.fill ? { flex: 1, alignSelf: 'stretch' } : { height: h },
-        { backgroundColor: t.race.bg, borderColor: t.cardBorder },
-        dimmed && st.dimmedFrame,
-      ]}>
-        <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card }]}>
-          map needs the tile map
-        </Text>
-      </View>
-    );
-  }
-
-  const onLayout = (e: LayoutChangeEvent) => {
-    const { width, height } = e.nativeEvent.layout;
-    if (width !== box.w || height !== box.h) setBox({ w: width, h: height });
-  };
-
-  const here = showRider && props.lat !== null && props.lon !== null
-    ? projectToPixel(asset, props.lat, props.lon)
-    : null;
-  const off = here && props.lat !== null && props.lon !== null
-    ? offWayM(asset, props.lat, props.lon) > OFF_WAY_M
-    : false;
-
-  // WP-E dotted-ahead, PNG rung: the route line is BAKED into the PNG, so
-  // there is no way to split it — accepted rung degradation. In the
-  // imgFailed segment fallback ONLY, dim the segments from the rider's
-  // nearest-on-path point onward (opacity 0.4) as the poor man's dotted-
-  // ahead, mirroring the MapLibre rung's earned-position rule: only when
-  // live/active and genuinely on-route (never invent a "behind" claim off-
-  // route or when browsing/finished — same honesty rule as routeSplitFeatures).
-  const wayActive = variant === 'live' && liveState !== 'finished';
-  const splitSeg = imgFailed && wayActive && !off && asset.path
-    && props.lat !== null && props.lon !== null
-    ? nearestOnPath(asset.path, props.lat, props.lon)?.seg ?? null
-    : null;
-
-  const crop = box.w > 0
-    ? cropFor(asset, here ?? { px: asset.w / 2, py: asset.h / 2 }, box.w, box.h, zoom)
-    : null;
-
-  return (
-    <View onLayout={onLayout}
-      style={[
-        st.frame,
-        props.fill ? { flex: 1, alignSelf: 'stretch' } : { height: h },
-        { backgroundColor: t.race.bg, borderColor: t.cardBorder },
-        dimmed && st.dimmedFrame,
-      ]}>
-      {crop ? (
-        <>
-          {!imgFailed && img ? (
-            <Image source={img}
-              onError={() => setImgFailed(true)}
-              style={{
-                position: 'absolute',
-                width: asset.w * crop.scale,
-                height: asset.h * crop.scale,
-                left: crop.translateX,
-                top: crop.translateY,
-              }}
-              resizeMode="stretch" />
-          ) : (
-            // Fallback: the ridden line as short segments. Coarser than the
-            // PNG (no context rides) but never a blank screen.
-            (asset.path ?? []).slice(0, -1).map((p0, i) => {
-              const p1 = (asset.path ?? [])[i + 1];
-              const a0 = projectToPixel(asset, p0[0], p0[1]);
-              const a1 = projectToPixel(asset, p1[0], p1[1]);
-              const x0 = a0.px * crop.scale + crop.translateX;
-              const y0 = a0.py * crop.scale + crop.translateY;
-              const x1 = a1.px * crop.scale + crop.translateX;
-              const y1 = a1.py * crop.scale + crop.translateY;
-              const len = Math.hypot(x1 - x0, y1 - y0);
-              const ang = (Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI;
-              // WP-E poor-man's dotted-ahead: segments from the rider's
-              // nearest-on-path point onward read as "suggestion" too, same
-              // as the MapLibre rung's dashed ahead-line.
-              const dimmed = splitSeg !== null && i >= splitSeg;
-              return (
-                <View key={i} style={{
-                  position: 'absolute', left: x0, top: y0 - 1.5,
-                  width: len, height: 3, backgroundColor: colors.neutral,
-                  opacity: dimmed ? 0.4 : 1,
-                  transform: [{ translateX: 0 }, { rotate: `${ang}deg` }],
-                  transformOrigin: 'left center',
-                }} />
-              );
-            })
-          )}
-          {/* WP-E: circles replaced with a rotated tick bar perpendicular to
-              the route (gateTickPx), same reasoning as the MapLibre rung —
-              though this PNG is a light basemap in both themes (D-031) so
-              the dim-neutral colour here is CASING (near-black), not
-              t.textDim. len is clamped to >=10px so a tick stays visible
-              even at zoom 1 (whole-route FIT). */}
-          {asset.gates.map((g, i) => {
-            const col = props.gateColours?.[i] ?? null;
-            const tick = gateTickPx(asset, i);
-            const x0 = tick.x0 * crop.scale + crop.translateX;
-            const y0 = tick.y0 * crop.scale + crop.translateY;
-            const x1 = tick.x1 * crop.scale + crop.translateX;
-            const y1 = tick.y1 * crop.scale + crop.translateY;
-            const len = Math.max(Math.hypot(x1 - x0, y1 - y0), 10);
-            const ang = (Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI;
-            // WP-J (gate-adjust card): the selected gate draws bolder/blue on
-            // this rung too — the PNG rung has no tap, the card's chip row
-            // is this rung's selection path (see file header's rung notes).
-            const sel = props.gateSelect?.selected === i;
-            return (
-              <View key={g.name} style={{
-                position: 'absolute', left: x0, top: y0 - (sel ? 2.5 : 1.5),
-                width: len, height: sel ? 5 : 3,
-                backgroundColor: sel ? colors.riderBlue : (col ?? CASING),
-                transform: [{ translateX: 0 }, { rotate: `${ang}deg` }],
-                transformOrigin: 'left center',
-              }} />
-            );
-          })}
-          {here ? (
-            <View style={[st.dot, {
-              left: here.px * crop.scale + crop.translateX - 7,
-              top: here.py * crop.scale + crop.translateY - 7,
-              backgroundColor: off ? '#FFFFFF' : colors.riderBlue,
-              borderColor: off ? colors.riderBlue : '#FFFFFF',
-            }]} />
-          ) : null}
-        </>
-      ) : null}
-      {/* Cycle 020: the zoom bar is always visible now, not gated on
-          `locked` — the race-mode ribbon is draggable/zoomable too. */}
-      <View style={st.zoomBar}>
-        <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
-          onPress={() => setZoom((z) => Math.min(12, z * 1.6))}>
-          <Text style={[st.zoomText, { color: t.text }]}>+</Text>
-        </Pressable>
-        <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
-          onPress={() => setZoom((z) => Math.max(1, z / 1.6))}>
-          <Text style={[st.zoomText, { color: t.text }]}>−</Text>
-        </Pressable>
-        <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
-          onPress={() => setZoom(1)}>
-          <Text style={[st.zoomText, { color: t.textDim, fontSize: 10.5 }]}>FIT</Text>
-        </Pressable>
-      </View>
-      {imgFailed ? (
-        <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card, left: undefined, right: 6, bottom: 6 }]}>
-          MAP IMAGE FAILED — drawing the line
-        </Text>
-      ) : null}
-      {!imgFailed && img ? <Credit rung="png" locked={locked} /> : null}
-      {off ? (
-        <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card }]}>
-          {'OFF ROUTE · >120 m from the route line'}
-        </Text>
-      ) : null}
-      {showRider && here === null ? (
-        <Text style={[st.badge, { color: t.textDim, backgroundColor: t.race.card }]}>waiting for GPS</Text>
-      ) : null}
-    </View>
-  );
-}
-
 const st = StyleSheet.create({
   frame: { alignSelf: 'stretch', borderRadius: radius.card, borderWidth: 1, overflow: 'hidden' },
   // "stopped" (a red light): tight and dim, not loosened — a light is not a
   // finish (design contract A).
   dimmedFrame: { opacity: 0.4 },
-  // WP-E: gate ticks are drawn as inline-styled bars (rotation/length vary
-  // per gate) rather than a shared style — st.gate (the old fixed 12x12
-  // circle) is gone.
-  dot: { position: 'absolute', width: 14, height: 14, borderRadius: 14, borderWidth: 2 },
   zoomBar: { position: 'absolute', right: 6, top: 6, gap: 5 },
   zoomBtn: {
     width: 30, height: 30, borderRadius: 8, borderWidth: 1,

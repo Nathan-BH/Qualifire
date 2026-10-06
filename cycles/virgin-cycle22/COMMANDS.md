@@ -4,7 +4,7 @@ Nothing here is ready to run yet: briefs 01-08 are written (2026-10-05) but NOT 
 after the coordinator says they are executed and Opus-inspected (tests green, tsc exit 0). Same
 publish path as `cycles\virgin-cycle21\COMMANDS.md`; this cycle rides on the same JS bundle.
 
-## 1. Cycle 22 is JavaScript-only — OTA, no new native build
+## 1. Cycle 22 publishes as an OTA (briefs 01-06 JS-only; brief 07 expected OTA-safe too — § 3 has the check)
 Briefs 01-06 and 08 touch only `app/src/ui/*` and tests (07 keep-awake: see its own § 3 note, added by its executor): no native module, plugin, manifest or asset. Build 8
 is the native base (cycle 20's notification changes). If build 8 is not installed on the phone yet,
 build it first (see `scripts\README.md`); the OTA then rides on top of it. If the publish script reports
@@ -115,3 +115,44 @@ time on the activity.
     SECTORS list (an estimated sector flashes a dim `~m:ss`); the finish flashes the lap time in the colour
     of the big lap time above; then the parked clock returns under "replay over". Drag the scrub bar back
     and forth: the flash re-fires for the gate you land after — expected.
+
+## 3. Brief 07 — keep the screen on while riding (expo-keep-awake)
+
+The module `expo-keep-awake` 56.0.3 was ALREADY in `app\node_modules` (a dependency of `expo`) and
+already linked into build 8 (autolinking lists it), so adding it to package.json should NOT change the
+native fingerprint. Confirm before publishing — the dry run below runs the fingerprint check:
+
+```
+cd "C:\Users\natha\Claude personal projects\Qualifire\app"
+npm install --no-audit --no-fund
+```
+(expected: "up to date", and `git status` shows no change to package-lock.json — the executor already
+wrote the one line npm would write)
+
+```
+cd "C:\Users\natha\Claude personal projects\Qualifire"
+powershell -ExecutionPolicy Bypass -File "C:\Users\natha\Claude personal projects\Qualifire\scripts\publish-preview.ps1" -DryRun
+```
+- Dry run clean (no fingerprint drift) -> publish as in § 1; brief 07 rides in the same OTA. On the
+  phone: fully close "Qualifire Preview", reopen twice.
+- Dry run reports a FINGERPRINT DRIFT -> the module was not in build 8 after all. Do NOT publish. Build
+  instead (one EAS build slot, ~10-20 min, answer REUSE for the keystore), install the APK over the
+  Preview, then send me the new fingerprint for `scripts\OTA-TROUBLESHOOTING.md`:
+```
+cd "C:\Users\natha\Claude personal projects\Qualifire"
+powershell -ExecutionPolicy Bypass -File "C:\Users\natha\Claude personal projects\Qualifire\scripts\build8.ps1" -DryRun
+powershell -ExecutionPolicy Bypass -File "C:\Users\natha\Claude personal projects\Qualifire\scripts\build8.ps1"
+```
+  If you have a DEV CLIENT installed (`dev-phone.ps1`), it already has the module too (same tree).
+
+On-device check (brief 07):
+1. RECORD > pick a way > RECORD > START. Put the phone in the holder and do not touch it for longer
+   than your screen timeout (Settings > Display; set it to 30 s for the test). The screen stays on
+   for the whole ride, including a red-light stop.
+2. STOP. From the moment the end mark plays (phase `ending`) the screen is allowed to dim again:
+   leave the phone alone on the naming/result card for the timeout — it dims/locks as usual.
+3. Setup and armed: on the RECORD tab before START, and on every other tab, the screen dims as usual.
+4. Discard: START a ride, open the pause menu, Discard — the screen dims as usual afterwards.
+5. Optional: force-stop the app during a ride and reopen — the ride resumes (virgin-cycle21 04 rules)
+   or is filed free; either way the screen behaves per 1-3 for the state you land in.
+6. Anything odd: `cycles\virgin-cycle22\PROGRESS.md`.

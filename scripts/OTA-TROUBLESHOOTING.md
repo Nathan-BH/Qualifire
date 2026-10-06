@@ -52,21 +52,31 @@ doing anything else:
 
 ## Known fingerprints by build
 
+- **Build 8 (2026-10-03)** (build id `880cd0d7-9159-414b-84f2-3cbf4bb960e0`,
+  profile `preview`, built with `scripts/build8.ps1`; **the currently installed
+  preview APK and the build `publish-preview.ps1` targets**) —
+  fingerprint/runtime version `f52e438f6e11965500739e4371c4e020d8ec69e5`.
+  Native layer of virgin-cycle20 (brief 01 + 03 notification Kotlin/res, brief 05
+  `app.json` iOS string). EAS recorded commit `e50c773` but the working tree was
+  dirty. Source: `cycles/virgin-cycle20/POST-EXECUTION-FEEDBACK.md`. Recorded here
+  2026-10-06. Use this value for `fingerprint:compare` while this APK is the
+  installed Preview. Note: `app/eas.json` is part of the fingerprint (measured
+  2026-10-06, `deployment/rounds/round2/INSPECTION.md`): editing it, e.g. adding a
+  `play` profile, moves the hash and stops OTAs reaching build 8.
+
 - **Build 6** — fingerprint `251ddb86909e5bf8a0ac4842436fdfe64ce8b599`.
   **Superseded** — do not use for `fingerprint:compare`. It drifted from
   the tree (package-lock.json expo-updates 56.0.24 → 56.0.25 plus
   virgin's app.config.js / eas.json additions), which silently blocked
   OTA publishing until build 7.
 - **Build 7, cycle-18 rebuild (2026-09-30)** (commit `ae911bb`, build id
-  `74644fd9-9516-4f31-9cf5-239b1c2909dc`, finished 08:43 local; **the
-  currently installed preview APK and the build `publish-preview.ps1`
-  targets**) — fingerprint/runtime version
+  `74644fd9-9516-4f31-9cf5-239b1c2909dc`, finished 08:43 local; **superseded
+  by build 8 above; do not use for `fingerprint:compare`**) — fingerprint/runtime version
   `610cfe837448add1ccdd3c045eb550c3ac6dcdd3`. Built with the unchanged
   `build7.ps1` (no build8 script exists). Adds the two native modules of
   virgin-cycle18 (brief 01 lock screen, brief 03 ride notification +
   flame icons), which moved the fingerprint. Confirmed via
-  `eas-cli build:list --platform android --build-profile preview`. Use this
-  value for `fingerprint:compare` while this APK is the installed Preview.
+  `eas-cli build:list --platform android --build-profile preview`. 
   Publish-preview.ps1 needs no edit: it derives the runtime from the tree,
   so JS-only OTAs match this build while the native surface is unchanged.
 - **Build 7, original (2026-09-08)** (commit `03710eb`, the re-anchor build;

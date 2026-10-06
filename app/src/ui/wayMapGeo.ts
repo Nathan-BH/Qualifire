@@ -464,6 +464,24 @@ export function rotateEnabledFor(
   return variant === 'browse' || liveState === 'prestart' || liveState === 'finished';
 }
 
+/** virgin-cycle22 06 (Nathan 2026-10-05): the ONE zoom-bar button where FIT and
+ * ME used to be is labelled with the ACTION the next tap performs, never the
+ * current state. Returns the mode that tap sets — 'fit' (label "FIT") or
+ * 'follow' (label "ME"):
+ *  - follow -> 'fit': the rider is being followed; the only other thing to do
+ *    is fit the whole way.
+ *  - fit or free (after FIT, or a drag/pinch/rotate) -> 'follow': the way back
+ *    to the rider is "ME".
+ *  - showRider false (browse surfaces) -> always 'fit': nothing to follow.
+ * Deliberately NOT a function of the GPS fix: with no fix yet, 'follow' does
+ * exactly what the old ME button did (cameraTargetFor centres the way bounds
+ * at the follow zoom, or holds when there is no way either), and a label that
+ * flipped the moment a fix arrived would change under a moving thumb
+ * mid-race. Pure, so the headless suite pins the table. */
+export function fitMeNextMode(mode: 'follow' | 'fit' | 'free', showRider: boolean): 'fit' | 'follow' {
+  return showRider && mode !== 'follow' ? 'follow' : 'fit';
+}
+
 // ==================================================== WP-sector-coloured-trail P1 (2026-08-26 ruling)
 
 export interface SectorSpanProperties {
