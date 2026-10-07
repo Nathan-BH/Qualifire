@@ -1,24 +1,27 @@
 /**
  * Pure layout model for the RESULTS detail's scatterplot (WP-2 §3.3-§3.7):
- * the last WINDOW_PREV ranked rides on a way, laid out by slot (x) — the
+ * the last WINDOW_N ranked rides on a way, laid out by slot (x) — the
  * ride's position in a fixed PLOT_N-slot grid, newest at the right edge —
  * against scored seconds (y, faster = up), against the window's own
  * average. No React, no native module — every pixel the component draws
  * comes from here, so `resultsPlot.tsx` never does arithmetic of its own.
  *
  * The window is exactly `ghostsFor()`'s shape (colourModel.ts): the same
- * `ranks()` filter, the same `WINDOW_PREV` constant, re-exported as PLOT_N
+ * `ranks()` filter, the ranking pool's own `WINDOW_N` constant, re-exported as PLOT_N (virgin-cycle25 01; it was WINDOW_PREV = 9 before)
  * so the two can never drift apart.
  */
 import type { RideResult } from '../store/types.ts';
 import { scoredS } from '../store/timing.ts';
 import { ranks } from '../store/results.ts';
-import { WINDOW_PREV, fmt } from './colourModel.ts';
+import { WINDOW_N, fmt } from './colourModel.ts';
 import { towerDate } from './towerModel.ts';
 
 // -------------------------------------------------------------- constants
 
-export const PLOT_N = WINDOW_PREV;
+/** virgin-cycle25 brief 01 (Nathan decision 6 / C1): the plot shows the same
+ * pool the ranking uses — WINDOW_N = today + 9 previous — so the dots and
+ * the P-of-10 rank describe the same rides. What falls off is the oldest. */
+export const PLOT_N = WINDOW_N;
 export const PAD_L = 12;
 export const PAD_R = 12;
 export const PLOT_H = 220;
@@ -79,7 +82,7 @@ export function median(values: number[]): number {
 }
 
 /** §3.3: the last PLOT_N ranked rides, ascending startedAtMs — the exact
- * `ranks()` filter and `WINDOW_PREV` constant `ghostsFor()` uses, never a
+ * `ranks()` filter and `WINDOW_N` pool size `rankingPoolFor()` uses, never a
  * local lookalike. Rider-ignored, tripwire-demoted and estimated/missed
  * rides are never in the field. */
 export function plotWindow(results: RideResult[]): RideResult[] {
@@ -135,8 +138,8 @@ export function slotIndex(i: number, n: number): number {
   return PLOT_N - n + i;
 }
 
-function yAt(timeS: number, yMin: number, yMax: number): number {
-  return ((timeS - yMin) / (yMax - yMin)) * PLOT_H;
+function yAt(timeS: number, yMin: number, yMax: number, plotH: number): number {
+  return ((timeS - yMin) / (yMax - yMin)) * plotH;
 }
 
 /** how many tick multiples of `step` actually land inside [yMin, yMax] —
@@ -150,7 +153,7 @@ function tickCountForStep(yMin: number, yMax: number, step: number): number {
   return count;
 }
 
-function buildYTicks(yMin: number, yMax: number, meanY: number): PlotTick[] {
+function buildYTicks(yMin: number, yMax: number, meanY: number, plotH: number): PlotTick[] {
   let step = TICK_STEPS_S[TICK_STEPS_S.length - 1];
   for (const s of TICK_STEPS_S) {
     if (tickCountForStep(yMin, yMax, s) <= MAX_Y_TICKS) { step = s; break; }
@@ -158,7 +161,7 @@ function buildYTicks(yMin: number, yMax: number, meanY: number): PlotTick[] {
   const first = Math.ceil(yMin / step) * step;
   const ticks: PlotTick[] = [];
   for (let v = first; v <= yMax + 1e-9; v += step) {
-    const at = yAt(v, yMin, yMax);
+    const at = yAt(v, yMin, yMax, plotH);
     const label = Math.abs(at - meanY) <= LABEL_COLLISION_PX ? null : fmt(v);
     ticks.push({ at, label });
   }
@@ -179,13 +182,14 @@ function buildSlotXTicks(points: PlotPoint[]): PlotTick[] {
 
 /** §3.3-§3.6 in full. `plotW` is the plot area's own width (post-gutter —
  * the caller has already subtracted GUTTER_W). No `allTimeBestS`, no
- * `nowMs`: the plot never claims a position and is never windowed to now. */
-export function buildPlotModel(results: RideResult[], plotW: number): PlotModel {
+ * `nowMs`: the plot never claims a position and is never windowed to now.
+ * `plotH` (virgin-cycle25 01): the plot's pixel height; defaults to PLOT_H (220) for the DEMO card, brief 02's MAP panel passes a smaller one. */
+export function buildPlotModel(results: RideResult[], plotW: number, plotH: number = PLOT_H): PlotModel {
   const window = plotWindow(results);
   const windowN = window.length;
   if (windowN === 0) {
     return {
-      points: [], plotW, plotH: PLOT_H, yMin: 0, yMax: 0, meanS: null, meanY: null,
+      points: [], plotW, plotH, yMin: 0, yMax: 0, meanS: null, meanY: null,
       yTicks: [], xTicks: [], windowN: 0, empty: 'no-ranked',
     };
   }
@@ -199,13 +203,20 @@ export function buildPlotModel(results: RideResult[], plotW: number): PlotModel 
     startedAtMs: r.startedAtMs,
     timeS: times[i],
     x: xAtSlot(slotIndex(i, windowN), plotW),
-    y: yAt(times[i], yMin, yMax),
+    y: yAt(times[i], yMin, yMax, plotH),
     tone: tones[i],
   }));
 
-  const meanY = yAt(meanS, yMin, yMax);
-  const yTicks = buildYTicks(yMin, yMax, meanY);
+  const meanY = yAt(meanS, yMin, yMax, plotH);
+  const yTicks = buildYTicks(yMin, yMax, meanY, plotH);
   const xTicks = buildSlotXTicks(points);
 
-  return { points, plotW, plotH: PLOT_H, yMin, yMax, meanS, meanY, yTicks, xTicks, windowN, empty: 'none' };
+  return { points, plotW, plotH, yMin, yMax, meanS, meanY, yTicks, xTicks, windowN, empty: 'none' };
+}
+
+/** virgin-cycle25 brief 01: the plot's own caption — 'LAST 10 ACTIVITIES' /
+ * 'LAST 1 ACTIVITY' over `plotWindow(...).length`. Moved here from
+ * resultsListModel.ts (RESULTS tab, removed by brief 03); DEMO is its consumer. */
+export function windowCaption(n: number): string {
+  return `LAST ${n} ${n === 1 ? 'ACTIVITY' : 'ACTIVITIES'}`;
 }

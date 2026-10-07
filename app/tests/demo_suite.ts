@@ -715,26 +715,26 @@ test('demoModel: plot — demoPlotResults is the mode\'s priors plus today, newe
   }
 });
 
-test('demoModel: plot — TENTH window is priors 2-9 + today (the real slice(-9))', () => {
+test('demoModel: plot — TENTH window is priors 1-9 + today (the real slice(-10), cycle25 01)', () => {
   const w = plotWindow(demoPlotResults('tenth', T));
-  assert(w.length === 9, `expected window length 9, got ${w.length}`);
-  assert(w[0].rideId === 'demo:prior-2', `expected first id 'demo:prior-2', got ${w[0].rideId}`);
+  assert(w.length === 10, `expected window length 10, got ${w.length}`);
+  assert(w[0].rideId === 'demo:prior-1', `expected first id 'demo:prior-1', got ${w[0].rideId}`);
   assert(w[w.length - 1].rideId === DEMO_TODAY_RIDE_ID, `expected last id DEMO_TODAY_RIDE_ID, got ${w[w.length - 1].rideId}`);
 });
 
 test('demoModel: plot — TENTH model matches the pinned arithmetic', () => {
   const m = buildPlotModel(demoPlotResults('tenth', T), W);
   assert(m.empty === 'none', `expected empty 'none', got ${m.empty}`);
-  assert(m.points.length === 9, `expected 9 points, got ${m.points.length}`);
-  const today = m.points[8];
-  assert(today.rideId === DEMO_TODAY_RIDE_ID, `expected points[8] to be today, got ${today.rideId}`);
+  assert(m.points.length === 10, `expected 10 points, got ${m.points.length}`);
+  const today = m.points[9];
+  assert(today.rideId === DEMO_TODAY_RIDE_ID, `expected points[9] to be today, got ${today.rideId}`);
   assert(today.tone === 'faster', `expected today's tone 'faster' (green), got ${today.tone}`);
   const fastest = m.points.filter((p) => p.tone === 'fastest');
   assert(fastest.length === 1 && fastest[0].rideId === 'demo:prior-2', `expected exactly one fastest point, 'demo:prior-2', got ${JSON.stringify(fastest.map((p) => p.rideId))}`);
   const slower = m.points.filter((p) => p.tone === 'slower');
-  assert(slower.length === 4, `expected 4 slower points, got ${slower.length}`);
+  assert(slower.length === 5, `expected 5 slower points, got ${slower.length}`);
   assert(m.meanS !== null, 'expected meanS not null');
-  assert(Math.abs(m.meanS - 7598 / 9) < 1e-6, `expected meanS ~${7598 / 9}, got ${m.meanS}`);
+  assert(Math.abs(m.meanS - 8438 / 10) < 1e-6, `expected meanS ~${8438 / 10}, got ${m.meanS}`);
   assert(today.x === W - PAD_R, `expected today's x ${W - PAD_R}, got ${today.x}`);
   assert(Number.isFinite(m.meanY), `expected meanY finite, got ${m.meanY}`);
   for (const p of m.points) {
@@ -777,7 +777,7 @@ test('demoModel: plot — demoPlotPosLabel mirrors the real screen\'s P<pos> of 
 });
 
 test('demoModel: plot — demoPlotCaption is the real windowCaption over plotWindow', () => {
-  assert(demoPlotCaption(demoPlotResults('tenth', T)) === 'LAST 9 ACTIVITIES', `expected 'LAST 9 ACTIVITIES', got ${demoPlotCaption(demoPlotResults('tenth', T))}`);
+  assert(demoPlotCaption(demoPlotResults('tenth', T)) === 'LAST 10 ACTIVITIES', `expected 'LAST 10 ACTIVITIES', got ${demoPlotCaption(demoPlotResults('tenth', T))}`);
   assert(demoPlotCaption(demoPlotResults('second', T)) === 'LAST 2 ACTIVITIES', `expected 'LAST 2 ACTIVITIES', got ${demoPlotCaption(demoPlotResults('second', T))}`);
   assert(demoPlotCaption(demoPlotResults('first', T)) === 'LAST 1 ACTIVITY', `expected 'LAST 1 ACTIVITY', got ${demoPlotCaption(demoPlotResults('first', T))}`);
 });

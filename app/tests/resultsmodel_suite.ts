@@ -27,15 +27,15 @@ registerHooks({
 });
 
 const {
-  buildResultsList, buildHistoryBoard, boardCaption, windowCaption,
+  buildResultsList, buildHistoryBoard, boardCaption,
   buildResultsRoutes, rideCountForRoute, routeLabel,
 } = await import('../src/ui/resultsListModel.ts');
 const {
   plotWindow, fitDomain, toneFor, buildPlotModel, mean,
   PAD_L, PAD_R, MAX_Y_TICKS, LABEL_COLLISION_PX,
-  xAtSlot, slotIndex, PLOT_N, X_TICK_MIN_GAP_PX,
+  xAtSlot, slotIndex, PLOT_N, X_TICK_MIN_GAP_PX, windowCaption,
 } = await import('../src/ui/resultsPlotModel.ts');
-const { WINDOW_PREV } = await import('../src/ui/colourModel.ts');
+const { WINDOW_N } = await import('../src/ui/colourModel.ts');
 const { towerDate } = await import('../src/ui/towerModel.ts');
 
 // ------------------------------------------------------------------ fixture
@@ -302,11 +302,11 @@ test('resultsmodel: plotWindow — PLOT_N most recent ranked, ascending, exclude
   const shuffled = [excluded[2], rankedRides[7], excluded[0], ...rankedRides.slice(0, 7), rankedRides[8], excluded[1], ...rankedRides.slice(9)];
   const window = plotWindow(shuffled);
 
-  assert(window.length === WINDOW_PREV, `expected ${WINDOW_PREV}, got ${window.length}`);
+  assert(window.length === PLOT_N, `expected ${PLOT_N}, got ${window.length}`);
   for (let i = 1; i < window.length; i++) {
     assert(window[i].startedAtMs > window[i - 1].startedAtMs, 'window must be ascending by startedAtMs');
   }
-  const expectedIds = rankedRides.slice(-WINDOW_PREV).map((r) => r.rideId);
+  const expectedIds = rankedRides.slice(-PLOT_N).map((r) => r.rideId);
   assert(window.map((r) => r.rideId).join(',') === expectedIds.join(','), `expected [${expectedIds}], got [${window.map((r) => r.rideId)}]`);
 });
 
@@ -454,12 +454,30 @@ test('resultsmodel: buildPlotModel — single ranked ride: one fastest dot at th
   assert(collided !== undefined && collided.label === null, `expected a colliding tick with a null label, got ${JSON.stringify(model.yTicks)}`);
 });
 
-test('resultsmodel: buildPlotModel — 10+ ranked rides: exactly PLOT_N dots, oldest ranked ride excluded', () => {
-  const ten = Array.from({ length: 10 }, (_, i) => mk(`n${i}`, (i + 1) * 10_000, 600 - i));
-  const model = buildPlotModel(ten, 300);
-  assert(model.windowN === WINDOW_PREV, `expected windowN ${WINDOW_PREV}, got ${model.windowN}`);
-  assert(model.points.length === WINDOW_PREV, `expected ${WINDOW_PREV} points, got ${model.points.length}`);
+test('resultsmodel: buildPlotModel — 11+ ranked rides: exactly PLOT_N (= WINDOW_N = 10) dots, oldest ranked ride excluded', () => {
+  const eleven = Array.from({ length: 11 }, (_, i) => mk(`n${i}`, (i + 1) * 10_000, 600 - i));
+  const model = buildPlotModel(eleven, 300);
+  assert(model.windowN === WINDOW_N, `expected windowN ${WINDOW_N}, got ${model.windowN}`);
+  assert(model.points.length === WINDOW_N, `expected ${WINDOW_N} points, got ${model.points.length}`);
   assert(!model.points.some((p) => p.rideId === 'n0'), 'the oldest ranked ride (n0) must be excluded from the plot');
+  assert(model.points.some((p) => p.rideId === 'n1'), 'the 10th-newest ride (n1) is now on the plot');
+});
+
+test('virgin-cycle25 01: PLOT_N is the ranking pool WINDOW_N (10), not WINDOW_PREV', () => {
+  assert(PLOT_N === WINDOW_N && WINDOW_N === 10, `PLOT_N ${PLOT_N} / WINDOW_N ${WINDOW_N}`);
+  assert(windowCaption(10) === 'LAST 10 ACTIVITIES' && windowCaption(1) === 'LAST 1 ACTIVITY', 'caption moved with the plot model');
+});
+
+test('virgin-cycle25 01: buildPlotModel honours a custom plotH (y, meanY and ticks scale; default stays 220)', () => {
+  const rides = [mk('h0', 1000, 600), mk('h1', 2000, 660), mk('h2', 3000, 630)];
+  const tall = buildPlotModel(rides, 300);
+  const short = buildPlotModel(rides, 300, 110);
+  assert(tall.plotH === 220 && short.plotH === 110, `plotH ${tall.plotH} / ${short.plotH}`);
+  for (let i = 0; i < 3; i++) assert(Math.abs(short.points[i].y * 2 - tall.points[i].y) < 1e-9, `point ${i} y does not scale`);
+  assert(short.meanY !== null && tall.meanY !== null && Math.abs(short.meanY * 2 - tall.meanY) < 1e-9, 'meanY does not scale');
+  assert(short.yTicks.length === tall.yTicks.length, 'tick count must not depend on height');
+  for (let i = 0; i < short.yTicks.length; i++) assert(Math.abs(short.yTicks[i].at * 2 - tall.yTicks[i].at) < 1e-9, `tick ${i} at does not scale`);
+  assert(short.points.every((p) => p.y >= 0 && p.y <= 110), 'short points inside the plot');
 });
 
 test('resultsmodel: buildPlotModel — 0 ranked results ⇒ empty "no-ranked", no points', () => {

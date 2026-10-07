@@ -32,8 +32,8 @@ import { DEMO_WAY_ASSET, DEMO_WAY_ID } from './demoWayFixture.ts';
 import type { RefLine } from '../../core/src/index.ts';
 import { buildRefFromRideFixes, type RefFixInput } from '../live/userRefs.ts';
 import { seedGateChainages } from '../store/gateSeeding.ts';   // pure, import-free (brief D R5)
-import { buildHistoryBoard, windowCaption } from './resultsListModel.ts';   // pure over a results array (brief 08)
-import { plotWindow } from './resultsPlotModel.ts';                          // the real plot's own window rule (brief 08)
+import { buildHistoryBoard } from './resultsListModel.ts';   // pure over a results array (brief 08); goes with brief 03
+import { plotWindow, windowCaption } from './resultsPlotModel.ts';   // the real plot's own window rule + caption (brief 08, cycle25 01)
 // Re-exported so DemoScreen.tsx never has to import from '../store/**' at all
 // (Rules: DemoScreen must not import anything from app/src/store/**).
 export type { RouteNames };
@@ -300,7 +300,7 @@ export function demoTodayResult(nowMs: number, script: DemoScript = buildDemoScr
 /** brief 08: what the RESULTS tab would hold for this way after the demo lap — the mode's
  *  priors (the LAST DEMO_PRIOR_LAPS[mode] columns, oldest first, same ids/dates as the tower
  *  and the self dots) plus today, newest. Feed this straight to ResultsPlot's `results`:
- *  its own plotWindow() keeps the last PLOT_N ranked (TENTH: priors 2-9 + today, 9 dots;
+ *  its own plotWindow() keeps the last PLOT_N ranked (TENTH: priors 1-9 + today, 10 dots — virgin-cycle25 01;
  *  SECOND: 2; FIRST: 1 — the real component's own <2-point rendering, no special case). */
 export function demoPlotResults(
   mode: DemoMode, nowMs: number, script: DemoScript = buildDemoScript(),
