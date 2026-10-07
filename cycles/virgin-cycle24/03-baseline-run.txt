@@ -1,0 +1,8 @@
+PASS  virgin-cycle20 07: the lap tier does not flip when onEnd stores today (exclusion by session.rideId)
+PASS  virgin-cycle20 07: RecordScreen wires the real lap tier and the session exclusion
+PASS  virgin-cycle20 10: founded route, founding ride stopped in every sector — ride 2 STRIP chips earn purple, not neutral (map line follows)
+PASS  virgin-cycle20 10: ride 3 still works — window holds the founding sector AND ride 2, green reachable, exclusion by id intact
+PASS  virgin-cycle20 10: timing mode — raw reads the interrupted founding sector's stop-inclusive time, moving its raw − stop
+PASS  virgin-cycle20 10: a clean founding ride is unchanged — ride 2 slower ⇒ yellow everywhere (n=1: never green), faster ⇒ purple
+
+887 tests: 883 pass, 1 fail, 3 skip

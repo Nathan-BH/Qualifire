@@ -247,10 +247,10 @@
     {
       "file": "src/ui/CatalogDetailScreen.tsx",
       "kind": "text",
-      "text": "BACK TO ROUTES",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
+      "text": "BACK TO MAP",
+      "reason": "virgin-cycle24 03: the ROUTES tab is now the MAP tab; same button, renamed",
+      "since": "2026-10-07",
+      "by": "sonnet-executor"
     },
     {
       "file": "src/ui/CatalogDetailScreen.tsx",
@@ -1119,14 +1119,6 @@
     {
       "file": "src/ui/RideDetailScreen.tsx",
       "kind": "alert-body",
-      "text": "GPX sent as text via the share sheet.",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RideDetailScreen.tsx",
-      "kind": "alert-body",
       "text": "Pick it on RECORD next time instead of adding it again.",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
@@ -1146,32 +1138,8 @@
     },
     {
       "file": "src/ui/RideDetailScreen.tsx",
-      "kind": "alert-body",
-      "text": "{…} · {…} This permanently removes the raw trace.",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RideDetailScreen.tsx",
-      "kind": "alert-body",
-      "text": "{…}.gpx saved to the folder you picked.",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RideDetailScreen.tsx",
       "kind": "alert-title",
       "text": "Could not create the route",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RideDetailScreen.tsx",
-      "kind": "alert-title",
-      "text": "Could not delete",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"
@@ -1195,47 +1163,7 @@
     {
       "file": "src/ui/RideDetailScreen.tsx",
       "kind": "alert-title",
-      "text": "Could not update",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RideDetailScreen.tsx",
-      "kind": "alert-title",
-      "text": "Delete activity?",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RideDetailScreen.tsx",
-      "kind": "alert-title",
-      "text": "Export failed",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RideDetailScreen.tsx",
-      "kind": "alert-title",
-      "text": "Exported",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RideDetailScreen.tsx",
-      "kind": "alert-title",
       "text": "Overwrite the reference of \"{…}\"?",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RideDetailScreen.tsx",
-      "kind": "alert-title",
-      "text": "Shared",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"
@@ -1268,30 +1196,6 @@
       "file": "src/ui/RideDetailScreen.tsx",
       "kind": "literal",
       "text": "BACK TO ROUTE",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RideDetailScreen.tsx",
-      "kind": "literal",
-      "text": "Count in ranking",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RideDetailScreen.tsx",
-      "kind": "literal",
-      "text": "Export GPX+",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RideDetailScreen.tsx",
-      "kind": "literal",
-      "text": "Ignore in ranking",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"
@@ -1368,6 +1272,38 @@
     },
     {
       "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "prop:label",
+      "text": "Count in ranking",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "prop:label",
+      "text": "Delete",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "prop:label",
+      "text": "Export GPX+",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
+      "kind": "prop:label",
+      "text": "Ignore in ranking",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/RideDetailScreen.tsx",
       "kind": "prop:text",
       "text": "Cancel",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
@@ -1377,47 +1313,7 @@
     {
       "file": "src/ui/RideDetailScreen.tsx",
       "kind": "prop:text",
-      "text": "Delete",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RideDetailScreen.tsx",
-      "kind": "prop:text",
       "text": "Overwrite",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RideDetailScreen.tsx",
-      "kind": "text",
-      "text": "ACTIONS",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RideDetailScreen.tsx",
-      "kind": "text",
-      "text": "ACTIVITY",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RideDetailScreen.tsx",
-      "kind": "text",
-      "text": "Delete",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RideDetailScreen.tsx",
-      "kind": "text",
-      "text": "FREE ACTIVITY",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"
@@ -1473,22 +1369,6 @@
     {
       "file": "src/ui/RideDetailScreen.tsx",
       "kind": "text",
-      "text": "last",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RideDetailScreen.tsx",
-      "kind": "text",
-      "text": "on this way",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RideDetailScreen.tsx",
-      "kind": "text",
       "text": "ref",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
@@ -1498,14 +1378,6 @@
       "file": "src/ui/RideDetailScreen.tsx",
       "kind": "text",
       "text": "reference activity of",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RideDetailScreen.tsx",
-      "kind": "text",
-      "text": "‹ BACK",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"
@@ -1536,11 +1408,27 @@
     },
     {
       "file": "src/ui/RidesScreen.tsx",
-      "kind": "prop:title",
-      "text": "FREE ACTIVITIES",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
+      "kind": "prop:label",
+      "text": "Count in ranking",
+      "reason": "cycle23 feed menu: quick toggle, same label as the detail page",
+      "since": "2026-10-06",
+      "by": "Sonnet execute, virgin-cycle23 brief 02"
+    },
+    {
+      "file": "src/ui/RidesScreen.tsx",
+      "kind": "prop:label",
+      "text": "Delete",
+      "reason": "cycle23 feed menu: delete with the existing confirm",
+      "since": "2026-10-06",
+      "by": "Sonnet execute, virgin-cycle23 brief 02"
+    },
+    {
+      "file": "src/ui/RidesScreen.tsx",
+      "kind": "prop:label",
+      "text": "Ignore in ranking",
+      "reason": "cycle23 feed menu: quick toggle, same label as the detail page",
+      "since": "2026-10-06",
+      "by": "Sonnet execute, virgin-cycle23 brief 02"
     },
     {
       "file": "src/ui/RidesScreen.tsx",
@@ -1570,62 +1458,6 @@
       "file": "src/ui/RoutesScreen.tsx",
       "kind": "literal",
       "text": "NO SPORT YET · ADD ONE IN SETTINGS",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RoutesScreen.tsx",
-      "kind": "literal",
-      "text": "· asks which one at START",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RoutesScreen.tsx",
-      "kind": "literal",
-      "text": "· not used by {…}",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RoutesScreen.tsx",
-      "kind": "text",
-      "text": "No places yet.",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RoutesScreen.tsx",
-      "kind": "text",
-      "text": "No routes yet.",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RoutesScreen.tsx",
-      "kind": "text",
-      "text": "ROUTES",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RoutesScreen.tsx",
-      "kind": "text",
-      "text": "YOUR PLACES",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RoutesScreen.tsx",
-      "kind": "text",
-      "text": "way",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"
@@ -1714,6 +1546,32 @@
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/catalogMapView.tsx",
+      "kind": "literal",
+      "text": "Noto Sans Regular",
+      "reason": "virgin-cycle24 03: MapLibre font-stack name for pin labels, never shown as text",
+      "since": "2026-10-07",
+      "by": "sonnet-executor"
+    },
+    {
+      "file": "src/ui/catalogMapView.tsx",
+      "kind": "literal",
+      "text": "https://tiles.openfreemap.org/styles/dark",
+      "reason": "virgin-cycle24 03: OpenFreeMap style URL (copied from wayMapView.tsx), a technical address, never shown as text",
+      "since": "2026-10-07",
+      "by": "sonnet-executor",
+      "long": true
+    },
+    {
+      "file": "src/ui/catalogMapView.tsx",
+      "kind": "literal",
+      "text": "https://tiles.openfreemap.org/styles/positron",
+      "reason": "virgin-cycle24 03: OpenFreeMap style URL (copied from wayMapView.tsx), a technical address, never shown as text",
+      "since": "2026-10-07",
+      "by": "sonnet-executor",
+      "long": true
     },
     {
       "file": "src/ui/demoModel.ts",
@@ -2742,6 +2600,94 @@
       "file": "src/ui/resultsWayList.tsx",
       "kind": "text",
       "text": "‹ ROUTES",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/rideActions.ts",
+      "kind": "alert-body",
+      "text": "GPX sent as text via the share sheet.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/rideActions.ts",
+      "kind": "alert-body",
+      "text": "{…} · {…} This permanently removes the raw trace.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/rideActions.ts",
+      "kind": "alert-body",
+      "text": "{…}.gpx saved to the folder you picked.",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/rideActions.ts",
+      "kind": "alert-title",
+      "text": "Could not delete",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/rideActions.ts",
+      "kind": "alert-title",
+      "text": "Could not update",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/rideActions.ts",
+      "kind": "alert-title",
+      "text": "Delete activity?",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/rideActions.ts",
+      "kind": "alert-title",
+      "text": "Export failed",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/rideActions.ts",
+      "kind": "alert-title",
+      "text": "Exported",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/rideActions.ts",
+      "kind": "alert-title",
+      "text": "Shared",
+      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
+      "since": "2026-10-02",
+      "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/rideActions.ts",
+      "kind": "prop:text",
+      "text": "Cancel",
+      "reason": "virgin-cycle23 brief 01: Delete confirm moved to rideActions.ts; RideDetailScreen.tsx keeps its own Cancel (Overwrite alert)",
+      "since": "2026-10-06",
+      "by": "Sonnet execute, virgin-cycle23 brief 01"
+    },
+    {
+      "file": "src/ui/rideActions.ts",
+      "kind": "prop:text",
+      "text": "Delete",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"

@@ -14,9 +14,11 @@
  * card in new-way mode; `existingWayId` set → "Save as a new route on <way>"
  * and the card in WP-G's variant mode (≥1 spec required). Shown iff a draft
  * exists and the ride is not already some route's reference. The flow below
- * ACTIONS mirrors RecordScreen's (WayNamingCard → GateAdjustCard) through
+ * the suggestion rows mirrors RecordScreen's (WayNamingCard → GateAdjustCard) through
  * the shared store/wayFromRide.ts bodies; the WP-G duplicate-specs belt
  * check is repeated here as RecordScreen repeats it.
+ *
+ * virgin-cycle23 brief 03: redesigned as one flat scroll — map first in its frame, text on the page background, SECTORS/ON THIS WAY/suggestions as plain rows, quick actions in the ⋯ menu (activityMenu.tsx), sector tap highlights the stretch on the map.
  *
  * virgin-cycle14 brief 02 (testuser LBH #2): REPLAY — `ReplayScreen.tsx` mounted in
  * place of this scroll view while `replaying`.
@@ -30,11 +32,11 @@ import { useSettings } from './settings.tsx';
 import { PaddockTheme, colors, radius } from './theme.ts';
 import WayMapView from './wayMapView.tsx';
 import { appendTrailPoint, type TrailPoint } from './trailModel.ts';
-import { dateTimeLabel, buildPbDetail } from './rideHistoryModel.ts';
+import { FREE_RIDE_ROW_NAME, dateTimeLabel, buildPbDetail } from './rideHistoryModel.ts';
 import {
   lapValues, ownLapBarredFromRanking, rankingPoolFor, sectorValues, type UiTier,
 } from './colourModel.ts';
-import { rideDetailFor } from './rideDetailModel.ts';
+import { rideDetailFor, sectorHighlightColours } from './rideDetailModel.ts';
 import ReplayScreen from './ReplayScreen.tsx';
 import { loadReplayRider } from './replayModel.ts';
 import { ALL_YELLOW } from './sectorTrailModel.ts';
@@ -44,7 +46,7 @@ import { effectiveRideSportId, scopeCatalog } from '../store/sports.ts';
 import { activeCatalog, currentSports } from '../store/sportStore.ts';
 import { wayLabelIn } from '../store/defaultWay.ts';
 import {
-  clearUnmatched, getStoredResult, removeStoredResult, setIgnoredFromRanking, storedResultsForWay,
+  clearUnmatched, getStoredResult, removeStoredResult, storedResultsForWay,
 } from '../store/resultsStore.ts';
 import { freeRideNear, freeRideResults, markRideFree, unmarkRideFree } from '../store/freeRides.ts';
 import {
@@ -64,21 +66,11 @@ import { RouteNamingCard } from './routeNamingCard.tsx';
 import { GateAdjustCard } from './gateAdjustCard.tsx';
 import { createExpoFsAdapter } from '../storage/expoFsAdapter.ts';
 import { decodeEventsFile } from '../storage/eventsJsonl.ts';
-import { deleteRide, exportGpxPlus, listRides } from '../storage';
+import { listRides } from '../storage';
 import type { PickEvent, RideMeta } from '../storage/types';
-import { gpxBaseName, saveGpx } from './saveGpx.ts';
-
-function fmtWhen(ms: number): string {
-  const d = new Date(ms);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
-}
-
-function fmtDur(ms: number): string {
-  const s = Math.max(0, Math.round(ms / 1000));
-  const m = Math.floor(s / 60);
-  return `${m}m${String(s % 60).padStart(2, '0')}s`;
-}
+import { confirmDeleteRide, exportRideGpx, toggleIgnoreRide } from './rideActions.ts';
+import { durationLabel, sectorGapLabel } from './feedModel.ts';
+import { ActivityMenu, MenuButton, type MenuAnchor, type MenuItem } from './activityMenu.tsx';
 
 /** ResultScreen.tsx's PbDetail, lifted in verbatim — the ride-detail's own
  * "ON THIS ROUTE" section, scoped to this ride's route (§3.4).
@@ -93,9 +85,8 @@ function PbDetail(props: { wayId: string; lastRideId: string | null; todayTier: 
     <View style={st.pbDetail}>
       {detail.ranking.length > 0 ? (
         <>
-          <Text style={[st.hint, { color: t.textDim }]}>last {detail.ranking.length} on this way</Text>
           {detail.ranking.map((row) => (
-            <View key={row.posLabel} style={st.pbRow}>
+            <View key={row.posLabel} style={[st.pbRow, { borderTopColor: t.cardBorder }, row.today && { backgroundColor: t.card }]}>
               <Text style={[st.pbPos, { color: t.text }]}>{row.posLabel}</Text>
               <Text style={{ flex: 1, color: row.today ? todayColour : t.textDim, fontSize: 13 }}>
                 {row.dateLabel}
@@ -121,7 +112,8 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
   const [replaying, setReplaying] = useState(false); // virgin-cycle14 brief 02
   const [canReplay, setCanReplay] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [exporting, setExporting] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState<MenuAnchor | null>(null);
+  const [selectedSector, setSelectedSector] = useState<number | null>(null);
   const [meta, setMeta] = useState<RideMeta | null>(null);
   // §3.3 offer: 'pending' until the draft resolves; null = no offer.
   const [draft, setDraft] = useState<RouteCreationDraft | null | 'pending'>('pending');
@@ -358,13 +350,10 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
   }
 
   async function onToggleIgnore() {
+    if (busy) return;
     setBusy(true);
     try {
-      const upd = await setIgnoredFromRanking(request.rideId, !model.ignored);
-      if (upd) replaceRecorded(upd);
-      setTick((v) => v + 1);
-    } catch (e) {
-      Alert.alert('Could not update', e instanceof Error ? e.message : String(e));
+      if (await toggleIgnoreRide(request.rideId, !model.ignored)) setTick((v) => v + 1);
     } finally {
       setBusy(false);
     }
@@ -372,51 +361,15 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
 
   async function onExport() {
     if (!meta) return;
-    setExporting(true);
-    try {
-      const gpx = await exportGpxPlus(meta.rideId);
-      const base = gpxBaseName(meta.startMs);
-      const result = await saveGpx(base, gpx);
-      if (result.method === 'saf') {
-        Alert.alert('Exported', `${base}.gpx saved to the folder you picked.`);
-      } else if (result.method === 'share-text') {
-        Alert.alert('Shared', 'GPX sent as text via the share sheet.');
-      }
-    } catch (e) {
-      Alert.alert('Export failed', e instanceof Error ? e.message : String(e));
-    } finally {
-      setExporting(false);
-    }
+    await exportRideGpx(meta);
   }
 
   function onDelete() {
     if (!meta) return;
-    Alert.alert(
-      'Delete activity?',
-      `${fmtWhen(meta.startMs)} · ${fmtDur(meta.endMs - meta.startMs)}\nThis permanently removes the raw trace.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteRide(meta.rideId);
-              await removeStoredResult(meta.rideId);
-              dropRecorded(meta.rideId);
-              if (model.free !== null) unmarkRideFree(model.free.rideId); // virgin-cycle16 02: no orphan free record
-              // RidesScreen remounts on close and refreshes itself; from
-              // 'post-stop' the rider lands back on RECORD setup — same as
-              // discard-after-the-fact; from 'routes' the way detail
-              // underneath is revealed.
-              tabNav.closeRide();
-            } catch (e) {
-              Alert.alert('Could not delete', e instanceof Error ? e.message : String(e));
-            }
-          },
-        },
-      ],
-    );
+    // RidesScreen remounts on close and refreshes itself; from 'post-stop' the
+    // rider lands back on RECORD setup; from 'routes' the way detail underneath
+    // is revealed (comment kept from WP-H).
+    confirmDeleteRide(meta, model.free?.rideId ?? null, () => tabNav.closeRide());
   }
 
   async function onPromote() {
@@ -462,6 +415,17 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
     );
   }
 
+  useEffect(() => { setSelectedSector(null); }, [request.rideId, tick]);
+
+  const menuItems: MenuItem[] = [];
+  if (meta) menuItems.push({ label: 'Export GPX+', onPress: () => void onExport() });
+  if (model.canToggleIgnore) {
+    menuItems.push(model.ignored
+      ? { label: 'Count in ranking', onPress: () => void onToggleIgnore() }
+      : { label: 'Ignore in ranking', onPress: () => void onToggleIgnore() });
+  }
+  if (meta) menuItems.push({ label: 'Delete', onPress: onDelete });
+
   const primaryLabel = request.source === 'post-stop' ? 'RECORD ANOTHER' : request.source === 'routes' ? 'BACK TO ROUTE' : request.source === 'results' ? 'BACK TO RESULTS' : 'BACK TO ACTIVITIES';
 
   if (replaying && replayWayId !== null) {
@@ -472,34 +436,24 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
   }
 
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 40 }}>
       <View style={styles.topBar}>
-        <Pressable onPress={() => tabNav.closeRide()} hitSlop={8}>
-          <Text style={[styles.backText, { color: t.textDim }]}>‹ BACK</Text>
+        <Pressable style={styles.roundBtn} onPress={() => tabNav.closeRide()} hitSlop={6}>
+          <Text style={[styles.roundGlyph, { color: t.text }]}>‹</Text>
         </Pressable>
-        <Text style={[styles.topTitle, { color: t.text }]}>ACTIVITY</Text>
-        <Text style={[styles.topDate, { color: t.textDim }]}>{dateTimeLabel(request.startedAtMs)}</Text>
+        <MenuButton style={styles.roundBtn} onOpen={setMenuAnchor} />
       </View>
 
       {model.kind === 'route' ? (
-        <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder, alignItems: 'center' }]}>
-          <Text style={{ color: t.textDim }}>{wayLabelIn(currentCatalog(), model.wayId as string)}</Text>
-          <Text style={[st.big, { color: tierTextColour(model.lapTier, t) }]}>{model.lapLabel}</Text>
-          <Text style={{ color: t.textDim, fontSize: 12.5 }}>{model.rankLine}</Text>
-          {model.referenceOf ? (
-            <Text style={{ color: t.textDim, fontSize: 11.5, marginTop: 4 }}>
-              reference activity of {wayLabelIn(currentCatalog(), model.referenceOf.id)}
-            </Text>
-          ) : null}
-
-          <View style={{ alignSelf: 'stretch', marginTop: 10 }}>
+        <>
+          <View style={styles.mapWrap}>
             <WayMapView
               variant="browse"
               wayId={model.wayId}
               lat={null}
               lon={null}
               zoom={1}
-              height={300}
+              height={320}
               showRider={false}
               // WP-K: gated by the settings toggle, same two-line pattern as
               // RecordScreen and the RIDES row — ALL_YELLOW (truthy, all-null)
@@ -508,166 +462,132 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
               // virgin-cycle22 01 (Nathan 2026-10-05): no `trail` here — the
               // reference line IS this ride's line (sectors, gates, what ROUTES
               // shows); the raw ridden trail doubled it at every bend. The
-              // trail is drawn only by the cards below, which have no reference.
-              sectorColours={s.sectorColours ? model.sectorColours : ALL_YELLOW}
-              leadColour={s.sectorColours ? colors.grey : undefined}
+              // trail is drawn only by the branches below, which have no reference.
+              // virgin-cycle23 brief 03: while a SECTORS row is selected the map shows only that
+              // stretch, in riderBlue (selection, not a verdict — the gate-adjust ring's rule).
+              sectorColours={selectedSector !== null
+                ? sectorHighlightColours(model.sectorRows, selectedSector, colors.riderBlue)
+                : (s.sectorColours ? model.sectorColours : ALL_YELLOW)}
+              leadColour={selectedSector === null && s.sectorColours ? colors.grey : undefined}
             />
           </View>
-
-          <View style={{ alignSelf: 'stretch', marginTop: 14 }}>
-            <Text style={[st.h2, { color: t.textDim }]}>SECTORS</Text>
-            {model.sectorRows.map((sec) => (
-              // virgin-cycle22 03: label plain, only the TIME carries the tier colour (same
-              // layout as ON THIS WAY below); avg stays dim. tierTextColour, never the
-              // chip palette's .text (purple's is the chip ink, unreadable on the card).
-              <View key={sec.index} style={styles.secRow}>
-                <Text style={[styles.secPos, { color: t.text }]}>{sec.label}</Text>
-                <Text style={[styles.secTime, { color: tierTextColour(sec.tier, t) }]}>{sec.timeLabel}</Text>
-                <Text style={[styles.secAvg, { color: t.textDim }]}>{sec.avgLabel}</Text>
-              </View>
-            ))}
+          <View style={styles.pad}>
+            <Text style={[styles.name, { color: t.text }]}>{wayLabelIn(currentCatalog(), model.wayId as string)}</Text>
+            <Text style={[styles.date, { color: t.textDim }]}>{dateTimeLabel(request.startedAtMs)}</Text>
+            <Text style={[st.big, { color: tierTextColour(model.lapTier, t) }, model.ignored && styles.dim]}>{model.lapLabel}</Text>
+            <Text style={[styles.rankLine, { color: t.text2 }]}>{model.rankLine}</Text>
+            {model.referenceOf ? (
+              <Text style={[styles.rankLine, { color: t.textDim }]}>
+                reference activity of {wayLabelIn(currentCatalog(), model.referenceOf.id)}
+              </Text>
+            ) : null}
           </View>
-
-          <View style={{ alignSelf: 'stretch', marginTop: 14 }}>
-            <Text style={[st.h2, { color: t.textDim }]}>ON THIS WAY</Text>
-            <PbDetail
-              wayId={model.wayId as string}
-              lastRideId={request.rideId}
-              todayTier={model.lapTier}
-              t={t}
-            />
-          </View>
-        </View>
+        </>
       ) : model.referenceOf !== null ? (
-        // virgin-cycle13 (Nathan 2026-09-24): this ride founded a way
-        // (Way.referenceRideId) but its OWN result never matched anything —
-        // matching only runs against ways that existed at backfill time, and
-        // a permanent unmatched marker (resultsStore.ts) means it's never
-        // retried once the way is minted from this very ride. Read straight
-        // off the catalog, same as the kind==='route' reference line above —
-        // no fabricated lap/rank/sectors, this ride genuinely has none on
-        // file.
-        <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder, alignItems: 'center' }]}>
-          <Text style={{ color: t.textDim }}>{wayLabelIn(currentCatalog(), model.referenceOf.id)}</Text>
-          <Text style={{ color: t.textDim, fontSize: 12.5, marginTop: 4 }}>ref</Text>
-          <View style={{ alignSelf: 'stretch', marginTop: 10 }}>
-            <WayMapView
-              variant="browse"
-              wayId={null}
-              lat={null}
-              lon={null}
-              zoom={1}
-              height={300}
-              showRider={false}
-              trail={fixes ?? undefined}
-            />
+        <>
+          {/* virgin-cycle13 (Nathan 2026-09-24): this ride founded a way
+              (Way.referenceRideId) but its OWN result never matched anything —
+              matching only runs against ways that existed at backfill time, and
+              a permanent unmatched marker (resultsStore.ts) means it's never
+              retried once the way is minted from this very ride. Read straight
+              off the catalog, same as the kind==='route' reference line above —
+              no fabricated lap/rank/sectors, this ride genuinely has none on
+              file. */}
+          <View style={styles.mapWrap}>
+            <WayMapView variant="browse" wayId={null} lat={null} lon={null} zoom={1} height={320} showRider={false} trail={fixes ?? undefined} />
           </View>
-        </View>
+          <View style={styles.pad}>
+            <Text style={[styles.name, { color: t.text }]}>{wayLabelIn(currentCatalog(), model.referenceOf.id)}</Text>
+            <Text style={[styles.date, { color: t.textDim }]}>{dateTimeLabel(request.startedAtMs)}</Text>
+            <Text style={[st.big, { color: t.accentText }]}>{durationLabel(meta)}</Text>
+            <Text style={[styles.rankLine, { color: t.textDim }]}>ref</Text>
+          </View>
+        </>
       ) : model.kind === 'free' && model.free ? (
-        <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder, alignItems: 'center' }]}>
-          <Text style={{ color: t.textDim }}>FREE ACTIVITY</Text>
-          <Text style={{ color: t.textDim, fontSize: 12.5, marginTop: 4 }}>
-            {pickLabel ?? 'saved as a free activity'}
-          </Text>
-          <View style={{ alignSelf: 'stretch', marginTop: 10 }}>
-            <WayMapView
-              variant="browse"
-              wayId={null}
-              lat={null}
-              lon={null}
-              zoom={1}
-              height={300}
-              showRider={false}
-              trail={fixes ?? undefined}
-            />
+        <>
+          <View style={styles.mapWrap}>
+            <WayMapView variant="browse" wayId={null} lat={null} lon={null} zoom={1} height={320} showRider={false} trail={fixes ?? undefined} />
           </View>
-        </View>
+          <View style={styles.pad}>
+            <Text style={[styles.name, { color: t.text }]}>{FREE_RIDE_ROW_NAME}</Text>
+            <Text style={[styles.date, { color: t.textDim }]}>{dateTimeLabel(request.startedAtMs)}</Text>
+            <Text style={[st.big, { color: t.accentText }]}>{durationLabel(meta)}</Text>
+            <Text style={[styles.rankLine, { color: t.textDim }]}>{pickLabel ?? 'saved as a free activity'}</Text>
+          </View>
+        </>
       ) : (
-        // virgin-cycle13: pickLabel (this ride's own START-time from/to,
-        // fetched above) covers both a free ride ("new → new") and a
-        // route-mode ride that genuinely matched nothing; falls back to the
-        // old plain text only for a pre-GPX+ ride with no sidecar pick at all.
-        <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-          {pickLabel !== null ? <Text style={{ color: t.textDim }}>{pickLabel}</Text> : null}
-          <View style={{ alignSelf: 'stretch', marginTop: 10 }}>
-            <WayMapView
-              variant="browse"
-              wayId={null}
-              lat={null}
-              lon={null}
-              zoom={1}
-              height={300}
-              showRider={false}
-              trail={fixes ?? undefined}
-            />
+        <>
+          {/* virgin-cycle13: pickLabel (this ride's own START-time from/to,
+              fetched above) covers both a free ride ("new → new") and a
+              route-mode ride that genuinely matched nothing; falls back to the
+              old plain text only for a pre-GPX+ ride with no sidecar pick at all. */}
+          <View style={styles.mapWrap}>
+            <WayMapView variant="browse" wayId={null} lat={null} lon={null} zoom={1} height={320} showRider={false} trail={fixes ?? undefined} />
           </View>
-        </View>
+          <View style={styles.pad}>
+            {pickLabel !== null ? <Text style={[styles.name, { color: t.text }]}>{pickLabel}</Text> : null}
+            <Text style={[styles.date, { color: t.textDim }]}>{dateTimeLabel(request.startedAtMs)}</Text>
+            <Text style={[st.big, { color: t.accentText }]}>{durationLabel(meta)}</Text>
+          </View>
+        </>
       )}
 
-      <View style={{ marginTop: 16 }}>
-        <Text style={[st.h2, { color: t.textDim }]}>ACTIONS</Text>
-        <View style={styles.pillRow}>
-          {replayWayId !== null && canReplay ? (
-            <Pressable style={styles.exportBtn} onPress={() => setReplaying(true)}>
-              <Text style={styles.exportText}>Replay</Text>
-            </Pressable>
-          ) : null}
-          <Pressable
-            style={[styles.exportBtn, exporting && styles.busy]}
-            disabled={exporting || !meta}
-            onPress={onExport}
-          >
-            <Text style={styles.exportText}>{exporting ? '…' : 'Export GPX+'}</Text>
+      {replayWayId !== null && canReplay ? (
+        <View style={styles.pad}>
+          <Pressable style={[styles.replayBtn, { backgroundColor: t.accent }]} onPress={() => setReplaying(true)}>
+            <Text style={[styles.replayText, { color: t.onAccent }]}>Replay</Text>
           </Pressable>
-          <Pressable style={styles.deleteBtn} disabled={!meta} onPress={onDelete}>
-            <Text style={styles.deleteText}>Delete</Text>
-          </Pressable>
-          {model.canToggleIgnore ? (
-            <Pressable style={[styles.deleteBtn, busy && styles.busy]} disabled={busy} onPress={onToggleIgnore}>
-              <Text style={styles.deleteText}>{model.ignored ? 'Count in ranking' : 'Ignore in ranking'}</Text>
-            </Pressable>
-          ) : null}
         </View>
-        {model.promoteTarget !== null ? (
-          <Pressable
-            style={[styles.deleteBtn, styles.promoteBtn, busy && styles.busy]}
-            disabled={busy}
-            onPress={confirmPromote}
-          >
-            <Text style={styles.deleteText}>Make this the reference of this way</Text>
-          </Pressable>
-        ) : null}
-        {offer !== null && !naming && adjust === null ? (
-          <Pressable
-            style={[styles.deleteBtn, styles.promoteBtn, busy && styles.busy]}
-            disabled={busy}
-            onPress={() => setNaming(true)}
-          >
-            <Text style={styles.deleteText}>{offerLabel}</Text>
-          </Pressable>
-        ) : null}
-        {model.kind === 'none' && model.referenceOf === null && !naming && adjust === null ? (
-          <Pressable
-            style={[styles.deleteBtn, styles.promoteBtn, busy && styles.busy]}
-            disabled={busy}
-            onPress={onSaveFree}
-          >
-            <Text style={styles.deleteText}>Save as free activity</Text>
-          </Pressable>
-        ) : null}
-        {model.kind === 'free' ? (
-          <Pressable
-            style={[styles.deleteBtn, styles.promoteBtn, busy && styles.busy]}
-            disabled={busy}
-            onPress={onUnsaveFree}
-          >
-            <Text style={styles.deleteText}>Not a free activity</Text>
-          </Pressable>
-        ) : null}
-      </View>
+      ) : null}
+
+      {model.kind === 'route' ? (
+        <>
+          <Text style={[st.h2, styles.h2, { color: t.textDim }]}>SECTORS</Text>
+          {model.sectorRows.map((sec) => (
+            // virgin-cycle22 03: label plain, only the TIME carries the tier colour; avg stays dim.
+            // tierTextColour, never the chip palette's .text. virgin-cycle23: a row is a Pressable;
+            // tapping it selects the sector on the map (tap again clears); gap = this time vs the sector average.
+            <Pressable key={sec.index}
+              style={[styles.secRow, { borderTopColor: t.cardBorder }, selectedSector === sec.index && { backgroundColor: t.card }]}
+              onPress={() => setSelectedSector((cur) => (cur === sec.index ? null : sec.index))}>
+              <Text style={[styles.secPos, { color: t.text }]}>{sec.label}</Text>
+              <Text style={[styles.secTime, { color: tierTextColour(sec.tier, t) }]}>{sec.timeLabel}</Text>
+              <Text style={[styles.secAvg, { color: t.textDim }]}>{sec.avgLabel}</Text>
+              <Text style={[styles.secGap, { color: t.textDim }]}>{sectorGapLabel(sec.gapS)}</Text>
+            </Pressable>
+          ))}
+          <Text style={[st.h2, styles.h2, { color: t.textDim }]}>ON THIS WAY</Text>
+          <PbDetail wayId={model.wayId as string} lastRideId={request.rideId} todayTier={model.lapTier} t={t} />
+        </>
+      ) : null}
+
+      {model.promoteTarget !== null ? (
+        <Pressable style={[styles.sugRow, { borderTopColor: t.cardBorder }, busy && styles.busy]} disabled={busy} onPress={confirmPromote}>
+          <Text style={[styles.sugText, { color: t.text }]}>Make this the reference of this way</Text>
+          <Text style={[styles.sugChev, { color: t.textDim }]}>›</Text>
+        </Pressable>
+      ) : null}
+      {offer !== null && !naming && adjust === null ? (
+        <Pressable style={[styles.sugRow, { borderTopColor: t.cardBorder }, busy && styles.busy]} disabled={busy} onPress={() => setNaming(true)}>
+          <Text style={[styles.sugText, { color: t.text }]}>{offerLabel}</Text>
+          <Text style={[styles.sugChev, { color: t.textDim }]}>›</Text>
+        </Pressable>
+      ) : null}
+      {model.kind === 'none' && model.referenceOf === null && !naming && adjust === null ? (
+        <Pressable style={[styles.sugRow, { borderTopColor: t.cardBorder }, busy && styles.busy]} disabled={busy} onPress={onSaveFree}>
+          <Text style={[styles.sugText, { color: t.text }]}>Save as free activity</Text>
+          <Text style={[styles.sugChev, { color: t.textDim }]}>›</Text>
+        </Pressable>
+      ) : null}
+      {model.kind === 'free' ? (
+        <Pressable style={[styles.sugRow, { borderTopColor: t.cardBorder }, busy && styles.busy]} disabled={busy} onPress={onUnsaveFree}>
+          <Text style={[styles.sugText, { color: t.text }]}>Not a free activity</Text>
+          <Text style={[styles.sugChev, { color: t.textDim }]}>›</Text>
+        </Pressable>
+      ) : null}
 
       {naming && offer !== null ? (
-        <View style={{ marginTop: 12 }}>
+        <View style={styles.pad}>
           <RouteNamingCard
             startExistingLabel={existingLandmarkLabel(offer.start)}
             endExistingLabel={existingLandmarkLabel(offer.end)}
@@ -690,7 +610,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
         </View>
       ) : null}
       {adjust !== null ? (
-        <View style={{ marginTop: 12 }}>
+        <View style={styles.pad}>
           <GateAdjustCard
             wayId={adjust.wayId}
             refLine={adjust.ref}
@@ -706,58 +626,42 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
       <Pressable style={[st.slimBtn, { backgroundColor: t.accent }]} onPress={() => tabNav.closeRide()}>
         <Text style={[st.slimBtnText, { color: t.onAccent }]}>{primaryLabel}</Text>
       </Pressable>
-
+      <ActivityMenu anchor={menuAnchor} items={menuItems} onClose={() => setMenuAnchor(null)} />
     </ScrollView>
   );
 }
 
 const makeStyles = (t: PaddockTheme) => StyleSheet.create({
-  topBar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12,
-  },
-  backText: { fontSize: 14, fontWeight: '700' },
-  topTitle: { fontSize: 15, fontWeight: '800', letterSpacing: 2 },
-  topDate: { fontSize: 12 },
-  secRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4 },
-  secPos: { width: 44, fontSize: 13, fontWeight: '700' },
-  secTime: { width: 66, fontSize: 13, fontVariant: ['tabular-nums'], textAlign: 'right' },
-  secAvg: { flex: 1, fontSize: 12, textAlign: 'right', fontVariant: ['tabular-nums'] },
-  pillRow: { flexDirection: 'row', gap: 8, marginTop: 8, flexWrap: 'wrap' },
-  exportBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radius.btn,
-    backgroundColor: t.accent,
-  },
+  topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, height: 52 },
+  roundBtn: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: t.cardBorder, backgroundColor: t.race.card, alignItems: 'center', justifyContent: 'center' },
+  roundGlyph: { fontSize: 26, lineHeight: 28, fontWeight: '700' },
+  mapWrap: { marginHorizontal: 16 },
+  pad: { paddingHorizontal: 16 },
+  name: { fontSize: 22, fontWeight: '800', marginTop: 16 },
+  date: { fontSize: 13, marginTop: 2, fontVariant: ['tabular-nums'] },
+  rankLine: { fontSize: 13, marginTop: 2 },
+  dim: { opacity: 0.45 },
+  replayBtn: { marginTop: 16, paddingVertical: 14, borderRadius: radius.btn, alignItems: 'center' },
+  replayText: { fontSize: 15, fontWeight: '800', letterSpacing: 2 },
+  h2: { paddingHorizontal: 16, marginTop: 28, marginBottom: 8 },
+  secRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 11, paddingHorizontal: 16, borderTopWidth: 1 },
+  secPos: { width: 44, fontSize: 15, fontWeight: '700' },
+  secTime: { width: 72, fontSize: 15, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  secAvg: { flex: 1, fontSize: 13.5, fontVariant: ['tabular-nums'] },
+  secGap: { minWidth: 48, fontSize: 15, fontWeight: '700', textAlign: 'right', fontVariant: ['tabular-nums'] },
+  sugRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 16, borderTopWidth: 1 },
+  sugText: { fontSize: 15, fontWeight: '700', flex: 1 },
+  sugChev: { fontSize: 18, marginLeft: 8 },
   busy: { opacity: 0.5 },
-  exportText: { color: t.onAccent, fontSize: 13, fontWeight: '700' },
-  deleteBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: radius.btn,
-    borderWidth: 1,
-    borderColor: t.cardBorder,
-  },
-  promoteBtn: { marginTop: 8, alignSelf: 'flex-start' },
-  deleteText: { color: t.textDim, fontSize: 13, fontWeight: '700' },
 });
 
 const st = StyleSheet.create({
-  h2: { fontSize: 12, letterSpacing: 2, marginTop: 4, marginBottom: 8 },
-  card: { borderWidth: 1, borderRadius: radius.card, paddingHorizontal: 13, paddingVertical: 4 },
-  big: { fontSize: 34, fontWeight: '800', fontVariant: ['tabular-nums'], marginTop: 4 },
-  slimBtn: {
-    alignSelf: 'center',
-    marginTop: 16,
-    marginBottom: 4,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: radius.btn,
-  },
+  h2: { fontSize: 12, letterSpacing: 2 },
+  big: { fontSize: 34, fontWeight: '800', fontVariant: ['tabular-nums'], marginTop: 10 },
+  slimBtn: { alignSelf: 'center', marginTop: 24, marginBottom: 4, paddingHorizontal: 16, paddingVertical: 9, borderRadius: radius.btn },
   slimBtnText: { fontSize: 12.5, fontWeight: '800', letterSpacing: 1 },
-  pbDetail: { paddingBottom: 10 },
-  hint: { fontSize: 11.5, marginBottom: 2 },
-  pbRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 3 },
-  pbPos: { width: 40, fontSize: 13, fontWeight: '700' },
-  pbNum: { fontVariant: ['tabular-nums'], textAlign: 'right', width: 66, fontSize: 13 },
+  pbDetail: { paddingBottom: 4 },
+  pbRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 11, paddingHorizontal: 16, borderTopWidth: 1 },
+  pbPos: { width: 44, fontSize: 15, fontWeight: '700' },
+  pbNum: { fontVariant: ['tabular-nums'], textAlign: 'right', width: 72, fontSize: 15 },
 });

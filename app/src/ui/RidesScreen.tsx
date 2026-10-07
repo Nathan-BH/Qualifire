@@ -5,9 +5,10 @@
  * a row — route, date, lap, rank — and a tap now opens the full-screen ride
  * detail (WP-H) instead of expanding in place: sector splits, trace, Export/
  * Delete/Ignore/Set-as-reference all live there now.
+ * virgin-cycle23 brief 02: the rows became a feed of pre-expanded blocks with live maps (activityCard.tsx); a tap still opens the detail.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, SectionList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, FlatList, Pressable, StyleSheet, Text, View, type ViewToken } from 'react-native';
 import { listRides } from '../storage';
 import type { PickEvent, RideMeta } from '../storage/types';
 import { getStoredResult } from '../store/resultsStore';
@@ -18,17 +19,32 @@ import { activeSportId, currentSports } from '../store/sportStore';
 import { wayLabelIn } from '../store/defaultWay';
 import { createExpoFsAdapter } from '../storage/expoFsAdapter';
 import { decodeEventsFile } from '../storage/eventsJsonl';
-import { FREE_RIDE_ROW_NAME, buildRideRows, type RideRowModel } from './rideHistoryModel';
-import { lapValues } from './colourModel';
+import { buildRideRows } from './rideHistoryModel';
+import { userCatalog } from '../store/catalogStore';
+import { lapValues, ownLapBarredFromRanking, sectorValues } from './colourModel';
+import { rideDetailFor } from './rideDetailModel';
+import { buildFeedCards, feedItemLayout, liveMapIndices, sameIndexSet, type FeedCardModel } from './feedModel';
+import { ActivityCard, MAP_MOUNT_RADIUS } from './activityCard';
+import { ActivityMenu, type MenuAnchor, type MenuItem } from './activityMenu';
+import { confirmDeleteRide, toggleIgnoreRide } from './rideActions';
+import { useSettings } from './settings';
 import { settleRideHomes } from './rideHomes';
 import { useTabNav } from './tabNav';
 import { PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
 
+/** survives the detail's mount-swap (App.tsx) so BACK lands where the rider was */
+let feedScrollOffset = 0;
+
 export default function RidesScreen() {
   const { t } = useTheme();
   const tabNav = useTabNav();
   const styles = useMemo(() => makeStyles(t), [t]);
+  const { s } = useSettings();
+  const listRef = useRef<FlatList<FeedCardModel>>(null);
+  const restoredRef = useRef(false);
+  const [liveIdx, setLiveIdx] = useState<Set<number>>(() => new Set());
+  const [menu, setMenu] = useState<{ anchor: MenuAnchor; card: FeedCardModel } | null>(null);
   const [rides, setRides] = useState<RideMeta[] | null>(null);
   // Bumped after a backfill pass so buildRideRows re-reads resultsStore's
   // module-level map — React has no way to know that map changed on its own.
@@ -153,18 +169,44 @@ export default function RidesScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rides, resultsTick, pickLabels],
   );
-  // virgin-cycle16 03 (Nathan 2026-09-28): free rides sit in their own
-  // FREE RIDES section under the list, not inline. A row is free iff
-  // buildRideRows named it FREE_RIDE_ROW_NAME (decision 2). Empty sections
-  // are not rendered, so a rider with no free rides sees the list as before.
-  const sections = useMemo(() => {
-    const main = rows.filter((r) => r.wayName !== FREE_RIDE_ROW_NAME);
-    const free = rows.filter((r) => r.wayName === FREE_RIDE_ROW_NAME);
-    const out: { title: string | null; data: RideRowModel[] }[] = [];
-    if (main.length > 0) out.push({ title: null, data: main });
-    if (free.length > 0) out.push({ title: 'FREE ACTIVITIES', data: free });
-    return out;
-  }, [rows]);
+  const metaById = useMemo(() => new Map((rides ?? []).map((m) => [m.rideId, m])), [rides]);
+  const cards = useMemo(
+    () => buildFeedCards(rows,
+      (rideId, startMs) => rideDetailFor(rideId, startMs, {
+        result: getStoredResult(rideId),
+        free: freeRideNear(freeRideResults(), startMs),
+        ways: currentCatalog().ways,
+        userWays: userCatalog().ways,
+        laps: (wayId) => lapValues(wayId, rideId),
+        sectors: (wayId, i) => sectorValues(wayId, i, rideId),
+        barred: (wayId) => ownLapBarredFromRanking(wayId, rideId),
+      }),
+      (rideId) => metaById.get(rideId) ?? null,
+      (rideId, i) => getStoredResult(rideId)?.sectors.find((sec) => sec.index === i)?.quality ?? 'clean'),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rows, metaById, resultsTick],
+  );
+  const cardsRef = useRef(cards); cardsRef.current = cards;
+  const tabNavRef = useRef(tabNav); tabNavRef.current = tabNav;
+  const onOpenCard = useCallback((card: FeedCardModel) => {
+    tabNavRef.current.openRide({ rideId: card.rideId, source: 'rides', startedAtMs: card.startMs });
+  }, []);
+  const onMenuCard = useCallback((card: FeedCardModel, anchor: MenuAnchor) => setMenu({ anchor, card }), []);
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 5, minimumViewTime: 0 }).current;
+  const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    const idx = viewableItems.map((v) => v.index).filter((i): i is number => i !== null);
+    const next = liveMapIndices(idx, cardsRef.current.length, MAP_MOUNT_RADIUS);
+    setLiveIdx((prev) => (sameIndexSet(prev, next) ? prev : next));
+  }).current;
+  const menuItems = (card: FeedCardModel): MenuItem[] => {
+    const meta = metaById.get(card.rideId) ?? null;
+    const toggle: MenuItem | null = card.ignoreToggle === null ? null
+      : card.ignoreToggle === 'count'
+        ? { label: 'Count in ranking', onPress: () => void toggleIgnoreRide(card.rideId, false).then((ok) => { if (ok) setResultsTick((v) => v + 1); }) }
+        : { label: 'Ignore in ranking', onPress: () => void toggleIgnoreRide(card.rideId, true).then((ok) => { if (ok) setResultsTick((v) => v + 1); }) };
+    const del: MenuItem = { label: 'Delete', onPress: () => { if (meta) confirmDeleteRide(meta, freeRideNear(freeRideResults(), card.startMs)?.rideId ?? null, () => void refresh()); } };
+    return toggle ? [toggle, del] : [del];
+  };
   const sportLabel = currentSports().sports.find((sp) => sp.id === activeSportId())?.label ?? null;
   return (
     <View style={styles.container}>
@@ -175,50 +217,54 @@ export default function RidesScreen() {
         </Pressable>
       </View>
       {/* Q5: bare sport-name badge, same convention as ROUTES. */}
-      <Text style={styles.sub}>
+      <Text style={[styles.sub, styles.pad]}>
         {sportLabel !== null ? sportLabel.toUpperCase() : 'NO SPORT YET · ADD ONE IN SETTINGS'}
       </Text>
       {rides == null ? null : rides.length === 0 ? (
-        <Text style={styles.sub}>No activities yet</Text>
+        <Text style={[styles.sub, styles.pad]}>No activities yet</Text>
       ) : (
-        <SectionList
-          sections={sections}
-          keyExtractor={(r) => r.rideId}
-          stickySectionHeadersEnabled={false}
-          renderSectionHeader={({ section }) => (
-            section.title !== null ? <Text style={styles.sectionHead}>{section.title}</Text> : null
+        <FlatList
+          ref={listRef}
+          data={cards}
+          extraData={liveIdx}
+          keyExtractor={(c) => c.rideId}
+          getItemLayout={(_data, index) => feedItemLayout(cards, index)}
+          renderItem={({ item, index }) => (
+            <ActivityCard
+              card={item}
+              live={liveIdx.has(index)}
+              sectorColoursOn={s.sectorColours}
+              onOpen={onOpenCard}
+              onMenu={onMenuCard}
+            />
           )}
-          renderItem={({ item }) => (
-            <View style={styles.row}>
-              <Pressable
-                style={styles.rowHead}
-                onPress={() => tabNav.openRide({ rideId: item.rideId, source: 'rides', startedAtMs: item.startMs })}
-              >
-                <View style={styles.rowInfo}>
-                  {item.wayName !== null ? <Text style={styles.rowTitle}>{item.wayName}</Text> : null}
-                  <Text style={styles.sub}>
-                    {item.dateLabel} · {item.lapLabel}
-                    {item.quality ? ` · ${item.quality}` : ''}
-                  </Text>
-                </View>
-                <View style={styles.rowRight}>
-                  <Text style={styles.rank}>
-                    {item.rank ? `P${item.rank.pos}/${item.rank.of}` : '–'}
-                  </Text>
-                  <Text style={styles.chev}>›</Text>
-                </View>
-              </Pressable>
-            </View>
-          )}
+          viewabilityConfig={viewabilityConfig}
+          onViewableItemsChanged={onViewableItemsChanged}
+          onScroll={(e) => { feedScrollOffset = e.nativeEvent.contentOffset.y; }}
+          scrollEventThrottle={64}
+          onLayout={() => {
+            if (restoredRef.current) return;
+            restoredRef.current = true;
+            if (feedScrollOffset > 0) listRef.current?.scrollToOffset({ offset: feedScrollOffset, animated: false });
+          }}
+          windowSize={5}
+          initialNumToRender={3}
+          maxToRenderPerBatch={3}
+          removeClippedSubviews
+          contentContainerStyle={styles.feed}
+          style={{ flex: 1 }}
         />
       )}
+      <ActivityMenu anchor={menu?.anchor ?? null} items={menu ? menuItems(menu.card) : []} onClose={() => setMenu(null)} />
     </View>
   );
 }
 
 const makeStyles = (t: PaddockTheme) => StyleSheet.create({
-  container: { flex: 1, padding: 16, gap: 14 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  container: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
+  pad: { paddingHorizontal: 16, marginBottom: 6 },
+  feed: { paddingBottom: 24 },
   // AD pass: titles are big, heavy, high-contrast ink.
   title: {
     color: t.text,
@@ -237,35 +283,4 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
   },
   refreshText: { color: t.text2, fontSize: 13 },
   sub: { color: t.text2, fontSize: 14, fontVariant: ['tabular-nums'] },
-  // Mockup .trackpick card: #141414, 1px #232323, radius 16.
-  row: {
-    backgroundColor: t.card,
-    borderWidth: 1,
-    borderColor: t.cardBorder,
-    borderLeftWidth: 3,
-    borderLeftColor: t.accent,
-    borderRadius: radius.card,
-    paddingHorizontal: 14,
-    marginBottom: 10,
-    overflow: 'hidden',
-  },
-  rowHead: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-  },
-  rowInfo: { gap: 2, flex: 1 },
-  rowTitle: {
-    color: t.text,
-    fontSize: 17,
-    fontWeight: '800',
-  },
-  rowRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  // D-013: rank is a fact, never coloured — dim ink only.
-  rank: { color: t.textDim, fontSize: 15, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  chev: { color: t.textDim, fontSize: 16 },
-  // virgin-cycle16 03: the FREE RIDES section header — same small-caps
-  // register as the ride detail's ACTIONS / ON THIS WAY headings.
-  sectionHead: { color: t.textDim, fontSize: 12, letterSpacing: 1.5, marginTop: 12, marginBottom: 6 },
 });

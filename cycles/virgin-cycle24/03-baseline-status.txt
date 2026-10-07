@@ -1,0 +1,13 @@
+ M src/ui/RideDetailScreen.tsx
+ M src/ui/rideHistoryModel.ts
+ M src/ui/wayMapView.tsx
+ M tests/run.ts
+ M ../deployment/rounds/README.md
+?? src/ui/feedModel.ts
+?? src/ui/rideActions.ts
+?? src/ui/trailCache.ts
+?? tests/feedmodel_suite.ts
+?? tests/trailcache_suite.ts
+?? ../cycles/virgin-cycle23/
+?? ../cycles/virgin-cycle24/
+?? ../deployment/rounds/round3/

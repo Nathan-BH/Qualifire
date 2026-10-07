@@ -29,7 +29,7 @@ registerHooks({
     return nextLoad(url, context);
   },
 });
-const { rankLineFor, rideDetailFor, sectorColoursFor } = await import('../src/ui/rideDetailModel.ts');
+const { rankLineFor, rideDetailFor, sectorColoursFor, sectorHighlightColours } = await import('../src/ui/rideDetailModel.ts');
 const { MIN_HISTORY } = await import('../src/ui/colourModel.ts');
 
 function mkResult(o: Partial<RideResult> & { rideId: string; startedAtMs: number }): RideResult {
@@ -273,4 +273,20 @@ test('virgin-cycle22 04: the flash colour per tier x theme on the RACE ground (r
     // a flash is always a shade off the clock's ink, never the same colour as the ticking digits
     for (const tier of TIERS) assert(tierTextColour(tier, t) !== t.text, `${tier} flash must not be the clock ink ${t.text}`);
   }
+});
+
+test('virgin-cycle23 03: sectorHighlightColours — only the selected sector carries the colour, gate-indexed, slot 0 never', () => {
+  const rows = [{ index: 1 }, { index: 2 }, { index: 3 }, { index: 4 }];
+  assert(JSON.stringify(sectorHighlightColours(rows, 2, 'X')) === JSON.stringify([null, null, 'X', null, null]), 'sector 2 only');
+  assert(sectorHighlightColours(rows, 2, 'X').length === 5, 'length = last index + 1');
+  const last = sectorHighlightColours(rows, 4, 'X');
+  assert(last.length === 5 && last[4] === 'X' && last.slice(0, 4).every((c) => c === null), 'sector 4 only');
+  const zero = sectorHighlightColours(rows, 0, 'X');
+  assert(zero.length === 5 && zero.every((c) => c === null), 'selected 0 highlights nothing');
+  const out = sectorHighlightColours(rows, 9, 'X');
+  assert(out.length === 5 && out.every((c) => c === null), 'selected out of range highlights nothing');
+});
+
+test('virgin-cycle23 03: sectorHighlightColours — null selection = [] so the caller falls back to the verdict colours', () => {
+  assert(sectorHighlightColours([{ index: 1 }, { index: 2 }], null, 'X').length === 0, 'empty when nothing is selected');
 });

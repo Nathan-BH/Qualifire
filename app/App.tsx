@@ -59,7 +59,7 @@ import {
 // running too, so the user sees "activities"; the tab ID stays 'rides' (it is
 // referenced across screens and never shown).
 const TAB_LABEL: Record<Tab, string> = {
-  record: 'record', rides: 'activities', routes: 'routes', results: 'results', settings: 'settings', demo: 'demo',
+  record: 'record', rides: 'activities', routes: 'map', results: 'results', settings: 'settings', demo: 'demo',
 };
 
 /**

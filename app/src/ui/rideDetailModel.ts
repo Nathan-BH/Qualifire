@@ -134,3 +134,18 @@ export function rideDetailFor(rideId: string, startedAtMs: number, d: RideDetail
     sectorColours: sectorColoursFor(res, secHist),
   };
 }
+
+/** virgin-cycle23 brief 03: the map's sectorColours while ONE sector is selected
+ * on the detail page — that sector in `colour` (riderBlue: selection, never a
+ * verdict, same rule as the gate-adjust ring), every other slot null so the
+ * base line shows through. Gate-indexed like storedSectorColours (slot i =
+ * sector i). [] when nothing is selected (caller falls back to the verdict colours). */
+export function sectorHighlightColours(
+  rows: readonly { index: number }[], selected: number | null, colour: string,
+): (string | null)[] {
+  if (selected === null) return [];
+  const n = rows.reduce((m, r) => Math.max(m, r.index), 0) + 1;
+  const out: (string | null)[] = new Array<string | null>(n).fill(null);
+  if (selected >= 1 && selected < n) out[selected] = colour;
+  return out;
+}

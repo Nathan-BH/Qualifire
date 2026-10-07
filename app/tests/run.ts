@@ -43,7 +43,10 @@ import './fixflags_suite.ts';
 import './ridehistory_suite.ts';
 import './ridedetail_suite.ts';
 import './ridehomes_suite.ts';
+import './feedmodel_suite.ts';
+import './trailcache_suite.ts';
 import './catalogdetail_suite.ts';
+import './catalogmap_suite.ts';
 import './resultsmodel_suite.ts';
 
 import './trail_suite.ts';

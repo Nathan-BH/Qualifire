@@ -270,10 +270,10 @@ test('replay: replaySectorColours blanks every index beyond gatesDone, index 0 a
 
 test('replay: replayLiveViewModel fills the strip as gates are crossed and reveals the lap at the end', () => {
   const sectorRows = [
-    { index: 0, label: 'S1', timeLabel: '3:05', tier: 'purple' as const, avgLabel: '3:10' },
-    { index: 1, label: 'S2', timeLabel: '2:40', tier: 'green' as const, avgLabel: '2:50' },
-    { index: 2, label: 'S3', timeLabel: '3:20', tier: 'yellow' as const, avgLabel: '3:00' },
-    { index: 3, label: 'S4', timeLabel: '1:10', tier: 'neutral' as const, avgLabel: '1:15' },
+    { index: 0, label: 'S1', timeLabel: '3:05', tier: 'purple' as const, avgLabel: '3:10', gapS: null },
+    { index: 1, label: 'S2', timeLabel: '2:40', tier: 'green' as const, avgLabel: '2:50', gapS: null },
+    { index: 2, label: 'S3', timeLabel: '3:20', tier: 'yellow' as const, avgLabel: '3:00', gapS: null },
+    { index: 3, label: 'S4', timeLabel: '1:10', tier: 'neutral' as const, avgLabel: '1:15', gapS: null },
   ];
   const r: ReplayRider = {
     rideId: 'vm-test', startMs: 0, finishMs: 400000, endMs: 400000,
@@ -308,10 +308,10 @@ test('replay: replayLiveViewModel fills the strip as gates are crossed and revea
 
 test('virgin-cycle22 08: the replay flashes each crossed gate from the ride\'s own rows and the lap in its real tier — same FlashModel as the live screen', () => {
   const sectorRows = [
-    { index: 0, label: 'S1', timeLabel: '3:05.2', tier: 'purple' as const, avgLabel: '3:10' },
-    { index: 1, label: 'S2', timeLabel: '2:40.0', tier: 'green' as const, avgLabel: '2:50' },
-    { index: 2, label: 'S3', timeLabel: '~3:20', tier: 'est' as const, avgLabel: '3:00' },
-    { index: 3, label: 'S4', timeLabel: '1:10.9', tier: 'yellow' as const, avgLabel: '1:15' },
+    { index: 0, label: 'S1', timeLabel: '3:05.2', tier: 'purple' as const, avgLabel: '3:10', gapS: null },
+    { index: 1, label: 'S2', timeLabel: '2:40.0', tier: 'green' as const, avgLabel: '2:50', gapS: null },
+    { index: 2, label: 'S3', timeLabel: '~3:20', tier: 'est' as const, avgLabel: '3:00', gapS: null },
+    { index: 3, label: 'S4', timeLabel: '1:10.9', tier: 'yellow' as const, avgLabel: '1:15', gapS: null },
   ];
   const r: ReplayRider = {
     rideId: 'vm-flash', startMs: 0, finishMs: 400000, endMs: 400000,

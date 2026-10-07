@@ -1,119 +1,138 @@
 /**
- * Routes tab (IDEAS §20/§21, mockup 2026-08-16) — the ratified catalog, on the
- * phone: the six landmarks with their real radii, dormant ones marked, and the
- * routes that exist per way.
+ * MAP tab (virgin-cycle24 brief 03, Nathan 2026-10-06). The old ROUTES tab
+ * (a places list + route cards) is now one full-bleed map of the active
+ * sport's catalog, with three levels:
+ *   OVERVIEW    every place a labelled pin, ONE line per route pair (A->B and
+ *               B->A are one line), only the usual way drawn, no gates.
+ *   PLACE focus tap a pin: its routes at full strength, the rest ghosted; a
+ *               bottom sheet lists the routes out of and into the place.
+ *   ROUTE focus tap a line (or a highlighted sheet row again): the route's
+ *               ways, the highlighted one strongest with its gates; the sheet
+ *               lists the ways.
+ * The sheet header opens the existing CatalogDetailScreen (rename/merge/delete/
+ * edit gates stay reachable). The file keeps its old name and the tab id
+ * 'routes'; only the tab label changed to `map`.
  *
- * Everything here is READ from the runtime catalog (store/catalogStore.ts —
- * B-39): the shipped seed (src/store/catalog.seed.json, built from
- * data/analysis/landmarks_v1.json — Nathan's curated set) plus whatever this
- * phone has added. Nothing is discovered at runtime: places and routes enter
- * the catalog because the rider agreed they are places and routes
- * (DATA-MODEL §8a). Empty in a virgin build until the rider creates them.
- *
- * WP-K (cycle 2): a tap on a place or a way row now mount-swaps a full-screen
- * `CatalogDetailScreen` over the tab (mirrors WP-H's ride-detail pattern) —
- * export/delete/edit-gates all live there now, same idiom as RidesScreen.tsx.
- * This list is tap-only: no row expands in place, no delete button ever
- * renders here.
+ * B-39: the catalog is read per render, never captured at import.
  */
+import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { activeCatalog, activeSportId, currentSports } from '../store/sportStore.ts';
-import { radius } from './theme.ts';
+import { storedResultsForWay } from '../store/resultsStore.ts';
+import {
+  overviewModel, placeFocusModel, routeFocusModel, type CatalogMapDeps,
+} from './catalogMapModel.ts';
+import CatalogMapView, { catalogAssetFor, type CatalogMapFocus } from './catalogMapView.tsx';
 import { useTheme } from './themeContext.tsx';
 import { useTabNav } from './tabNav.tsx';
 
 export default function RoutesScreen() {
   const { t } = useTheme();
   const tabNav = useTabNav();
-  const now = Date.now();
-  // WP-1: sport-scoped view — landmarks stay the FULL shared set (all
-  // sports draw from the same places), routes/ways/gate sets are this
-  // sport's own. B-39: read per render, never captured at import (see
-  // RecordScreen).
   const CATALOG = activeCatalog();
   const sportId = activeSportId();
   const sportLabel = currentSports().sports.find((sp) => sp.id === sportId)?.label ?? null;
-  // A landmark used by at least one of THIS sport's routes (start or end) —
-  // everything else still shows (places are shared) but is flagged as not
-  // used here, on top of the existing dormant treatment.
-  const usedLandmarkIds = new Set(CATALOG.routes.flatMap((r) => [r.startLandmarkId, r.endLandmarkId]));
+  const [focus, setFocus] = useState<CatalogMapFocus>({ level: 'overview' });
+
+  const deps: CatalogMapDeps = {
+    catalog: CATALOG,
+    pathFor: (id) => catalogAssetFor(id)?.path ?? null,
+    ridesFor: (id) => storedResultsForWay(id).length,
+  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const overview = useMemo(() => overviewModel(deps), [CATALOG]);
+  const place = focus.level === 'place' ? placeFocusModel(focus.placeId, deps) : null;
+  const route = focus.level === 'route' ? routeFocusModel(focus.routeId, deps) : null;
+
+  // A focused place/route that vanished (deleted in the detail screen) falls back to OVERVIEW.
+  useEffect(() => {
+    if ((focus.level === 'place' && !place) || (focus.level === 'route' && !route)) {
+      setFocus({ level: 'overview' });
+    }
+  }, [focus, place, route]);
+
+  const gateAsset = route
+    ? catalogAssetFor(focus.level === 'route' ? (focus.highlightWayId ?? route.usualWayId ?? '') : '')
+    : null;
+
+  const toOverview = () => setFocus({ level: 'overview' });
+  // Tap a route (line or sheet row): first tap highlights within a place focus, the second opens ROUTE focus.
+  const onPressRoute = (routeId: string) => {
+    if (focus.level === 'place' && focus.highlightRouteId !== routeId) {
+      setFocus({ level: 'place', placeId: focus.placeId, highlightRouteId: routeId });
+    } else {
+      setFocus({ level: 'route', routeId, highlightWayId: null });
+    }
+  };
+
+  const sheetLabel = place ? place.place.label : route ? route.label : '';
+  const openDetail = () => {
+    if (place) tabNav.openCatalog({ kind: 'place', id: place.place.id });
+    else if (route) tabNav.openCatalog({ kind: 'route', id: route.routeId });
+  };
 
   return (
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-      {/* Q5: a bare sport-name badge, nothing else — or, with zero sports, a
-          plain nudge toward SETTINGS. */}
-      <Text style={[st.h2, { color: t.textDim }]}>
-        {sportLabel !== null ? sportLabel.toUpperCase() : 'NO SPORT YET · ADD ONE IN SETTINGS'}
-      </Text>
-      <Text style={[st.h2, { color: t.textDim }]}>YOUR PLACES</Text>
-      <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-        {CATALOG.landmarks.map((l) => {
-          const dormant = !l.offerAtStart
-            || (l.activeUntilMs !== null && l.activeUntilMs < now);
-          const notUsedHere = sportId !== null && !usedLandmarkIds.has(l.id);
-          return (
-            <Pressable
-              key={l.id}
-              style={[st.row, { borderBottomColor: t.cardBorder }]}
-              onPress={() => tabNav.openCatalog({ kind: 'place', id: l.id })}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: dormant ? t.textDim : t.text, fontSize: 14 }}>
-                  {l.label}{dormant ? '  · dormant' : ''}{notUsedHere ? `  · not used by ${sportLabel}` : ''}
-                </Text>
-                <Text style={{ color: t.textDim, fontSize: 11.5 }}>
-                  {l.lat.toFixed(5)}, {l.lon.toFixed(5)} · {l.radiusM} m
-                </Text>
-              </View>
+    <View style={{ flex: 1 }}>
+      <CatalogMapView
+        overview={overview}
+        focus={focus}
+        place={place}
+        route={route}
+        gateAsset={gateAsset}
+        sheetOpen={focus.level !== 'overview'}
+        onPressPin={(id) => setFocus({ level: 'place', placeId: id, highlightRouteId: null })}
+        onPressLine={onPressRoute}
+        onPressEmpty={toOverview}
+      />
+      <View style={[st.badge, { backgroundColor: t.card, borderColor: t.cardBorder }]} pointerEvents="none">
+        <Text style={[st.badgeText, { color: t.textDim }]}>
+          {sportLabel !== null ? sportLabel.toUpperCase() : 'NO SPORT YET · ADD ONE IN SETTINGS'}
+        </Text>
+      </View>
+      {place || route ? (
+        <View style={[st.sheet, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
+          <View style={st.sheetHead}>
+            <Pressable style={st.sheetTitle} onPress={openDetail}>
+              <Text style={{ color: t.text, fontSize: 15, flexShrink: 1 }}>{sheetLabel}</Text>
               <Text style={{ color: t.textDim }}>›</Text>
             </Pressable>
-          );
-        })}
-        {/* B-39 minimal empty state (a blank install has no places yet) — a
-            bare card read as broken; B-43's empty-state pass owns the real
-            design and may replace this line. */}
-        {CATALOG.landmarks.length === 0 ? (
-          <Text style={{ color: t.textDim, fontSize: 14, paddingVertical: 9 }}>No places yet.</Text>
-        ) : null}
-      </View>
-
-      <Text style={[st.h2, { color: t.textDim }]}>ROUTES</Text>
-      {/* B-39 minimal empty state — same note as the places card above. */}
-      {CATALOG.routes.length === 0 ? (
-        <Text style={{ color: t.textDim, fontSize: 14, marginBottom: 10 }}>No routes yet.</Text>
+            <Pressable hitSlop={10} onPress={toOverview}>
+              <Text style={{ color: t.textDim, fontSize: 18 }}>×</Text>
+            </Pressable>
+          </View>
+          <ScrollView>
+            {place ? place.rows.map((row) => {
+              const on = focus.level === 'place' && row.routeId === focus.highlightRouteId;
+              return (
+                <Pressable key={row.routeId} style={[st.row, { borderTopColor: t.cardBorder }]}
+                  onPress={() => onPressRoute(row.routeId)}>
+                  <Text style={{ color: on ? t.accentText : t.text, fontSize: 14, flexShrink: 1 }}>{row.label}</Text>
+                  <Text style={{ color: t.textDim, fontSize: 12.5 }}>{String(row.rides)}</Text>
+                </Pressable>
+              );
+            }) : null}
+            {route ? route.ways.map((row) => {
+              const on = row.wayId === (focus.level === 'route' ? (focus.highlightWayId ?? route.usualWayId) : null);
+              return (
+                <Pressable key={row.wayId} style={[st.row, { borderTopColor: t.cardBorder }]}
+                  onPress={() => setFocus({ level: 'route', routeId: route.routeId, highlightWayId: row.wayId })}>
+                  <Text style={{ color: on ? t.accentText : t.text, fontSize: 14, flexShrink: 1 }}>{row.label}</Text>
+                  <Text style={{ color: t.textDim, fontSize: 12.5 }}>{String(row.rides)}</Text>
+                </Pressable>
+              );
+            }) : null}
+          </ScrollView>
+        </View>
       ) : null}
-      {CATALOG.routes.map((w) => {
-        const from = CATALOG.landmarks.find((l) => l.id === w.startLandmarkId);
-        const to = CATALOG.landmarks.find((l) => l.id === w.endLandmarkId);
-        const wayCount = CATALOG.ways.filter((r) => r.routeId === w.id).length;
-        return (
-          <Pressable
-            key={w.id}
-            style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder, marginBottom: 10 }]}
-            onPress={() => tabNav.openCatalog({ kind: 'route', id: w.id })}
-          >
-            <View style={[st.row, { borderBottomWidth: 0 }]}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: t.text, fontSize: 15 }}>
-                  {from?.label} → {to?.label}
-                </Text>
-                <Text style={{ color: t.textDim, fontSize: 11.5 }}>
-                  {wayCount} way{wayCount === 1 ? '' : 's'}
-                  {wayCount > 1 ? ' · asks which one at START' : ''}
-                </Text>
-              </View>
-              <Text style={{ color: t.textDim }}>›</Text>
-            </View>
-          </Pressable>
-        );
-      })}
-
-    </ScrollView>
+    </View>
   );
 }
 
 const st = StyleSheet.create({
-  h2: { fontSize: 12, letterSpacing: 2, marginTop: 16, marginBottom: 8 },
-  card: { borderWidth: 1, borderRadius: radius.card, paddingHorizontal: 13 },
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 9, borderBottomWidth: 1 },
+  badge: { position: 'absolute', top: 8, left: 8, borderWidth: 1, borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8 },
+  badgeText: { fontSize: 11, letterSpacing: 2 },
+  sheet: { position: 'absolute', left: 12, right: 12, bottom: 34, maxHeight: 280, borderWidth: 1, borderRadius: 14, overflow: 'hidden' },
+  sheetHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 13, gap: 12 },
+  sheetTitle: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, paddingVertical: 9, paddingHorizontal: 13, gap: 12 },
 });

@@ -338,6 +338,40 @@ test('virgin-cycle20 08: clutter text is gone (CLUTTER-REVIEW §1 + Nathan\'s §
   assert(read('src', 'location', 'index.ts').includes("notificationTitle: 'Recording activity'"), 'notification title is the bare noun');
 });
 
+test('virgin-cycle23 02: ACTIVITIES is a flat feed — FlatList of ActivityCards, fixed layout, no FREE ACTIVITIES section, two-finger card maps switchable in one line', () => {
+  const read = (...p: string[]) => fs.readFileSync(path.resolve(TESTS_DIR, '..', ...p), 'utf8');
+  const rides = read('src', 'ui', 'RidesScreen.tsx');
+  assert(rides.includes('<FlatList') && !rides.includes('SectionList'), 'FlatList, not SectionList');
+  assert(!rides.includes('FREE ACTIVITIES') && !rides.includes('FREE_RIDE_ROW_NAME'), 'no separate free section');
+  assert(rides.includes('getItemLayout={(_data, index) => feedItemLayout(cards, index)}'), 'exact item layout');
+  assert(rides.includes('onViewableItemsChanged') && rides.includes('MAP_MOUNT_RADIUS'), 'live maps follow viewability');
+  assert(rides.includes('let feedScrollOffset = 0;') && rides.includes('scrollToOffset({ offset: feedScrollOffset, animated: false })'), 'BACK restores the feed offset');
+  assert(rides.includes("source: 'rides'"), 'tap still opens the detail from rides');
+  const card = read('src', 'ui', 'activityCard.tsx');
+  assert(/export const CARD_MAP_GESTURES: WayMapGestures = '(twoFinger|readonly)';/.test(card), 'one-line gesture switch');
+  assert(card.includes('gestures={CARD_MAP_GESTURES}'), 'the card map uses it');
+  assert(!/#[0-9A-Fa-f]{3,8}\b/.test(card.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '')), 'no hard-coded hex in the card');
+  assert(card.includes('borderBottomWidth: 1') && !card.includes('borderLeftWidth'), 'divider, no accent bar');
+  assert(!card.includes('trail=') || card.includes("card.needsTrail ? trail ?? undefined : undefined"), 'route blocks never draw the raw trail');
+  assert(/sectorColours=\{card\.variant === 'route' \? \(sectorColoursOn \? card\.sectorColours : ALL_YELLOW\) : undefined\}/.test(card), 'sector colours gated by the toggle, as the detail page');
+  const menu = read('src', 'ui', 'activityMenu.tsx');
+  assert(menu.includes('<Modal transparent') && menu.includes('measureInWindow'), 'anchored menu over a transparent modal');
+});
+
+test('virgin-cycle23 03: the activity detail is one flat scroll — map first, no card boxes, Replay the single primary, ⋯ menu for Export/Ignore/Delete, sector rows tap-to-highlight, back labels per source kept', () => {
+  const det = fs.readFileSync(path.resolve(TESTS_DIR, '..', 'src', 'ui', 'RideDetailScreen.tsx'), 'utf8');
+  assert(!det.includes('st.card') && !det.includes('ACTIONS') && !det.includes('‹ BACK') && !det.includes('>ACTIVITY<'), 'old header/card/ACTIONS block gone');
+  assert(det.includes('<MenuButton') && det.includes('<ActivityMenu'), 'the ⋯ menu');
+  for (const l of ["label: 'Export GPX+'", "label: 'Ignore in ranking'", "label: 'Count in ranking'", "label: 'Delete'"]) assert(det.includes(l), `menu item ${l}`);
+  for (const l of ["'RECORD ANOTHER'", "'BACK TO ROUTE'", "'BACK TO RESULTS'", "'BACK TO ACTIVITIES'"]) assert(det.includes(l), `back label ${l} kept`);
+  assert(det.includes('sectorHighlightColours(model.sectorRows, selectedSector, colors.riderBlue)'), 'selected sector highlighted in riderBlue');
+  assert(det.includes('sectorGapLabel(sec.gapS)'), 'gap to average on each sector row');
+  assert((det.match(/>Replay<\/Text>/g) ?? []).length === 1 && det.includes('styles.replayBtn'), 'Replay is the one primary button');
+  assert(!det.includes('last {detail.ranking.length} on this way'), 'ON THIS WAY hint line gone');
+  assert(det.includes('height={320}') && !det.includes('height={300}'), 'detail map is 320 dp');
+  assert(!/#[0-9A-Fa-f]{3,8}\b/.test(det.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '')), 'no hard-coded hex');
+});
+
 test('virgin-cycle21 04: wayHintForPick maps the pick to its refLineId; null/undefined/unknown -> null', () => {
   const ways = [{ id: 'A', refLineId: 'refA' }, { id: 'B', refLineId: 'B' }];
   assert(wayHintForPick(ways, 'A') === 'refA', 'A -> refA');

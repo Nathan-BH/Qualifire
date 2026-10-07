@@ -14,3 +14,4 @@ Baseline before round 1: `round1/review.md` (staged Play closed-testing plan), `
 |---|---|---|---|
 | 1 | 2026-09-09/10 | Google Play route: ten decisions (Q1-Q10) | populated, no review yet |
 | 2 | 2026-10-05 | Expo workflow after Play, Expo free-tier limits | reviewed; Play developer account created 2026-10-06, verification steps pending (Nathan) |
+| 3 | 2026-10-06 | Review of Expo + Android publishing docs (10 sources) | reviewed; service account + JSON key created 2026-10-06, Play Console invite waiting on account approval |

@@ -176,7 +176,7 @@ export default function CatalogDetailScreen({ request }: { request: CatalogDetai
       )}
 
       <Pressable style={[st.slimBtn, { backgroundColor: t.accent }]} onPress={() => tabNav.closeCatalog()}>
-        <Text style={[st.slimBtnText, { color: t.onAccent }]}>BACK TO ROUTES</Text>
+        <Text style={[st.slimBtnText, { color: t.onAccent }]}>BACK TO MAP</Text>
       </Pressable>
     </ScrollView>
   );

@@ -200,6 +200,16 @@ const STYLE_RETRY_MS: readonly number[] = [5000, 15000, 45000];
 
 type WayMapVariant = 'live' | 'browse';
 type LiveMapState = 'prestart' | 'moving' | 'stopped' | 'finished';
+/** virgin-cycle23 brief 01: how much of the map a finger may move.
+ * 'full' (default) = today's behaviour on every existing surface.
+ * 'twoFinger' = a feed card: one finger does nothing on the map (so the list
+ * scrolls and a tap reaches the card), two fingers pinch-zoom (a pinch also
+ * pans); no double-tap zoom, no rotation, no zoom bar.
+ * 'readonly' = a picture: no gesture at all, the native view takes NO touches
+ * (pointerEvents none on its wrapper) so everything falls through to the parent.
+ * The ONE place the feed picks between the last two is CARD_MAP_GESTURES in
+ * activityCard.tsx (brief 02). */
+export type WayMapGestures = 'full' | 'twoFinger' | 'readonly';
 
 type WayMapProps = {
   /** The route whose line/ticks to draw. null = NO route line: a live surface renders
@@ -287,6 +297,8 @@ type WayMapProps = {
    * Selection is UI state, not a verdict: the ring is riderBlue, never a
    * tier colour (D-013/D-030). */
   gateSelect?: { selected: number | null; onPress: (gateIndex: number) => void };
+  /** virgin-cycle23 brief 01: see WayMapGestures. Default 'full'. */
+  gestures?: WayMapGestures;
 };
 
 export default function WayMapView(props: WayMapProps) {
@@ -322,7 +334,7 @@ export default function WayMapView(props: WayMapProps) {
  * shortened; MapLibre's own attribution control is off on <M.Map>, so this
  * overlay is the only credit on the tile rung. Never a tier colour: a
  * credit in purple/green/yellow would read as a signal. */
-function Credit(props: { rung: MapRung; locked: boolean }) {
+export function Credit(props: { rung: MapRung; locked: boolean }) {
   const { t } = useTheme();
   const [open, setOpen] = useState(false);
   const { label, rows } = creditFor(props.rung);
@@ -378,6 +390,9 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
   const variant = props.variant ?? 'live';
   const liveState = props.liveState ?? 'moving';
   const showRider = props.showRider ?? true;
+  const gestures: WayMapGestures = props.gestures ?? 'full';
+  const oneFingerOn = gestures === 'full';          // dragPan, double-tap zooms, rotation, zoom bar
+  const pinchOn = gestures !== 'readonly';           // touchZoom (a pinch also pans)
 
   // Behaviour matrix (design contract A). "unlocked" = free browse gestures,
   // labels on, zoom bar visible: browse surfaces, the pre-start map, and the
@@ -389,7 +404,7 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
   // means the scope of gesture rotation can diverge later (e.g. if the
   // `finished` judgment call in the brief gets overruled) without a hidden
   // coupling to the labels/zoom-bar matrix above.
-  const rotateEnabled = rotateEnabledFor(variant, liveState);
+  const rotateEnabled = rotateEnabledFor(variant, liveState) && oneFingerOn;
   const dimmed = variant === 'live' && liveState === 'stopped';
   const creditLocked = variant === 'live' && (liveState === 'moving' || liveState === 'stopped');
 
@@ -708,6 +723,7 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
           guaranteeing a full reload rather than a partial one. Rendering-layer only: `mode` /
           `camZoom` / `bearing` etc. all live in this component, above this
           element, and are untouched by remounting the child. */}
+      <View style={st.mapFill} pointerEvents={gestures === 'readonly' ? 'none' : 'auto'}>
       <M.Map
         key={mapStyleKey}
         mapStyle={mapStyle as never}
@@ -743,10 +759,10 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
         attribution={false}
         logo={false}
         compass={false}
-        dragPan={true}
-        touchZoom={true}
-        doubleTapZoom={true}
-        doubleTapHoldZoom={true}
+        dragPan={oneFingerOn}
+        touchZoom={pinchOn}
+        doubleTapZoom={oneFingerOn}
+        doubleTapHoldZoom={oneFingerOn}
         // WP-M: was a literal `false` always — see rotateEnabledFor
         // (routeMapGeo.ts) for the scope rule (browse/prestart/finished on,
         // moving/stopped off).
@@ -952,8 +968,10 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
           </M.GeoJSONSource>
         ) : null}
       </M.Map>
+      </View>
       {/* Cycle 020: the zoom bar is always visible now, not gated on
           `unlocked` — the race-mode ribbon is draggable/zoomable too. */}
+      {oneFingerOn ? (
       <View style={st.zoomBar}>
         <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
           onPress={() => { setCamZoom((z) => Math.min(18, z + 1)); setMode('follow'); }}>
@@ -992,6 +1010,7 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
           </Pressable>
         ) : null}
       </View>
+      ) : null}
       <Credit rung="maplibre" locked={creditLocked} />
       {off ? (
         <Text style={[st.badge, { color: colors.amber, backgroundColor: t.race.card }]}>
@@ -1007,6 +1026,7 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
 
 const st = StyleSheet.create({
   frame: { alignSelf: 'stretch', borderRadius: radius.card, borderWidth: 1, overflow: 'hidden' },
+  mapFill: { flex: 1, alignSelf: 'stretch' },
   // "stopped" (a red light): tight and dim, not loosened — a light is not a
   // finish (design contract A).
   dimmedFrame: { opacity: 0.4 },

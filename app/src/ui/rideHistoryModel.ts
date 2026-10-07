@@ -209,6 +209,8 @@ export interface SectorRowModel {
   timeLabel: string;
   tier: UiTier;
   avgLabel: string;
+  /** virgin-cycle23: seconds vs the sector's average (positive = slower), null without a real time or without history */
+  gapS: number | null;
 }
 
 /**
@@ -224,25 +226,26 @@ export function buildSectorRows(
     .sort((a, b) => a.index - b.index)
     .map((sec): SectorRowModel => {
       const h = hist(sec.index);
-      const avgLabel = h.length ? `avg ${fmt(h.reduce((a, b) => a + b, 0) / h.length)}` : '';
+      const mean = h.length ? h.reduce((a, b) => a + b, 0) / h.length : null;
+      const avgLabel = mean !== null ? `avg ${fmt(mean)}` : '';
       if (sec.quality === 'missed') {
         return {
           index: sec.index, label: `S${sec.index}`,
-          timeLabel: '– did not traverse –', tier: 'est', avgLabel,
+          timeLabel: '– did not traverse –', tier: 'est', avgLabel, gapS: null,
         };
       }
       const v = scoredS(sec);
       if (sec.quality === 'estimated' || v === null) {
         return {
           index: sec.index, label: `S${sec.index}`,
-          timeLabel: `~${fmt(sec.rawS)}`, tier: 'est', avgLabel,
+          timeLabel: `~${fmt(sec.rawS)}`, tier: 'est', avgLabel, gapS: null,
         };
       }
       // clean or interrupted, with a real time (store/timing.ts). virgin-cycle22 02
       // (Nathan 2026-10-04): no pause mark (U+2016) on an interrupted sector any more;
       // the flag still drives scoring (scoredS) and sector colours, the rider is not told.
       const tier = tierFor(v, h);
-      return { index: sec.index, label: `S${sec.index}`, timeLabel: fmt(v, 1), tier, avgLabel };
+      return { index: sec.index, label: `S${sec.index}`, timeLabel: fmt(v, 1), tier, avgLabel, gapS: mean !== null ? v - mean : null };
     });
 }
 
