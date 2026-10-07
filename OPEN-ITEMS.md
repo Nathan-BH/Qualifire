@@ -353,3 +353,6 @@ Nathan answered most of `deployment/rounds/round1/questions-and-rulings.md` on 2
   cleanup pass whenever convenient.
 
 - **virgin-cycle22 (2026-10-06) — open decisions / loose ends, non-blocking.** (1) RESOLVED 2026-10-06 (Nathan): REPLAY never flashes a missed sector (`– did not traverse –`); the clock just keeps running (`replayModel.ts`, one-line guard + test; suite 867/0 fail). (2) Brief 04 also changed DEMO/REPLAY lap behaviour (the LAP chip no longer stays; the lap flashes once, then the clock returns) — brief 08 builds on it; the brief-04 text saying DEMO/REPLAY don't change is wrong. (3) Run `publish-preview.ps1 -DryRun` (brief 07's keep-awake: expected no fingerprint drift; `build8.ps1` is the fallback). (4) Follow-up chores: drop the PNG rows from `metro.seedRedirect.js`/`seedstubs_suite.ts` and move `app/assets/ways/*.png` to `safe_to_delete/`; `virginmanifest_suite.ts`'s static guard passes vacuously (pre-existing); a stray `$HOME/wayMapView.c22-05.orig` sits outside the repo; daylight `accentText` is 3.13:1 on white (left for Nathan).
+
+## virgin-cycle25 (2026-10-08)
+Open items live in cycles/virgin-cycle25/OPEN-ITEMS-cycle25.md (detail->MAP link deferred, on-device tuning, stale comments).

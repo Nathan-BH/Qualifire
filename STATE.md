@@ -474,3 +474,6 @@ virgin prototype. Full rationale/history for any of these is on `main` if ever n
 
 `IDEAS.md` (raw idea log) and `Nathan/` (his running notes and future plans — "the main
 place i write all my comments and future plans") are read, never written, by any agent.
+
+## 2026-10-08 virgin-cycle25
+RESULTS tab removed; per-way trend scatterplot (10 dots) is now in the MAP route focus sheet. Committed cbc77c7, a740b84, bca4126; not pushed/published. See cycles/virgin-cycle25/README.md and OPEN-ITEMS-cycle25.md.
