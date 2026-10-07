@@ -109,7 +109,8 @@ Then `ls app/src/ui/ | grep -i results` must print exactly `resultsPlot.tsx` and
 
 ### 1c. `app/src/ui/tabNav.tsx`
 
-1. `:9-11`: replace `` `closeCatalog`, `openResults: setResultsDetail`, `closeResults`,\n * `openResultsRoute: setResultsRoute`, `closeResultsRoute` — the last two\n * from virgin-cycle15 brief 13's RESULTS route -> way drill-down). `` with `` `closeCatalog`). virgin-cycle25 brief 03 removed the RESULTS tab's\n * `openResults` / `openResultsRoute` members with the tab. ``
+1. `:9-11`: replace `` `closeCatalog`, `openResults: setResultsDetail`, `closeResults`,\n * `openResultsRoute: setResultsRoute`, `closeResultsRoute` — the last two\n * from virgin-cycle15 brief 13's RESULTS route -> way drill-down). `` with `` `closeCatalog`). virgin-cycle25 brief 03 removed the RESULTS tab and its\n * four nav members (open/close the results detail and the results route) with it. ``
+   **RULING (post-escalation of brief 02, 2026-10-08, Fable):** this comment text was changed from the original wording (which literally named `openResults` / `openResultsRoute`) because the pin test in 2a asserts `!nav.includes('openResultsRoute')` over the WHOLE file — the original wording would have failed its own pin. Keep the names out of every comment in tabNav.tsx.
 2. `:18-22` append one comment line after `// the old RESULT screen.`: `// virgin-cycle25 (2026-10-07) removed it again: its trend is the MAP route sheet.`
 3. `:23` → `export type Tab = 'record' | 'rides' | 'routes' | 'settings' | 'demo';`
 4. `:28` ` * ride row, 'results' → the RESULTS way detail underneath — WP-2) and what` → ` * ride row) and what`
@@ -239,7 +240,7 @@ Entry count 452 → 434. KEEP (still in code): `src/ui/RideDetailScreen.tsx | te
 2. tsc exit 0 (`tsc-brief03.log`, `timeout_ms: 180000`) — the compiler is the main proof no importer of the moved files is left.
 3. run.ts `918 tests: 915 pass, 0 fail, 3 skip` (`run-brief03.log`; baseline `run-brief03-baseline.log` = brief 02's counts).
 4. `grep -rn "ResultsScreen\|ResultsDetail\|resultsWayList\|resultsListModel\|openResults\|resultsRoute\|ResultsDetailRequest" app/App.tsx app/src --include=*.ts --include=*.tsx` → only comment lines (lines containing `//` or ` * ` before the match) in `DemoScreen.tsx` / `demoModel.ts` / `tabNav.tsx` / `RideDetailScreen.tsx` header; no import, no JSX, no type.
-5. `grep -n "'results'" app/App.tsx app/src/ui/tabNav.tsx app/src/ui/RideDetailScreen.tsx` → nothing.
+5. `grep -n "'results'" app/App.tsx app/src/ui/tabNav.tsx app/src/ui/RideDetailScreen.tsx` → exactly one hit, the history comment `tabNav.tsx:21` (`// re-introduced it as 'results' — …`, kept by 1c step 2); nothing in App.tsx or RideDetailScreen.tsx. *(RULING post-escalation of brief 02: the original "→ nothing" contradicted 1c step 2, which keeps that comment.)*
 6. `GIT_OPTIONAL_LOCKS=0 git diff -- app/tests/ui-strings.allow.json`: exactly 18 removed entries as in §3, 434 entries (`python3 -c "import json;print(len(json.load(open('app/tests/ui-strings.allow.json'))['entries']))"`), `legacyCount` unchanged.
 7. `git diff -- app/src/ui/activityCard.tsx app/src/ui/feedModel.ts app/src/ui/rideDetailModel.ts app/src/ui/colourModel.ts app/src/store` → empty.
 8. `git status --short`: `D app/src/ui/ResultsScreen.tsx`, `D app/src/ui/ResultsDetailScreen.tsx`, `D app/src/ui/resultsWayList.tsx`, `D app/src/ui/resultsListModel.ts` (or `R` if git mv worked), `M app/App.tsx`, `M app/src/ui/tabNav.tsx`, `M app/src/ui/RideDetailScreen.tsx`, `M app/src/ui/demoModel.ts`, `M app/src/ui/DemoScreen.tsx`, `M app/tests/recordflow_suite.ts`, `M app/tests/resultsmodel_suite.ts`, `M app/tests/ui-strings.allow.json`, plus briefs 01-02's files and cycle logs. Nothing else.

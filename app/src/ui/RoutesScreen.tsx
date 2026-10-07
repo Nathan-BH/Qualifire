@@ -12,6 +12,7 @@
  * The sheet header opens the existing CatalogDetailScreen (rename/merge/delete/
  * edit gates stay reachable). The file keeps its old name and the tab id
  * 'routes'; only the tab label changed to `map`.
+ * virgin-cycle25 brief 02: route focus also carries the way's trend panel (trendPanelModel.ts + ResultsPlot inline) under the way rows; place focus unchanged.
  *
  * B-39: the catalog is read per render, never captured at import.
  */
@@ -19,12 +20,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { activeCatalog, activeSportId, currentSports } from '../store/sportStore.ts';
 import { storedResultsForWay } from '../store/resultsStore.ts';
+import type { RideResult } from '../store/types.ts';
 import {
   overviewModel, placeFocusModel, routeFocusModel, type CatalogMapDeps,
 } from './catalogMapModel.ts';
 import CatalogMapView, { catalogAssetFor, type CatalogMapFocus } from './catalogMapView.tsx';
 import { useTheme } from './themeContext.tsx';
 import { useTabNav } from './tabNav.tsx';
+import ResultsPlot from './resultsPlot.tsx';
+import {
+  PANEL_PLOT_H, ROUTE_SHEET_CAMERA_PAD, ROUTE_SHEET_MAX_H, WAY_ROWS_MAX_H, trendPanelFor,
+} from './trendPanelModel.ts';
 
 export default function RoutesScreen() {
   const { t } = useTheme();
@@ -33,6 +39,9 @@ export default function RoutesScreen() {
   const sportId = activeSportId();
   const sportLabel = currentSports().sports.find((sp) => sp.id === sportId)?.label ?? null;
   const [focus, setFocus] = useState<CatalogMapFocus>({ level: 'overview' });
+  // virgin-cycle25 02: the tapped dot of the trend panel, keyed by way so a way
+  // switch never carries a selection over (no effect needed: derived below).
+  const [plotSel, setPlotSel] = useState<{ wayId: string; rideId: string } | null>(null);
 
   const deps: CatalogMapDeps = {
     catalog: CATALOG,
@@ -43,6 +52,10 @@ export default function RoutesScreen() {
   const overview = useMemo(() => overviewModel(deps), [CATALOG]);
   const place = focus.level === 'place' ? placeFocusModel(focus.placeId, deps) : null;
   const route = focus.level === 'route' ? routeFocusModel(focus.routeId, deps) : null;
+  const trend = route
+    ? trendPanelFor(route, focus.level === 'route' ? focus.highlightWayId : null, (id): RideResult[] => storedResultsForWay(id))
+    : null;
+  const plotSelected = trend !== null && plotSel !== null && plotSel.wayId === trend.wayId ? plotSel.rideId : null;
 
   // A focused place/route that vanished (deleted in the detail screen) falls back to OVERVIEW.
   useEffect(() => {
@@ -80,6 +93,7 @@ export default function RoutesScreen() {
         route={route}
         gateAsset={gateAsset}
         sheetOpen={focus.level !== 'overview'}
+        sheetPad={focus.level === 'route' ? ROUTE_SHEET_CAMERA_PAD : undefined}
         onPressPin={(id) => setFocus({ level: 'place', placeId: id, highlightRouteId: null })}
         onPressLine={onPressRoute}
         onPressEmpty={toOverview}
@@ -90,7 +104,7 @@ export default function RoutesScreen() {
         </Text>
       </View>
       {place || route ? (
-        <View style={[st.sheet, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
+        <View style={[st.sheet, route ? st.sheetRoute : null, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
           <View style={st.sheetHead}>
             <Pressable style={st.sheetTitle} onPress={openDetail}>
               <Text style={{ color: t.text, fontSize: 15, flexShrink: 1 }}>{sheetLabel}</Text>
@@ -100,28 +114,48 @@ export default function RoutesScreen() {
               <Text style={{ color: t.textDim, fontSize: 18 }}>×</Text>
             </Pressable>
           </View>
-          <ScrollView>
-            {place ? place.rows.map((row) => {
-              const on = focus.level === 'place' && row.routeId === focus.highlightRouteId;
-              return (
-                <Pressable key={row.routeId} style={[st.row, { borderTopColor: t.cardBorder }]}
-                  onPress={() => onPressRoute(row.routeId)}>
-                  <Text style={{ color: on ? t.accentText : t.text, fontSize: 14, flexShrink: 1 }}>{row.label}</Text>
-                  <Text style={{ color: t.textDim, fontSize: 12.5 }}>{String(row.rides)}</Text>
-                </Pressable>
-              );
-            }) : null}
-            {route ? route.ways.map((row) => {
-              const on = row.wayId === (focus.level === 'route' ? (focus.highlightWayId ?? route.usualWayId) : null);
-              return (
-                <Pressable key={row.wayId} style={[st.row, { borderTopColor: t.cardBorder }]}
-                  onPress={() => setFocus({ level: 'route', routeId: route.routeId, highlightWayId: row.wayId })}>
-                  <Text style={{ color: on ? t.accentText : t.text, fontSize: 14, flexShrink: 1 }}>{row.label}</Text>
-                  <Text style={{ color: t.textDim, fontSize: 12.5 }}>{String(row.rides)}</Text>
-                </Pressable>
-              );
-            }) : null}
-          </ScrollView>
+          {place ? (
+            <ScrollView>
+              {place.rows.map((row) => {
+                const on = focus.level === 'place' && row.routeId === focus.highlightRouteId;
+                return (
+                  <Pressable key={row.routeId} style={[st.row, { borderTopColor: t.cardBorder }]}
+                    onPress={() => onPressRoute(row.routeId)}>
+                    <Text style={{ color: on ? t.accentText : t.text, fontSize: 14, flexShrink: 1 }}>{row.label}</Text>
+                    <Text style={{ color: t.textDim, fontSize: 12.5 }}>{String(row.rides)}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          ) : null}
+          {route && trend ? (
+            <>
+              <ScrollView style={{ maxHeight: WAY_ROWS_MAX_H }}>
+                {route.ways.map((row) => {
+                  const on = row.wayId === (focus.level === 'route' ? (focus.highlightWayId ?? route.usualWayId) : null);
+                  return (
+                    <Pressable key={row.wayId} style={[st.row, { borderTopColor: t.cardBorder }]}
+                      onPress={() => setFocus({ level: 'route', routeId: route.routeId, highlightWayId: row.wayId })}>
+                      <Text style={{ color: on ? t.accentText : t.text, fontSize: 14, flexShrink: 1 }}>{row.label}</Text>
+                      <Text style={{ color: t.textDim, fontSize: 12.5 }}>{String(row.rides)}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+              {trend.hasPlot && trend.wayId !== null ? (
+                <View style={[st.plotWrap, { borderTopColor: t.cardBorder }]}>
+                  <ResultsPlot
+                    variant="inline"
+                    height={PANEL_PLOT_H}
+                    results={trend.results}
+                    selectedRideId={plotSelected}
+                    selectedPosLabel=""
+                    onSelect={(id) => setPlotSel(id === null || trend.wayId === null ? null : { wayId: trend.wayId, rideId: id })}
+                  />
+                </View>
+              ) : null}
+            </>
+          ) : null}
         </View>
       ) : null}
     </View>
@@ -132,7 +166,9 @@ const st = StyleSheet.create({
   badge: { position: 'absolute', top: 8, left: 8, borderWidth: 1, borderRadius: 8, paddingVertical: 4, paddingHorizontal: 8 },
   badgeText: { fontSize: 11, letterSpacing: 2 },
   sheet: { position: 'absolute', left: 12, right: 12, bottom: 34, maxHeight: 280, borderWidth: 1, borderRadius: 14, overflow: 'hidden' },
+  sheetRoute: { maxHeight: ROUTE_SHEET_MAX_H },
   sheetHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, paddingHorizontal: 13, gap: 12 },
   sheetTitle: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, paddingVertical: 9, paddingHorizontal: 13, gap: 12 },
+  plotWrap: { borderTopWidth: 1, paddingHorizontal: 8, paddingBottom: 4 },
 });

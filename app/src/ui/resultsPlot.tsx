@@ -29,6 +29,7 @@
  * ride's dot (last point, rightmost slot) is the brand yellow `t.accent`,
  * every other dot is `t.textDim` — the same grey as the ticks and the
  * average line — so the only colour on the plot marks "this ride".
+ * virgin-cycle25 brief 02: a second host, the MAP tab's route sheet, renders it with variant="inline" (no frame, caption only while a point is selected, no open link) and a smaller height; DEMO keeps the card.
  */
 import { useMemo, useState } from 'react';
 import {
@@ -51,7 +52,7 @@ const X_TICK_LABEL_W = 80;
 const RING_R = 8;
 
 export default function ResultsPlot({
-  results, selectedRideId, selectedPosLabel, onSelect, onOpenRide,
+  results, selectedRideId, selectedPosLabel, onSelect, onOpenRide, variant = 'card', height,
 }: {
   results: RideResult[];
   selectedRideId: string | null;
@@ -59,11 +60,20 @@ export default function ResultsPlot({
    * while rankings are off (§3.9). The plot never formats this itself. */
   selectedPosLabel: string;
   onSelect: (rideId: string | null) => void;
-  onOpenRide: (rideId: string, startedAtMs: number) => void;
+  /** absent (virgin-cycle25 02, the MAP panel): no `open ›` link, the caption is text only */
+  onOpenRide?: (rideId: string, startedAtMs: number) => void;
+  /** 'card' = today's bordered card (DEMO); 'inline' (virgin-cycle25 02) = no
+   * frame, no padding, caption row only while a point is selected: for a
+   * host that already draws the box (the MAP sheet). */
+  variant?: 'card' | 'inline';
+  /** plot area height; default PLOT_H (220) */
+  height?: number;
 }) {
   const { t } = useTheme();
   const styles = useMemo(() => makeStyles(t), [t]);
   const [boxW, setBoxW] = useState(0);
+  const inline = variant === 'inline';
+  const plotH = height ?? PLOT_H;
 
   const onLayout = (e: LayoutChangeEvent) => {
     const { width } = e.nativeEvent.layout;
@@ -71,7 +81,7 @@ export default function ResultsPlot({
   };
 
   const plotW = Math.max(0, boxW - GUTTER_W);
-  const model = useMemo(() => buildPlotModel(results, plotW), [results, plotW]);
+  const model = useMemo(() => buildPlotModel(results, plotW, plotH), [results, plotW, plotH]);
 
   const dashes = useMemo(
     () => Array.from({ length: plotW > 0 ? Math.ceil(plotW / (DASH_W + DASH_GAP)) : 0 }),
@@ -95,10 +105,10 @@ export default function ResultsPlot({
   );
 
   return (
-    <View style={[styles.frame, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
+    <View style={inline ? styles.inlineFrame : [styles.frame, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
       <View onLayout={onLayout} style={{ flexDirection: 'row' }}>
         {boxW === 0 ? (
-          <View style={{ height: PLOT_H }} />
+          <View style={{ height: plotH }} />
         ) : model.empty === 'no-ranked' ? (
           <View style={styles.emptyWrap}>
             <Text style={{ color: t.textDim }}>no ranked activities yet</Text>
@@ -106,7 +116,7 @@ export default function ResultsPlot({
         ) : (
           <>
             {/* y-axis gutter */}
-            <View style={{ width: GUTTER_W, height: PLOT_H }}>
+            <View style={{ width: GUTTER_W, height: plotH }}>
               {model.yTicks.map((tick) => (
                 tick.label === null ? null : (
                   <Text
@@ -123,7 +133,7 @@ export default function ResultsPlot({
               ))}
             </View>
             {/* plot area */}
-            <View style={{ width: plotW, height: PLOT_H }}>
+            <View style={{ width: plotW, height: plotH }}>
               {/* bottommost: tapping empty plot space clears the selection.
                   Points render after this (on top) and still receive their
                   own taps. */}
@@ -222,24 +232,26 @@ export default function ResultsPlot({
       {/* selection caption — WP-2 §3.7: drops the position segment when the
           screen passes '' for selectedPosLabel (no position for this point;
           the Rankings switch itself is gone, virgin-cycle20 08). */}
-      <Pressable
-        style={styles.captionRow}
-        disabled={selectedPoint === null}
-        onPress={() => {
-          if (selectedPoint !== null) onOpenRide(selectedPoint.rideId, selectedPoint.startedAtMs);
-        }}
-      >
-        <Text style={[styles.captionText, { color: t.textDim }]}>
-          {selectedPoint === null
-            ? 'tap a point for that activity'
-            : [towerDate(selectedPoint.startedAtMs), fmt(selectedPoint.timeS), selectedPosLabel]
-              .filter((part) => part !== '')
-              .join(' · ')}
-        </Text>
-        {selectedPoint !== null ? (
-          <Text style={[styles.captionLink, { color: t.accentText }]}>open ›</Text>
-        ) : null}
-      </Pressable>
+      {inline && selectedPoint === null ? null : (
+        <Pressable
+          style={[styles.captionRow, inline ? styles.captionRowInline : null]}
+          disabled={selectedPoint === null || onOpenRide === undefined}
+          onPress={() => {
+            if (selectedPoint !== null && onOpenRide !== undefined) onOpenRide(selectedPoint.rideId, selectedPoint.startedAtMs);
+          }}
+        >
+          <Text style={[styles.captionText, { color: t.textDim }]}>
+            {selectedPoint === null
+              ? 'tap a point for that activity'
+              : [towerDate(selectedPoint.startedAtMs), fmt(selectedPoint.timeS), selectedPosLabel]
+                .filter((part) => part !== '')
+                .join(' · ')}
+          </Text>
+          {selectedPoint !== null && onOpenRide !== undefined ? (
+            <Text style={[styles.captionLink, { color: t.accentText }]}>open ›</Text>
+          ) : null}
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -252,6 +264,7 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
     paddingHorizontal: 8,
     marginBottom: 8,
   },
+  inlineFrame: { paddingTop: 4 },
   emptyWrap: { flex: 1, height: 120, alignItems: 'center', justifyContent: 'center' },
   yTickLabel: { position: 'absolute', fontSize: 10, textAlign: 'right' },
   xTickLabel: {
@@ -273,6 +286,7 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
     borderTopColor: t.cardBorder,
     marginTop: 8,
   },
+  captionRowInline: { paddingVertical: 6, marginTop: 4, borderTopWidth: 0 },
   captionText: { fontSize: 12.5, fontVariant: ['tabular-nums'] },
   captionLink: { fontSize: 12.5, fontWeight: '700' },
 });

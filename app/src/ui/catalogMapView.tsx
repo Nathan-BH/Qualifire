@@ -83,6 +83,8 @@ export interface CatalogMapViewProps {
   route: RouteFocusModel | null;
   gateAsset: WayAsset | null;
   sheetOpen: boolean;
+  /** bottom camera padding while the sheet is open (virgin-cycle25 02: the route sheet is taller); default 300 */
+  sheetPad?: number;
   onPressPin: (placeId: string) => void;
   onPressLine: (routeId: string) => void;
   onPressEmpty: () => void;
@@ -162,7 +164,7 @@ function CatalogMapInner(props: CatalogMapViewProps & { maplibre: NonNullable<ty
   const cameraProps: Partial<CameraStop> = {
     ...cameraTargetFor({ mode, here: null, bounds, zoom: 14, bearing: 0 }),
     ...(mode === 'fit' && bounds
-      ? { padding: { top: 48, right: 48, bottom: props.sheetOpen ? 300 : 48, left: 48 } }
+      ? { padding: { top: 48, right: 48, bottom: props.sheetOpen ? (props.sheetPad ?? 300) : 48, left: 48 } }
       : {}),
   };
 

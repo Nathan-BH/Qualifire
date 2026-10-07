@@ -451,3 +451,29 @@ Expected: brief 01's `925 tests: 922 pass, 0 fail, 3 skip` → `929 tests: 926 p
 ## 8. Stop-on-ambiguity / report
 
 As `EXECUTOR-RULES.md`. Report: steps; `git status --short`; test counts before/after; tsc; `git diff --stat`; allow-list diff (expected empty); the §7 paragraph verbatim; any mismatch verbatim as a STOP.
+
+## RULING (post-escalation, 2026-10-08, fresh Fable) — section 2a, last test, last assert
+
+**Facts verified in the code.** `app/src/ui/DemoScreen.tsx:664` and `:669` carry `variant="live"` on the two live-map views (unrelated to the plot); the only `<ResultsPlot` element is `:788-794`, has no `variant` prop and does have `onOpenRide={() =>`. The executor's edits are correct; the brief's pin `!demo.includes('variant=')` is over-broad (whole file). Executor was right to stop.
+
+**Why not the suggested regex.** `/<ResultsPlot[^>]*variant=/` is wrong too: `[^>]*` stops at the `>` of the arrow in `onOpenRide={() => …}`, so a `variant="inline"` added AFTER `onOpenRide` would not be matched and the test would pass when it should fail. The pin must scope to the whole element, `<ResultsPlot` … `/>`.
+
+**Exact edit for the executor** — in `app/tests/trendpanel_suite.ts`, last test, replace these two lines:
+```ts
+  const demo = src('src', 'ui', 'DemoScreen.tsx');
+  assert(!demo.includes('variant=') && demo.includes('onOpenRide={() =>'), 'DEMO keeps the card variant and its no-op open');
+```
+with:
+```ts
+  const demo = src('src', 'ui', 'DemoScreen.tsx');
+  const demoPlotStart = demo.indexOf('<ResultsPlot');
+  const demoPlotEnd = demo.indexOf('/>', demoPlotStart);
+  assert(demoPlotStart !== -1 && demoPlotEnd > demoPlotStart, 'DEMO still mounts <ResultsPlot … />');
+  const demoPlot = demo.slice(demoPlotStart, demoPlotEnd);
+  assert(!demoPlot.includes('variant=') && demoPlot.includes('onOpenRide={() =>'), 'DEMO keeps the card variant and its no-op open');
+```
+Mutation check: `<ResultsPlot` occurs once in DemoScreen.tsx (the comments at `:66`/`:779` have no `<`); the slice is the whole element `:788-794`. Adding `variant=…` anywhere inside that element — before or after `onOpenRide` — lands in the slice and FAILS the test; the `variant="live"` at `:664`/`:669` is outside it. Dropping `onOpenRide` from the element also fails.
+
+Nothing else changes: no app/ edit, DemoScreen.tsx stays untouched (acceptance 5 still holds). Expected after the fix: `929 tests: 926 pass, 0 fail, 3 skip`. Then run acceptance greps 4-6 and finish the report + the section 7 OPEN-ITEMS paragraph as written.
+
+**Other pins reviewed.** The remaining trendpanel pins are presence pins or absence pins that are MEANT to be whole-file (`RoutesScreen.tsx` must contain no `onOpenRide=`, `LAST `, `windowCaption`, `allTimeBest`, `rankingPoolFor` at all; `resultsPlot.tsx` no `height: PLOT_H`) — all pass against the executor's edits and are not over-broad. brief-03 had one pin of the same kind (`!nav.includes('openResultsRoute')` vs a replacement comment that named `openResultsRoute`) — fixed in brief-03 1c step 1, plus its acceptance 5 (`'results'` grep) corrected; both marked RULING there.

@@ -47,6 +47,7 @@ import './feedmodel_suite.ts';
 import './trailcache_suite.ts';
 import './catalogdetail_suite.ts';
 import './catalogmap_suite.ts';
+import './trendpanel_suite.ts';
 import './resultsmodel_suite.ts';
 
 import './trail_suite.ts';
