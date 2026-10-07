@@ -32,7 +32,7 @@ import { DEMO_WAY_ASSET, DEMO_WAY_ID } from './demoWayFixture.ts';
 import type { RefLine } from '../../core/src/index.ts';
 import { buildRefFromRideFixes, type RefFixInput } from '../live/userRefs.ts';
 import { seedGateChainages } from '../store/gateSeeding.ts';   // pure, import-free (brief D R5)
-import { buildHistoryBoard } from './resultsListModel.ts';   // pure over a results array (brief 08); goes with brief 03
+import { tower } from '../store/results.ts';   // the real ranking rows, for the demo plot's P<pos> of <total> (cycle25 03; the RESULTS board is gone)
 import { plotWindow, windowCaption } from './resultsPlotModel.ts';   // the real plot's own window rule + caption (brief 08, cycle25 01)
 // Re-exported so DemoScreen.tsx never has to import from '../store/**' at all
 // (Rules: DemoScreen must not import anything from app/src/store/**).
@@ -308,15 +308,13 @@ export function demoPlotResults(
   return [...demoPriorResults(DEMO_PRIOR_LAPS[mode], nowMs), demoTodayResult(nowMs, script)];
 }
 
-/** brief 08: the plot caption's position segment, exactly as ResultsDetailScreen.tsx builds
- *  it (`P<pos> of <total>` from the real buildHistoryBoard over the same results; PB marker
- *  irrelevant here, so allTimeBestS is null). '' for no selection, an unknown id, or an
- *  unranked row — the screen blanks it itself when SETTINGS rankings are off. */
+/** brief 08 / cycle25 03: the plot caption's position segment, `P<pos> of <total>` from the
+ *  real tower() over the same results (the RESULTS board that used to compute it is gone).
+ *  '' for no selection, an unknown id, or an unranked row. */
 export function demoPlotPosLabel(results: readonly RideResult[], rideId: string | null): string {
   if (rideId === null) return '';
-  const board = buildHistoryBoard([...results], null);
-  const row = board.rows.find((r) => r.rideId === rideId);
-  return row !== undefined && row.pos !== null ? `P${row.pos} of ${board.total}` : '';
+  const row = tower([...results]).find((r) => r.rideId === rideId);
+  return row !== undefined && row.position !== null ? `P${row.position} of ${results.length}` : '';
 }
 
 /** brief 08: the real screen's header over the same window — 'LAST 9 RIDES' / 'LAST 1 RIDE'. */

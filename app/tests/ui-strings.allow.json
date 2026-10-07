@@ -531,14 +531,6 @@
       "by": "bootstrap"
     },
     {
-      "file": "src/ui/DemoScreen.tsx",
-      "kind": "text",
-      "text": "· AS ON THE RESULTS TAB",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
       "file": "src/ui/GateAdjustScreen.tsx",
       "kind": "alert-body",
       "text": "The gates are saved, but this way's reference activity could not be timed against them (its recording is missing or unreadable), so it will not race you as a dot.",
@@ -1029,94 +1021,6 @@
       "by": "bootstrap"
     },
     {
-      "file": "src/ui/ResultsDetailScreen.tsx",
-      "kind": "text",
-      "text": "BACK TO RESULTS",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/ResultsDetailScreen.tsx",
-      "kind": "text",
-      "text": "RESULTS",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/ResultsDetailScreen.tsx",
-      "kind": "text",
-      "text": "activit",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/ResultsDetailScreen.tsx",
-      "kind": "text",
-      "text": "‹ BACK",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/ResultsScreen.tsx",
-      "kind": "literal",
-      "text": "NO SPORT YET · ADD ONE IN SETTINGS",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/ResultsScreen.tsx",
-      "kind": "text",
-      "text": "FREE ACTIVITIES",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/ResultsScreen.tsx",
-      "kind": "text",
-      "text": "NO RESULTS YET",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/ResultsScreen.tsx",
-      "kind": "text",
-      "text": "Results",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/ResultsScreen.tsx",
-      "kind": "text",
-      "text": "activit",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/ResultsScreen.tsx",
-      "kind": "text",
-      "text": "way",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/ResultsScreen.tsx",
-      "kind": "text",
-      "text": "· free activity",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
       "file": "src/ui/RideDetailScreen.tsx",
       "kind": "alert-body",
       "text": "Pick it on RECORD next time instead of adding it again.",
@@ -1180,14 +1084,6 @@
       "file": "src/ui/RideDetailScreen.tsx",
       "kind": "literal",
       "text": "BACK TO ACTIVITIES",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/RideDetailScreen.tsx",
-      "kind": "literal",
-      "text": "BACK TO RESULTS",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"
@@ -2525,22 +2421,6 @@
       "by": "bootstrap"
     },
     {
-      "file": "src/ui/resultsListModel.ts",
-      "kind": "literal",
-      "text": "ALL {…} {…} · fastest first",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/resultsListModel.ts",
-      "kind": "literal",
-      "text": "ALL {…} {…} · rankings off in SETTINGS",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
       "file": "src/ui/resultsPlot.tsx",
       "kind": "literal",
       "text": "tap a point for that activity",
@@ -2576,30 +2456,6 @@
       "file": "src/ui/resultsPlotModel.ts",
       "kind": "prop:empty",
       "text": "none",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/resultsWayList.tsx",
-      "kind": "text",
-      "text": "activit",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/resultsWayList.tsx",
-      "kind": "text",
-      "text": "best",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/resultsWayList.tsx",
-      "kind": "text",
-      "text": "‹ ROUTES",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"

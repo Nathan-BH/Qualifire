@@ -306,16 +306,13 @@ test('virgin-cycle20 08: clutter text is gone (CLUTTER-REVIEW §1 + Nathan\'s §
   assert(!hist.includes('pbSectors') && hist.includes('· ref`'), 'pbSectors gone; list row keeps its ref marker');
   const rides = read('src', 'ui', 'RidesScreen.tsx');
   for (const gone of ['matching ways', 'Loading…', 'recorded only', 'backfilling', 'Record one', 'NO SPORT YET —']) assert(!rides.includes(gone), `RidesScreen still contains "${gone}"`);
-  for (const f of ['ResultsScreen.tsx', 'RoutesScreen.tsx', 'RidesScreen.tsx']) assert(read('src', 'ui', f).includes('NO SPORT YET · ADD ONE IN SETTINGS'), `${f} badge`);
-  assert(!read('src', 'ui', 'ResultsScreen.tsx').includes('DO A ROUTE FIRST'), 'RESULTS empty state is the first clause only');
+  for (const f of ['RoutesScreen.tsx', 'RidesScreen.tsx']) assert(read('src', 'ui', f).includes('NO SPORT YET · ADD ONE IN SETTINGS'), `${f} badge`);
   const rep = read('src', 'ui', 'ReplayScreen.tsx');
   assert(!rep.includes('loading replay') && !rep.includes('never crossed START') && !rep.includes('settings.liveMap'), 'ReplayScreen texts removed');
   const gate = read('src', 'ui', 'GateAdjustScreen.tsx');
   assert(!gate.includes('cannot be edited') && !gate.includes('nudge it') && !gate.includes('Sector gates') && gate.includes('Tap a gate to move it') && gate.includes('discardLabel="discard nudges"'), 'GateAdjust screen strings');
   const card = read('src', 'ui', 'gateAdjustCard.tsx');
   assert(!card.includes('Sector gates') && !card.includes('Seeded at') && !card.includes('keep the proposal') && card.includes("'Tap a gate to move it'"), 'gate card defaults');
-  const rd = read('src', 'ui', 'ResultsDetailScreen.tsx');
-  assert(!rd.includes('not ranked') && !rd.includes('rankingsOn') && !rd.includes('useSettings'), 'ResultsDetail divider + rankings switch gone');
   const model = read('src', 'ui', 'rideDetailModel.ts');
   for (const kept of ["'ignored in ranking'", "'no rank'", "'too few to rank'", "'GPS gap at a gate'", "'a gate was missed'"]) assert(model.includes(kept), `rankLine lacks ${kept}`);
   const naming = read('src', 'ui', 'routeNamingCard.tsx');
@@ -330,12 +327,29 @@ test('virgin-cycle20 08: clutter text is gone (CLUTTER-REVIEW §1 + Nathan\'s §
     'Nothing was moved — the reset did not start. Your data is untouched.',
   ];
   // Em dashes (Q7): none left in a visible string of these files (alerts excluded by file choice; '—' placeholders are not " — ")
-  for (const f of ['RecordScreen.tsx', 'RideDetailScreen.tsx', 'rideDetailModel.ts', 'rideHistoryModel.ts', 'ResultsScreen.tsx', 'RoutesScreen.tsx', 'RidesScreen.tsx', 'ReplayScreen.tsx', 'GateAdjustScreen.tsx', 'gateAdjustCard.tsx', 'routeNamingCard.tsx', 'settings.tsx']) {
+  for (const f of ['RecordScreen.tsx', 'RideDetailScreen.tsx', 'rideDetailModel.ts', 'rideHistoryModel.ts', 'RoutesScreen.tsx', 'RidesScreen.tsx', 'ReplayScreen.tsx', 'GateAdjustScreen.tsx', 'gateAdjustCard.tsx', 'routeNamingCard.tsx', 'settings.tsx']) {
     const lines = read('src', 'ui', f).split('\n').filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l) && !/Alert\.alert\(/.test(l));
     const hits = lines.filter((l) => /['"`>][^'"`<]*\S — \S[^'"`<]*/.test(l) && !/^\s*(['"`]|\$\{|\\n)/.test(l.trim()) && !EM_DASH_ALERT_BODIES.some((a) => l.includes(a)));
     assert(hits.length === 0, `${f} still has an em dash in a visible string:\n${hits.join('\n')}`);
   }
   assert(read('src', 'location', 'index.ts').includes("notificationTitle: 'Recording activity'"), 'notification title is the bare noun');
+});
+
+test('virgin-cycle25 03: the RESULTS tab is gone — five tabs, no results plumbing, the data layer and the plot stay', () => {
+  const read = (...p: string[]) => fs.readFileSync(path.resolve(TESTS_DIR, '..', ...p), 'utf8');
+  const app = read('App.tsx');
+  assert(app.includes("['record', 'rides', 'routes', 'settings', 'demo'] as const"), 'five tabs');
+  for (const gone of ['ResultsScreen', 'ResultsDetail', 'resultsRoute', 'openResults', "results: 'results'"]) assert(!app.includes(gone), `App.tsx still has ${gone}`);
+  const nav = read('src', 'ui', 'tabNav.tsx');
+  assert(nav.includes("export type Tab = 'record' | 'rides' | 'routes' | 'settings' | 'demo';"), 'Tab union');
+  assert(nav.includes("source: 'post-stop' | 'rides' | 'routes';") && !nav.includes('ResultsDetailRequest') && !nav.includes('openResultsRoute'), 'tabNav plumbing gone');
+  assert(!read('src', 'ui', 'RideDetailScreen.tsx').includes('BACK TO RESULTS'), 'no RESULTS back label');
+  for (const f of ['ResultsScreen.tsx', 'ResultsDetailScreen.tsx', 'resultsWayList.tsx', 'resultsListModel.ts']) assert(!fs.existsSync(path.resolve(TESTS_DIR, '..', 'src', 'ui', f)), `${f} still in src/ui`);
+  for (const f of ['resultsPlot.tsx', 'resultsPlotModel.ts', 'trendPanelModel.ts']) assert(fs.existsSync(path.resolve(TESTS_DIR, '..', 'src', 'ui', f)), `${f} must stay`);
+  for (const f of [['store', 'results.ts'], ['store', 'resultsStore.ts'], ['ui', 'colourModel.ts'], ['ui', 'towerModel.ts'], ['ui', 'rideDetailModel.ts']]) assert(fs.existsSync(path.resolve(TESTS_DIR, '..', 'src', ...f)), `${f.join('/')} must stay`);
+  const demo = read('src', 'ui', 'demoModel.ts');
+  assert(!demo.includes('resultsListModel') && demo.includes("import { tower } from '../store/results.ts';"), 'demo pos label on tower()');
+  assert(!read('src', 'ui', 'DemoScreen.tsx').includes('AS ON THE RESULTS TAB'), 'demo caption suffix gone');
 });
 
 test('virgin-cycle23 02: ACTIVITIES is a flat feed — FlatList of ActivityCards, fixed layout, no FREE ACTIVITIES section, read-only edge-to-edge card maps', () => {
@@ -404,7 +418,7 @@ test('virgin-cycle23 03: the activity detail is one flat scroll — map first, n
   assert(!det.includes('st.card') && !det.includes('ACTIONS') && !det.includes('‹ BACK') && !det.includes('>ACTIVITY<'), 'old header/card/ACTIONS block gone');
   assert(det.includes('<MenuButton') && det.includes('<ActivityMenu'), 'the ⋯ menu');
   for (const l of ["label: 'Export GPX+'", "label: 'Ignore in ranking'", "label: 'Count in ranking'", "label: 'Delete'"]) assert(det.includes(l), `menu item ${l}`);
-  for (const l of ["'RECORD ANOTHER'", "'BACK TO ROUTE'", "'BACK TO RESULTS'", "'BACK TO ACTIVITIES'"]) assert(det.includes(l), `back label ${l} kept`);
+  for (const l of ["'RECORD ANOTHER'", "'BACK TO ROUTE'", "'BACK TO ACTIVITIES'"]) assert(det.includes(l), `back label ${l} kept`);   // 'BACK TO RESULTS' went with the RESULTS tab (virgin-cycle25 03; absence pinned there)
   assert(det.includes('sectorHighlightColours(model.sectorRows, selectedSector, colors.riderBlue)'), 'selected sector highlighted in riderBlue');
   assert(det.includes('sectorGapLabel(sec.gapS)'), 'gap to average on each sector row');
   assert((det.match(/>Replay<\/Text>/g) ?? []).length === 1 && det.includes('styles.replayBtn'), 'Replay is the one primary button');
@@ -607,9 +621,7 @@ test('virgin-cycle23 06 (Nathan 2026-10-07): no estimate on any flash or strip, 
   const rfr = read('src', 'store', 'routeFromRide.ts');
   assert(!rfr.includes('its lap comes out') && rfr.includes("reason: 'the reference activity cannot be timed on these gates'"), 'gate alert reason reworded');
   const tm = read('src', 'ui', 'towerModel.ts');
-  const rl = read('src', 'ui', 'resultsListModel.ts');
   const tw = read('src', 'ui', 'tower.tsx');
   assert(!tm.includes("'NO TIME'") && tm.includes('time: NOT_RANKED_LABEL,'), 'tower today row: Not ranked');
-  assert(!rl.includes("'NO TIME'") && rl.includes('timeLabel: noTime ? NOT_RANKED_LABEL : fmt(row.timeS),'), 'RESULTS history: Not ranked');
   assert(!tw.includes('TODAY · unranked') && tw.includes('>TODAY · Not ranked</Text>'), 'tower ceremony: Not ranked');
 });

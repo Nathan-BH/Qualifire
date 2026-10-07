@@ -197,6 +197,26 @@ Then `ls app/src/ui/ | grep -i results` must print exactly `resultsPlot.tsx` and
 
 Expected: brief 02's `929 tests: 926 pass, 0 fail, 3 skip` → `918 tests: 915 pass, 0 fail, 3 skip` (−12 removed, +1 pin). `demo_suite`, `rankingreveal_suite`, `live_colour_suite`, `ridedetail_suite`, `feedmodel_suite`, `catalogmap_suite`, `trendpanel_suite` pass UNEDITED.
 
+### 2c. RULING (post-escalation 2, 2026-10-08 night, fresh Fable) — `app/tests/recordflow_suite.ts` cycle23 back-label pin
+
+The brief missed one line. `tests/recordflow_suite.ts` (`:421` after the brief-03 edits), inside `test('virgin-cycle23 03: the activity detail is one flat scroll … back labels per source kept', …)`:
+
+```ts
+  for (const l of ["'RECORD ANOTHER'", "'BACK TO ROUTE'", "'BACK TO RESULTS'", "'BACK TO ACTIVITIES'"]) assert(det.includes(l), `back label ${l} kept`);
+```
+
+What it protects: that the cycle23 flat-scroll redesign of RideDetailScreen kept one primary-button label per `RideDetailRequest.source` (it is a "nothing was dropped by the redesign" pin, not a pin on the set of sources). Brief 03 shrinks the source enum to `'post-stop' | 'rides' | 'routes'` (1c step 5), so the list must follow the enum. The executor's proposed fix is CORRECT. Do NOT make this test assert the arm's absence instead: that absence is already pinned by the brief-03 test (`:346`, `'no RESULTS back label'`), and a cycle23 pin should keep saying what cycle23 kept.
+
+Exact replacement of that one line:
+
+```ts
+  for (const l of ["'RECORD ANOTHER'", "'BACK TO ROUTE'", "'BACK TO ACTIVITIES'"]) assert(det.includes(l), `back label ${l} kept`);   // 'BACK TO RESULTS' went with the RESULTS tab (virgin-cycle25 03; absence pinned there)
+```
+
+No other edit. Fable grepped `app/App.tsx`, `app/src/**`, `app/tests/**` for `BACK TO RESULTS`, `'results'`, `openResults`, `closeResults`, `ResultsDetail`, `ResultsScreen`, `resultsWayList`, `resultsListModel`, `resultsRoute`, `buildHistoryBoard`, `boardCaption`, `buildResultsList`, `AS ON THE RESULTS TAB`: every remaining hit is either the brief-03 pin test itself (`recordflow_suite.ts:342-352`), a comment (`tabNav.tsx:20` kept by 1c step 2 and expected by acceptance 5; `DemoScreen.tsx:264`; `resultsPlotModel.ts:219`; `routeFromRide.ts:406`), or unrelated (`resultsStore.ts:50 RESULTS_DIR = 'results'`, `routecreation_suite.ts` `fs.ensureDir('results')`). Nothing else to change.
+
+**Expected final counts:** `918 tests: 915 pass, 0 fail, 3 skip` (test count unchanged; the failing test turns green). tsc stays exit 0. Acceptance 1-8 of §5 unchanged.
+
 ## 3. Visible text — allow-list edits (CLAUDE.md rule 9): 18 REMOVED, 0 added, 0 edited
 
 Remove exactly these entries (file | kind | text), in ONE python read-modify-write (`json.load` → filter → `entries.sort(key=lambda e: (e['file'], e['kind'], e['text']))` → `json.dump(f, indent=2, ensure_ascii=False)` + `'\n'`); never touch a `legacy: true` entry; do not regenerate the file:

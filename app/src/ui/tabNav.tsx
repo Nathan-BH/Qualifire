@@ -6,9 +6,8 @@
  * — screens depend on this module, App owns the implementation (`go:
  * setTab`, `openRide: setRideDetail`, `closeRide`, `openGateAdjust:
  * setGateAdjust`, `closeGateAdjust`, `openCatalog: setCatalogDetail`,
- * `closeCatalog`, `openResults: setResultsDetail`, `closeResults`,
- * `openResultsRoute: setResultsRoute`, `closeResultsRoute` — the last two
- * from virgin-cycle15 brief 13's RESULTS route -> way drill-down).
+ * `closeCatalog`). virgin-cycle25 brief 03 removed the RESULTS tab and its
+ * four nav members (open/close the results detail and the results route) with it.
  *
  * `Tab` is exported from here (not App.tsx) precisely so a screen can import
  * the type without creating a screen -> App -> screen import cycle.
@@ -20,12 +19,13 @@ import { createContext, useContext, type ReactNode } from 'react';
 // its job moved to the full-screen ride detail overlay below. WP-2 (cycle 3)
 // re-introduced it as 'results' — a per-way history tab, not a revival of
 // the old RESULT screen.
-export type Tab = 'record' | 'rides' | 'routes' | 'results' | 'settings' | 'demo';
+// virgin-cycle25 (2026-10-07) removed it again: its trend is the MAP route sheet.
+export type Tab = 'record' | 'rides' | 'routes' | 'settings' | 'demo';
 
 /** WP-H: who opened the ride detail, and for which ride. `source` decides
  * where CLOSE lands (post-stop → RECORD's idle setup, 'rides' → the RIDES
  * list, 'routes' → the way detail underneath — WP-K (cycle 2)'s reference-
- * ride row, 'results' → the RESULTS way detail underneath — WP-2) and what
+ * ride row) and what
  * the primary button says. `startedAtMs` is the SESSION's
  * start (location/index.ts:329) when the opener has it — the exact key a
  * free-ride record is filed under (`free:${startedAtMs}`, freeRides.ts:127);
@@ -33,7 +33,7 @@ export type Tab = 'record' | 'rides' | 'routes' | 'results' | 'settings' | 'demo
  * that and rideDetailModel falls back to a tolerance match. */
 export interface RideDetailRequest {
   rideId: string;
-  source: 'post-stop' | 'rides' | 'routes' | 'results';
+  source: 'post-stop' | 'rides' | 'routes';
   startedAtMs: number;
 }
 
@@ -49,12 +49,6 @@ export interface GateAdjustRequest {
  * or a way (a route never gets its own screen; a way's routes are its
  * variants, shown inside the way detail). */
 export type CatalogDetailRequest = { kind: 'place'; id: string } | { kind: 'route'; id: string };
-
-/** WP-2: who to show the full-screen RESULTS detail for — one way's board
- * plus its last-9 scatterplot. A plain id, like GateAdjustRequest. */
-export interface ResultsDetailRequest {
-  wayId: string;
-}
 
 export interface TabNav {
   go(tab: Tab): void;
@@ -78,24 +72,6 @@ export interface TabNav {
   /** WP-K (cycle 2): dismiss the detail; ROUTES remounts underneath and
    * re-reads the catalog on its own. */
   closeCatalog(): void;
-  /** WP-2: show the full-screen RESULTS detail for one way, over whatever
-   * tab is active (Shell mount-swaps it in and hides the tab bar — the same
-   * chrome rule as the other overlays). Idempotent: re-opening replaces the
-   * request. */
-  openResults(req: ResultsDetailRequest): void;
-  /** WP-2: dismiss the detail; the active tab's screen remounts underneath. */
-  closeResults(): void;
-  /** virgin-cycle15 brief 13 (Fable ruling 2026-09-28): which route the
-   * RESULTS tab has drilled into (its ridden-way list), or null for the
-   * route list. Shell holds it -- not ResultsScreen -- because
-   * ResultsDetailScreen is mount-swapped IN PLACE of ResultsScreen (the
-   * ternary in App.tsx), so any in-screen state dies on the hop into a
-   * way's detail and BACK would always land on the route list. NOT an
-   * overlay: the tab bar stays and it only ever renders inside RESULTS
-   * (App.tsx passes it to <ResultsScreen openRouteId=.../>). Idempotent. */
-  openResultsRoute(routeId: string): void;
-  /** virgin-cycle15 brief 13: back to the route list. */
-  closeResultsRoute(): void;
 }
 
 const TabNavContext = createContext<TabNav | null>(null);

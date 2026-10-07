@@ -783,7 +783,7 @@ export default function DemoScreen({ onFullscreenChange }: {
           {revealDone && plotResults !== null ? (
             <View>
               <Text style={[styles.h2, { marginTop: 8, marginBottom: 10 }]}>
-                {demoPlotCaption(plotResults)} · AS ON THE RESULTS TAB
+                {demoPlotCaption(plotResults)}
               </Text>
               <ResultsPlot
                 results={plotResults}

@@ -1,16 +1,13 @@
 /**
- * QA — WP-2 Phase A: `resultsListModel.ts` (buildResultsList,
- * buildHistoryBoard, boardCaption, windowCaption) and `resultsPlotModel.ts`
- * (plotWindow, fitDomain, toneFor, buildPlotModel). Pure; a small inline
- * catalog (two routes, three ways — one seeded id, one legacy `route:`-
- * prefixed way, one new `way:`-prefixed way) plus hand-built RideResults,
- * same fixture style as `catalogdetail_suite.ts`.
+ * QA — `resultsPlotModel.ts` (plotWindow, fitDomain, toneFor, buildPlotModel,
+ * windowCaption). Pure; hand-built RideResults. The RESULTS list/board model
+ * tests that lived here went with the tab (virgin-cycle25 brief 03).
  */
 import { registerHooks } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import * as nodeFs from 'node:fs';
 import { assert, test } from './lib.ts';
-import type { Catalog, Landmark, Route, RideResult, SectorQuality, Way } from '../src/store/types.ts';
+import type { RideResult, SectorQuality } from '../src/store/types.ts';
 
 // Same JSON-import hook as live_colour_suite/towermodel_suite: both models
 // pull fmt/WINDOW_PREV/towerDate from colourModel.ts / towerModel.ts, whose
@@ -27,10 +24,6 @@ registerHooks({
 });
 
 const {
-  buildResultsList, buildHistoryBoard, boardCaption,
-  buildResultsRoutes, rideCountForRoute, routeLabel,
-} = await import('../src/ui/resultsListModel.ts');
-const {
   plotWindow, fitDomain, toneFor, buildPlotModel, mean,
   PAD_L, PAD_R, MAX_Y_TICKS, LABEL_COLLISION_PX,
   xAtSlot, slotIndex, PLOT_N, X_TICK_MIN_GAP_PX, windowCaption,
@@ -39,28 +32,6 @@ const { WINDOW_N } = await import('../src/ui/colourModel.ts');
 const { towerDate } = await import('../src/ui/towerModel.ts');
 
 // ------------------------------------------------------------------ fixture
-
-const lmA: Landmark = { id: 'lm:a', label: 'Home', lat: 50.87, lon: 4.70, radiusM: 180, activeFromMs: 0, activeUntilMs: null, offerAtStart: true };
-const lmB: Landmark = { id: 'lm:b', label: 'Work', lat: 50.85, lon: 4.72, radiusM: 150, activeFromMs: 0, activeUntilMs: null, offerAtStart: true };
-const lmC: Landmark = { id: 'lm:c', label: 'Station', lat: 50.90, lon: 4.68, radiusM: 150, activeFromMs: 0, activeUntilMs: null, offerAtStart: true };
-
-// route ids are plain (not way/route-prefixed on purpose — WP-3 prefixes
-// only ever apply to WAY ids); wayIds below cover a seeded id (no prefix),
-// a legacy pre-WP-3 way id ('route:' prefix), and a new one ('way:' prefix).
-const routeAB: Route = { id: 'rt:AB', startLandmarkId: 'lm:a', endLandmarkId: 'lm:b', wayIds: ['Morning', 'route:abc'] };
-const routeAC: Route = { id: 'rt:AC', startLandmarkId: 'lm:a', endLandmarkId: 'lm:c', wayIds: ['way:def'] };
-
-const wayMorning: Way = { id: 'Morning', routeId: 'rt:AB', refLineId: 'ref:morning', gateSetVersion: 1, seeded: true };
-const wayLegacy: Way = { id: 'route:abc', routeId: 'rt:AB', refLineId: 'ref:legacy', gateSetVersion: 1, seeded: false, specs: ['Alt'] };
-const wayDef: Way = { id: 'way:def', routeId: 'rt:AC', refLineId: 'ref:def', gateSetVersion: 1, seeded: false, specs: ['Fast'] };
-
-const CATALOG: Catalog = {
-  schemaVersion: 2,
-  landmarks: [lmA, lmB, lmC],
-  routes: [routeAB, routeAC],
-  ways: [wayMorning, wayLegacy, wayDef],
-  gateSets: [],
-};
 
 /** Hand-built RideResult; defaults to wayId 'Morning', quality 'clean'. */
 function mk(
@@ -97,195 +68,8 @@ function ridesOverDays(days: number, n: number): RideResult[] {
 }
 
 // -------------------------------------------------------------------- tests
-// buildResultsList
-
-test('resultsmodel: buildResultsList — count desc, unridden count, labels via wayLabelIn, null bestLabel', () => {
-  const resultsFor = (wayId: string): RideResult[] => {
-    if (wayId === 'Morning') return [1, 2, 3, 4, 5].map((i) => mk(`m${i}`, i * 1000, 600 + i));
-    if (wayId === 'route:abc') return [1, 2].map((i) => mk(`a${i}`, i * 1000, 700 + i, 'clean', { wayId: 'route:abc' }));
-    return []; // way:def has zero results
-  };
-  const bestS = (wayId: string): number | null => (wayId === 'Morning' ? 601 : null);
-  const model = buildResultsList(CATALOG, resultsFor, bestS);
-
-  assert(model.rows.length === 2, `expected 2 rows, got ${model.rows.length}`);
-  assert(model.rows[0].wayId === 'Morning', `expected Morning first (5 rides), got ${model.rows[0].wayId}`);
-  assert(model.rows[0].rides === 5, `expected 5 rides, got ${model.rows[0].rides}`);
-  assert(model.rows[1].wayId === 'route:abc', `expected route:abc second (2 rides), got ${model.rows[1].wayId}`);
-  assert(model.unriddenWays === 1, `expected 1 unridden way (way:def), got ${model.unriddenWays}`);
-  assert(model.rows[0].label === 'Home Work Dry', `expected seeded label 'Home Work Dry', got '${model.rows[0].label}'`);
-  assert(model.rows[1].label === 'Home → Work · Alt', `expected legacy label 'Home → Work · Alt', got '${model.rows[1].label}'`);
-  assert(model.rows[0].bestLabel !== null, 'Morning bestLabel should not be null');
-  assert(model.rows[1].bestLabel === null, 'route:abc bestLabel should be null when bestS returns null');
-});
-
-test('resultsmodel: buildResultsList — tie on count broken by most recent ride', () => {
-  const resultsFor = (wayId: string): RideResult[] => {
-    if (wayId === 'Morning') return [mk('m1', 1000, 600), mk('m2', 2000, 610), mk('m3', 5000, 620)];
-    if (wayId === 'route:abc') {
-      return [8000, 6000, 3000].map((ms, i) => mk(`a${i}`, ms, 700 + i, 'clean', { wayId: 'route:abc' }));
-    }
-    return [];
-  };
-  const model = buildResultsList(CATALOG, resultsFor, () => null);
-  assert(model.rows.length === 2, `expected 2 rows, got ${model.rows.length}`);
-  assert(model.rows[0].wayId === 'route:abc', `expected route:abc first (last ride at 8000 > 5000), got ${model.rows[0].wayId}`);
-});
-
-test('resultsmodel: buildResultsList — new way:def id labels via wayLabelIn too', () => {
-  const resultsFor = (wayId: string): RideResult[] => (wayId === 'way:def' ? [mk('d1', 1000, 500, 'clean', { wayId: 'way:def' })] : []);
-  const model = buildResultsList(CATALOG, resultsFor, () => null);
-  assert(model.rows.length === 1 && model.rows[0].label === 'Home → Station · Fast',
-    `expected 'Home → Station · Fast', got ${JSON.stringify(model.rows)}`);
-});
-
-// buildResultsRoutes / rideCountForRoute / routeLabel — virgin-cycle15 brief
-// 13 / Fable ruling 2026-09-28. routeAB (rt:AB) has two ways in this
-// fixture (Morning, route:abc); routeAC (rt:AC) has exactly one (way:def) —
-// so routeAC doubles as the "single ridden way" case the ruling's §5 cares
-// about, with no separate fixture needed.
-
-test('resultsmodel: buildResultsRoutes — most-used route first, single-ridden-way route keeps ways.length === 1', () => {
-  const resultsFor = (wayId: string): RideResult[] => {
-    if (wayId === 'Morning') return [1, 2].map((i) => mk(`m${i}`, i * 1000, 600 + i));
-    if (wayId === 'route:abc') return [3, 4].map((i) => mk(`a${i}`, i * 1000, 700 + i, 'clean', { wayId: 'route:abc' }));
-    if (wayId === 'way:def') return [1, 2, 3].map((i) => mk(`d${i}`, i * 1000, 500 + i, 'clean', { wayId: 'way:def' }));
-    return [];
-  };
-  const routes = buildResultsRoutes(CATALOG, resultsFor, () => null);
-  assert(routes.length === 2, `expected 2 routes, got ${routes.length}`);
-  assert(routes[0].routeId === 'rt:AB', `expected rt:AB first (4 rides > 3), got ${routes[0].routeId}`);
-  assert(routes[0].rideCount === 4, `expected rt:AB rideCount 4, got ${routes[0].rideCount}`);
-  assert(routes[0].ways.length === 2, `expected rt:AB to have 2 ridden ways, got ${routes[0].ways.length}`);
-  assert(routes[1].routeId === 'rt:AC', `expected rt:AC second (3 rides), got ${routes[1].routeId}`);
-  assert(routes[1].ways.length === 1, `expected rt:AC to have exactly 1 ridden way, got ${routes[1].ways.length}`);
-  assert(routes[1].rideCount === 3, `expected rt:AC rideCount 3, got ${routes[1].rideCount}`);
-  assert(routes[0].label === 'Home → Work', `expected 'Home → Work', got '${routes[0].label}'`);
-  assert(routes[1].label === 'Home → Station', `expected 'Home → Station', got '${routes[1].label}'`);
-});
-
-test('resultsmodel: buildResultsRoutes — tie on total rides broken by most recent ride across the route', () => {
-  const resultsFor = (wayId: string): RideResult[] => {
-    if (wayId === 'Morning') return [mk('m1', 100, 600), mk('m2', 200, 610)];
-    if (wayId === 'route:abc') return [];
-    if (wayId === 'way:def') return [mk('d1', 400, 500), mk('d2', 500, 510)];
-    return [];
-  };
-  const routes = buildResultsRoutes(CATALOG, resultsFor, () => null);
-  assert(routes.length === 2, `expected 2 routes, got ${routes.length}`);
-  assert(routes[0].rideCount === 2 && routes[1].rideCount === 2, 'expected both routes tied at 2 rides');
-  assert(routes[0].routeId === 'rt:AC', `expected rt:AC first (last ride at 500 > 200), got ${routes[0].routeId}`);
-});
-
-test('resultsmodel: buildResultsRoutes — tie on total rides AND last-ridden broken by label asc', () => {
-  const resultsFor = (wayId: string): RideResult[] => {
-    if (wayId === 'Morning') return [mk('m1', 100, 600)];
-    if (wayId === 'route:abc') return [];
-    if (wayId === 'way:def') return [mk('d1', 100, 500)];
-    return [];
-  };
-  const routes = buildResultsRoutes(CATALOG, resultsFor, () => null);
-  assert(routes.length === 2, `expected 2 routes, got ${routes.length}`);
-  assert(routes[0].label < routes[1].label, `expected label-asc order, got ${routes[0].label}, ${routes[1].label}`);
-  // 'Home → Station' < 'Home → Work' ('S' < 'W') — rt:AC sorts first.
-  assert(routes[0].routeId === 'rt:AC', `expected rt:AC first ('Home → Station' < 'Home → Work'), got ${routes[0].routeId}`);
-});
-
-test('resultsmodel: buildResultsRoutes — a route with zero ridden ways is absent', () => {
-  const resultsFor = (wayId: string): RideResult[] => (wayId === 'Morning' ? [mk('m1', 100, 600)] : []);
-  const routes = buildResultsRoutes(CATALOG, resultsFor, () => null);
-  assert(routes.length === 1, `expected 1 route, got ${routes.length}`);
-  assert(routes[0].routeId === 'rt:AB', `expected only rt:AB, got ${routes[0].routeId}`);
-  assert(routes.every((r) => r.routeId !== 'rt:AC'), 'expected rt:AC (zero ridden ways) to be absent');
-});
-
-test('resultsmodel: buildResultsRoutes — empty catalog returns []', () => {
-  const empty: Catalog = { schemaVersion: 2, landmarks: [], routes: [], ways: [], gateSets: [] };
-  const routes = buildResultsRoutes(empty, () => [], () => null);
-  assert(routes.length === 0, `expected [], got ${JSON.stringify(routes)}`);
-});
-
-test('resultsmodel: rideCountForRoute — sums over the ways whose routeId is this route, ignoring a stray way', () => {
-  const resultsFor = (wayId: string): RideResult[] => {
-    if (wayId === 'Morning') return [mk('m1', 100, 600), mk('m2', 200, 610)];
-    if (wayId === 'route:abc') return [mk('a1', 300, 700)];
-    if (wayId === 'way:def') return [mk('d1', 350, 500)];
-    if (wayId === 'not-in-any-route') return [mk('x1', 400, 800), mk('x2', 500, 810)];
-    return [];
-  };
-  const total = rideCountForRoute(routeAB, CATALOG, resultsFor);
-  assert(total === 3, `expected 3 (2 + 1; way:def is rt:AC's, stray way is nobody's), got ${total}`);
-});
-
-// Group 5 Inspect fix-up (2026-09-28): membership is `way.routeId`, not
-// `route.wayIds`. store/routeCreation.ts's existing-route path cannot update
-// a SEED route's wayIds (seed wins in mergeCatalogs), so on a curated-seed
-// build a user-recorded extra way on a seed route is linked ONLY by its own
-// routeId -- and must still show under that route in RESULTS.
-test('resultsmodel: buildResultsRoutes — a way linked only by way.routeId (not in route.wayIds) still groups under its route', () => {
-  const wayOrphanLink: Way = { id: 'way:extra', routeId: 'rt:AB', refLineId: 'ref:extra', gateSetVersion: 1, seeded: false, specs: ['Extra'] };
-  const catalog: Catalog = { ...CATALOG, ways: [...CATALOG.ways, wayOrphanLink] };
-  assert(!routeAB.wayIds.includes('way:extra'), 'fixture precondition: rt:AB.wayIds must NOT list way:extra');
-  const resultsFor = (wayId: string): RideResult[] => {
-    if (wayId === 'Morning') return [mk('m1', 100, 600)];
-    if (wayId === 'way:extra') return [mk('e1', 900, 650, 'clean', { wayId: 'way:extra' }), mk('e2', 950, 640, 'clean', { wayId: 'way:extra' })];
-    return [];
-  };
-  const routes = buildResultsRoutes(catalog, resultsFor, () => null);
-  assert(routes.length === 1 && routes[0].routeId === 'rt:AB', `expected only rt:AB, got ${JSON.stringify(routes.map((r) => r.routeId))}`);
-  assert(routes[0].rideCount === 3, `expected rt:AB rideCount 3 (1 + 2 via way.routeId), got ${routes[0].rideCount}`);
-  assert(routes[0].ways.length === 2, `expected 2 ridden ways under rt:AB, got ${routes[0].ways.length}`);
-  // way-level order is the flat list's: way:extra (2 rides) before Morning (1).
-  assert(routes[0].ways[0].wayId === 'way:extra' && routes[0].ways[1].wayId === 'Morning',
-    `expected [way:extra, Morning], got ${JSON.stringify(routes[0].ways.map((w) => w.wayId))}`);
-  assert(routes[0].lastRiddenAtMs === 950, `expected route lastRiddenAtMs 950, got ${routes[0].lastRiddenAtMs}`);
-  // rideCountForRoute agrees with the grouped model.
-  assert(rideCountForRoute(routeAB, catalog, resultsFor) === 3, 'rideCountForRoute must agree with buildResultsRoutes');
-});
-
-test('resultsmodel: routeLabel — From → To via landmark lookup; missing landmark renders as \'?\'', () => {
-  assert(routeLabel(routeAB, CATALOG) === 'Home → Work', `expected 'Home → Work', got '${routeLabel(routeAB, CATALOG)}'`);
-  const brokenRoute: Route = { id: 'rt:broken', startLandmarkId: 'lm:missing', endLandmarkId: 'lm:b', wayIds: [] };
-  assert(routeLabel(brokenRoute, CATALOG) === '? → Work', `expected '? → Work', got '${routeLabel(brokenRoute, CATALOG)}'`);
-});
-
-// buildHistoryBoard
-
-test('resultsmodel: buildHistoryBoard — ranked 1..4, ignored/estimated after, NO TIME, pb, gaps', () => {
-  const results = [
-    mk('r1', 1000, 600),
-    mk('r2', 2000, 610),
-    mk('r3', 3000, 590), // fastest overall — the all-time PB
-    mk('r4', 4000, 620),
-    mk('r5', 5000, 615, 'clean', { ignoredFromRanking: true }), // unranked, keeps its time
-    mk('r6', 6000, 0, 'estimated'), // unranked, NO TIME
-  ];
-  const board = buildHistoryBoard(results, 590);
-
-  assert(board.total === 6, `expected total 6, got ${board.total}`);
-  assert(board.ranked === 4, `expected ranked 4, got ${board.ranked}`);
-  const ranked = board.rows.filter((r) => r.pos !== null);
-  assert(ranked.map((r) => r.pos).join(',') === '1,2,3,4', `expected positions 1..4, got ${ranked.map((r) => r.pos).join(',')}`);
-  assert(ranked[0].rideId === 'r3', `expected r3 (590s) at P1, got ${ranked[0].rideId}`);
-  assert(ranked[0].gapLabel === '—', `expected P1 gapLabel '—', got '${ranked[0].gapLabel}'`);
-  assert(ranked[1].gapLabel.startsWith('+') && ranked[1].gapLabel.endsWith('s'), `expected a '+Xs' gap, got '${ranked[1].gapLabel}'`);
-
-  const unranked = board.rows.filter((r) => r.pos === null);
-  assert(unranked.length === 2, `expected 2 unranked rows, got ${unranked.length}`);
-  const ignoredRow = unranked.find((r) => r.rideId === 'r5')!;
-  assert(!ignoredRow.noTime && ignoredRow.timeLabel !== 'Not ranked', `ignored ride must keep its time, got '${ignoredRow.timeLabel}'`);
-  assert(ignoredRow.gapLabel === '', `expected empty gapLabel for an unranked row, got '${ignoredRow.gapLabel}'`);
-  const estRow = unranked.find((r) => r.rideId === 'r6')!;
-  assert(estRow.noTime && estRow.timeLabel === 'Not ranked', `estimated ride must show Not ranked, got '${estRow.timeLabel}'`);
-
-  const pbRows = board.rows.filter((r) => r.pb);
-  assert(pbRows.length === 1 && pbRows[0].rideId === 'r3', `expected exactly one pb row (r3), got ${JSON.stringify(pbRows)}`);
-});
-
-test('resultsmodel: boardCaption / windowCaption wording', () => {
-  assert(boardCaption(27, true) === 'ALL 27 ACTIVITIES · fastest first', boardCaption(27, true));
-  assert(boardCaption(1, true) === 'ALL 1 ACTIVITY · fastest first', boardCaption(1, true));
-  assert(boardCaption(27, false) === 'ALL 27 ACTIVITIES · rankings off in SETTINGS', boardCaption(27, false));
+test('resultsmodel: windowCaption wording (plot model, cycle25)', () => {
+  assert(windowCaption(10) === 'LAST 10 ACTIVITIES', windowCaption(10));
   assert(windowCaption(9) === 'LAST 9 ACTIVITIES', windowCaption(9));
   assert(windowCaption(1) === 'LAST 1 ACTIVITY', windowCaption(1));
 });

@@ -1,0 +1,10 @@
+# report brief-03 (DONE; one escalation resolved by Fable ruling 2c)
+Moved to safe_to_delete/virgin-cycle25-results-tab/: ResultsScreen.tsx, ResultsDetailScreen.tsx, resultsWayList.tsx, resultsListModel.ts (ls ui | grep -i results = resultsPlot.tsx, resultsPlotModel.ts).
+Changed: app/App.tsx, src/ui/tabNav.tsx, RideDetailScreen.tsx, demoModel.ts, DemoScreen.tsx, tests/recordflow_suite.ts (incl. 2c one-line edit at the back-label list + pin test), tests/resultsmodel_suite.ts, tests/ui-strings.allow.json.
+Tests: baseline 929 / 926 pass; after 918 tests: 915 pass, 0 fail, 3 skip (as expected). tsc exit 0. Static checks only (no native build).
+Allow list: 18 entries removed exactly per brief section 3; 452 -> 434; legacyCount 32 unchanged.
+Acceptance: 1 ok; 2 ok; 3 ok; 4 only comments (DemoScreen:264, resultsPlotModel:219); 5 one hit tabNav.tsx:20 (comment); 6 ok; 7 empty diff; 8 status matches (only expected files).
+Deviations: tabNav ResultsDetailRequest block at :53-57 (brief said :51-57), removed by content. 2c ruling applied: dropped 'BACK TO RESULTS' from the cycle23 back-label list.
+On-device checks: tab bar shows record, activities, map, settings, demo; hardware back from a ride detail/catalog detail still works; DEMO plot caption reads P<pos> of <total> without the suffix; ride detail bottom buttons RECORD ANOTHER / BACK TO ROUTE / BACK TO ACTIVITIES.
+OPEN-ITEMS: virgin-cycle25 brief 03: RESULTS tab removed; tab bar = record · activities · map · settings · demo. The per-way trend now lives in the MAP route sheet (brief 02). Removed with it: the all-time board, `ALL X ACTIVITIES · fastest first`, the free-activities section, the route -> way drill-down, `BACK TO RESULTS`. Coordinator to-dos: update cycles/virgin-cycle23/COMMANDS.md on-device checklist item 12 (bottom button labels: BACK TO ACTIVITIES, RECORD ANOTHER, BACK TO ROUTE); STATE.md tab list; OPEN-ITEMS: Nathan may want the feed card's P3/10 rank text reviewed against the rolling-window philosophy (C3, window-relative so consistent).
+Inspector: look at tabNav.tsx comments, demoModel demoPlotPosLabel equivalence (demo_suite unedited, passes).

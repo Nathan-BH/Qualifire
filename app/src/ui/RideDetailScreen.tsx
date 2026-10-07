@@ -426,7 +426,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
   }
   if (meta) menuItems.push({ label: 'Delete', onPress: onDelete });
 
-  const primaryLabel = request.source === 'post-stop' ? 'RECORD ANOTHER' : request.source === 'routes' ? 'BACK TO ROUTE' : request.source === 'results' ? 'BACK TO RESULTS' : 'BACK TO ACTIVITIES';
+  const primaryLabel = request.source === 'post-stop' ? 'RECORD ANOTHER' : request.source === 'routes' ? 'BACK TO ROUTE' : 'BACK TO ACTIVITIES';
 
   if (replaying && replayWayId !== null) {
     return (
