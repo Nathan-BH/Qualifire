@@ -1,0 +1,10 @@
+# Report brief 04 (feed polish) - Sonnet execute
+All steps 2a-2f done. No stops.
+Files: app/src/ui/activityCard.tsx, feedModel.ts, wayMapView.tsx (bleed prop, 2 frame sites, frameBleed, comment), app/tests/feedmodel_suite.ts, recordflow_suite.ts, cycles/virgin-cycle23/README.md. allow.json: no diff, no entries touched.
+Suite: baseline 912 (909 pass, 0 fail, 3 skip) -> final 914 (911 pass, 0 fail, 3 skip). tsc baseline EXIT 0, final EXIT 0 (empty log = no errors).
+Logs: run-brief04-baseline.log, run-brief04.log, tsc-brief04-baseline.log, tsc-brief04.log.
+Deviations (mechanical, brief's own check wording): check 4 `grep -c "st\.frame,$"` gives 2 not 0 (pattern also matches the new `props.bleed ? st.frameBleed : st.frame,` lines; the new test asserts no unconditional `st.frame,` line). Check 5 'twoFinger' in activityCard.tsx hits once, in the brief-mandated comment. Check 6 numberOfLines={1} = 8 (unchanged). Check 7 one hit: the header comment text "no radius". Check 3: bleed hits also in pre-existing comments (RecordScreen:804, RoutesScreen:3, catalogMapView:2). oneFingerOn count 6 before and after. RULINGS.md is at cycles/virgin-cycle23/, not repo root.
+git diff --stat: the 6 named files (plus other sessions' 00-nathan-decisions.md, EXECUTION-ORDER.md edits by Plan tier). Native rendering not checked.
+Inspect: bleed sites wayMapView 317/712, dots top = 22+12-20, height sum 307/273, six callers pass no bleed.
+OPEN-ITEMS notes: on-device checks owed (a) feed maps are pictures: one finger scrolls, tap opens detail, nothing moves; (b) detail map still pans/zooms; (c) 3 dp divider + 22/22 air reads right; (d) feed maps reach both edges, no border/radius, text keeps gutter, 'i' credit 6 dp from right and opens; (e) Android edge swipe-back over full-width map; (f) BACK lands at same feed offset; (g) 'map unavailable' badge frame also bleeds (ML null branch).
+Coordinator NOTE (Q4, no change): 'interrupted' is the lap-level quality label (store/derive.ts marks a lap interrupted when a sector was; feedModel.ts subLabel shows any non-clean quality or 'ignored'). Not the removed pause glyph. Word-or-hide is Nathan's call.

@@ -8,6 +8,7 @@ import { wayLabelIn } from '../store/defaultWay.ts';
 import { tower } from '../store/results.ts';
 import { towerDate } from './towerModel.ts';
 import { fmt } from './colourModel.ts';
+import { NOT_RANKED_LABEL } from './feedModel.ts';
 
 // -------------------------------------------------------------- the list
 
@@ -202,7 +203,7 @@ export interface HistoryRow {
   dateLabel: string;
   /** the all-time PB — the first row whose time equals allTimeBestS. */
   pb: boolean;
-  /** true for an estimated/missed lap (lap.quality) — timeLabel is 'NO TIME'. */
+  /** true for an estimated/missed lap (lap.quality) — timeLabel is NOT_RANKED_LABEL ('Not ranked', brief 06). */
   noTime: boolean;
 }
 
@@ -245,7 +246,7 @@ export function buildHistoryBoard(results: RideResult[], allTimeBestS: number | 
       rideId: row.rideId,
       startedAtMs,
       pos: row.position,
-      timeLabel: noTime ? 'NO TIME' : fmt(row.timeS),
+      timeLabel: noTime ? NOT_RANKED_LABEL : fmt(row.timeS),
       gapLabel,
       dateLabel: towerDate(startedAtMs),
       pb: isPb,

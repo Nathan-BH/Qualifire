@@ -119,17 +119,17 @@ test('B-117: a tripwire-demoted lap never takes a position in RIDES rows', () =>
   assert(rows[0].lapLabel === fmt(100, 1), 'the time itself still displays honestly');
 });
 
-test('ridehistory: buildRideRows — an estimated lap is ~-prefixed raw, never gets lapS or a rank', () => {
+test('ridehistory: buildRideRows — an estimated lap has NO label (brief 05: nothing is shown as an estimate), never gets lapS or a rank', () => {
   const metas: RideMeta[] = [{ rideId: 'r1', startMs: 1000, endMs: 2000, nFixes: 10 }];
   const result = makeResult('r1', 'Morning', 1000, { movingS: null, rawS: 900, quality: 'estimated' }, []);
   const rows = buildRideRows(metas, () => result, () => [1, 2, 3, 4, 5, 6, 7, 8]);
   assert(rows[0].lapS === null, 'an estimated lap must never carry a moving lapS');
-  assert(rows[0].lapLabel === `~${fmt(900)}`, `estimated lapLabel must be ~-prefixed raw, got ${rows[0].lapLabel}`);
+  assert(rows[0].lapLabel === '', `estimated lapLabel must be '' (no ~raw), got "${rows[0].lapLabel}"`);
   assert(rows[0].rank === null, 'an estimated lap must never rank, even with ample history on offer');
   assert(rows[0].quality === 'estimated', `non-clean quality must surface, got ${rows[0].quality}`);
 });
 
-test('ridehistory: buildRideRows — a missed-gate lap (quality missed) reads "no lap", never a bare raw number', () => {
+test('ridehistory: buildRideRows — a missed-gate lap (quality missed) has NO label, never a bare raw number', () => {
   // WP-A3 review fix (2026-08-24): a ride that reached START and FINISH but
   // lost a middle gate stores lap.quality 'missed', movingS null, and a real
   // rawS (the full elapsed time) — distinct from 'estimated'. D-025: this
@@ -138,7 +138,7 @@ test('ridehistory: buildRideRows — a missed-gate lap (quality missed) reads "n
   const result = makeResult('r1', 'Morning', 1000, { movingS: null, rawS: 900, quality: 'missed' }, []);
   const rows = buildRideRows(metas, () => result, () => [1, 2, 3, 4, 5, 6, 7, 8]);
   assert(rows[0].lapS === null, 'a missed-gate lap must never carry a moving lapS');
-  assert(rows[0].lapLabel === 'no lap', `missed-gate lapLabel must be "no lap", got ${rows[0].lapLabel}`);
+  assert(rows[0].lapLabel === '', `missed-gate lapLabel must be '', got "${rows[0].lapLabel}"`);
   assert(rows[0].rank === null, 'a missed-gate lap must never rank, even with ample history on offer');
   assert(rows[0].quality === 'missed', `non-clean quality must surface, got ${rows[0].quality}`);
 });
@@ -236,7 +236,7 @@ test('virgin-cycle15 §1: buildRideRows — a reference way still wins over a fr
 test('virgin-cycle15 §1: buildRideRows — no free record (freeFor null) keeps the virgin-cycle13 pick-label fallback exactly', () => {
   const metas: RideMeta[] = [{ rideId: 'r1', startMs: 1000, endMs: 2000, nFixes: 10 }];
   const rows = buildRideRows(metas, () => null, () => [], undefined, () => null, () => 'new → new', () => null);
-  assert(rows[0].wayName === 'new → new' && rows[0].lapLabel === 'no lap', `got ${rows[0].wayName} / ${rows[0].lapLabel}`);
+  assert(rows[0].wayName === 'new → new' && rows[0].lapLabel === '', `got ${rows[0].wayName} / ${rows[0].lapLabel}`);
 });
 
 test('virgin-cycle15 §1: buildRideRows — a MATCHED ride never consults freeFor', () => {
@@ -256,25 +256,25 @@ test('virgin-cycle16 03: FREE_RIDE_ROW_NAME is exactly the wayName buildRideRows
 
 // ============================================================ lapCellLabel
 
-test('ridehistory: lapCellLabel — the RIDES/RESULT shared rule: real time, ~raw when estimated, else "no lap"', () => {
+test('ridehistory: lapCellLabel — real time formats fmt(_, 1); anything without a real time is \'\' (brief 05: no ~raw, no "no lap")', () => {
   // Shared verbatim by ResultScreen.tsx (WP-A3 review fix, 2026-08-24) so the
   // two screens can never again disagree about the same ride.
   assert(lapCellLabel(500, false, 500) === fmt(500, 1),
     `a real moving time must format via fmt(_, 1), got ${lapCellLabel(500, false, 500)}`);
-  assert(lapCellLabel(null, true, 900) === `~${fmt(900)}`,
-    `estimated (movingS null) must be ~-prefixed raw, got ${lapCellLabel(null, true, 900)}`);
+  assert(lapCellLabel(null, true, 900) === '',
+    `estimated (movingS null) must be '' (no ~raw), got ${lapCellLabel(null, true, 900)}`);
   // The missed-gate case: movingS null, NOT estimated, a real rawS on file —
   // this is exactly the shape that used to leak through ResultScreen.tsx's
   // old `lapMovingS ?? lapRawS` fallback as a bare, unearned-looking number.
-  assert(lapCellLabel(null, false, 900) === 'no lap',
-    `a missed-gate lap (movingS null, not estimated) must read "no lap", got ${lapCellLabel(null, false, 900)}`);
-  assert(lapCellLabel(null, false, null) === 'no lap',
-    'no result at all (movingS and rawS both null) must also read "no lap"');
+  assert(lapCellLabel(null, false, 900) === '',
+    `a missed-gate lap (movingS null, not estimated) must be '', got ${lapCellLabel(null, false, 900)}`);
+  assert(lapCellLabel(null, false, null) === '',
+    "no result at all (movingS and rawS both null) must also be ''");
 });
 
 // ========================================================== buildSectorRows
 
-test('ridehistory: buildSectorRows — estimated ~raw, missed did-not-traverse, clean gets a real tier + avg', () => {
+test('ridehistory: buildSectorRows — estimated and missed rows show no time (brief 06), clean gets a real tier + avg', () => {
   const result = makeResult('r1', 'Morning', 1000, { movingS: null, rawS: 900, quality: 'estimated' }, [
     { index: 1, movingS: 200, rawS: 200, quality: 'clean' },
     { index: 2, movingS: null, rawS: 300, quality: 'estimated' },
@@ -289,12 +289,12 @@ test('ridehistory: buildSectorRows — estimated ~raw, missed did-not-traverse, 
   assert(s1.avgLabel !== '', 'S1 has non-empty history so avgLabel must be present');
 
   const s2 = rows.find((r) => r.index === 2)!;
-  assert(s2.timeLabel === `~${fmt(300)}`, `S2 (estimated) must show ~raw, got ${s2.timeLabel}`);
+  assert(s2.timeLabel === '', `S2 (estimated) must show no time (no ~raw), got ${s2.timeLabel}`);
   assert(s2.tier === 'est', `S2 (estimated) must carry the est tier, got ${s2.tier}`);
   assert(s2.avgLabel === '', 'S2 has empty history so avgLabel must be blank');
 
   const s3 = rows.find((r) => r.index === 3)!;
-  assert(s3.timeLabel === '– did not traverse –', `S3 (missed) wording wrong: ${s3.timeLabel}`);
+  assert(s3.timeLabel === '', `S3 (missed) must show no time, got ${s3.timeLabel}`);
   assert(s3.tier === 'est', `S3 (missed) must carry the est tier, got ${s3.tier}`);
 });
 

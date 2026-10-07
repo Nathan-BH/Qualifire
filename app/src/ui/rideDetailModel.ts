@@ -11,6 +11,7 @@ import { ranks } from '../store/results.ts';
 import { scoredS } from '../store/timing.ts';
 import { MIN_HISTORY, positionAmong, tierFor, type UiTier } from './colourModel.ts';
 import { lapCellLabel, buildSectorRows, type SectorRowModel } from './rideHistoryModel.ts';
+import { unrankedForDisplay } from './feedModel.ts';
 import { storedSectorColours } from './sectorTrailModel.ts';
 import { tierLineColour } from './tierColour.ts';
 
@@ -25,6 +26,10 @@ export interface RideDetailModel {
   lapLabel: string;
   lapTier: UiTier;
   rankLine: string;
+  /** brief 05: no real time (estimated / missed) or ignored → the page shows NOT_RANKED_LABEL
+   * instead of lapLabel + rank; feedModel.unrankedForDisplay, the same rule the feed card uses.
+   * false for 'free' and 'none'. */
+  unranked: boolean;
   ignored: boolean;
   /** true when the Ignore/Count toggle is meaningful: a stored, route-matched
    * lap that ranks() would accept if the flag were off. */
@@ -60,13 +65,13 @@ export interface RideDetailDeps {
 /** ResultScreen.tsx's rankLineFor, verbatim, plus the WP-H 'ignored' branch
  * FIRST — a rider's own exclusion is the most specific reason and reads as
  * such. virgin-cycle20 08: bare status words — the explanations were clutter
- * (Nathan, Q7). */
+ * (Nathan, Q7). brief 05 (Nathan 2026-10-07): no "lap", no "no time", no "estimated" — the three unranked lines say what happened (the big slot already says "Not ranked"). */
 export function rankLineFor(
   r: { lapS: number | null; estimated: boolean; ignored: boolean },
   hist: number[],
   barred: boolean,
 ): string {
-  if (r.ignored) return 'not ranked';
+  if (r.ignored) return 'ignored in ranking';
   if (r.lapS !== null) {
     if (barred) return 'no rank';
     // D-045 ruling 1 / NW-1 (2026-09-08): rank and colour read the same
@@ -83,7 +88,7 @@ export function rankLineFor(
     }
     return 'too few to rank';
   }
-  return r.estimated ? 'no time' : 'no lap';
+  return r.estimated ? 'GPS gap at a gate' : 'a gate was missed';
 }
 
 /** WP-K: thin wrapper over sectorTrailModel.storedSectorColours (the ONE
@@ -108,7 +113,7 @@ export function rideDetailFor(rideId: string, startedAtMs: number, d: RideDetail
   if (res === null || res.wayId === null) {
     // WP-B precedence: a free-ride record wins over "nothing on file".
     const kind: RideDetailKind = d.free ? 'free' : 'none';
-    return { ...base, kind, wayId: null, lapLabel: '–', lapTier: 'neutral', rankLine: '',
+    return { ...base, kind, wayId: null, lapLabel: '–', lapTier: 'neutral', rankLine: '', unranked: false,
       ignored: false, canToggleIgnore: false, promoteTarget: null, sectorRows: [], sectorColours: [] };
   }
   const wayId = res.wayId;
@@ -126,6 +131,7 @@ export function rideDetailFor(rideId: string, startedAtMs: number, d: RideDetail
     lapLabel: lapCellLabel(lapS, estimated, res.lap.rawS),
     lapTier: ignored ? 'neutral' : tierFor(lapS, hist),
     rankLine: rankLineFor({ lapS, estimated, ignored }, hist, d.barred(wayId)),
+    unranked: unrankedForDisplay(res.lap.quality, ignored),
     ignored,
     canToggleIgnore: ranks({ ...res, ignoredFromRanking: false }),
     // §3.3b: promotable iff matched to a user-owned route it is not already the reference of.
@@ -148,4 +154,11 @@ export function sectorHighlightColours(
   const out: (string | null)[] = new Array<string | null>(n).fill(null);
   if (selected >= 1 && selected < n) out[selected] = colour;
   return out;
+}
+
+/** brief 05: the SECTORS time cell on the detail page. A row without a real time (buildSectorRows
+ * gives it tier 'est' — the only producer of 'est' is tierFor(null)) shows nothing, never `~m:ss`
+ * or a dash-prose; avg and gap columns are untouched. */
+export function sectorTimeCell(row: Pick<SectorRowModel, 'tier' | 'timeLabel'>): string {
+  return row.tier === 'est' ? '' : row.timeLabel;
 }

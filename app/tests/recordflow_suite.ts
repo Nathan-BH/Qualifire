@@ -317,7 +317,7 @@ test('virgin-cycle20 08: clutter text is gone (CLUTTER-REVIEW §1 + Nathan\'s §
   const rd = read('src', 'ui', 'ResultsDetailScreen.tsx');
   assert(!rd.includes('not ranked') && !rd.includes('rankingsOn') && !rd.includes('useSettings'), 'ResultsDetail divider + rankings switch gone');
   const model = read('src', 'ui', 'rideDetailModel.ts');
-  for (const kept of ["'not ranked'", "'no rank'", "'too few to rank'", "'no time'", "'no lap'"]) assert(model.includes(kept), `rankLine lacks ${kept}`);
+  for (const kept of ["'ignored in ranking'", "'no rank'", "'too few to rank'", "'GPS gap at a gate'", "'a gate was missed'"]) assert(model.includes(kept), `rankLine lacks ${kept}`);
   const naming = read('src', 'ui', 'routeNamingCard.tsx');
   assert(!naming.includes('becomes its reference') && !naming.includes('name where you rode') && !naming.includes('— e.g. Dry, Left') && !naming.includes('pick it on RECORD next time'), 'naming card tails removed');
   const demo = read('src', 'ui', 'DemoScreen.tsx');
@@ -338,7 +338,7 @@ test('virgin-cycle20 08: clutter text is gone (CLUTTER-REVIEW §1 + Nathan\'s §
   assert(read('src', 'location', 'index.ts').includes("notificationTitle: 'Recording activity'"), 'notification title is the bare noun');
 });
 
-test('virgin-cycle23 02: ACTIVITIES is a flat feed — FlatList of ActivityCards, fixed layout, no FREE ACTIVITIES section, two-finger card maps switchable in one line', () => {
+test('virgin-cycle23 02: ACTIVITIES is a flat feed — FlatList of ActivityCards, fixed layout, no FREE ACTIVITIES section, read-only edge-to-edge card maps', () => {
   const read = (...p: string[]) => fs.readFileSync(path.resolve(TESTS_DIR, '..', ...p), 'utf8');
   const rides = read('src', 'ui', 'RidesScreen.tsx');
   assert(rides.includes('<FlatList') && !rides.includes('SectionList'), 'FlatList, not SectionList');
@@ -348,14 +348,55 @@ test('virgin-cycle23 02: ACTIVITIES is a flat feed — FlatList of ActivityCards
   assert(rides.includes('let feedScrollOffset = 0;') && rides.includes('scrollToOffset({ offset: feedScrollOffset, animated: false })'), 'BACK restores the feed offset');
   assert(rides.includes("source: 'rides'"), 'tap still opens the detail from rides');
   const card = read('src', 'ui', 'activityCard.tsx');
-  assert(/export const CARD_MAP_GESTURES: WayMapGestures = '(twoFinger|readonly)';/.test(card), 'one-line gesture switch');
+  assert(card.includes("export const CARD_MAP_GESTURES: WayMapGestures = 'readonly';"), 'card maps are read-only by design (brief 04)');
   assert(card.includes('gestures={CARD_MAP_GESTURES}'), 'the card map uses it');
   assert(!/#[0-9A-Fa-f]{3,8}\b/.test(card.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '')), 'no hard-coded hex in the card');
-  assert(card.includes('borderBottomWidth: 1') && !card.includes('borderLeftWidth'), 'divider, no accent bar');
+  assert(card.includes('borderBottomWidth: FEED_DIVIDER_DP') && card.includes('paddingTop: CARD_PAD_TOP') && card.includes('paddingBottom: CARD_PAD_BOTTOM') && !card.includes('borderLeftWidth'), 'divider + padding from feedModel tokens, no accent bar');
+  assert(!card.includes('marginHorizontal') && !card.includes('borderRadius') && !card.includes('borderWidth'), 'brief 04: the card map bleeds edge to edge, no frame of its own');
+  assert(/showRider=\{false\}\s+bleed\s+gestures=\{CARD_MAP_GESTURES\}/.test(card), 'the card map asks WayMapView for the bleed frame');
   assert(!card.includes('trail=') || card.includes("card.needsTrail ? trail ?? undefined : undefined"), 'route blocks never draw the raw trail');
   assert(/sectorColours=\{card\.variant === 'route' \? \(sectorColoursOn \? card\.sectorColours : ALL_YELLOW\) : undefined\}/.test(card), 'sector colours gated by the toggle, as the detail page');
   const menu = read('src', 'ui', 'activityMenu.tsx');
   assert(menu.includes('<Modal transparent') && menu.includes('measureInWindow'), 'anchored menu over a transparent modal');
+});
+
+test('virgin-cycle23 04: WayMapView `bleed` is opt-in — default frame untouched, only the feed card passes it', () => {
+  const read = (...p: string[]) => fs.readFileSync(path.resolve(TESTS_DIR, '..', ...p), 'utf8');
+  const map = read('src', 'ui', 'wayMapView.tsx');
+  assert(map.includes('bleed?: boolean;'), 'prop declared');
+  assert((map.match(/props\.bleed \? st\.frameBleed : st\.frame,/g) ?? []).length === 2, 'both frame sites (ML null + MapLibre) pick the frame by the prop');
+  assert(!/^\s+st\.frame,$/m.test(map), 'no unconditional st.frame left');
+  assert(map.includes("frame: { alignSelf: 'stretch', borderRadius: radius.card, borderWidth: 1, overflow: 'hidden' },"), 'default frame style unchanged');
+  assert(map.includes("frameBleed: { alignSelf: 'stretch', overflow: 'hidden' },"), 'bleed frame: no border, no radius');
+  for (const f of ['RecordScreen.tsx', 'ReplayScreen.tsx', 'CatalogDetailScreen.tsx', 'DemoScreen.tsx', 'gateAdjustCard.tsx', 'RideDetailScreen.tsx']) {
+    const els = read('src', 'ui', f).match(/<WayMapView[\s\S]*?\/>/g) ?? [];
+    assert(els.length > 0, `${f} mounts WayMapView`);
+    for (const el of els) assert(!/\bbleed\b/.test(el), `${f} must not pass bleed`);
+  }
+});
+
+test('virgin-cycle23 05: unranked activities show "Not ranked" (feed hero + detail big slot), no quality words, no ~, no "lap" in the real screens', () => {
+  const read = (...p: string[]) => fs.readFileSync(path.resolve(TESTS_DIR, '..', ...p), 'utf8');
+  const card = read('src', 'ui', 'activityCard.tsx');
+  assert(card.includes('{card.unranked') && card.includes('{NOT_RANKED_LABEL}') && card.includes('st.notRanked'), 'card hero shows the label when unranked');
+  for (const gone of ['subLabel', 'st.qual', 'st.dim', 'card.ignored &&']) assert(!card.includes(gone), `card still has ${gone}`);
+  assert((card.match(/numberOfLines=\{1\}/g) ?? []).length === 8, 'every text row still single-line (8 incl. the header comment)');
+  assert(card.includes('{card.variant === \'route\' ? (') && card.includes('{card.sectors.map((sec) => ('), 'strip row kept (renders empty when sectors is [])');
+  const feed = read('src', 'ui', 'feedModel.ts');
+  assert(feed.includes("export const NOT_RANKED_LABEL = 'Not ranked';") && feed.includes('export function unrankedForDisplay('), 'label + rule live in feedModel');
+  assert(!feed.includes("'ignored'") && !feed.includes('subLabel'), 'no quality word, no subLabel in the feed model');
+  const det = read('src', 'ui', 'RideDetailScreen.tsx');
+  assert(det.includes('{model.unranked') && det.includes('{NOT_RANKED_LABEL}') && det.includes('styles.notRanked') && det.includes('{sectorTimeCell(sec)}'), 'detail big slot + sector cell');
+  assert(!det.includes('styles.dim') && det.includes('[styles.secTime, { color: tierTextColour(sec.tier, t) }]'), 'dim gone; sector time style pinned');
+  const model = read('src', 'ui', 'rideDetailModel.ts');
+  const hist = read('src', 'ui', 'rideHistoryModel.ts');
+  for (const gone of ["'no lap'", "'no time'", "'not ranked'", '`~${']) assert(!model.includes(gone), `old wording/estimate still in rideDetailModel: ${gone}`);
+  assert(!hist.includes("'no lap'") && !hist.includes('`~${fmt(rawS)}`'), 'rideHistoryModel: no "no lap", no ~raw lap label (buildSectorRows keeps its own ~ row for replay)');
+  assert(model.includes("import { unrankedForDisplay } from './feedModel.ts';") && model.includes('unranked: unrankedForDisplay(res.lap.quality, ignored),'), 'detail model uses the one rule');
+  const tower = read('src', 'ui', 'tower.tsx');
+  assert(tower.includes('>TIME</Text>') && !tower.includes('>LAP</Text>'), 'tower ceremony label');
+  const allow = read('tests', 'ui-strings.allow.json');
+  assert(allow.includes('"text": "Not ranked"') && !allow.includes('"text": "no lap"') && !allow.includes('"text": "no time"'), 'allow-list follows the code');
 });
 
 test('virgin-cycle23 03: the activity detail is one flat scroll — map first, no card boxes, Replay the single primary, ⋯ menu for Export/Ignore/Delete, sector rows tap-to-highlight, back labels per source kept', () => {
@@ -467,9 +508,9 @@ test('virgin-cycle22 04: the gate flash and the finish flash are time only — c
   // one model for both flashes: (tier, time) and nothing else
   assert(lv.includes('export interface FlashModel {\n  tier: Tier;\n  time: string;\n}'), 'FlashModel is exactly { tier, time }');
   assert(lv.includes('flash: FlashModel | null;') && lv.includes('lap: FlashModel | null;'), 'flash and lap share FlashModel');
-  assert(lv.includes("return { tier: 'est', time: `~${fmtSec(sec.rawS)}` };"), 'estimated flash: ~m:ss, dim, nothing else');
+  assert(lv.includes("if (sec.kind !== 'done' || sec.estimated) return null;"), 'brief 06: an estimated sector or a missed gate flashes nothing (no ~m:ss, no – –)');
   assert(lv.includes('return { tier: tierOf(k, scoredS(sec)), time: fmtSec(scoredS(sec) ?? sec.rawS, 1) };'), 'done flash: tier + m:ss.d');
-  assert(lv.includes("return { tier: 'est', time: '– –' };"), 'missed flash: – –');
+  assert(!lv.includes("time: '– –'"), 'brief 06: no – – flash');
   const builder = lv.slice(lv.indexOf('function bigFromSector('), lv.indexOf('export function viewModelFromEngine('));
   for (const gone of ['delta', 'lbl', 'pb', 'waiting', 'glyph'])
     assert(!builder.includes(gone), `bigFromSector still produces "${gone}"`);
@@ -499,10 +540,10 @@ test('virgin-cycle22 04: the gate flash and the finish flash are time only — c
   assert(!rec.includes('showLap') && !rec.includes('setShowLap') && !rec.includes('lapScored'), 'RecordScreen: showLap state/effect/prop gone');
   for (const f of ['DemoScreen.tsx', 'ReplayScreen.tsx']) assert(!read('src', 'ui', f).includes('showLap'), `${f} still passes showLap`);
   assert(read('src', 'live', 'engine.ts').includes("this.phase = 'finished';"), 'engine untouched: one-shot lap, phase finished');
-  // the stale allow-list entry went with the chip; the tower keeps its own LAP
+  // the stale allow-list entry went with the chip; the tower keeps its own label (LAP → TIME, virgin-cycle23 brief 05)
   const allow = read('tests', 'ui-strings.allow.json');
   assert(!allow.includes('"file": "src/ui/chips.tsx"'), 'no chips.tsx allow-list entry left (LAP went with LiveLapChip)');
-  assert(allow.includes('"file": "src/ui/tower.tsx",\n      "kind": "text",\n      "text": "LAP"'), 'tower.tsx keeps its LAP entry');
+  assert(allow.includes('"file": "src/ui/tower.tsx",\n      "kind": "text",\n      "text": "TIME"'), 'tower.tsx keeps its label entry, now TIME');
 });
 
 test('virgin-cycle22 04: the flash never reads the Sector colours setting — tier and theme are its only inputs (pinned, D8)', () => {
@@ -550,4 +591,25 @@ test('virgin-cycle22 08: DEMO and REPLAY feed the pane a real flash — no `flas
   const screen = read('src', 'ui', 'ReplayScreen.tsx');
   assert(screen.includes('detail.lapTier,') && screen.includes('detail.lapTier]') , 'ReplayScreen passes detail.lapTier and lists it in the memo deps');
   assert(!read('src', 'ui', 'DemoScreen.tsx').includes('stays neutral'), 'DemoScreen comments no longer promise a neutral lap chip');
+});
+
+test('virgin-cycle23 06 (Nathan 2026-10-07): no estimate on any flash or strip, no em dash / "lap" in the gate errors, RESULTS says Not ranked', () => {
+  const read = (...p: string[]) => fs.readFileSync(path.resolve(TESTS_DIR, '..', ...p), 'utf8');
+  const lv = read('src', 'ui', 'liveView.tsx');
+  assert(!lv.includes('`~${'), 'liveView builds no ~m:ss (sector flash, lap flash, strip)');
+  assert(!lv.includes("time: '– –'") && !lv.includes('label: `${label} ~`'), 'no – – flash, no ~ on the strip label');
+  assert(lv.includes("if (sec.kind !== 'done' || sec.estimated) return null;"), 'only a real sector time flashes');
+  assert(lv.includes('if (st.lap !== null && !st.lap.estimated && scoredS(st.lap) !== null) {'), 'only a real lap time flashes at the finish');
+  const hist = read('src', 'ui', 'rideHistoryModel.ts');
+  assert(!hist.includes('`~${') && !hist.includes('did not traverse'), 'buildSectorRows: no ~raw, no did-not-traverse prose');
+  const rm = read('src', 'ui', 'replayModel.ts');
+  assert(rm.includes("const lap = allDone && r.finishMs !== null && lapLabel !== '' ? { tier: lapTier, time: lapLabel } : null;"), 'replay: no finish flash without a real lap label');
+  const rfr = read('src', 'store', 'routeFromRide.ts');
+  assert(!rfr.includes('its lap comes out') && rfr.includes("reason: 'the reference activity cannot be timed on these gates'"), 'gate alert reason reworded');
+  const tm = read('src', 'ui', 'towerModel.ts');
+  const rl = read('src', 'ui', 'resultsListModel.ts');
+  const tw = read('src', 'ui', 'tower.tsx');
+  assert(!tm.includes("'NO TIME'") && tm.includes('time: NOT_RANKED_LABEL,'), 'tower today row: Not ranked');
+  assert(!rl.includes("'NO TIME'") && rl.includes('timeLabel: noTime ? NOT_RANKED_LABEL : fmt(row.timeS),'), 'RESULTS history: Not ranked');
+  assert(!tw.includes('TODAY · unranked') && tw.includes('>TODAY · Not ranked</Text>'), 'tower ceremony: Not ranked');
 });

@@ -76,7 +76,7 @@ export function fmtClock(ms: number): string {
 /** A flash in the clock's slot (virgin-cycle22 04, Nathan 2026-10-04/05): the frozen time and the
  * tier that colours it — nothing else. No label, no delta, no PB marker, no rank, no box: a flash is
  * the lap clock's own digits in another colour for FLASH_HOLD_MS. Used for BOTH the sector flash at
- * each gate (`time` = `m:ss.d`; `~m:ss` for an estimated sector, D-011/D-013; `– –` for a missed gate)
+ * each gate (`time` = `m:ss.d`; an estimated sector or a missed gate has no flash at all, brief 06)
  * and the lap flash at the finish (`time` = `m:ss`, no decimal, as the lap has always been shown). */
 export interface FlashModel {
   tier: Tier;
@@ -86,7 +86,7 @@ export interface FlashModel {
 export interface StripSlotModel {
   tier: Tier;
   label: string;
-  /** frozen final time on completed blocks (m:ss / ~m:ss) — §2 rule 4 */
+  /** frozen final time on completed blocks (m:ss; none without a real time) — §2 rule 4 */
   time?: string;
   current?: boolean;
 }
@@ -137,18 +137,13 @@ export type TierSource = (sectorIndex: number, timeS: number | null) => Tier;
 
 const NEUTRAL_SOURCE: TierSource = () => 'neutral';
 
-function bigFromSector(k: number, sec: LiveSector, tierOf: TierSource): FlashModel {
-  if (sec.kind === 'done') {
-    if (sec.estimated) {
-      // D-011/D-013: gap-derived — ~raw, no decimal; 'est' -> textDim, no verdict.
-      return { tier: 'est', time: `~${fmtSec(sec.rawS)}` };
-    }
-    // cycle 008: real tier from the ghost history, via the injected source.
-    // virgin-cycle22 04: the time alone; no label row, nothing to compare against (D-021: no reference yet).
-    return { tier: tierOf(k, scoredS(sec)), time: fmtSec(scoredS(sec) ?? sec.rawS, 1) };
-  }
-  // 'missed' (skipped gate / offroute): no data — dim dashes.
-  return { tier: 'est', time: '– –' };
+function bigFromSector(k: number, sec: LiveSector, tierOf: TierSource): FlashModel | null {
+  // virgin-cycle23 brief 06 (Nathan 2026-10-07: nothing is ever shown as an estimate): only a real
+  // sector time flashes. An estimated sector or a missed gate flashes nothing; the clock keeps running.
+  if (sec.kind !== 'done' || sec.estimated) return null;
+  // cycle 008: real tier from the ghost history, via the injected source.
+  // virgin-cycle22 04: the time alone; no label row, nothing to compare against (D-021: no reference yet).
+  return { tier: tierOf(k, scoredS(sec)), time: fmtSec(scoredS(sec) ?? sec.rawS, 1) };
 }
 
 export function viewModelFromEngine(
@@ -164,7 +159,7 @@ export function viewModelFromEngine(
     switch (sec.kind) {
       case 'done':
         return sec.estimated
-          ? { tier: 'est' as Tier, label: `${label} ~`, time: `~${fmtSec(sec.rawS)}` }
+          ? { tier: 'est' as Tier, label } // brief 06: no ~ and no time without a real time; tier est keeps the slot grey
           : {
               tier: tierOf(i + 1, scoredS(sec)),
               label,
@@ -186,17 +181,14 @@ export function viewModelFromEngine(
       : bigFromSector(lastDone, st.sectors[lastDone - 1], tierOf);
 
   let lap: FlashModel | null = null;
-  if (st.lap !== null) {
-    lap = st.lap.estimated
-      ? {
-          tier: 'est',
-          time: st.lap.rawS !== null ? `~${fmtSec(st.lap.rawS)}` : '– –',
-        }
-      : {
-          // lap tier: sector index 0 is the convention for "the whole lap"
-          tier: tierOf(0, scoredS(st.lap) ?? st.lap.rawS ?? null),
-          time: fmtSec(scoredS(st.lap) ?? st.lap.rawS ?? 0),
-        };
+  // virgin-cycle23 brief 06: the finish flashes only a real lap time; an estimated lap (or one without
+  // a moving time) flashes nothing and the clock keeps running.
+  if (st.lap !== null && !st.lap.estimated && scoredS(st.lap) !== null) {
+    lap = {
+      // lap tier: sector index 0 is the convention for "the whole lap"
+      tier: tierOf(0, scoredS(st.lap) ?? st.lap.rawS ?? null),
+      time: fmtSec(scoredS(st.lap) ?? st.lap.rawS ?? 0),
+    };
   }
 
   const contextLabel =

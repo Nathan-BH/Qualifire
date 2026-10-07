@@ -1632,6 +1632,14 @@
       "by": "bootstrap"
     },
     {
+      "file": "src/ui/feedModel.ts",
+      "kind": "literal",
+      "text": "Not ranked",
+      "reason": "virgin-cycle23 brief 05 (Nathan 2026-10-07): the one verdict for an activity that cannot be ranked (feed hero slot + detail big slot); replaces ~time / no lap / quality words",
+      "since": "2026-10-07",
+      "by": "Sonnet execute, virgin-cycle23 brief 05"
+    },
+    {
       "file": "src/ui/gateAdjustCard.tsx",
       "kind": "literal",
       "text": "KEEP GATES",
@@ -2533,14 +2541,6 @@
       "by": "bootstrap"
     },
     {
-      "file": "src/ui/resultsListModel.ts",
-      "kind": "literal",
-      "text": "NO TIME",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
       "file": "src/ui/resultsPlot.tsx",
       "kind": "literal",
       "text": "tap a point for that activity",
@@ -2695,6 +2695,14 @@
     {
       "file": "src/ui/rideDetailModel.ts",
       "kind": "literal",
+      "text": "GPS gap at a gate",
+      "reason": "virgin-cycle23 brief 05: detail reason line for an estimated lap (was \"no time\"; no \"estimated\" word)",
+      "since": "2026-10-07",
+      "by": "Sonnet execute, virgin-cycle23 brief 05"
+    },
+    {
+      "file": "src/ui/rideDetailModel.ts",
+      "kind": "literal",
       "text": "P{…} of {…} on this way",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
@@ -2703,31 +2711,23 @@
     {
       "file": "src/ui/rideDetailModel.ts",
       "kind": "literal",
-      "text": "no lap",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
+      "text": "a gate was missed",
+      "reason": "virgin-cycle23 brief 05: detail reason line for a missed-gate lap (was \"no lap\"; no \"lap\" word, Nathan 2026-10-07)",
+      "since": "2026-10-07",
+      "by": "Sonnet execute, virgin-cycle23 brief 05"
+    },
+    {
+      "file": "src/ui/rideDetailModel.ts",
+      "kind": "literal",
+      "text": "ignored in ranking",
+      "reason": "virgin-cycle23 brief 05: detail reason line for a rider-ignored activity (was \"not ranked\"; the big label says that now)",
+      "since": "2026-10-07",
+      "by": "Sonnet execute, virgin-cycle23 brief 05"
     },
     {
       "file": "src/ui/rideDetailModel.ts",
       "kind": "literal",
       "text": "no rank",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/rideDetailModel.ts",
-      "kind": "literal",
-      "text": "no time",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/rideDetailModel.ts",
-      "kind": "literal",
-      "text": "not ranked",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"
@@ -2744,22 +2744,6 @@
       "file": "src/ui/rideHistoryModel.ts",
       "kind": "literal",
       "text": "Free activity",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/rideHistoryModel.ts",
-      "kind": "literal",
-      "text": "no lap",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/rideHistoryModel.ts",
-      "kind": "literal",
-      "text": "– did not traverse –",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"
@@ -3563,7 +3547,7 @@
     {
       "file": "src/ui/tower.tsx",
       "kind": "text",
-      "text": "LAP",
+      "text": "TIME",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"
@@ -3579,7 +3563,7 @@
     {
       "file": "src/ui/tower.tsx",
       "kind": "text",
-      "text": "TODAY · unranked",
+      "text": "TODAY · Not ranked",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"
@@ -3596,14 +3580,6 @@
       "file": "src/ui/tower.tsx",
       "kind": "text",
       "text": "⋮ {…} more below",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/towerModel.ts",
-      "kind": "literal",
-      "text": "NO TIME",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"

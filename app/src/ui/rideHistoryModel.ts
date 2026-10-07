@@ -30,20 +30,16 @@ import { scoredS } from '../store/timing.ts';
 export { wayLabel };
 
 /**
- * The lap-time cell rule, shared by RIDES (buildRideRows below) and RESULT
- * (ResultScreen.tsx's big lap figure) so the two screens can never again show
- * a contradictory verdict for the same ride (WP-A3 review fix, 2026-08-24 —
- * RESULT used to fall through to a bare `rawS` for a 'missed'-quality lap,
- * i.e. one that reached START and FINISH but lost a middle gate: not clean,
- * not 'estimated' either, so it slipped past both screens' own `estimated`
- * check and rendered as an ordinary, unearned-looking time). D-025: never
- * display an unearned lap as if it were genuine — a lap with no real time
- * (scoredS null) is either the honestly-marked `~rawS` of an estimated
- * crossing, or 'no lap' for everything else (missed gate, or no result at all). */
+ * The time-cell rule, shared by the ACTIVITIES feed (buildRideRows below) and the detail page
+ * (rideDetailModel.ts) so the two can never show a contradictory verdict for the same ride.
+ * D-025: never display an unearned time as if it were genuine. brief 05 (Nathan 2026-10-07):
+ * nothing is ever shown as an estimate either — a lap with no real time (scoredS null:
+ * estimated or missed) has NO label at all ('' — the surfaces show NOT_RANKED_LABEL instead,
+ * feedModel.unrankedForDisplay); the old `~rawS` / "no lap" forms are gone. `estimated` and
+ * `rawS` are kept in the signature (now unused) so the two callers stay as they are. */
 export function lapCellLabel(lapS: number | null, estimated: boolean, rawS: number | null): string {
   if (lapS !== null) return fmt(lapS, 1);
-  if (estimated && rawS !== null) return `~${fmt(rawS)}`;
-  return 'no lap';
+  return '';
 }
 
 /** 'Tue 05 Aug · 08:31' — always absolute, local time (the rider's own day
@@ -163,7 +159,7 @@ export function buildRideRows(
           wayId: null,
           wayName,
           lapS: null,
-          lapLabel: 'no lap',
+          lapLabel: '',
           quality: null,
           rank: null,
         };
@@ -228,17 +224,18 @@ export function buildSectorRows(
       const h = hist(sec.index);
       const mean = h.length ? h.reduce((a, b) => a + b, 0) / h.length : null;
       const avgLabel = mean !== null ? `avg ${fmt(mean)}` : '';
+      // virgin-cycle23 brief 06 (Nathan 2026-10-07): a sector without a real time shows NO time anywhere (no ~raw, no dash prose).
       if (sec.quality === 'missed') {
         return {
           index: sec.index, label: `S${sec.index}`,
-          timeLabel: '– did not traverse –', tier: 'est', avgLabel, gapS: null,
+          timeLabel: '', tier: 'est', avgLabel, gapS: null,
         };
       }
       const v = scoredS(sec);
       if (sec.quality === 'estimated' || v === null) {
         return {
           index: sec.index, label: `S${sec.index}`,
-          timeLabel: `~${fmt(sec.rawS)}`, tier: 'est', avgLabel, gapS: null,
+          timeLabel: '', tier: 'est', avgLabel, gapS: null,
         };
       }
       // clean or interrupted, with a real time (store/timing.ts). virgin-cycle22 02

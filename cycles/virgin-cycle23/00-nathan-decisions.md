@@ -48,3 +48,24 @@ Header: route name + date/time. Hero: lap time in tier colour, rank + quality be
 - ui-strings.allow.json: any new rider-facing strings (⋯ menu items) must be added with a one-line reason; no em dashes, <=40 chars.
 - First build should be small (few live-map cards) so Nathan can judge scroll smoothness on his phone; smoothness cannot be tested in the sandbox.
 - This is a design, not implementation: nothing here is in the app until built.
+
+## Feedback 2026-10-07 (first on-device test of the feed) -> brief-04-feedback-polish.md
+1. Card maps: several live maps work well and load immediately. The feed maps were NOT movable at all (1 or 2 fingers; the block's outer Pressable claims the touches). Unintended, but Nathan says it is exactly right: feed maps must stay NOT movable; only tapping a card opens the movable detail map. DESIGNED behaviour now: CARD_MAP_GESTURES = 'readonly' ('twoFinger' code path kept for other uses; comments corrected).
+2. Divider between cards: 1 dp is too thin -> clearly thicker (3 dp), and more air between the block's top/bottom elements and the divider (padding 14/15 -> 22/22). Card heights recomputed: route 290 -> 307, plain 256 -> 273.
+3. Feed maps edge to edge: same 150 dp height, no 16 dp side margins, no border, no corner radius (like the MAP tab's full-width map); text keeps its 16 dp padding; the 'i' credit button stays tappable and inside the screen. New opt-in WayMapView prop `bleed` (default false = every other caller unchanged). The DETAIL page's big map stays exactly as it is.
+4. Question, no change: the word 'interrupted' on some cards is the lap-level quality label (store/derive.ts: one interrupted sector makes the lap 'interrupted'; moving time still real), shown via feedModel.ts subLabel like the old collapsed rows did. It is not a leftover of the pause glyph removed in cycle 22 (sector-row glyph, rideHistoryModel.ts). Nathan has not decided whether to reword/hide it: left as is.
+
+## Feedback 2 (2026-10-07 22:35) -> brief-05-not-ranked-and-lap-wording.md
+Nathan, after the brief 04 build, on question 4 (the word 'interrupted') and the quality words in general:
+1. Feed card: NO quality words at all ('interrupted', 'estimated', 'missed', 'ignored' all go). An interrupted lap has real moving time: ordinary ranked card (normal hero, normal strip). A ride that cannot be ranked (lap quality estimated or missed, or the rider ignored it from ranking) shows NO time, NO rank, NO '~', NO 'no lap': a dim 'Not ranked' label instead; the sector strip goes. Title (way name / From to To) stays; the ride is NOT converted into a free activity; data/storage/engine untouched (display only). "Lets not estimate anything, either a ride is good and ranked, or it is not, gets no time, no rank." 'Ignore in ranking' / 'Count in ranking' stay (the way back).
+2. Detail page: same principle (no estimated time, no '~', no 'no lap', no quality word as a verdict decoration): 'Not ranked' instead of the big time/rank. Nathan did NOT say whether the detail keeps an explanatory reason line; Fable's default keeps one, reworded (brief 05 § 10).
+3. Wording: "we should not call this laps anymore, this is not a formula one race, there is no lap on an activity from A to B". Rider-facing 'lap' goes from the real app screens; code identifiers (lapS, lapLabel, lapTier, ...) stay.
+Fable rulings on the open points (label in the hero slot, scope of 'unranked', the three reason lines, blank sector cells, replay flash, tower LAP -> TIME, preview mockup left): brief 05 § 1 and § 10.
+
+## Feedback 3 (2026-10-07, after the brief 05 Inspect) -> brief-06-followups-no-estimates.md
+Nathan's rule, binding everywhere a rider looks: nothing is ever shown as an estimate. A ride, sector or finish either has a real time (and a rank where it applies) or shows nothing / 'Not ranked'. The word 'lap' never appears in rider-facing text. He asked to fix all four brief 05 Inspect findings:
+1. GATES alert text built in store/routeFromRide.ts ("its lap comes out 'estimated'", em dashes): reworded, no 'lap', no dash, <= 20 words.
+2. REPLAY of an unranked ride blanked the big clock for 2.5 s at the finish: no finish flash when there is no real time.
+3. '~' estimates still flashed on RECORD (live) and REPLAY (per sector): no '~' time anywhere; a sector or finish without a real time flashes nothing and the clock keeps running.
+4. RESULTS said 'NO TIME' / 'TODAY · unranked': now 'Not ranked', matching ACTIVITIES. Wording only; the RESULTS redesign stays with cycle 25.
+Plan (Opus, Fable not used this round at Nathan's request) rulings and the points for Nathan to look at again: brief 06 § 1 and § 9.

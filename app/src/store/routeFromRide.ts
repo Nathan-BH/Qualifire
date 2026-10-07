@@ -98,7 +98,7 @@ export async function promoteRideToReference(
   const user = userCatalog();
   const way = user.ways.find((r) => r.id === wayId);
   if (!way) {
-    return { ok: false, errors: [`"${wayId}" is not one of your own ways — a shipped way cannot be re-referenced`] };
+    return { ok: false, errors: [`"${wayId}" is not one of your own ways · a shipped way cannot be re-referenced`] };
   }
   if (way.referenceRideId === rideId) {
     return { ok: false, errors: ['this activity is already the reference of that way'] };
@@ -371,11 +371,10 @@ export async function deriveReferenceAgainst(
   if (result.wayId === wayId && (result.lap.quality === 'clean' || result.lap.quality === 'interrupted')) {
     return { result, readable: true, reason: null };
   }
-  const missed = result.sectors.filter((s) => s.quality === 'missed').map((s) => s.index);
-  const which = missed.length > 0
-    ? `sector ${missed.join(' and ')} (between gate ${missed.map((i) => `${i - 1}→${i}`).join(', ')}) is not timed in its recording`
-    : `its lap comes out '${result.lap.quality}'`;
-  return { result: null, readable: true, reason: `the reference activity cannot be timed against these gates: ${which}` };
+  // virgin-cycle23 brief 06 (Nathan 2026-10-07): this reason is shown verbatim in the gate alert
+  // (editWayGates below), so it names no quality word and no "lap"; with the suffix there the
+  // alert body stays at 17 words (CLAUDE.md rule 9: <= 20, no em dash).
+  return { result: null, readable: true, reason: 'the reference activity cannot be timed on these gates' };
 }
 
 /** virgin-cycle18 brief 04 (decision 8): the reference ride's result against
@@ -480,7 +479,7 @@ export async function editWayGates(
   const user = userCatalog();
   const way = user.ways.find((r) => r.id === wayId);
   if (!way) {
-    return { ok: false, errors: [`"${wayId}" is not one of your own ways — a shipped way's gates cannot be edited`] };
+    return { ok: false, errors: [`"${wayId}" is not one of your own ways · a shipped way's gates cannot be edited`] };
   }
   const current = gateSetFor(user, wayId);
   const ref = userRefFor(way.refLineId);
@@ -511,7 +510,7 @@ export async function editWayGates(
     if (next.result === null && next.readable) {
       const now = await deriveReferenceAgainst(refRideId, wayId, ref, current.chainageM, current.version, fs);
       if (now.result !== null) {
-        return { ok: false, errors: [`${next.reason} — move that gate somewhere the reference activity actually passed`] };
+        return { ok: false, errors: [`${next.reason} · move that gate where the activity passed`] };
       }
     }
     refNext = next.result;

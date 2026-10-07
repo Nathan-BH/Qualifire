@@ -273,10 +273,10 @@ test('resultsmodel: buildHistoryBoard — ranked 1..4, ignored/estimated after, 
   const unranked = board.rows.filter((r) => r.pos === null);
   assert(unranked.length === 2, `expected 2 unranked rows, got ${unranked.length}`);
   const ignoredRow = unranked.find((r) => r.rideId === 'r5')!;
-  assert(!ignoredRow.noTime && ignoredRow.timeLabel !== 'NO TIME', `ignored ride must keep its time, got '${ignoredRow.timeLabel}'`);
+  assert(!ignoredRow.noTime && ignoredRow.timeLabel !== 'Not ranked', `ignored ride must keep its time, got '${ignoredRow.timeLabel}'`);
   assert(ignoredRow.gapLabel === '', `expected empty gapLabel for an unranked row, got '${ignoredRow.gapLabel}'`);
   const estRow = unranked.find((r) => r.rideId === 'r6')!;
-  assert(estRow.noTime && estRow.timeLabel === 'NO TIME', `estimated ride must show NO TIME, got '${estRow.timeLabel}'`);
+  assert(estRow.noTime && estRow.timeLabel === 'Not ranked', `estimated ride must show Not ranked, got '${estRow.timeLabel}'`);
 
   const pbRows = board.rows.filter((r) => r.pb);
   assert(pbRows.length === 1 && pbRows[0].rideId === 'r3', `expected exactly one pb row (r3), got ${JSON.stringify(pbRows)}`);

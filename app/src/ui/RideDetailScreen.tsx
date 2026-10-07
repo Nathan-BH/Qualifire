@@ -36,7 +36,7 @@ import { FREE_RIDE_ROW_NAME, dateTimeLabel, buildPbDetail } from './rideHistoryM
 import {
   lapValues, ownLapBarredFromRanking, rankingPoolFor, sectorValues, type UiTier,
 } from './colourModel.ts';
-import { rideDetailFor, sectorHighlightColours } from './rideDetailModel.ts';
+import { rideDetailFor, sectorHighlightColours, sectorTimeCell } from './rideDetailModel.ts';
 import ReplayScreen from './ReplayScreen.tsx';
 import { loadReplayRider } from './replayModel.ts';
 import { ALL_YELLOW } from './sectorTrailModel.ts';
@@ -69,7 +69,7 @@ import { decodeEventsFile } from '../storage/eventsJsonl.ts';
 import { listRides } from '../storage';
 import type { PickEvent, RideMeta } from '../storage/types';
 import { confirmDeleteRide, exportRideGpx, toggleIgnoreRide } from './rideActions.ts';
-import { durationLabel, sectorGapLabel } from './feedModel.ts';
+import { NOT_RANKED_LABEL, durationLabel, sectorGapLabel } from './feedModel.ts';
 import { ActivityMenu, MenuButton, type MenuAnchor, type MenuItem } from './activityMenu.tsx';
 
 /** ResultScreen.tsx's PbDetail, lifted in verbatim — the ride-detail's own
@@ -474,7 +474,9 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
           <View style={styles.pad}>
             <Text style={[styles.name, { color: t.text }]}>{wayLabelIn(currentCatalog(), model.wayId as string)}</Text>
             <Text style={[styles.date, { color: t.textDim }]}>{dateTimeLabel(request.startedAtMs)}</Text>
-            <Text style={[st.big, { color: tierTextColour(model.lapTier, t) }, model.ignored && styles.dim]}>{model.lapLabel}</Text>
+            {model.unranked
+              ? <Text style={[styles.notRanked, { color: t.textDim }]}>{NOT_RANKED_LABEL}</Text>
+              : <Text style={[st.big, { color: tierTextColour(model.lapTier, t) }]}>{model.lapLabel}</Text>}
             <Text style={[styles.rankLine, { color: t.text2 }]}>{model.rankLine}</Text>
             {model.referenceOf ? (
               <Text style={[styles.rankLine, { color: t.textDim }]}>
@@ -551,7 +553,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
               style={[styles.secRow, { borderTopColor: t.cardBorder }, selectedSector === sec.index && { backgroundColor: t.card }]}
               onPress={() => setSelectedSector((cur) => (cur === sec.index ? null : sec.index))}>
               <Text style={[styles.secPos, { color: t.text }]}>{sec.label}</Text>
-              <Text style={[styles.secTime, { color: tierTextColour(sec.tier, t) }]}>{sec.timeLabel}</Text>
+              <Text style={[styles.secTime, { color: tierTextColour(sec.tier, t) }]}>{sectorTimeCell(sec)}</Text>
               <Text style={[styles.secAvg, { color: t.textDim }]}>{sec.avgLabel}</Text>
               <Text style={[styles.secGap, { color: t.textDim }]}>{sectorGapLabel(sec.gapS)}</Text>
             </Pressable>
@@ -640,7 +642,7 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
   name: { fontSize: 22, fontWeight: '800', marginTop: 16 },
   date: { fontSize: 13, marginTop: 2, fontVariant: ['tabular-nums'] },
   rankLine: { fontSize: 13, marginTop: 2 },
-  dim: { opacity: 0.45 },
+  notRanked: { fontSize: 22, fontWeight: '700', marginTop: 10 },
   replayBtn: { marginTop: 16, paddingVertical: 14, borderRadius: radius.btn, alignItems: 'center' },
   replayText: { fontSize: 15, fontWeight: '800', letterSpacing: 2 },
   h2: { paddingHorizontal: 16, marginTop: 28, marginBottom: 8 },

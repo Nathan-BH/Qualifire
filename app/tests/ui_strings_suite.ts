@@ -3,6 +3,7 @@
  * and rule checker on in-memory sources, then runs the guard against the live
  * tree and tests/ui-strings.allow.json (Nathan's file).
  */
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { assert, loadJson, test, TESTS_DIR } from './lib.ts';
 import {
@@ -233,4 +234,20 @@ test('ui-strings: allowlist: header and entry hygiene', () => {
     }
     prev = e;
   }
+});
+
+test('virgin-cycle23 brief 05 (Nathan 2026-10-07): no rider-facing "lap" outside the unmounted preview mockup', () => {
+  const found = scanFiles(APP_DIR);
+  const hits = found.strings.filter((s) => !s.file.startsWith('src/ui/preview/') && /\blaps?\b/i.test(s.text));
+  assert(hits.length === 0, `"lap" in a rider string:\n${hits.map((h) => `${h.file}:${h.line} | ${h.kind} | ${h.text}`).join('\n')}`);
+});
+
+test('virgin-cycle23 brief 06 (Nathan 2026-10-07): routeFromRide.ts error copy (shown verbatim in the gate / reference alerts) has no "lap" and no em dash', () => {
+  // src/store is outside listScanFiles, but these errors reach the rider through
+  // Alert.alert(…, out.errors.join('\n')) in GateAdjustScreen / RideDetailScreen / RecordScreen.
+  const rel = 'src/store/routeFromRide.ts';
+  const found = extractFromSource(rel, fs.readFileSync(path.join(APP_DIR, rel), 'utf8')).strings;
+  assert(found.length >= 10, `the extractor saw only ${found.length} strings in ${rel}`);
+  const bad = found.filter((s) => /\blaps?\b/i.test(s.text) || s.text.includes('—'));
+  assert(bad.length === 0, `"lap" or an em dash in ${rel}:\n${bad.map((h) => `${h.line} | ${h.text}`).join('\n')}`);
 });

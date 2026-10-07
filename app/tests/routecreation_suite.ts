@@ -1301,6 +1301,8 @@ test('c18-02 2 (editWayGates): a nudge the reference recording cannot be timed a
   assert(!out.ok, `a gate in the recording's hole must refuse, got ${JSON.stringify(out)}`);
   if (out.ok) return;
   assert(out.errors[0].includes('cannot be timed'), `error names the cause, got: ${out.errors[0]}`);
+  // virgin-cycle23 brief 06: the assembled alert body has no "lap", no em dash and stays <= 20 words (CLAUDE.md rule 9)
+  assert(!/\blaps?\b|—/i.test(out.errors[0]) && out.errors[0].split(/\s+/).length <= 20, `alert body breaks the text rules: ${out.errors[0]}`);
   assert(JSON.stringify(wphCatalogStore.userCatalog()) === beforeCat, 'catalog untouched — still v1');
   assert(wphResultsStore.getStoredResult('oldref1') !== null, 'the v1 result is still stored');
   assert(!wphResultsStore.isUnmatched('oldref1'), 'no marker was written');

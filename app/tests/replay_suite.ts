@@ -310,7 +310,7 @@ test('virgin-cycle22 08: the replay flashes each crossed gate from the ride\'s o
   const sectorRows = [
     { index: 0, label: 'S1', timeLabel: '3:05.2', tier: 'purple' as const, avgLabel: '3:10', gapS: null },
     { index: 1, label: 'S2', timeLabel: '2:40.0', tier: 'green' as const, avgLabel: '2:50', gapS: null },
-    { index: 2, label: 'S3', timeLabel: '~3:20', tier: 'est' as const, avgLabel: '3:00', gapS: null },
+    { index: 2, label: 'S3', timeLabel: '', tier: 'est' as const, avgLabel: '3:00', gapS: null },
     { index: 3, label: 'S4', timeLabel: '1:10.9', tier: 'yellow' as const, avgLabel: '1:15', gapS: null },
   ];
   const r: ReplayRider = {
@@ -324,7 +324,7 @@ test('virgin-cycle22 08: the replay flashes each crossed gate from the ride\'s o
   const one = replayLiveViewModel(r, sectorRows, '10:15.3', 100, tb, null, 'purple');
   assert(one.flashKey === 1 && one.flash !== null && one.flash.tier === 'purple' && one.flash.time === '3:05.2', `gate 1: the row's tier + m:ss.d, got ${JSON.stringify(one.flash)}`);
   const three = replayLiveViewModel(r, sectorRows, '10:15.3', 350, tb, null, 'purple');
-  assert(three.flashKey === 3 && three.flash !== null && three.flash.tier === 'est' && three.flash.time === '~3:20', `gate 3 estimated: est ~m:ss, got ${JSON.stringify(three.flash)}`);
+  assert(three.flashKey === 3 && three.flash === null, `gate 3 without a real time: no flash (brief 06), got ${JSON.stringify(three.flash)}`);
   assert(three.lap === null, 'no lap before the finish');
   const done = replayLiveViewModel(r, sectorRows, '10:15.3', 400, tb, null, 'purple');
   assert(done.flashKey === 4 && done.flash !== null && done.flash.tier === 'yellow' && done.flash.time === '1:10.9', `finish gate: S4 yellow, got ${JSON.stringify(done.flash)}`);
@@ -337,6 +337,26 @@ test('virgin-cycle22 08: the replay flashes each crossed gate from the ride\'s o
   assert(noTier.lap !== null && noTier.lap.tier === 'neutral', 'lapTier default is neutral');
   const fewRows = replayLiveViewModel(r, sectorRows.slice(0, 2), '10:15.3', 300, tb, null, 'green');
   assert(fewRows.flashKey === 3 && fewRows.flash === null, 'no row for the crossed gate -> no flash, key still counts');
+});
+
+test('virgin-cycle23 brief 06: an unranked replay (lapLabel \'\') has no finish flash and a sector without a real time (est, timeLabel \'\') no gate flash; real times still flash', () => {
+  const sectorRows = [
+    { index: 0, label: 'S1', timeLabel: '3:05.2', tier: 'purple' as const, avgLabel: '3:10', gapS: null },
+    { index: 1, label: 'S2', timeLabel: '', tier: 'est' as const, avgLabel: '', gapS: null },
+  ];
+  const r: ReplayRider = {
+    rideId: 'vm-unranked', startMs: 0, finishMs: 200000, endMs: 200000,
+    gateMs: [0, 100000, 200000],
+    fixes: [{ tUnixMs: 0, lat: 0, lon: 0, sM: 0 }, { tUnixMs: 200000, lat: 0, lon: 0, sM: 0 }],
+  };
+  const tb = replayTimebase({ clockS: 0, realMs: 0, rate: 10, playing: true });
+  const one = replayLiveViewModel(r, sectorRows, '', 100, tb, null, 'est');
+  assert(one.flashKey === 1 && one.flash !== null && one.flash.time === '3:05.2', `a real sector still flashes, got ${JSON.stringify(one.flash)}`);
+  const done = replayLiveViewModel(r, sectorRows, '', 200, tb, null, 'est');
+  assert(done.flashKey === 2 && done.flash === null, `no real time at gate 2 → no flash, got ${JSON.stringify(done.flash)}`);
+  assert(done.lap === null, `lapLabel '' → no finish flash (the big clock is never blanked), got ${JSON.stringify(done.lap)}`);
+  const ranked = replayLiveViewModel(r, sectorRows, '6:40.1', 200, tb, null, 'green');
+  assert(ranked.lap !== null && ranked.lap.time === '6:40.1' && ranked.lap.tier === 'green', 'a real lap label still flashes at the finish');
 });
 
 // ============================================================ priorWindowFor

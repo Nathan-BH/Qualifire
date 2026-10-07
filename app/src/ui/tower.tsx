@@ -50,7 +50,7 @@ import { useTheme } from './themeContext';
 export interface TowerRowModel {
   /** 1-based rank; null = unranked (estimated "NO TIME" — §2a.3) */
   pos: number | null;
-  /** 'm:ss', or 'NO TIME' for an unranked estimated lap */
+  /** 'm:ss', or 'Not ranked' (NOT_RANKED_LABEL) for an unranked estimated lap */
   time: string;
   /** colours the TODAY row's accent bar only — every text cell, the time included, stays ink (virgin-cycle15 brief 04) */
   tier: Tier;
@@ -176,9 +176,9 @@ export function TimingTower({
     const today = rowsAll.find((r) => r.today) ?? rowsAll[0];
     return (
       <View style={s.cerRow}>
-        <Text style={s.cerLbl}>LAP</Text>
+        <Text style={s.cerLbl}>TIME</Text>
         <Text style={s.cerTime}>{today?.time ?? ''}</Text>
-        <Text style={s.cerToday}>TODAY · unranked</Text>
+        <Text style={s.cerToday}>TODAY · Not ranked</Text>
       </View>
     );
   }

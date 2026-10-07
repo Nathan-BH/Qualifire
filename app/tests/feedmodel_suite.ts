@@ -23,7 +23,8 @@ registerHooks({
 });
 const {
   buildFeedCard, buildFeedCards, feedItemLayout, liveMapIndices, sameIndexSet, sectorGapLabel,
-  durationLabel, sectorChipLabel, CARD_HEIGHT_ROUTE, CARD_HEIGHT_PLAIN,
+  durationLabel, sectorChipLabel, unrankedForDisplay, NOT_RANKED_LABEL, CARD_HEIGHT_ROUTE, CARD_HEIGHT_PLAIN,
+  CARD_PAD_TOP, CARD_PAD_BOTTOM, FEED_DIVIDER_DP, CARD_MAP_HEIGHT,
 } = await import('../src/ui/feedModel.ts');
 
 // ------------------------------------------------------------------ fixtures
@@ -49,13 +50,14 @@ const q = (i: number): string => (i === 2 ? 'missed' : 'clean');
 
 // --------------------------------------------------------------------- tests
 
-test('feedmodel: buildFeedCard route — hero is the lap label in the detail\'s tier, rank P<pos>/<of>, sub = non-clean quality, strip = one chip per sector row', () => {
+test('feedmodel: buildFeedCard route — hero is the time in the detail\'s tier, rank P<pos>/<of>, no quality word, strip = one chip per sector row', () => {
   const c = buildFeedCard(row(), detail(), null, q);
   assert(c.variant === 'route', 'variant route');
   assert(c.heroLabel === '5:03.0', 'heroLabel');
   assert(c.heroTier === 'purple', 'heroTier');
   assert(c.rankLabel === 'P1/10', 'rankLabel');
-  assert(c.subLabel === null, 'subLabel null');
+  assert(c.unranked === false, 'ranked');
+  assert(!('subLabel' in c), 'no subLabel field at all (brief 05)');
   assert(c.wayId === 'w1', 'wayId');
   assert(c.sectors.length === 2, 'two chips');
   assert(c.sectors[0].timeLabel === '1:41.0', 'chip 0 time');
@@ -64,18 +66,34 @@ test('feedmodel: buildFeedCard route — hero is the lap label in the detail\'s 
   assert(c.ignoreToggle === 'ignore', 'ignoreToggle');
 });
 
-test('feedmodel: buildFeedCard route — ignored ride: neutral tier, no rank, sub \'ignored\', toggle \'count\'', () => {
+test('feedmodel: buildFeedCard route — ignored ride is unranked: no time, no rank, no strip, toggle \'count\' is the way back', () => {
   const c = buildFeedCard(row({ rank: null, quality: null }), detail({ ignored: true, lapTier: 'neutral', canToggleIgnore: true }), null, q);
-  assert(c.heroTier === 'neutral', 'neutral');
+  assert(c.unranked === true, 'unranked');
+  assert(c.heroLabel === '', `no time, got "${c.heroLabel}"`);
   assert(c.rankLabel === null, 'no rank');
-  assert(c.subLabel === 'ignored', 'sub ignored');
+  assert(c.sectors.length === 0, 'no strip');
+  assert(c.title === 'Morning', 'title kept');
+  assert(c.wayId === 'w1' && c.variant === 'route', 'still a route card (not a free activity)');
   assert(c.ignored === true, 'ignored');
   assert(c.ignoreToggle === 'count', 'count');
 });
 
-test('feedmodel: buildFeedCard route — a non-clean quality wins over \'ignored\' in the sub label', () => {
-  const c = buildFeedCard(row({ quality: 'estimated' }), detail({ ignored: true }), null, q);
-  assert(c.subLabel === 'estimated', 'estimated wins');
+test('feedmodel: buildFeedCard route — estimated / missed lap is unranked: no time, no ~, no rank, no strip; title + map kept', () => {
+  for (const quality of ['estimated', 'missed'] as const) {
+    const c = buildFeedCard(row({ quality, lapS: null, lapLabel: '', rank: null }), detail({ lapTier: 'est', canToggleIgnore: false, sectorRows: [sec(1, '~1:30', 'est'), sec(2, '– did not traverse –', 'est')] }), null, q);
+    assert(c.unranked === true, `${quality}: unranked`);
+    assert(c.heroLabel === '' && c.rankLabel === null && c.sectors.length === 0, `${quality}: nothing but the label`);
+    assert(c.title === 'Morning' && c.wayId === 'w1' && c.variant === 'route', `${quality}: title/map kept, still a route card`);
+    assert(c.ignoreToggle === null, `${quality}: nothing to toggle (it never ranked)`);
+    for (const v of Object.values(c)) assert(typeof v !== 'string' || !/~|no lap|estimated|missed|interrupted|ignored/.test(v), `${quality}: card string "${v}" leaks a quality word or an estimate`);
+  }
+});
+
+test('feedmodel: buildFeedCard route — an interrupted lap is an ordinary ranked card (real moving time): time, rank, strip', () => {
+  const c = buildFeedCard(row({ quality: 'interrupted' }), detail(), null, q);
+  assert(c.unranked === false, 'ranked');
+  assert(c.heroLabel === '5:03.0' && c.rankLabel === 'P1/10' && c.sectors.length === 2, 'normal hero + strip');
+  for (const v of Object.values(c)) assert(typeof v !== 'string' || !/interrupted/.test(v), `card string "${v}" says interrupted`);
 });
 
 test('feedmodel: buildFeedCard plain (free) — duration from meta, neutral tier, no rank/sectors, needsTrail, no toggle', () => {
@@ -99,6 +117,16 @@ test('feedmodel: durationLabel — \'\' when meta is null or endMs <= startMs (n
   assert(durationLabel({ rideId: 'a', startMs: 5, endMs: 4, nFixes: 0 }) === '', 'reversed');
 });
 
+test('feedmodel: unrankedForDisplay — the one rule: ignored OR estimated OR missed; clean/interrupted/null are ranked; NOT_RANKED_LABEL pinned', () => {
+  assert(NOT_RANKED_LABEL === 'Not ranked', 'label text');
+  const matrix: [string | null, boolean, boolean][] = [
+    [null, false, false], ['clean', false, false], ['interrupted', false, false],
+    ['estimated', false, true], ['missed', false, true],
+    [null, true, true], ['clean', true, true], ['interrupted', true, true], ['estimated', true, true], ['missed', true, true],
+  ];
+  for (const [quality, ignored, want] of matrix) assert(unrankedForDisplay(quality, ignored) === want, `unrankedForDisplay(${quality}, ${ignored}) should be ${want}`);
+});
+
 test('feedmodel: buildFeedCards keeps the rows\' order and calls detailFor with (rideId, startMs)', () => {
   const rows = [row({ rideId: 'a', startMs: 3 }), row({ rideId: 'b', startMs: 2 }), row({ rideId: 'c', startMs: 1 })];
   const calls: string[] = [];
@@ -107,8 +135,8 @@ test('feedmodel: buildFeedCards keeps the rows\' order and calls detailFor with 
   assert(calls.join() === 'a:3,b:2,c:1', `calls ${calls.join()}`);
 });
 
-test('feedmodel: feedItemLayout — offsets are the running sum of fixed heights, route 290 / plain 256', () => {
-  assert(CARD_HEIGHT_ROUTE === 290 && CARD_HEIGHT_PLAIN === 256, 'constants');
+test('feedmodel: feedItemLayout — offsets are the running sum of fixed heights, route 307 / plain 273', () => {
+  assert(CARD_HEIGHT_ROUTE === 307 && CARD_HEIGHT_PLAIN === 273, 'constants');
   const r = buildFeedCard(row(), detail(), null, q);
   const p = buildFeedCard(row(), detail({ kind: 'free' }), null, q);
   const cards = [r, p, r];
@@ -116,10 +144,18 @@ test('feedmodel: feedItemLayout — offsets are the running sum of fixed heights
   const l1 = feedItemLayout(cards, 1);
   const l2 = feedItemLayout(cards, 2);
   const l3 = feedItemLayout(cards, 3);
-  assert(l0.offset === 0 && l0.length === 290, 'index 0');
-  assert(l1.offset === 290 && l1.length === 256, 'index 1');
-  assert(l2.offset === 546 && l2.length === 290, 'index 2');
-  assert(l3.length === 0 && l3.offset === 836, 'past the end');
+  assert(l0.offset === 0 && l0.length === 307, 'index 0');
+  assert(l1.offset === 307 && l1.length === 273, 'index 1');
+  assert(l2.offset === 580 && l2.length === 307, 'index 2');
+  assert(l3.length === 0 && l3.offset === 887, 'past the end');
+});
+
+test('feedmodel: card heights are the sum of the block geometry (brief 04: 22/22 padding, 3 dp divider)', () => {
+  assert(CARD_PAD_TOP === 22 && CARD_PAD_BOTTOM === 22 && FEED_DIVIDER_DP === 3 && CARD_MAP_HEIGHT === 150, 'geometry tokens');
+  assert(FEED_DIVIDER_DP >= 2, 'divider at least twice the old 1 dp');
+  const common = CARD_PAD_TOP + 24 + 46 + (6 + CARD_MAP_HEIGHT) + CARD_PAD_BOTTOM + FEED_DIVIDER_DP;
+  assert(CARD_HEIGHT_PLAIN === common, `plain ${CARD_HEIGHT_PLAIN} != ${common}`);
+  assert(CARD_HEIGHT_ROUTE === common + 10 + 24, `route ${CARD_HEIGHT_ROUTE} != ${common + 34}`);
 });
 
 test('feedmodel: liveMapIndices — viewable plus radius neighbours, clamped; empty in = empty out', () => {

@@ -202,9 +202,10 @@ type WayMapVariant = 'live' | 'browse';
 type LiveMapState = 'prestart' | 'moving' | 'stopped' | 'finished';
 /** virgin-cycle23 brief 01: how much of the map a finger may move.
  * 'full' (default) = today's behaviour on every existing surface.
- * 'twoFinger' = a feed card: one finger does nothing on the map (so the list
- * scrolls and a tap reaches the card), two fingers pinch-zoom (a pinch also
- * pans); no double-tap zoom, no rotation, no zoom bar.
+ * 'twoFinger' = one finger does nothing on the map, two fingers pinch-zoom (a
+ * pinch also pans); no double-tap zoom, no rotation, no zoom bar. Built for the
+ * feed card (brief 02); the feed now uses 'readonly' (brief 04, Nathan
+ * 2026-10-07) and no surface passes 'twoFinger' today — the code path stays.
  * 'readonly' = a picture: no gesture at all, the native view takes NO touches
  * (pointerEvents none on its wrapper) so everything falls through to the parent.
  * The ONE place the feed picks between the last two is CARD_MAP_GESTURES in
@@ -231,6 +232,10 @@ type WayMapProps = {
   /** fill the parent instead of a fixed height — race mode (Cycle 020,
    * Nathan 2026-08-19). Takes precedence over `height` when true. */
   fill?: boolean;
+  /** virgin-cycle23 brief 04: no border, no corner radius (the feed card's
+   * edge-to-edge map, like the MAP tab). Default false = the bordered rounded
+   * frame every other surface has. Height/fill behave exactly as without it. */
+  bleed?: boolean;
   /** colour per crossed gate, index 0 = START. Gates ahead stay dark; a gate
    * only takes a colour once its sector has actually been scored. */
   gateColours?: (string | null)[];
@@ -309,7 +314,7 @@ export default function WayMapView(props: WayMapProps) {
     const h = props.height ?? 190;
     return (
       <View style={[
-        st.frame,
+        props.bleed ? st.frameBleed : st.frame,
         props.fill ? { flex: 1, alignSelf: 'stretch' } : { height: h },
         { backgroundColor: t.race.bg, borderColor: t.cardBorder },
       ]}>
@@ -704,7 +709,7 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
 
   return (
     <View style={[
-      st.frame,
+      props.bleed ? st.frameBleed : st.frame,
       props.fill ? { flex: 1, alignSelf: 'stretch' } : { height: h },
       { backgroundColor: t.race.bg, borderColor: t.cardBorder },
       dimmed && st.dimmedFrame,
@@ -1026,6 +1031,7 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
 
 const st = StyleSheet.create({
   frame: { alignSelf: 'stretch', borderRadius: radius.card, borderWidth: 1, overflow: 'hidden' },
+  frameBleed: { alignSelf: 'stretch', overflow: 'hidden' },
   mapFill: { flex: 1, alignSelf: 'stretch' },
   // "stopped" (a red light): tight and dim, not loosened — a light is not a
   // finish (design contract A).

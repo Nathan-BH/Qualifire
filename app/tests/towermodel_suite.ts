@@ -84,7 +84,7 @@ test('towerModel: estimated today is unranked NO TIME, sits last (D-028)', () =>
     const last = m.rows[m.rows.length - 1];
     assert(last.today === true, 'the unranked row is today');
     assert(last.pos === null, `unranked pos must be null, got ${last.pos}`);
-    assert(last.time === 'NO TIME', `got "${last.time}"`);
+    assert(last.time === 'Not ranked', `got "${last.time}"`);
     assert(last.tier === 'est', `got tier ${last.tier}`);
     assert(last.gap === '', `unranked gap must be empty, got "${last.gap}"`);
     // and it stole no rank: past rows are still P1..P3 in order

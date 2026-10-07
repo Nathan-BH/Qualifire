@@ -22,10 +22,13 @@ powershell -ExecutionPolicy Bypass -File "C:\Users\natha\Claude personal project
 ```
 Then on the phone: fully close "Qualifire Preview" and reopen it twice (first launch downloads, second runs it).
 
-## 3. The one-line switch for the card maps
-If one-finger scroll or tap over a card map misbehaves, or a two-finger pinch opens the activity (inspect finding F1), open
-`app\src\ui\activityCard.tsx`, line ~32, and change `CARD_MAP_GESTURES` from `'twoFinger'` to `'readonly'`, then publish again.
-Other knobs: `MAP_MOUNT_RADIUS` (how many cards around the visible ones keep a live map) and the FlatList `windowSize` in `RidesScreen.tsx`.
+## 3. Update 2026-10-07 (brief 04, after your on-device test)
+Feed maps are now read-only pictures BY DESIGN (`CARD_MAP_GESTURES = 'readonly'` in `app\src\ui\activityCard.tsx`), the feed maps run edge to edge,
+and the divider is 3 dp with more padding (card heights 307 / 273). The detail page is unchanged. Tests 914 (911 pass, 0 fail, 3 skip), tsc exit 0, Opus-inspected.
+Brief 05 (2026-10-07 night): unranked rides (estimated, missed, ignored) show "Not ranked" with no time and no rank, no quality words anywhere on the card,
+"lap" wording removed from the real screens (tower LAP -> TIME). Tests 920 (917 pass, 0 fail, 3 skip), tsc exit 0, Opus-inspected: `inspect-report-brief-05.md`.
+Brief 06 (2026-10-07 night): no "~" or "– –" estimate flashes on RECORD/REPLAY, no "lap" or em dash in the gate-save alert, RESULTS says "Not ranked". Tests 923 (920 pass, 0 fail, 3 skip), tsc exit 0, Opus-inspected: `inspect-report-brief-06.md`.
+Publish again with the commands in 1 and 2 above. On-device checks owed: `inspect-report-brief-04.md`.
 
 ## 4. Known and left open on purpose
 - F6: the feed's sector strip does not wrap; 4+ sectors may be cut at the right edge (wrapping would change the fixed card height).

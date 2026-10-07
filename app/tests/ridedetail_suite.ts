@@ -29,7 +29,7 @@ registerHooks({
     return nextLoad(url, context);
   },
 });
-const { rankLineFor, rideDetailFor, sectorColoursFor, sectorHighlightColours } = await import('../src/ui/rideDetailModel.ts');
+const { rankLineFor, rideDetailFor, sectorColoursFor, sectorHighlightColours, sectorTimeCell } = await import('../src/ui/rideDetailModel.ts');
 const { MIN_HISTORY } = await import('../src/ui/colourModel.ts');
 
 function mkResult(o: Partial<RideResult> & { rideId: string; startedAtMs: number }): RideResult {
@@ -92,14 +92,15 @@ test('ridedetail: rideDetailFor — ignoredFromRanking true → ignored, neutral
   const res = mkResult({ rideId: 'r2', startedAtMs: 6000, ignoredFromRanking: true });
   const m = rideDetailFor('r2', 6000, { ...NOOP_DEPS, result: res, laps: () => [1, 2, 3, 4, 5], sectors: () => [1, 2, 3] });
   assert(m.ignored, 'must read as ignored');
-  assert(m.rankLine === 'not ranked', `unexpected rank line: "${m.rankLine}"`);
+  assert(m.rankLine === 'ignored in ranking', `unexpected rank line: "${m.rankLine}"`);
+  assert(m.unranked === true, 'ignored → unranked (brief 05)');
   assert(m.lapTier === 'neutral', `expected neutral lapTier, got ${m.lapTier}`);
   assert(m.sectorRows.every((r) => r.tier === 'neutral' || r.tier === 'est'), 'every sector row must read neutral/est while ignored');
   assert(m.sectorColours.every((c) => c === null), 'every sector colour must be null while ignored');
   assert(m.canToggleIgnore, 'an ignored, otherwise-rankable lap can still be toggled back');
 });
 
-test('ridedetail: rideDetailFor — estimated lap → canToggleIgnore false, rank line names it', () => {
+test('ridedetail: rideDetailFor — estimated lap → canToggleIgnore false, unranked, reason line says what happened', () => {
   const res = mkResult({
     rideId: 'r3', startedAtMs: 7000,
     lap: { rawS: 900, movingS: null, quality: 'estimated' },
@@ -107,13 +108,15 @@ test('ridedetail: rideDetailFor — estimated lap → canToggleIgnore false, ran
   });
   const m = rideDetailFor('r3', 7000, { ...NOOP_DEPS, result: res });
   assert(!m.canToggleIgnore, 'nothing to ignore on a lap that never ranked in the first place');
-  assert(m.rankLine === 'no time', `unexpected rank line: "${m.rankLine}"`);
+  assert(m.rankLine === 'GPS gap at a gate', `unexpected rank line: "${m.rankLine}"`);
+  assert(m.unranked === true && m.lapLabel === '', 'estimated → unranked, no label (no ~)');
 });
 
 test('ridedetail: rideDetailFor — tripwireDemoted → barred → excluded-from-comparison line, canToggleIgnore false', () => {
   const res = mkResult({ rideId: 'r4', startedAtMs: 8000, tripwireDemoted: true });
   const m = rideDetailFor('r4', 8000, { ...NOOP_DEPS, result: res, laps: () => [1, 2, 3, 4, 5], barred: () => true });
   assert(m.rankLine === 'no rank', `unexpected rank line: "${m.rankLine}"`);
+  assert(m.unranked === false, 'a real time without a position is NOT unranked (brief 05)');
   assert(!m.canToggleIgnore, 'a tripwire-demoted lap never ranks either way — nothing to toggle');
 });
 
@@ -133,7 +136,30 @@ test('ridedetail: rankLineFor — ignored wins over every other branch', () => {
     Array.from({ length: MIN_HISTORY }, () => 900),
     true, // barred too
   );
-  assert(line === 'not ranked', `expected the ignored line, got "${line}"`);
+  assert(line === 'ignored in ranking', `expected the ignored line, got "${line}"`);
+});
+
+test('brief 05: rideDetailFor.unranked follows feedModel.unrankedForDisplay — missed/estimated/ignored true, clean/interrupted/free/none false; missed reason line', () => {
+  const hist = Array.from({ length: MIN_HISTORY }, () => 900);
+  const mk = (quality: 'clean' | 'interrupted' | 'estimated' | 'missed', ignored = false) => rideDetailFor('x', 1, {
+    ...NOOP_DEPS, laps: () => hist,
+    result: mkResult({ rideId: 'x', startedAtMs: 1, ignoredFromRanking: ignored, lap: { rawS: 900, movingS: quality === 'estimated' || quality === 'missed' ? null : 850, quality } }),
+  });
+  assert(mk('clean').unranked === false && mk('interrupted').unranked === false, 'real time → ranked');
+  assert(mk('estimated').unranked === true && mk('missed').unranked === true, 'no real time → unranked');
+  assert(mk('clean', true).unranked === true && mk('interrupted', true).unranked === true, 'ignored → unranked');
+  assert(mk('missed').rankLine === 'a gate was missed', `missed reason, got "${mk('missed').rankLine}"`);
+  assert(mk('missed').lapLabel === '' && mk('estimated').lapLabel === '', 'no label without a real time');
+  assert(rideDetailFor('n', 1, NOOP_DEPS).unranked === false, 'kind none → false');
+  for (const m of [mk('estimated'), mk('missed'), mk('clean', true)]) {
+    for (const v of [m.lapLabel, m.rankLine]) assert(!/~|no lap|no time|estimated/.test(v), `detail string "${v}" leaks an estimate or the old wording`);
+  }
+});
+
+test('brief 05: sectorTimeCell — tier est (no real time) shows nothing; every other row its own time label', () => {
+  assert(sectorTimeCell({ tier: 'est', timeLabel: '~1:30' }) === '', 'estimated row → blank');
+  assert(sectorTimeCell({ tier: 'est', timeLabel: '– did not traverse –' }) === '', 'missed row → blank');
+  for (const tier of ['purple', 'green', 'yellow', 'neutral'] as const) assert(sectorTimeCell({ tier, timeLabel: '1:41.0' }) === '1:41.0', `${tier} keeps its time`);
 });
 
 test('ridedetail: sectorColoursFor — mirrors ResultScreen (clean+movingS coloured, interrupted/estimated/missed null; own ride excluded by rideId in hist, not by value — WP-K)', () => {

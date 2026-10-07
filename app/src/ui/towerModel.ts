@@ -23,6 +23,7 @@ import type { Tier } from './chips.tsx';
 import type { TowerModel, TowerRowModel } from './tower.tsx';
 import { WINDOW_N, fmt, tierFor, type UiTier } from './colourModel.ts';
 import { scoredS } from '../store/timing.ts';
+import { NOT_RANKED_LABEL } from './feedModel.ts';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -116,7 +117,7 @@ export function buildTowerModel(
     // D-028: unranked, LAST — the slot-in travels zero rows from there.
     rows.push({
       pos: null,
-      time: 'NO TIME',
+      time: NOT_RANKED_LABEL, // brief 06: same words as ACTIVITIES (row unreachable today: the reveal never builds an unranked today)
       tier: 'est',
       gap: '',
       date: towerDate(todayAtMs),
