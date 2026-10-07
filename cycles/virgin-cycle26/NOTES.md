@@ -1,0 +1,5 @@
+# cycle26 running notes (append only)
+
+- 2026-10-07 10:2x — folder created from Nathan's brief. Haiku digest of current loop/overlap handling dispatched.
+- 2026-10-07 — Haiku digest landed (01-loop-and-overlap-digest.md, 186 lines). Headlines: loops (start==end) are supported via Route.loopDiscriminator and tested; self-overlap is neither modelled nor warned about. Live engine uses forward-only chainage (30 m back / 240 m forward window), so gates cannot re-fire; gate seeding at 25/50/75% quantiles assumes a non-overlapping line; OPEN-ITEMS lists "overlapping gate tap-targets on an out-and-back ride" as an untested gap. Unverified by a second reader; Fable should spot-check the anchors before planning.
+- 2026-10-07 23:37 — Nathan's rulings recorded in 00-nathan-ideas.md (no warnings ever; fix what is unsupported; RECORD picker cannot choose same landmark as start+finish). 01 digest TL;DR "loops already supported" is WRONG at the RECORD picker; treat it as store-side only. Fable planning approved for tonight (off-peak). Haiku digest 02 (RECORD picker + start==end through live ride) dispatched first because Fable reads digests, not raw files.
