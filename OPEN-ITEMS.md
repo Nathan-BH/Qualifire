@@ -356,3 +356,6 @@ Nathan answered most of `deployment/rounds/round1/questions-and-rulings.md` on 2
 
 ## virgin-cycle25 (2026-10-08)
 Open items live in cycles/virgin-cycle25/OPEN-ITEMS-cycle25.md (detail->MAP link deferred, on-device tuning, stale comments).
+
+## virgin-cycle26 (2026-10-08)
+Open items live in cycles/virgin-cycle26/OPEN-ITEMS-cycle26.md (retraced-ground gates, pass-pick residuals, loop title follow-up in catalogDeleteActions, device checklist).
