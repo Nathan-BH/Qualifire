@@ -967,6 +967,14 @@
     {
       "file": "src/ui/RecordScreen.tsx",
       "kind": "text",
+      "text": "loop",
+      "reason": "virgin-cycle26 brief 01: GOING TO pill = finish where I start (Nathan 2026-10-08); replaces offering the START place twice",
+      "since": "2026-10-08",
+      "by": "Sonnet execute, virgin-cycle26 brief 01"
+    },
+    {
+      "file": "src/ui/RecordScreen.tsx",
+      "kind": "text",
       "text": "new",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",

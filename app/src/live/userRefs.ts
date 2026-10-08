@@ -23,7 +23,7 @@
  */
 import type { RefLine, RidePoints } from '../../core/src/index.ts';
 import {
-  buildReference, collapseStationaryRuns, cumdist, meanOrigin, nearestOnSegments,
+  buildReference, collapseStationaryRuns, cumdist, meanOrigin, overlapChainages, projectRideOffline, toXY,
 } from '../../core/src/index.ts';
 import { MIN_TRACK_LENGTH_M } from '../store/routeCreation.ts';
 import type { FsAdapter } from '../storage/fsAdapter.ts';
@@ -51,6 +51,10 @@ export interface BuiltRideRef {
    * traffic-signal source wired in, the rider's own observed stops are the
    * honest zero-network proxy for "a light or junction is probably here". */
   stopChainageM: number[];
+  /** virgin-cycle26 brief 03: chainages of the vertices that lie on retraced
+   * ground (core/src/projection.ts overlapChainages) — gate seeding keeps
+   * sector gates clear of them. Empty for a line that never doubles back. */
+  overlapChainageM: number[];
 }
 
 const round = (v: number, d: number) => Math.round(v * 10 ** d) / 10 ** d;
@@ -91,14 +95,22 @@ export function buildRefFromRideFixes(fixes: readonly RefFixInput[]): BuiltRideR
   const length = ch[ch.length - 1];
   if (length < MIN_TRACK_LENGTH_M) return null;
   const ref: RefLine = { rx, ry, ch, lat0, lon0, length };
-  const nseg = ch.length - 1;
-  const clat = Math.cos((lat0 * Math.PI) / 180) * 111320;
-  const stopChainageM = collapsed.runs.map((r) => {
-    const px = (r.lon - lon0) * clat;
-    const py = (r.lat - lat0) * 110540;
-    return nearestOnSegments(px, py, ref, 0, nseg).s;
-  });
-  return { ref, stopChainageM };
+  // virgin-cycle26 brief 03 (plan D7): the reference ride's own stops are
+  // located by projecting the collapsed ride IN RIDE ORDER through the offline
+  // projector (pass-aware since brief 02) and reading each stationary run's
+  // chainage at its own collapsed fix — never by a global nearest-segment
+  // search, which on a retraced street could attribute a stop to the other
+  // pass. A run's collapsed point carries t === tFromS (core/reference.ts
+  // collapseStationaryRuns).
+  const xy = toXY(collapsed.ride.lat, collapsed.ride.lon, lat0, lon0);
+  const proj = projectRideOffline(xy.x, xy.y, ref);
+  const stopChainageM: number[] = [];
+  let k = 0;
+  for (const r of collapsed.runs) {
+    while (k < collapsed.ride.t.length - 1 && collapsed.ride.t[k] < r.tFromS) k++;
+    stopChainageM.push(proj.s[k]);
+  }
+  return { ref, stopChainageM, overlapChainageM: overlapChainages(ref) };
 }
 
 let registry = new Map<string, RefLine>();

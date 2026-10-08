@@ -8,7 +8,8 @@
  * does that swap; get it backwards and the route silently draws in the
  * Gulf of Guinea.
  */
-import type { WayAsset } from './wayMapMath.ts';
+import { CORRIDOR_M, PASS_GAP_M } from '../../core/src/index.ts';
+import { pathCumulativeM, type WayAsset } from './wayMapMath.ts';
 
 // Minimal local GeoJSON shapes — the app's tsconfig (expo/tsconfig.base)
 // does not pull in @types/geojson globals by default in this file's
@@ -55,6 +56,10 @@ export function wayLineFeature(a: WayAsset): GeoFeature<LineStringGeometry> | nu
 export interface GateProperties {
   name: string;
   colour?: string;
+  /** virgin-cycle26 brief 04: present (1) when this feature belongs to a pass
+   * the rider is NOT on (wayMapGeo.ts faintVertices); omitted otherwise, so
+   * the ['has','faint'] opacity expression leaves everything else at 1. */
+  faint?: 1;
 }
 
 /**
@@ -335,6 +340,7 @@ export function gateHalfLenM(lat: number, zoom: number, minHalfPx = 7, floorM = 
 
 export function gateTicksFeatureCollection(
   a: WayAsset, gateColours?: (string | null)[], halfLenM = 15,
+  faintGates?: readonly boolean[],
 ): GeoFeatureCollection<LineStringGeometry, GateProperties> {
   const n = a.gates.length;
   return {
@@ -365,6 +371,7 @@ export function gateTicksFeatureCollection(
       const properties: GateProperties = colour !== null
         ? { name: g.name, colour }
         : { name: g.name };
+      if (faintGates?.[i]) properties.faint = 1;
 
       return {
         type: 'Feature',
@@ -489,6 +496,10 @@ export interface SectorSpanProperties {
   sector: number;
   colour?: string;
   lead?: 'in' | 'out';
+  /** virgin-cycle26 brief 04: present (1) when this feature belongs to a pass
+   * the rider is NOT on (wayMapGeo.ts faintVertices); omitted otherwise, so
+   * the ['has','faint'] opacity expression leaves everything else at 1. */
+  faint?: 1;
 }
 
 /**
@@ -519,6 +530,7 @@ export interface SectorSpanProperties {
 export function sectorSpansFeatureCollection(
   a: WayAsset, sectorColours?: (string | null)[],
   leadColour?: string | null,
+  faintGates?: readonly boolean[],
 ): GeoFeatureCollection<LineStringGeometry, SectorSpanProperties> | null {
   if (!a.path || a.path.length < 2) return null;
   if (!a.gateIdx || a.gateIdx.length !== a.gates.length || a.gateIdx.length < 2) return null;
@@ -531,6 +543,7 @@ export function sectorSpansFeatureCollection(
     const properties: SectorSpanProperties = colour !== null
       ? { sector: i, colour }
       : { sector: i };
+    if (faintGates?.[i]) properties.faint = 1;
     features.push({
       type: 'Feature',
       geometry: {
@@ -568,6 +581,111 @@ export function sectorSpansFeatureCollection(
         properties: { sector: a.gateIdx.length, lead: 'out', colour: leadColour },
       });
     }
+  }
+  return { type: 'FeatureCollection', features };
+}
+
+// ==================================================== virgin-cycle26 brief 04 (pass-aware fade)
+
+/** The other copy of a retraced stretch brightens once the rider's chainage is
+ * within this of it — the live engine's own forward window (core/live.ts
+ * DEFAULT_LIVE_OPTIONS.windowFwd), so "coming into view" means the same thing
+ * to the map as to the projector. One constant to tune on device. */
+export const FADE_NEAR_M = 240;
+/** line-opacity of a faint run / tick / span. Dim, never hidden (Nathan
+ * 2026-10-08: a rider who strays must still see it). */
+export const FAINT_OPACITY = 0.3;
+
+export interface PassModel {
+  /** planar metres along the path, per vertex */
+  cumM: number[];
+  /** per vertex: chainage of the nearest vertex of ANOTHER pass of the same
+   * line (> gapM away in chainage, within withinM), or null when the ground is
+   * not retraced */
+  partnerM: (number | null)[];
+}
+
+/** Once per asset. null when the asset has no drawable path. O(n²) over the
+ * path (≤ RUNTIME_PATH_MAX_VERTICES = 4000). */
+export function buildPassModel(a: WayAsset, withinM = CORRIDOR_M, gapM = PASS_GAP_M): PassModel | null {
+  const path = a.path;
+  if (!path || path.length < 2) return null;
+  const cumM = pathCumulativeM(path);
+  const n = path.length;
+  const x: number[] = new Array(n);
+  const y: number[] = new Array(n);
+  const lat0 = path[0][0];
+  const clat = 111320 * Math.cos((lat0 * Math.PI) / 180);
+  for (let k = 0; k < n; k++) {
+    x[k] = (path[k][1] - path[0][1]) * clat;
+    y[k] = (path[k][0] - lat0) * 111320;
+  }
+  const w2 = withinM * withinM;
+  const partnerM: (number | null)[] = new Array(n).fill(null);
+  for (let k = 0; k < n; k++) {
+    let bestD2 = w2;
+    let best: number | null = null;
+    for (let j = 0; j < n; j++) {
+      if (Math.abs(cumM[j] - cumM[k]) <= gapM) continue;
+      const dx = x[j] - x[k];
+      const dy = y[j] - y[k];
+      const d2 = dx * dx + dy * dy;
+      if (d2 <= bestD2) { bestD2 = d2; best = cumM[j]; }
+    }
+    partnerM[k] = best;
+  }
+  return { cumM, partnerM };
+}
+
+/** Per vertex: is it on a pass the rider is NOT on right now? null when there
+ * is no progress or nothing is faint (so callers can keep today's single
+ * feature). The rule: the ground is retraced, the rider's chainage is nearer
+ * the OTHER copy than this one, and this one is further than FADE_NEAR_M away. */
+export function faintVertices(model: PassModel, progressM: number | null | undefined, nearM = FADE_NEAR_M): boolean[] | null {
+  if (progressM === null || progressM === undefined || !Number.isFinite(progressM)) return null;
+  const s = progressM;
+  const out: boolean[] = new Array(model.cumM.length);
+  let any = false;
+  for (let k = 0; k < model.cumM.length; k++) {
+    const p = model.partnerM[k];
+    const f = p !== null && Math.abs(s - p) < Math.abs(s - model.cumM[k]) && Math.abs(model.cumM[k] - s) > nearM;
+    out[k] = f;
+    if (f) any = true;
+  }
+  return any ? out : null;
+}
+
+/** Per gate: faint iff its path vertex is. All false without gateIdx or flags. */
+export function gateFaint(a: WayAsset, faint: boolean[] | null): boolean[] {
+  const idx = a.gateIdx;
+  return a.gates.map((_, i) => !!(faint && idx && idx.length === a.gates.length && faint[Math.min(idx[i], faint.length - 1)]));
+}
+
+/** The route line as runs: consecutive vertices with the same faint flag form
+ * one LineString (adjacent runs share their boundary vertex, like sector
+ * spans); faint runs carry `faint: 1`, the others no property. With `faint`
+ * null this is exactly today's single wayLineFeature. null without a path. */
+export function routeRunsFeatureCollection(
+  a: WayAsset, faint: boolean[] | null,
+): GeoFeatureCollection<LineStringGeometry, { faint?: 1 }> | null {
+  const single = wayLineFeature(a);
+  if (!single) return null;
+  if (!faint || faint.length !== a.path!.length) return { type: 'FeatureCollection', features: [single as GeoFeature<LineStringGeometry, { faint?: 1 }>] };
+  const path = a.path!;
+  const features: GeoFeature<LineStringGeometry, { faint?: 1 }>[] = [];
+  let start = 0;
+  for (let k = 1; k <= path.length; k++) {
+    if (k < path.length && faint[k] === faint[start]) continue;
+    const end = Math.min(k, path.length - 1); // share the boundary vertex
+    const slice = path.slice(start, end + 1);
+    if (slice.length >= 2) {
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'LineString', coordinates: slice.map(([lat, lon]) => [lon, lat] as GeoPosition) },
+        properties: faint[start] ? { faint: 1 } : {},
+      });
+    }
+    start = k;
   }
   return { type: 'FeatureCollection', features };
 }

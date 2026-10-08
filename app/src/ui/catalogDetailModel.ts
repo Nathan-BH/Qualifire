@@ -10,7 +10,7 @@
 import type { Catalog, Way, Route } from '../store/types.ts';
 import { gateSetFor } from '../store/catalog.ts';
 import { isSeedOwned } from '../store/catalogDelete.ts';
-import { wayLabelIn, wayVariantLabel, sortWaysForDisplay } from '../store/defaultWay.ts';
+import { routeTitle, wayLabelIn, wayVariantLabel, sortWaysForDisplay } from '../store/defaultWay.ts';
 import { gateName, fmtChainage } from './gateAdjustModel.ts';
 
 export interface CatalogDetailDeps {
@@ -59,7 +59,7 @@ function landmarkLabel(c: Catalog, id: string): string {
 }
 
 function routeLabel(c: Catalog, w: Route): string {
-  return `${landmarkLabel(c, w.startLandmarkId)} → ${landmarkLabel(c, w.endLandmarkId)}`;
+  return routeTitle(landmarkLabel(c, w.startLandmarkId), landmarkLabel(c, w.endLandmarkId), w.startLandmarkId === w.endLandmarkId);
 }
 
 function wayDetailFor(r: Way, w: Route, deps: CatalogDetailDeps): WayDetailModel {

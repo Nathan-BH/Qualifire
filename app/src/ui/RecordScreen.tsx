@@ -36,7 +36,7 @@ import {
 import { liveEngine, type LiveEngineState } from '../live/engine';
 import { LiveSectorPane, realTimebase, viewModelFromEngine } from './liveView';
 import { LaunchAnimation } from './launchAnimation';
-import { effectiveFromId, endingSlotFor, interruptedRideAction, isFullscreen, liveMapOverlayFor, namingOfferMode, recordPressAction, wayHintForPick, type RecordPhase } from './recordFlow';
+import { LOOP_ID, effectiveFromId, endingSlotFor, interruptedRideAction, isFullscreen, liveMapOverlayFor, namingOfferMode, recordPressAction, resolveGoingTo, routeForEndpoints, wayHintForPick, type RecordPhase } from './recordFlow';
 import { nextPollDelayMs, restartsBudget } from '../location/positionRetryPolicy';
 import { useTabNav } from './tabNav';
 import WayMapView from './wayMapView';
@@ -84,7 +84,7 @@ import { gateSetFor, landmarkAt } from '../store/catalog';
 import { effectiveRideSportId, scopeCatalog, setActiveSport, showSportPillRow, wayIdsOfSport } from '../store/sports';
 import { afterSportSwitch } from '../store/sportSwitch';
 import { activeCatalog, activeSportId, currentSports, saveSports } from '../store/sportStore';
-import { defaultEndpoints, wayLabelIn, wayVariantLabel, sortWaysForDisplay } from '../store/defaultWay';
+import { defaultEndpoints, routeTitle, wayLabelIn, wayVariantLabel, sortWaysForDisplay } from '../store/defaultWay';
 import { landmarkUsageCounts, sortLandmarksByUsage } from '../store/landmarkUsage';
 import { placeOptions } from '../store/placeSearch';
 import type { Way } from '../store/types';
@@ -1150,11 +1150,14 @@ export default function RecordScreen({
   // without RN.
   const fromId = effectiveFromId({ startMode: settings.startMode, detectedId: detected?.id ?? null, from, fromExplicit });
 
-  // The way the rider picked, and the routes on it -- so the ghost count is
-  // THIS way's, not always Morning's.
-  const route = CATALOG.routes.find(
-    (w) => w.startLandmarkId === fromId && w.endLandmarkId === to,
-  );
+  // virgin-cycle26 brief 01: `to` may be the LOOP_ID sentinel ("finish where I
+  // start"); resolve it against the effective START before anything reads it.
+  const { toId, loop: loopOn } = resolveGoingTo(to, fromId, NEW_ID);
+
+  // The route the rider picked, and the ways on it -- so the ghost count is
+  // THIS way's, not always Morning's. A loop (toId === fromId) resolves like
+  // any other pair (recordFlow.ts routeForEndpoints).
+  const route = routeForEndpoints(CATALOG.routes, fromId, toId);
   const routeWays = route ? sortWaysForDisplay(CATALOG.ways.filter((r) => r.routeId === route.id)) : [];
   const ghostCount = routeWays.reduce((n, r) => n + ghostsFor(r.id).length, 0);
   const pickedWay: Way | null = route
@@ -1248,7 +1251,7 @@ export default function RecordScreen({
   // pickedWayRef mirrors above.
   const startContextRef = useRef<StartContext | null>(null);
   startContextRef.current = {
-    from: fromId, to, fromLabel: landmarkLabel(fromId), toLabel: landmarkLabel(to), pickSource,
+    from: fromId, to: toId, fromLabel: landmarkLabel(fromId), toLabel: landmarkLabel(toId), pickSource,
   };
 
   // Cycle 024 (WP-A2): 'armed' — the RACE screen, ready but not started
@@ -1260,7 +1263,7 @@ export default function RecordScreen({
     return (
       <View style={styles.raceColumn}>
         <Text style={styles.trackLine}>
-          {landmarkLabel(fromId)} → {landmarkLabel(to)}
+          {routeTitle(landmarkLabel(fromId), landmarkLabel(toId), loopOn && toId !== NEW_ID)}
           {route && pickedWay ? ` · ${wayVariantLabel(pickedWay.id, route, pickedWay.specs)}` : ''}
         </Text>
         <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch' }}>
@@ -1422,6 +1425,7 @@ export default function RecordScreen({
             sectorColours={sectorColours}
             trail={mapOverlay.showTrail ? trail : undefined}
             selfs={settings.selfDots ? selfDots : undefined}
+            progressM={live.chainageM}
             variant="live"
             liveState={live.phase === 'finished' ? 'finished' : (stationary ? 'stopped' : 'moving')}
             fill
@@ -1601,6 +1605,13 @@ export default function RecordScreen({
                     <Text style={[styles.pillText, to === l.id && styles.pillTextOn]}>{l.label}</Text>
                   </Pressable>
                 ))}
+                {/* virgin-cycle26 brief 01 (Nathan 2026-10-08): 'loop' — finish
+                    where I start. Resolves to the START place at use time
+                    (recordFlow.ts resolveGoingTo), so it follows a START change. */}
+                <Pressable key={LOOP_ID} onPress={() => setTo(LOOP_ID)}
+                  style={[styles.pill, loopOn && styles.pillOn]}>
+                  <Text style={[styles.pillText, loopOn && styles.pillTextOn]}>loop</Text>
+                </Pressable>
                 {/* WP-B: 'new' — unknown destination (e.g. new>>home), i.e. the
                     first ride from/to this landmark. */}
                 <Pressable key={NEW_ID} onPress={() => setTo(NEW_ID)}

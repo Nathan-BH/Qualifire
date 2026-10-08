@@ -69,16 +69,29 @@ export function wayVariantLabel(
   return wayLabel(id);
 }
 
+/** virgin-cycle26 brief 01 (Nathan 2026-10-08): the rider's name for a
+ * start/end pair. A loop (same place at both ends) reads "<Place> loop",
+ * never "<Place> → <Place>". Any further specification (the way's specs,
+ * the picked variant) is appended by the CALLER with the ' · ' separator
+ * the app already uses, so "Home loop · Dry" reads like "Home → Work · Dry".
+ * `loop` is decided by the caller from landmark IDS — two places may share
+ * a label — never from the labels. Non-loop output is byte-identical to the
+ * `${start} → ${end}` template this replaces. */
+export function routeTitle(startLabel: string, endLabel: string, loop: boolean): string {
+  return loop ? `${startLabel} loop` : `${startLabel} → ${endLabel}`;
+}
+
 /** WP-G: full name of a route as the rider knows it — "Home → Work · Dry ·
  * Fast" from the way's landmark labels plus specs — for any user-minted
  * route in `c`. Seed ids (and ids not in `c`) return routeLabel(id)
- * byte-for-byte, so nothing Nathan's shipped build prints today moves. */
+ * byte-for-byte, so nothing Nathan's shipped build prints today moves.
+ * A loop route reads "Home loop · Dry" (routeTitle, virgin-cycle26). */
 export function wayLabelIn(c: Catalog, id: string): string {
   const r = c.ways.find((x) => x.id === id);
   if (!r || !isUserMintedWayId(id)) return wayLabel(id);
   const w = c.routes.find((x) => x.id === r.routeId);
   const lab = (lid: string) => c.landmarks.find((l) => l.id === lid)?.label ?? lid;
-  const base = w ? `${lab(w.startLandmarkId)} → ${lab(w.endLandmarkId)}` : id;
+  const base = w ? routeTitle(lab(w.startLandmarkId), lab(w.endLandmarkId), w.startLandmarkId === w.endLandmarkId) : id;
   return r.specs?.length ? `${base} · ${r.specs.join(' · ')}` : base;
 }
 

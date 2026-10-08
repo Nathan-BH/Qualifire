@@ -16,7 +16,7 @@
  */
 import type { Catalog, Route } from '../store/types.ts';
 import { nearestOnPath, placeBounds, type LonLatBoundsBox } from './wayMapGeo.ts';
-import { wayVariantLabel } from '../store/defaultWay.ts';
+import { routeTitle, wayVariantLabel } from '../store/defaultWay.ts';
 
 export type LatLon = [number, number];
 
@@ -40,7 +40,7 @@ function landmarkLabel(c: Catalog, id: string): string {
 }
 
 function routeLabel(c: Catalog, r: Route): string {
-  return `${landmarkLabel(c, r.startLandmarkId)} → ${landmarkLabel(c, r.endLandmarkId)}`;
+  return routeTitle(landmarkLabel(c, r.startLandmarkId), landmarkLabel(c, r.endLandmarkId), r.startLandmarkId === r.endLandmarkId);
 }
 
 /** D4: the way with the most stored results, tie -> first in `route.wayIds`

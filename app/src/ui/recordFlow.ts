@@ -143,3 +143,49 @@ export function endingSlotFor(input: {
   return 'none';
 }
 
+
+/** virgin-cycle26 brief 01 (Nathan 2026-10-08): GOING TO offers a `loop` pill
+ * meaning "finish where I start" instead of listing the START place twice.
+ * A UI sentinel like RecordScreen's NEW_ID ('~new'): never a catalog id. */
+export const LOOP_ID = '~loop';
+
+/** What the START / GOING TO pair means right now. `to === LOOP_ID` resolves
+ * to the START place at the moment of use, so a loop follows a START change
+ * and auto-detection. A stale `to` equal to the START place (the rider picked
+ * a destination, then made it the start) is the SAME selection — shown as the
+ * loop pill being on, never as a hidden state. `newId` is the '~new' sentinel:
+ * new → new is the ordinary first ride, not a loop (STOP's draft decides by
+ * geometry what it becomes). `toId` is what the route lookup, the armed title
+ * and the start context consume. */
+export function resolveGoingTo(to: string, fromId: string, newId: string): { toId: string; loop: boolean } {
+  if (to === LOOP_ID || (to === fromId && to !== newId)) return { toId: fromId, loop: true };
+  return { toId: to, loop: false };
+}
+
+/** The Route a START / GOING TO pair resolves to: the FIRST route with exactly
+ * this start and this end. `fromId === toId` is a loop and resolves like any
+ * other pair — the same first-match rule STOP's existingRouteFor
+ * (store/routeCreation.ts) uses, so RECORD finds the Route STOP would have
+ * attached the ride to. A '~new' / '~loop' endpoint never matches (no route
+ * has that id) and yields undefined = free ride. Generic over the two id
+ * fields so this module stays import-free. */
+export function routeForEndpoints<R extends { startLandmarkId: string; endLandmarkId: string }>(
+  routes: readonly R[], fromId: string, toId: string,
+): R | undefined {
+  return routes.find((r) => r.startLandmarkId === fromId && r.endLandmarkId === toId);
+}
+
+/** virgin-cycle26 brief 05: the '~new' sentinel RecordScreen keeps as its
+ * module-local NEW_ID ("no place picked" / the first ride from or to an
+ * unknown place). Mirrored here, pure and testable, so a ride's logged pick
+ * fact (PickEvent.from / .to, written verbatim from the start context) can be
+ * read back without a UI import. A test pins the two literals together. */
+export const NEW_ID = '~new';
+
+/** Whether a ride's logged pick fact names a loop: the same REAL place at
+ * both ends. `new → new` (both '~new', the blank-install first ride) is not a
+ * loop -- its title stays "new → new" (resolveGoingTo's rule, applied to what
+ * was logged). Missing fields (older sidecars) are never a loop. */
+export function pickedLoop(from: string | null | undefined, to: string | null | undefined): boolean {
+  return !!from && from !== NEW_ID && from === to;
+}

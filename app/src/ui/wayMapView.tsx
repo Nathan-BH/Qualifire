@@ -87,6 +87,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import manifest from '../../assets/ways/ways.json';
 import { offWayM, type WayAsset } from './wayMapMath.ts';
+import { nextGateOnTap } from './gateAdjustModel.ts';
 import { currentCatalog } from '../store/catalogStore.ts';
 import { SEED_MODE, bundledForSeedMode } from '../store/seed.ts';
 import { refFor } from '../live/refs.ts';
@@ -94,7 +95,8 @@ import { resolveWayAsset, type WayAssetDeps } from './wayAssetRuntime.ts';
 import {
   bearingBetween, cameraTargetFor, fitMeNextMode,
   gateHalfLenM, gateTicksFeatureCollection, metresBetween, riderFeature, rotateEnabledFor, wayBounds,
-  wayLineFeature, sectorSpansFeatureCollection, trailBounds, placeFeatureCollection, placeBounds,
+  sectorSpansFeatureCollection, trailBounds, placeFeatureCollection, placeBounds,
+  buildPassModel, faintVertices, gateFaint, routeRunsFeatureCollection, FAINT_OPACITY,
 } from './wayMapGeo.ts';
 import { trailLineFeature, type TrailPoint } from './trailModel.ts';
 import { selfsFeatureCollection, type SelfDot } from './selfRaceModel.ts';
@@ -302,6 +304,14 @@ type WayMapProps = {
    * Selection is UI state, not a verdict: the ring is riderBlue, never a
    * tier colour (D-013/D-030). */
   gateSelect?: { selected: number | null; onPress: (gateIndex: number) => void };
+  /** virgin-cycle26 brief 04 (Nathan 2026-10-08): the rider's progress in
+   * metres along the drawn path — the live engine's forward-only chainage
+   * (RecordScreen), the recorded chainage (ReplayScreen) or progressAtTime
+   * (DemoScreen). When set, the copy of a retraced stretch (and its gates and
+   * sector spans) that the rider is NOT on draws at FAINT_OPACITY until the
+   * rider is within FADE_NEAR_M of it (wayMapGeo.ts faintVertices). Absent or
+   * null = today's drawing. MapLibre rung only. */
+  progressM?: number | null;
   /** virgin-cycle23 brief 01: see WayMapGestures. Default 'full'. */
   gestures?: WayMapGestures;
 };
@@ -586,11 +596,17 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
   // guard) so this hook keeps a stable call order regardless of
   // asset on any render — Rules of Hooks: it must run
   // unconditionally, before the guard below.
-  const wayFC = useMemo(() => {
-    if (!asset) return null;
-    const feature = wayLineFeature(asset);
-    return feature ? { type: 'FeatureCollection' as const, features: [feature] } : null;
-  }, [asset]);
+  // virgin-cycle26 brief 04: pass model once per asset; faint flags at most
+  // every 10 m of progress; the route FC splits into runs only when something
+  // is faint (otherwise it is today's single feature). All three hooks run
+  // unconditionally (Rules of Hooks — see the comment above).
+  const progressKey = props.progressM === null || props.progressM === undefined ? null : Math.round(props.progressM / 10);
+  const passModel = useMemo(() => (asset ? buildPassModel(asset) : null), [asset]);
+  const faintVerts = useMemo(
+    () => (passModel && progressKey !== null ? faintVertices(passModel, progressKey * 10) : null),
+    [passModel, progressKey],
+  );
+  const wayFC = useMemo(() => (asset ? routeRunsFeatureCollection(asset, faintVerts) : null), [asset, faintVerts]);
 
   // WP-J (breadcrumb trail): always mounted, possibly-empty FeatureCollection
   // — computed unconditionally, same Rules-of-Hooks reason as routeFC above
@@ -666,15 +682,16 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
   // above, so a hook here would break the Rules of Hooks; kept as the
   // existing unmemoized-per-render pattern (cheap, one tick per gate).
   const gateHalfLen = asset ? gateHalfLenM(asset.gates[0]?.lat ?? 0, liveZoom ?? camZoom) : 15;
+  const faintGates = asset && faintVerts ? gateFaint(asset, faintVerts) : undefined;
   const gateTicksFC = asset
-    ? gateTicksFeatureCollection(asset, props.gateColours, gateHalfLen)
+    ? gateTicksFeatureCollection(asset, props.gateColours, gateHalfLen, faintGates)
     : null;
   // WP-sector-coloured-trail P1: null unless the caller supplied sector
   // colours AND the asset can honestly be split (path + matching gateIdx —
   // sectorSpansFeatureCollection's own null rule); the plain base line
   // alone then remains, exactly as today.
   const sectorSpansFC = asset && props.sectorColours
-    ? sectorSpansFeatureCollection(asset, props.sectorColours, props.leadColour)
+    ? sectorSpansFeatureCollection(asset, props.sectorColours, props.leadColour, faintGates)
     : null;
   // virgin-cycle15 brief 12: the place disc. Pure builder, one 64-point
   // ring — cheap enough per render, and a hook here would sit after the
@@ -790,10 +807,10 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
             below except the rider — the rider dot must be the LAST mounted. */}
         <M.GeoJSONSource key="route" id="route" data={wayFC ?? EMPTY_FC}>
           <M.Layer id="route-casing" type="line"
-            paint={{ 'line-color': CASING, 'line-width': 7 }}
+            paint={{ 'line-color': CASING, 'line-width': 7, 'line-opacity': ['case', ['has', 'faint'], FAINT_OPACITY, 1] }}
             layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
           <M.Layer id="route-core" type="line"
-            paint={{ 'line-color': colors.neutral, 'line-width': 4 }}
+            paint={{ 'line-color': colors.neutral, 'line-width': 4, 'line-opacity': ['case', ['has', 'faint'], FAINT_OPACITY, 1] }}
             layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
         </M.GeoJSONSource>
         {/* WP-J (breadcrumb trail): the rider's own ridden line, casing+core
@@ -857,6 +874,7 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
             paint={{
               'line-color': ['case', ['has', 'colour'], ['get', 'colour'], 'rgba(0,0,0,0)'],
               'line-width': 4,
+              'line-opacity': ['case', ['has', 'faint'], FAINT_OPACITY, 1],
             }}
             layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
         </M.GeoJSONSource>
@@ -899,19 +917,24 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
           id="gate-ticks"
           data={gateTicksFC ?? EMPTY_FC}
           onPress={props.gateSelect ? (e: GatePressEvent) => {
-            const name = String(e.nativeEvent.features?.[0]?.properties?.name ?? '');
-            const idx = asset ? asset.gates.findIndex((g) => g.name === name) : -1;
-            if (idx >= 0) props.gateSelect!.onPress(idx);
+            // virgin-cycle26 brief 04: every feature under the tap, not just
+            // the first — stacked gates on retraced ground cycle on each tap.
+            const hits = (e.nativeEvent.features ?? []).map((f) => {
+              const name = String(f.properties?.name ?? '');
+              return asset ? asset.gates.findIndex((g) => g.name === name) : -1;
+            });
+            const idx = nextGateOnTap(hits, props.gateSelect!.selected);
+            if (idx !== null) props.gateSelect!.onPress(idx);
           } : undefined}
           hitbox={props.gateSelect ? { top: 24, right: 24, bottom: 24, left: 24 } : undefined}
         >
           <M.Layer id="gate-ticks-casing" type="line"
-            paint={{ 'line-color': CASING, 'line-width': 5 }}
+            paint={{ 'line-color': CASING, 'line-width': 5, 'line-opacity': ['case', ['has', 'faint'], FAINT_OPACITY, 1] }}
             layout={{ 'line-cap': 'round' }} />
           <M.Layer id="gate-ticks" type="line" paint={{
             'line-color': ['case', ['has', 'colour'], ['get', 'colour'], colors.white],
             'line-width': ['case', ['has', 'colour'], 3, 2],
-            'line-opacity': 1,
+            'line-opacity': ['case', ['has', 'faint'], FAINT_OPACITY, 1],
           }} layout={{ 'line-cap': 'round' }} />
         </M.GeoJSONSource>
         {/* WP-J (gate-adjust card): the selected-gate ring, always mounted

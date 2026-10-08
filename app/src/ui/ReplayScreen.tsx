@@ -238,6 +238,7 @@ export default function ReplayScreen(props: {
           sectorColours={sectorColours}
           leadColour={settings.sectorColours ? colors.grey : undefined}
           selfs={settings.selfDots ? selfDots : undefined}
+          progressM={pos ? pos.sM : null}
           rideTrace={rider.fixes}
           variant="live"
           liveState={anchor.playing ? 'moving' : 'finished'}

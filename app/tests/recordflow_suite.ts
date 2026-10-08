@@ -9,7 +9,9 @@ import { assert, test, TESTS_DIR } from './lib.ts';
 import {
   canTransition, effectiveFromId, endingSlotFor, isFullscreen, liveMapOverlayFor, namingOfferMode, recordPressAction, type RecordPhase,
   wayHintForPick, interruptedRideAction, INTERRUPTED_MIN_FIXES,
+  LOOP_ID, resolveGoingTo, routeForEndpoints, NEW_ID, pickedLoop,
 } from '../src/ui/recordFlow.ts';
+import { routeTitle } from '../src/store/defaultWay.ts';
 import { addSport, emptySports } from '../src/store/sports.ts';
 
 const PHASES: RecordPhase[] = ['setup', 'armed', 'running', 'ending'];
@@ -624,4 +626,87 @@ test('virgin-cycle23 06 (Nathan 2026-10-07): no estimate on any flash or strip, 
   const tw = read('src', 'ui', 'tower.tsx');
   assert(!tm.includes("'NO TIME'") && tm.includes('time: NOT_RANKED_LABEL,'), 'tower today row: Not ranked');
   assert(!tw.includes('TODAY · unranked') && tw.includes('>TODAY · Not ranked</Text>'), 'tower ceremony: Not ranked');
+});
+
+// ------------------------------------------------ virgin-cycle26 brief 01
+const NEW = '~new';
+
+test('virgin-cycle26 01: resolveGoingTo — the loop pill resolves to the START place and follows it; a stale to === from is the same selection; new → loop is new → new', () => {
+  assert(LOOP_ID === '~loop' && (LOOP_ID as string) !== NEW, 'sentinels must differ');
+  let r = resolveGoingTo(LOOP_ID, 'home', NEW);
+  assert(r.toId === 'home' && r.loop, `loop from home: ${JSON.stringify(r)}`);
+  r = resolveGoingTo(LOOP_ID, 'work', NEW);
+  assert(r.toId === 'work' && r.loop, 'the loop follows a START change');
+  r = resolveGoingTo('home', 'home', NEW);
+  assert(r.toId === 'home' && r.loop, 'a stale destination equal to the start IS the loop selection (no hidden state)');
+  r = resolveGoingTo('work', 'home', NEW);
+  assert(r.toId === 'work' && !r.loop, 'an ordinary pair is untouched');
+  r = resolveGoingTo(NEW, 'home', NEW);
+  assert(r.toId === NEW && !r.loop, 'home → new is untouched');
+  r = resolveGoingTo(LOOP_ID, NEW, NEW);
+  assert(r.toId === NEW && r.loop, 'new → loop resolves to new → new (ordinary first ride), pill shown on');
+  r = resolveGoingTo(NEW, NEW, NEW);
+  assert(r.toId === NEW && !r.loop, 'new → new is NOT a loop selection');
+});
+
+test('virgin-cycle26 01: routeForEndpoints resolves a loop like any other pair, first match wins, sentinels never match', () => {
+  const routes = [
+    { id: 'r:home-work', startLandmarkId: 'home', endLandmarkId: 'work' },
+    { id: 'r:loop-a', startLandmarkId: 'home', endLandmarkId: 'home', loopDiscriminator: 'loop:a' },
+    { id: 'r:loop-b', startLandmarkId: 'home', endLandmarkId: 'home', loopDiscriminator: 'loop:b' },
+    { id: 'r:work-home', startLandmarkId: 'work', endLandmarkId: 'home' },
+  ];
+  assert(routeForEndpoints(routes, 'home', 'work')?.id === 'r:home-work', 'A → B');
+  assert(routeForEndpoints(routes, 'work', 'home')?.id === 'r:work-home', 'B → A is a different route');
+  assert(routeForEndpoints(routes, 'home', 'home')?.id === 'r:loop-a', 'a Home loop (home, home) resolves to the FIRST loop route (STOP\'s existingRouteFor rule)');
+  assert(routeForEndpoints(routes, 'home', NEW) === undefined, 'a ~new endpoint never resolves (free ride)');
+  assert(routeForEndpoints(routes, 'home', LOOP_ID) === undefined, 'an unresolved ~loop never resolves either (callers resolve first)');
+  assert(routeForEndpoints(routes, 'work', 'work') === undefined, 'no loop route on work: free ride, never an error');
+});
+
+test('virgin-cycle26 01: RECORD offers a loop pill in GOING TO, resolves to/toId through recordFlow, keeps hiding the START place, adds no alert', () => {
+  const src = fs.readFileSync(path.join(TESTS_DIR, '..', 'src', 'ui', 'RecordScreen.tsx'), 'utf8');
+  assert(src.includes("filter((l) => l.id !== fromId)"), 'GOING TO must still hide the START place (the loop pill replaces it; Nathan 2026-10-08)');
+  assert(src.includes('const { toId, loop: loopOn } = resolveGoingTo(to, fromId, NEW_ID);'), 'to must be resolved through resolveGoingTo');
+  assert(src.includes('const route = routeForEndpoints(CATALOG.routes, fromId, toId);'), 'route lookup must go through routeForEndpoints with toId');
+  assert(!/CATALOG\.routes\.find\(\s*\(w\) => w\.startLandmarkId === fromId/.test(src), 'the inline route lookup should be gone');
+  assert((src.match(/<Pressable key=\{LOOP_ID\} onPress=\{\(\) => setTo\(LOOP_ID\)\}/g) ?? []).length === 1, 'exactly one loop pill');
+  assert(src.includes('pillTextOn]}>loop</Text>'), 'the pill reads `loop`');
+  assert(src.includes('to: toId, fromLabel: landmarkLabel(fromId), toLabel: landmarkLabel(toId), pickSource,'), 'start context carries the resolved toId');
+  assert(src.includes('{routeTitle(landmarkLabel(fromId), landmarkLabel(toId), loopOn && toId !== NEW_ID)}'), 'armed title goes through routeTitle with the resolved toId (Nathan 2026-10-08: "Home loop", never "Home → Home")');
+  assert(!/landmarkLabel\(fromId\)\} → \{landmarkLabel/.test(src), 'the hand-written arrow title is gone');
+  assert(!/landmarkLabel\(to\)/.test(src), 'no consumer reads the raw `to` for a label');
+  // Ruling 1 (no warnings): RecordScreen must not grow an alert or a flash about loops.
+  assert(!/Alert\.alert\([^)]*loop/i.test(src) && !/flashSub\([^)]*loop/i.test(src), 'no loop alert / flash on RECORD');
+});
+
+
+// ------------------------------------------------ virgin-cycle26 brief 05
+test('virgin-cycle26 05: pickedLoop -- a logged new → new ride is not a loop; the same real place at both ends is; missing fields never are', () => {
+  assert(NEW_ID === '~new', `recordFlow NEW_ID ${NEW_ID}`);
+  assert((NEW_ID as string) !== LOOP_ID, 'sentinels differ');
+  const rs = fs.readFileSync(path.join(TESTS_DIR, '..', 'src', 'ui', 'RecordScreen.tsx'), 'utf8');
+  assert(rs.includes("const NEW_ID = '~new';"), "RecordScreen's module-local NEW_ID must stay the same literal as recordFlow's");
+  assert(!pickedLoop('~new', '~new'), 'new → new (blank-install first ride, logged verbatim) is NOT a loop');
+  assert(pickedLoop('home', 'home'), 'Home → Home is a loop');
+  assert(!pickedLoop('home', 'work'), 'an ordinary pair');
+  assert(!pickedLoop('home', '~new'), 'home → new');
+  assert(!pickedLoop('~new', 'home'), 'new → home');
+  assert(!pickedLoop(undefined, undefined) && !pickedLoop(null, null) && !pickedLoop('home', undefined), 'missing fields (older sidecars) are never a loop');
+  // The exact PickEvent location/index.ts logs for a blank-install free ride
+  // (from = to = '~new', labels 'new'): titled as before, not "new loop".
+  const pick = { from: '~new', to: '~new', fromLabel: 'new', toLabel: 'new' };
+  assert(routeTitle(pick.fromLabel, pick.toLabel, pickedLoop(pick.from, pick.to)) === 'new → new', `logged new → new ride: ${routeTitle(pick.fromLabel, pick.toLabel, pickedLoop(pick.from, pick.to))}`);
+  const home = { from: 'lm:home', to: 'lm:home', fromLabel: 'Home', toLabel: 'Home' };
+  assert(routeTitle(home.fromLabel, home.toLabel, pickedLoop(home.from, home.to)) === 'Home loop', 'a logged Home loop ride');
+});
+
+test('virgin-cycle26 05: RIDES and ride detail derive the pick-event title through pickedLoop, never from a raw from === to', () => {
+  for (const [file, ext] of [['RidesScreen.tsx', ''], ['RideDetailScreen.tsx', '.ts']] as [string, string][]) {
+    const src = fs.readFileSync(path.join(TESTS_DIR, '..', 'src', 'ui', file), 'utf8');
+    assert((src.match(/routeTitle\(pick\.fromLabel, pick\.toLabel, pickedLoop\(pick\.from, pick\.to\)\)/g) ?? []).length === 1, `${file}: exactly one pick-event title through pickedLoop`);
+    assert(!src.includes('pick.from === pick.to'), `${file}: no raw from === to loop test`);
+    assert(!/\$\{pick\.fromLabel\} → \$\{pick\.toLabel\}/.test(src), `${file}: no hand-written arrow title`);
+    assert(src.includes(`import { pickedLoop } from './recordFlow${ext}';`), `${file}: imports pickedLoop`);
+  }
 });

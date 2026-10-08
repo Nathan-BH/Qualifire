@@ -124,7 +124,7 @@ import { useTheme } from './themeContext';
 import { TimingTower } from './tower';
 import { appendTrailPoint, type TrailPoint } from './trailModel.ts';
 import WayMapView from './wayMapView';
-import { positionAtTime } from './wayMapMath';
+import { positionAtTime, progressAtTime } from './wayMapMath';
 
 // virgin-cycle16 07 (Nathan 2026-09-28): the running-phase controls are
 // REPLAY's control row (cycle15 brief 08) — speed dial, scrub bar,
@@ -666,6 +666,7 @@ export default function DemoScreen({ onFullscreenChange }: {
             <WayMapView key={`${mode}-${runSeq.current}`} wayId={DEMO_WAY_ID} asset={DEMO_WAY_ASSET} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
               zoom={4} sectorColours={sectorColours} leadColour={colors.grey}
               selfs={showSelfs ? selfDots : undefined}
+              progressM={progressAtTime(ASSET, script.gateAt, clockS)}
               variant="live" liveState={running ? 'moving' : 'finished'} fill />
           )}
         </View>

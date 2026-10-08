@@ -23,10 +23,15 @@
  *      less than ~50 m past an uncrossed gate, fire it 'estimated'; gates
  *      further behind are reported as skipped (their sector -> 'estimated',
  *      never coloured, per D-013).
+ *  (c) virgin-cycle26 brief 02: the first-fix anchor and the re-acquisition
+ *      pick their vertex pass-aware (projection.ts passVertex) -- on a loop
+ *      or a retraced street the rider is anchored on the earliest pass and
+ *      re-acquired on the pass nearest the chainage they were on; a
+ *      single-pass reference behaves exactly as before.
  */
 import type { RefLine, GateEvent } from './types.ts';
 import { searchsortedLeft } from './geo.ts';
-import { CORRIDOR_M, nearestOnSegments, nearestVertex } from './projection.ts';
+import { CORRIDOR_M, nearestOnSegments, passVertex } from './projection.ts';
 
 export interface LiveOptions {
   corridor: number;        // m cross-track (D-011)
@@ -82,7 +87,7 @@ export class LiveProjector {
     const nseg = ch.length - 1;
     const o = this.opt;
     if (!this.started) {
-      this.sp = ch[nearestVertex(x, y, this.ref).index];
+      this.sp = ch[passVertex(x, y, this.ref, -Infinity, Infinity, -Infinity, o.corridor).index];
       this.started = true;
     }
     let lo = searchsortedLeft(ch, this.sp - o.windowBack);
@@ -104,7 +109,7 @@ export class LiveProjector {
       if (t !== undefined && this.tLastOnRoute !== null && o.vMaxReacq > 0) {
         bound = Math.max(bound, o.vMaxReacq * (t - this.tLastOnRoute));
       }
-      const nv = nearestVertex(x, y, this.ref, this.sp, this.sp + bound);
+      const nv = passVertex(x, y, this.ref, this.sp, this.sp + bound, this.sp, o.corridor);
       if (nv.index >= 0 && nv.dist <= o.corridor) {
         this.sp = ch[nv.index];
         this.lost = 0;

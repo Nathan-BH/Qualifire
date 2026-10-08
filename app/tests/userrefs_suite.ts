@@ -111,6 +111,58 @@ test('userRefs: a >=20 s stationary knot collapses and reports one stop chainage
   );
 });
 
+// ------------------------------------------------ virgin-cycle26 brief 03
+/** Out-and-back: 300 m east along y = 0, a block, 700 m back west along y = -4.
+ * Planar metres about (LAT0, LON0); one fix per 5 m, 1 s apart. */
+function obPosM(s: number): [number, number] {
+  if (s < 300) return [s, 0];
+  if (s < 700) return [300, s - 300];
+  if (s < 1100) return [300 + (s - 700), 400];
+  if (s < 1504) return [700, 400 - (s - 1100)];
+  return [700 - (s - 1504), -4];
+}
+function obFixes(stopAtS: number | null): RefFixInput[] {
+  const fixes: RefFixInput[] = [];
+  let t = 0;
+  for (let s = 0; s <= 2200; s += 5) {
+    const [x, y] = obPosM(s);
+    const [lat, lon] = xyToLatLon(x, y, LAT0, LON0);
+    fixes.push({ lat, lon, tUnixMs: t * 1000 });
+    t += 1;
+    if (stopAtS !== null && s === stopAtS) {
+      // A 30 s wait on the LEFT side of the outbound street (y = -3.5): 0.5 m from
+      // the return copy (y = -4), 3.5 m from the outbound copy (y = 0). The run
+      // also swallows the 5/10/15 m neighbours at y = 0, so its centroid sits
+      // near y = -3.1: still nearer the return copy than the (smoothed) outbound.
+      for (let k = 0; k < 30; k++) {
+        const [sl, so] = xyToLatLon(x, -3.5, LAT0, LON0);
+        fixes.push({ lat: sl, lon: so, tUnixMs: t * 1000 });
+        t += 1;
+      }
+    }
+  }
+  return fixes;
+}
+
+test('virgin-cycle26 03: buildRefFromRideFixes reports retraced ground for an out-and-back and none for a straight ride', () => {
+  const straight = buildRefFromRideFixes(northRide(20));
+  assert(straight !== null && straight.overlapChainageM.length === 0, `a straight ride has no retraced ground, got ${straight?.overlapChainageM.length}`);
+  const built = buildRefFromRideFixes(obFixes(null));
+  assert(built !== null, 'expected a built ref');
+  assert(built.overlapChainageM.length > 0, 'an out-and-back must report retraced ground');
+  assert(built.overlapChainageM.some((v) => v < 300) && built.overlapChainageM.some((v) => v > built.ref.length - 300),
+    `both copies of the street expected, got min ${built.overlapChainageM[0]} max ${built.overlapChainageM[built.overlapChainageM.length - 1]} of L=${built.ref.length}`);
+  assert(built.overlapChainageM.every((v) => v <= 360 || v >= built.ref.length - 360), 'nothing on the block itself');
+});
+
+test('virgin-cycle26 03: a stop on the outbound street, nearer the return copy, is located on the OUTBOUND pass (ride order, not nearest segment)', () => {
+  const built = buildRefFromRideFixes(obFixes(150));
+  assert(built !== null, 'expected a built ref');
+  assert(built.stopChainageM.length === 1, `expected one stop, got ${built.stopChainageM.length}`);
+  assert(built.stopChainageM[0] > 100 && built.stopChainageM[0] < 200,
+    `stop chainage ${built.stopChainageM[0]}: want ≈ 150 (outbound pass); ${built.stopChainageM[0] > 1800 ? 'it was attributed to the RETURN copy' : 'unexpected'}`);
+});
+
 test('userRefs: degenerate rides build nothing', () => {
   assert(buildRefFromRideFixes([]) === null, 'empty fixes should build nothing');
   assert(

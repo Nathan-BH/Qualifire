@@ -16,6 +16,7 @@ import {
 } from './lib.ts';
 import {
   GateDetector, LiveProjector, toXY, xyToLatLon, parseGpx, resample, cumdist,
+  nearestVertex, passVertex, projectRideOffline, PASS_GAP_M, crossTime, PASS_AMBIGUITY_M, CORRIDOR_M,
   type TrackId, type RefLine,
 } from '../core/src/index.ts';
 import type { LiveEngineState, LiveSector, DiagnosticEvent, TrackSpec, EngineEvent } from '../src/live/engine.ts';
@@ -1031,4 +1032,449 @@ test('virgin-cycle21 01: L9 a picked short route scores its lap at its own FINIS
   assert(mid.sectors.length === 3 && mid.sectors.every((x) => x.kind === 'done'), `sectors ${mid.sectors.map((x) => x.kind)}`);
   engine.finalize();
   assert(engine.getState().track === 'SyntheticShort', 'finalize unmatched a finished ride');
+});
+
+// ------------------------------------------------ virgin-cycle26 brief 02
+// Loops and retraced ground (plan 05 D15). LOOP: a closed 1000 x 600 m
+// rectangle, start vertex = end vertex (Home to Home). OB (out-and-back):
+// 300 m east along a street at y = 0, a 1400 m block, 700 m back west along
+// the same street on the OTHER side (y = -4) — the realistic case where the
+// return copy is a few metres beside the outbound copy and exact vertex ties
+// no longer rescue a nearest-vertex pick. OB_LONG: a 600 m street and a 1000 m
+// return, for the re-acquisition case (the rejoin must lie > 240 m ahead of
+// the projector's window). Arc lengths are along the WAYPOINT polyline; stored
+// chainages fall up to ~1.5 m short per corner between two 5 m samples.
+const LOOP_REF = buildSyntheticRef([[0, 0], [1000, 0], [1000, 600], [0, 600], [0, 0]]);
+const LOOP_GATES = [32, 800, 1600, 2400, 3168];
+const LOOP_SPEC: TrackSpec = { id: 'Loop', ref: LOOP_REF, gates: LOOP_GATES };
+function loopPos(s: number): [number, number] {
+  if (s < 1000) return [s, 0];
+  if (s < 1600) return [1000, s - 1000];
+  if (s < 2600) return [1000 - (s - 1600), 600];
+  return [0, 600 - (s - 2600)];
+}
+const OB_REF = buildSyntheticRef([[0, 0], [300, 0], [300, 400], [700, 400], [700, -4], [0, -4]]);
+const OB_GATES = [22, 551, 1102, 1653, 2160];
+const OB_SPEC: TrackSpec = { id: 'OutAndBack', ref: OB_REF, gates: OB_GATES };
+function obPos(s: number): [number, number] {
+  if (s < 300) return [s, 0];
+  if (s < 700) return [300, s - 300];
+  if (s < 1100) return [300 + (s - 700), 400];
+  if (s < 1504) return [700, 400 - (s - 1100)];
+  return [700 - (s - 1504), -4];
+}
+const OB_LONG_REF = buildSyntheticRef([[0, 0], [600, 0], [600, 400], [1000, 400], [1000, -4], [0, -4]]);
+function obLongPos(s: number): [number, number] {
+  if (s < 600) return [s, 0];
+  if (s < 1000) return [600, s - 600];
+  if (s < 1400) return [600 + (s - 1000), 400];
+  if (s < 1804) return [1000, 400 - (s - 1400)];
+  return [1000 - (s - 1804), -4];
+}
+function feedXY(engine: InstanceType<typeof LiveEngine>, x: number, y: number, tSec: number): void {
+  const [lat, lon] = xyToLatLon(x, y, 0, 0);
+  engine.feed(lat, lon, tSec * 1000);
+}
+/** The LOOP ride: first fix 4 m north of Home (1 m from the loop's LAST vertex (0, 5),
+ * 4 m from its first), then 5 m/s around the loop. Returns planar xs/ys and seconds. */
+function loopRide(t0: number): { xs: number[]; ys: number[]; ts: number[] } {
+  const xs = [0]; const ys = [4]; const ts = [t0];
+  for (let s = 5; s <= 3195; s += 5) { const [x, y] = loopPos(s); xs.push(x); ys.push(y); ts.push(t0 + s / 5); }
+  return { xs, ys, ts };
+}
+/** The OB ride: first fix (15, -3) — 1.4 m from the return copy's (14, -4), 3 m from
+ * the outbound (15, 0) — then 5 m/s out and back. */
+function obRide(t0: number): { xs: number[]; ys: number[]; ts: number[] } {
+  const xs = [15]; const ys = [-3]; const ts = [t0];
+  for (let s = 20; s <= 2200; s += 5) { const [x, y] = obPos(s); xs.push(x); ys.push(y); ts.push(t0 + (s - 15) / 5); }
+  return { xs, ys, ts };
+}
+type GateEvt = Extract<EngineEvent, { type: 'gate' }>;
+function runEngine(spec: TrackSpec, ride: { xs: number[]; ys: number[]; ts: number[] }): { gates: GateEvt[]; first: LiveEngineState; final: LiveEngineState } {
+  const engine = new LiveEngine([spec]);
+  const evts: EngineEvent[] = [];
+  const unsub = engine.subscribeEvents((e) => evts.push(e));
+  engine.start({ pickId: spec.id });
+  feedXY(engine, ride.xs[0], ride.ys[0], ride.ts[0]);
+  const first = engine.getState();
+  for (let i = 1; i < ride.xs.length; i++) feedXY(engine, ride.xs[i], ride.ys[i], ride.ts[i]);
+  unsub();
+  return { gates: evts.filter((e): e is GateEvt => e.type === 'gate'), first, final: engine.getState() };
+}
+
+test('virgin-cycle26 02: passVertex equals nearestVertex on a single-pass line and inside a short hairpin', () => {
+  for (const [x, y] of [[1000, 10], [2990, -20], [-50, 0], [1500, 39]] as [number, number][]) {
+    const a = passVertex(x, y, SYN_L.ref);
+    const b = nearestVertex(x, y, SYN_L.ref);
+    assert(a.index === b.index && numEq(a.dist, b.dist, 1e-9), `single pass at (${x},${y}): pass ${a.index} vs nearest ${b.index}`);
+  }
+  // 100 m legs 10 m apart joined by a 10 m connector: candidates 10 m apart in
+  // chainage across the hairpin => one pass => nearest wins, as before.
+  const hairpin = buildSyntheticRef([[0, 0], [100, 0], [100, 10], [0, 10]]);
+  const a = passVertex(50, 8, hairpin);
+  const b = nearestVertex(50, 8, hairpin);
+  assert(a.index === b.index, `hairpin < PASS_GAP_M (${PASS_GAP_M}) must stay one pass: ${a.index} vs ${b.index}`);
+  assert(hairpin.ch[a.index] > 100, `expected the return leg (ch > 100), got ch ${hairpin.ch[a.index]}`);
+  const none = passVertex(50, 8, hairpin, 500, 600);
+  assert(none.index === -1 && none.dist === Infinity, 'empty range must mirror nearestVertex');
+});
+
+test('virgin-cycle26 02: passVertex takes the earliest pass by default and the pass nearest `nearS` when given', () => {
+  const near = nearestVertex(15, -3, OB_REF);
+  assert(near.index === OB_REF.rx.length - 3 && OB_REF.ch[near.index] > 2100, `precondition: nearest is the return copy, got index ${near.index} (ch ${OB_REF.ch[near.index]}) of ${OB_REF.rx.length}`);
+  const first = passVertex(15, -3, OB_REF);
+  assert(first.index === 3 && numEq(OB_REF.ch[first.index], 15, 1e-6), `earliest pass expected index 3 (ch 15), got ${first.index} (ch ${OB_REF.ch[first.index]})`);
+  assert(numEq(first.dist, 3, 1e-9), `dist to (15,0) must be 3, got ${first.dist}`);
+  const ctx = passVertex(100, 1, OB_LONG_REF, -Infinity, Infinity, 2300);
+  assert(OB_LONG_REF.ch[ctx.index] > 2600, `nearS=2300 must pick the return pass (ch > 2600), got ch ${OB_LONG_REF.ch[ctx.index]}`);
+  const noCtx = passVertex(100, 1, OB_LONG_REF);
+  assert(numEq(OB_LONG_REF.ch[noCtx.index], 100, 1e-6), `no context => earliest pass (ch 100), got ${OB_LONG_REF.ch[noCtx.index]}`);
+  // Range restriction is honoured before the pass split (live re-acq shape):
+  // within [2300, 2500] the return copy is 200+ m east of (100, 1), so the
+  // pick is far outside the corridor (live re-acq rejects it, as today).
+  const ahead = passVertex(100, 1, OB_LONG_REF, 2300, 2500, 2300);
+  assert(ahead.index >= 0 && ahead.dist > 150, `within [2300, 2500] expected a far vertex (dist > 150), got index ${ahead.index} dist ${ahead.dist}`);
+  const ahead2 = passVertex(100, 1, OB_LONG_REF, 2300, 2300 + 6000, 2300);
+  assert(OB_LONG_REF.ch[ahead2.index] > 2600, `a wide forward range finds the return pass only, got ch ${OB_LONG_REF.ch[ahead2.index]}`);
+});
+
+test('virgin-cycle26 02: a Home-to-Home loop whose first fix sits nearer the END vertex does not FINISH at t = 0 and scores a full lap', () => {
+  const t0 = 1759860000;
+  const { gates, first, final } = runEngine(LOOP_SPEC, loopRide(t0));
+  assert(first.phase === 'locked' && first.gateFires === 0 && first.lap === null,
+    `first fix: phase ${first.phase}, gateFires ${first.gateFires}, lap ${JSON.stringify(first.lap)} — a FINISH at t=0 means the anchor landed on the end vertex`);
+  assert(first.chainageM !== null && first.chainageM < 30, `anchor chainage ${first.chainageM}, want < 30 (earliest pass)`);
+  assert(gates.length === 5 && gates.map((g) => g.gateIndex).join(',') === '0,1,2,3,4', `gate events ${JSON.stringify(gates.map((g) => [g.gateIndex, g.t - t0, g.estimated]))}`);
+  assert(gates.every((g) => !g.estimated), `estimated gate events: ${JSON.stringify(gates.filter((g) => g.estimated))}`);
+  assert(numEq(gates[0].t, t0 + 6.4, 0.05), `START at ${gates[0].t - t0} s, want 6.4`);
+  assert(final.phase === 'finished' && final.lap !== null && final.lap.rawS !== null && numEq(final.lap.rawS, 627.2, 5),
+    `phase ${final.phase}, lap ${JSON.stringify(final.lap)} — want finished, rawS ≈ 627 s`);
+  assert(final.chainageM !== null && final.chainageM > 3168, `final chainage ${final.chainageM}, want past FINISH`);
+});
+
+test('virgin-cycle26 02: an out-and-back whose first fix sits nearer the RETURN copy anchors on the outbound pass and fires every gate once, in order', () => {
+  const t0 = 1759860000;
+  const { gates, first, final } = runEngine(OB_SPEC, obRide(t0));
+  assert(first.phase === 'locked' && first.gateFires === 0,
+    `first fix: phase ${first.phase}, gateFires ${first.gateFires} — a fire here means FINISH armed on the return copy`);
+  assert(first.chainageM !== null && first.chainageM < 30, `anchor chainage ${first.chainageM}, want ≈ 15`);
+  assert(gates.length === 5, `${gates.length} gate events, want 5: ${JSON.stringify(gates)}`);
+  assert(gates.map((g) => g.gateIndex).join(',') === '0,1,2,3,4', `order ${gates.map((g) => g.gateIndex)}`);
+  assert(gates.every((g) => !g.estimated), `estimated fires: ${JSON.stringify(gates.filter((g) => g.estimated))}`);
+  assert(numEq(gates[0].t, t0 + 1.4, 0.05), `START at ${gates[0].t - t0} s, want 1.4`);
+  for (let i = 1; i < gates.length; i++) assert(gates[i].t > gates[i - 1].t, 'gate times must increase');
+  assert(final.phase === 'finished' && final.lap !== null && final.lap.rawS !== null && numEq(final.lap.rawS, 427.8, 5),
+    `lap ${JSON.stringify(final.lap)} — want rawS ≈ 428 s`);
+});
+
+test('virgin-cycle26 02: a single-pass reference ridden from its far end still fires nothing (far-end anchor unchanged)', () => {
+  // The existing far-end rule (live: 2026-09-01 ride 2) must survive: a rider
+  // who starts at the far end of a single-pass line is still anchored there.
+  const engine = new LiveEngine([SYN_L]);
+  engine.start({ pickId: 'SyntheticL' });
+  let t = 1759860000;
+  for (let s = 3000; s >= 0; s -= 5) {
+    feedXY(engine, s, 0, t);
+    t += 1;
+  }
+  const st = engine.getState();
+  assert(st.gateFires === 0 && st.chainageM !== null && st.chainageM >= 2995, `gateFires ${st.gateFires}, chainage ${st.chainageM}`);
+});
+
+test('virgin-cycle26 02: projectRideOffline anchors an out-and-back on the outbound pass and never runs backwards along the street', () => {
+  const ride = obRide(0);
+  const { s } = projectRideOffline(ride.xs, ride.ys, OB_REF);
+  assert(s[0] < 30, `offline anchor at chainage ${s[0]}, want < 30 (earliest pass)`);
+  let minStep = Infinity;
+  for (let i = 1; i < s.length; i++) minStep = Math.min(minStep, s[i] - s[i - 1]);
+  assert(minStep > -3, `offline chainage ran backwards by ${-minStep} m somewhere`);
+  assert(s[s.length - 1] > 2150, `offline end chainage ${s[s.length - 1]}, want past FINISH`);
+});
+
+test('virgin-cycle26 02: offline re-acquisition after a detour rejoins the pass the rider was on, not the nearer copy', () => {
+  // Out along a 600 m street, around the block, back on the other side to
+  // x = 500 (arc 2304); then 8 fixes 66 m south of the street (off-corridor,
+  // so re-acquisition is attempted from the 5th on and finds nothing within
+  // 40 m), then a rejoin at (100, 1) — 1 m from the OUTBOUND copy, 5 m from
+  // the return copy, and > 240 m ahead of the projector's window.
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (let s = 15; s <= 2305; s += 5) { const [x, y] = obLongPos(s); xs.push(x); ys.push(y); }
+  for (let x = 450; x >= 100; x -= 50) { xs.push(x); ys.push(-70); }
+  const rejoin = xs.length;
+  xs.push(100); ys.push(1);
+  for (let x = 95; x >= 0; x -= 5) { xs.push(x); ys.push(-4); }
+  const { s } = projectRideOffline(xs, ys, OB_LONG_REF);
+  assert(s[rejoin - 1] > 2250 && s[rejoin - 1] < 2320, `pre-detour chainage ${s[rejoin - 1]}, want ≈ 2300`);
+  assert(s[rejoin] > 2600, `rejoin chainage ${s[rejoin]}, want the return pass (> 2600) — ${s[rejoin] < 200 ? 'fell back onto the outbound copy' : 'unexpected'}`);
+  assert(s[s.length - 1] > 2750, `end chainage ${s[s.length - 1]}, want ≈ 2794`);
+});
+
+test('virgin-cycle26 02: live gate events and offline crossTime agree on a loop and on an out-and-back (results, selfs and replay see the same pass as the live ride)', () => {
+  const t0 = 1759860000;
+  for (const [spec, ride, gatesM] of [[LOOP_SPEC, loopRide(t0), LOOP_GATES], [OB_SPEC, obRide(t0), OB_GATES]] as [TrackSpec, ReturnType<typeof loopRide>, number[]][]) {
+    const live = runEngine(spec, ride).gates;
+    const { s } = projectRideOffline(ride.xs, ride.ys, spec.ref);
+    assert(live.length === gatesM.length, `${spec.id}: ${live.length} live gate events`);
+    for (let i = 0; i < gatesM.length; i++) {
+      const off = crossTime(ride.ts, s, gatesM[i]);
+      assert(off !== null, `${spec.id}: offline never crossed gate ${i} (chainage ${gatesM[i]})`);
+      assert(numEq(off, live[i].t, 2), `${spec.id} gate ${i}: offline ${off - t0} s vs live ${live[i].t - t0} s`);
+    }
+  }
+});
+
+
+// ------------------------------------------------ virgin-cycle26 brief 05
+// Parallel streets one block apart (PAR: out along y = 0, back along y = 44,
+// 44 m apart; WIDE: 72 m apart). Both passes of PAR lie inside one corridor
+// (40 m) of a rider standing between them, so a pass pick that ignores how
+// much nearer one of them is can hand the caller a vertex it then rejects
+// as off-route, or project the return leg backwards along the outbound one.
+const PAR_REF = buildSyntheticRef([[0, 0], [1000, 0], [1000, 44], [0, 44]]);
+const PAR_L = PAR_REF.ch[PAR_REF.ch.length - 1];
+const PAR_GATES = [20, 500, 1000, 1500, 2020];
+const PAR_SPEC: TrackSpec = { id: 'Parallel', ref: PAR_REF, gates: PAR_GATES };
+const WIDE_REF = buildSyntheticRef([[0, 0], [1000, 0], [1000, 72], [0, 72]]);
+/** Anchor at (0, 0), a GPS gap, then the rider reappears on the RETURN street
+ * at (600, yReturn) and rides it west to x = 0 at 5 m/s. */
+function parRide(t0: number, yReturn: number): { xs: number[]; ys: number[]; ts: number[] } {
+  const xs = [0]; const ys = [0]; const ts = [t0];
+  for (let x = 600; x >= 0; x -= 5) { xs.push(x); ys.push(yReturn); ts.push(t0 + 100 + (600 - x) / 5); }
+  return { xs, ys, ts };
+}
+
+test('virgin-cycle26 05: passVertex never prefers a pass the caller would reject over one it accepts, and a pass > PASS_AMBIGUITY_M further away than the nearest is not a candidate', () => {
+  assert(PAR_L > 2030 && PAR_L < 2045, `PAR length ${PAR_L}`);
+  // (500, 42): 2 m from the return street (ch ~1544), 42 m from the outbound one (ch 500).
+  for (const [sLo, sHi, nearS] of [[0, 3000, 0], [-Infinity, Infinity, 0], [-Infinity, Infinity, -Infinity]] as [number, number, number][]) {
+    const p = passVertex(500, 42, PAR_REF, sLo, sHi, nearS);
+    assert(PAR_REF.ch[p.index] > 1500 && p.dist < 3, `(500,42) [${sLo},${sHi}] nearS ${nearS}: ch ${PAR_REF.ch[p.index]} dist ${p.dist} -- want the return street (ch ~1544, 2 m)`);
+  }
+  // (500, 30) and (500, 39): 14 / 9 m from the return street, 30 / 39 m from the
+  // outbound one -- both inside the corridor, but one is clearly where the rider is.
+  for (const y of [30, 39]) {
+    const p = passVertex(500, y, PAR_REF, -Infinity, Infinity, 0);
+    assert(PAR_REF.ch[p.index] > 1500, `(500,${y}) nearS 0: ch ${PAR_REF.ch[p.index]} -- want the return street`);
+  }
+  // Ambiguity band: 1 m vs 5 m IS ambiguous (the two sides of one street), so the
+  // chainage context decides -- the brief 02 rule, unchanged.
+  const ctx = passVertex(100, 1, OB_LONG_REF, -Infinity, Infinity, 2300);
+  assert(OB_LONG_REF.ch[ctx.index] > 2600, `1 m vs 5 m stays ambiguous: nearS 2300 must pick the return pass, got ch ${OB_LONG_REF.ch[ctx.index]}`);
+  assert(PASS_AMBIGUITY_M >= 10 && PASS_AMBIGUITY_M < 30, `PASS_AMBIGUITY_M ${PASS_AMBIGUITY_M}: wider than one street, narrower than a block`);
+  // Cap at the caller's acceptance distance: (500, 30) on WIDE is 30 m from the
+  // outbound street (ch 500) and 42 m from the return one (ch ~1572). Even with
+  // the context on the return side, the pick must be the one the caller accepts.
+  const cap = passVertex(500, 30, WIDE_REF, -Infinity, Infinity, 1572);
+  assert(cap.dist <= CORRIDOR_M && WIDE_REF.ch[cap.index] < 600, `cap: ch ${WIDE_REF.ch[cap.index]} dist ${cap.dist} -- want the outbound street (30 m, inside the corridor)`);
+  const capNarrow = passVertex(500, 30, WIDE_REF, -Infinity, Infinity, 1572, 60);
+  assert(WIDE_REF.ch[capNarrow.index] > 1500, `with a 60 m acceptance both are acceptable and the context wins: got ch ${WIDE_REF.ch[capNarrow.index]}`);
+  // Nothing acceptable: the nearest vertex comes back (the caller rejects it, as before).
+  const far = passVertex(500, 200, PAR_REF, -Infinity, Infinity, 0);
+  assert(far.index >= 0 && far.dist > 150, `far fix: dist ${far.dist}`);
+  const single = passVertex(1500, 20, SYN_L.ref, -Infinity, Infinity, 0, 10);
+  const singleN = nearestVertex(1500, 20, SYN_L.ref);
+  assert(single.index === singleN.index && numEq(single.dist, singleN.dist, 1e-9), 'single pass, nearest outside a 10 m acceptance: still nearestVertex');
+});
+
+test('virgin-cycle26 05: equal pass scores keep the EARLIER pass (strict <), and a hand-built two-pass line resolves by chainage context', () => {
+  // Hand-built reference (no resampling, exact chainages): outbound x = 0..100
+  // along y = 0 (ch 0..100), a connector far away (ch 105..400), return
+  // x = 100..0 along y = -4 (ch 405..505). Fix (50, -1): 1 m from ch 50, 3 m
+  // from ch 455 -- ambiguous. nearS exactly midway (252.5) ties the scores.
+  const xs: number[] = []; const ys: number[] = []; const chs: number[] = [];
+  for (let x = 0; x <= 100; x += 5) { xs.push(x); ys.push(0); chs.push(x); }
+  for (let c = 105; c <= 400; c += 5) { xs.push(1000 + c); ys.push(1000); chs.push(c); }
+  for (let x = 100; x >= 0; x -= 5) { xs.push(x); ys.push(-4); chs.push(405 + (100 - x)); }
+  const ref: RefLine = { rx: Float64Array.from(xs), ry: Float64Array.from(ys), ch: Float64Array.from(chs), lat0: 0, lon0: 0, length: 505 };
+  const tie = passVertex(50, -1, ref, -Infinity, Infinity, 252.5);
+  assert(ref.ch[tie.index] === 50 && tie.dist === 1, `tie: ch ${ref.ch[tie.index]} dist ${tie.dist} -- equal scores must keep the earlier pass`);
+  const later = passVertex(50, -1, ref, -Infinity, Infinity, 252.6);
+  assert(ref.ch[later.index] === 455 && tie.dist === 1 && later.dist === 3, `nearS 252.6: ch ${ref.ch[later.index]} -- the return pass`);
+  const earlier = passVertex(50, -1, ref, -Infinity, Infinity, 252.4);
+  assert(ref.ch[earlier.index] === 50, `nearS 252.4: ch ${ref.ch[earlier.index]}`);
+  const none = passVertex(50, -1, ref);
+  assert(ref.ch[none.index] === 50, 'no context: earliest');
+  const nv = nearestVertex(50, -1, ref);
+  assert(ref.ch[nv.index] === 50 && nv.dist === 1, 'precondition: nearestVertex is the outbound vertex');
+});
+
+test('virgin-cycle26 05: live re-acquisition after a GPS gap lands on the parallel return street the rider is on, offline too, and both finish the lap', () => {
+  for (const y of [42, 30]) {
+    // core LiveProjector directly (the live.ts re-acquisition call site)
+    const lp = new LiveProjector(PAR_REF);
+    const ride = parRide(0, y);
+    let first = lp.update(ride.xs[0], ride.ys[0], ride.ts[0]);
+    assert(first.onRoute && first.s < 5, `y=${y}: anchor s ${first.s} onRoute ${first.onRoute}`);
+    let firstOnX = -1; let last = first;
+    for (let i = 1; i < ride.xs.length; i++) {
+      last = lp.update(ride.xs[i], ride.ys[i], ride.ts[i]);
+      if (last.onRoute && firstOnX < 0) firstOnX = ride.xs[i];
+    }
+    assert(firstOnX >= 570, `y=${y}: first on-route fix at x = ${firstOnX} (want >= 570: re-acquired at the 5th fix after the gap, not never)`);
+    assert(last.onRoute && last.s > PAR_L - 10, `y=${y}: live final s ${last.s} onRoute ${last.onRoute}, want ~${PAR_L}`);
+    // offline projector: same ride, no backwards run along the outbound street
+    const { s } = projectRideOffline(ride.xs, ride.ys, PAR_REF);
+    assert(s[0] < 5, `y=${y}: offline anchor ${s[0]}`);
+    let minStep = Infinity;
+    for (let i = 2; i < s.length; i++) minStep = Math.min(minStep, s[i] - s[i - 1]);
+    assert(minStep > -3, `y=${y}: offline ran backwards by ${-minStep} m along the return leg`);
+    assert(s[s.length - 1] > PAR_L - 10, `y=${y}: offline end s ${s[s.length - 1]}, want ~${PAR_L}`);
+  }
+});
+
+test('virgin-cycle26 05: the LiveEngine scores a parallel-street lap after a GPS gap -- gates fire in order and FINISH is real', () => {
+  const t0 = 1759860000;
+  const { gates, final } = runEngine(PAR_SPEC, parRide(t0, 42));
+  assert(gates.map((g) => g.gateIndex).join(',') === '0,1,2,3,4', `gate events ${JSON.stringify(gates.map((g) => [g.gateIndex, g.t - t0, g.estimated]))}`);
+  assert(gates[3].estimated === false && gates[4].estimated === false, `G3 / FINISH must be real crossings on the return street: ${JSON.stringify(gates.slice(3))}`);
+  assert(final.phase === 'finished' && final.chainageM !== null && final.chainageM > PAR_L - 10, `phase ${final.phase}, chainage ${final.chainageM}`);
+});
+
+
+test('virgin-cycle26 05: live re-acquisition on a retraced street stays on the pass the rider was on when GPS puts them nearer the other side', () => {
+  // OB_LONG street: outbound y = 0 (600 m), return y = -4. Out to x = 100
+  // (sp ~ 100), then a 200 s GPS gap 70 m south (8 off-corridor fixes:
+  // re-acquisition is tried from the 5th and finds nothing within 40 m; the
+  // time-aware bound grows to 15 m/s x 200 s = 3000 m, so [sp, sp + bound]
+  // spans BOTH passes), then the rider reappears at (450, -3): 1 m from the
+  // RETURN copy (ch ~2354), 3 m from the outbound one (ch 450), and > 240 m
+  // ahead of the window, so only re-acquisition can place it. Still outbound:
+  // the pick must be ch 450 (the pass nearest the chainage the rider had).
+  const xs: number[] = []; const ys: number[] = []; const ts: number[] = [];
+  for (let x = 0; x <= 100; x += 5) { xs.push(x); ys.push(0); ts.push(x / 5); }
+  for (let k = 1; k <= 8; k++) { xs.push(100 + 40 * k); ys.push(-70); ts.push(20 + k * 25); }
+  const rejoin = xs.length;
+  for (let x = 450; x <= 600; x += 5) { xs.push(x); ys.push(x === 450 ? -3 : 0); ts.push(220 + (x - 450) / 5); }
+  const lp = new LiveProjector(OB_LONG_REF);
+  const ss: number[] = [];
+  for (let i = 0; i < xs.length; i++) ss.push(lp.update(xs[i], ys[i], ts[i]).s);
+  assert(ss[rejoin - 1] > 95 && ss[rejoin - 1] < 105, `pre-gap chainage ${ss[rejoin - 1]}, want ~100`);
+  assert(ss[rejoin] > 445 && ss[rejoin] < 455, `live rejoin chainage ${ss[rejoin]}, want ~450 (outbound) -- ${ss[rejoin] > 2000 ? 'jumped onto the return copy' : ss[rejoin] < 105 ? 'never re-acquired' : 'unexpected'}`);
+  assert(ss[ss.length - 1] > 595 && ss[ss.length - 1] < 605, `end chainage ${ss[ss.length - 1]}, want ~600`);
+  // offline: the same ride, the same answer
+  const { s } = projectRideOffline(xs, ys, OB_LONG_REF);
+  assert(s[rejoin] > 445 && s[rejoin] < 455, `offline rejoin chainage ${s[rejoin]}, want ~450`);
+  assert(s[s.length - 1] > 595 && s[s.length - 1] < 605, `offline end chainage ${s[s.length - 1]}`);
+});
+
+
+// ------------------------------------------------ virgin-cycle26 brief 06
+// A loop reference whose closing vertex is G m from its opening one (a ride
+// whose first fixes settled 25 / 40 m from where it ended), and a wide road
+// whose return copy is 22 m from the outbound one. The START pick is the
+// rider's one reference (virgin-cycle21): the first fix is taken AT the start,
+// so with no chainage context the EARLIEST pass inside the corridor is the
+// anchor, however much nearer a later pass is (forward-only projection catches
+// up from a too-early guess, never from a too-late one). The 15 m band of
+// brief 05 is for re-acquisition, where the rider's last chainage is a guess.
+function gapLoopRef(gapM: number): RefLine {
+  return buildSyntheticRef([[0, 0], [1000, 0], [1000, 600], [0, 600], [0, gapM]]);
+}
+/** The gap loop ridden from its CLOSING point (0, gapM): first fix there, then
+ * 5 m/s around the loop. */
+function gapLoopRide(t0: number, gapM: number): { xs: number[]; ys: number[]; ts: number[] } {
+  const xs = [0]; const ys = [gapM]; const ts = [t0];
+  for (let s = 5; s <= 3195; s += 5) { const [x, y] = loopPos(s); xs.push(x); ys.push(y); ts.push(t0 + s / 5); }
+  return { xs, ys, ts };
+}
+const WIDE_ROAD_REF = buildSyntheticRef([[0, 0], [600, 0], [600, 400], [1000, 400], [1000, -22], [0, -22]]);
+const WIDE_ROAD_L = WIDE_ROAD_REF.ch[WIDE_ROAD_REF.ch.length - 1];
+/** Out along y = 0, around the block, back along y = -22; the first fix is at
+ * the START with a 20 m GPS error toward the return side: (5, -20) is 2 m
+ * from the return copy and 20 m from the outbound one -- more than the 15 m
+ * band, so only the no-context corridor band keeps the outbound copy. */
+function wideRoadRide(t0: number): { xs: number[]; ys: number[]; ts: number[] } {
+  const xs = [5]; const ys = [-20]; const ts = [t0];
+  for (let s = 10; s <= 2822; s += 5) {
+    const [x, y] = s < 600 ? [s, 0] : s < 1000 ? [600, s - 600] : s < 1400 ? [600 + (s - 1000), 400] : s < 1822 ? [1000, 400 - (s - 1400)] : [1000 - (s - 1822), -22];
+    xs.push(x); ys.push(y); ts.push(t0 + s / 5);
+  }
+  return { xs, ys, ts };
+}
+
+test('virgin-cycle26 06: with no chainage context passVertex takes the earliest pass anywhere inside the corridor; with context the 15 m band still applies', () => {
+  for (const gap of [25, 40]) {
+    const ref = gapLoopRef(gap);
+    const L = ref.ch[ref.ch.length - 1];
+    const near = nearestVertex(0, gap, ref);
+    assert(ref.ch[near.index] > L - 10 && near.dist < 6, `precondition G=${gap}: nearest is the closing vertex (within one 5 m sample), got ch ${ref.ch[near.index]} dist ${near.dist}`);
+    const anchor = passVertex(0, gap, ref, -Infinity, Infinity, -Infinity, CORRIDOR_M);
+    assert(anchor.index === 0 && numEq(anchor.dist, gap, 1e-6), `G=${gap} first fix at the closing point: ch ${ref.ch[anchor.index]} dist ${anchor.dist} -- want the opening vertex (ch 0, ${gap} m)`);
+    const reacq = passVertex(0, gap, ref, -Infinity, Infinity, L - 100, CORRIDOR_M);
+    assert(ref.ch[reacq.index] > L - 10, `G=${gap} re-acquisition near the end: ch ${ref.ch[reacq.index]} -- the 15 m band keeps the closing pass`);
+    const reacqEarly = passVertex(0, gap, ref, -Infinity, Infinity, 100, CORRIDOR_M);
+    assert(ref.ch[reacqEarly.index] > L - 10, `G=${gap} re-acquisition with an early context: ch ${ref.ch[reacqEarly.index]} -- ${gap} m further away is outside the 15 m band, context cannot override it`);
+  }
+  // The corridor is the limit: a closing vertex 45 m from the opening one is
+  // not the same place by the app's own measure, so the nearest pass stands.
+  const far = gapLoopRef(45);
+  const farAnchor = passVertex(0, 45, far, -Infinity, Infinity, -Infinity, CORRIDOR_M);
+  assert(far.ch[farAnchor.index] > far.ch[far.ch.length - 1] - 10, `G=45: ch ${far.ch[farAnchor.index]} -- outside the corridor the earliest pass is not a candidate`);
+  // Wide road, first fix 20 m toward the return side (2 m from it): outbound.
+  const wide = passVertex(5, -20, WIDE_ROAD_REF, -Infinity, Infinity, -Infinity, CORRIDOR_M);
+  assert(WIDE_ROAD_REF.ch[wide.index] < 30 && numEq(wide.dist, 20, 1e-6), `wide road first fix: ch ${WIDE_ROAD_REF.ch[wide.index]} dist ${wide.dist} -- want the outbound copy (ch ~5, 20 m)`);
+  // Parallel streets (brief 05 fixture), no context: (500, 30) is 30 m from the
+  // outbound copy and 14 m from the return one -- both inside the corridor, so
+  // the earliest pass is the anchor; (500, 42) leaves the outbound copy outside
+  // the corridor cap and the return copy is the only candidate (brief 05).
+  const between = passVertex(500, 30, PAR_REF, -Infinity, Infinity, -Infinity, CORRIDOR_M);
+  assert(PAR_REF.ch[between.index] < 600 && numEq(between.dist, 30, 1e-6), `(500,30) no context: ch ${PAR_REF.ch[between.index]} dist ${between.dist} -- want the outbound copy`);
+  const capped = passVertex(500, 42, PAR_REF, -Infinity, Infinity, -Infinity, CORRIDOR_M);
+  assert(PAR_REF.ch[capped.index] > 1500, `(500,42) no context: ch ${PAR_REF.ch[capped.index]} -- the cap at the corridor still holds`);
+  // A tighter acceptance caps the no-context band too.
+  const narrow = passVertex(0, 25, gapLoopRef(25), -Infinity, Infinity, -Infinity, 20);
+  assert(gapLoopRef(25).ch[narrow.index] > 3100, `within = 20: ch ${gapLoopRef(25).ch[narrow.index]} -- the opening vertex at 25 m is outside the acceptance`);
+});
+
+test('virgin-cycle26 06: a loop closing 25 / 40 m from its start, ridden from the closing point, anchors at the start live and offline and fires all five gates', () => {
+  const t0 = 1759860000;
+  for (const gap of [25, 40]) {
+    const ref = gapLoopRef(gap);
+    const L = ref.ch[ref.ch.length - 1];
+    const gatesM = [32, 800, 1600, 2400, L - 27];
+    const ride = gapLoopRide(t0, gap);
+    const lp = new LiveProjector(ref);
+    const first = lp.update(ride.xs[0], ride.ys[0], ride.ts[0]);
+    assert(first.s < 1, `G=${gap}: LiveProjector anchor s ${first.s}, want 0 (the opening vertex)`);
+    let last = first;
+    for (let i = 1; i < ride.xs.length; i++) last = lp.update(ride.xs[i], ride.ys[i], ride.ts[i]);
+    assert(last.onRoute && last.s > L - 10, `G=${gap}: live final s ${last.s}, want ~${L}`);
+    const { s } = projectRideOffline(ride.xs, ride.ys, ref);
+    assert(s[0] < 1, `G=${gap}: offline anchor s ${s[0]}, want 0`);
+    assert(s[s.length - 1] > L - 10, `G=${gap}: offline end s ${s[s.length - 1]}, want ~${L}`);
+    const spec: TrackSpec = { id: `GapLoop${gap}`, ref, gates: gatesM };
+    const { gates, first: st0, final } = runEngine(spec, ride);
+    assert(st0.chainageM !== null && st0.chainageM < 1, `G=${gap}: engine anchor chainage ${st0.chainageM}, want 0`);
+    assert(gates.map((g) => g.gateIndex).join(',') === '0,1,2,3,4', `G=${gap}: gate events ${JSON.stringify(gates.map((g) => [g.gateIndex, g.t - t0, g.estimated]))} -- ${gates.length === 1 && gates[0].gateIndex === 4 ? 'FINISH fired at the first fix, gates 0-3 skipped' : 'unexpected'}`);
+    assert(gates.every((g) => !g.estimated), `G=${gap}: estimated fires ${JSON.stringify(gates.filter((g) => g.estimated))}`);
+    assert(final.phase === 'finished' && final.chainageM !== null && final.chainageM > L - 10, `G=${gap}: phase ${final.phase}, chainage ${final.chainageM}`);
+    for (let i = 0; i < gatesM.length; i++) {
+      const off = crossTime(ride.ts, s, gatesM[i]);
+      assert(off !== null && numEq(off, gates[i].t, 2), `G=${gap} gate ${i}: offline ${off === null ? 'never' : off - t0} vs live ${gates[i].t - t0}`);
+    }
+  }
+});
+
+test('virgin-cycle26 06: a wide road (return copy 22 m away) started with a 20 m GPS error toward the return side anchors on the outbound copy live, offline and in the LiveEngine', () => {
+  const t0 = 1759860000;
+  const ride = wideRoadRide(t0);
+  const lp = new LiveProjector(WIDE_ROAD_REF);
+  const first = lp.update(ride.xs[0], ride.ys[0], ride.ts[0]);
+  assert(first.s < 30, `LiveProjector anchor s ${first.s}, want ~5 (outbound)`);
+  let last = first;
+  for (let i = 1; i < ride.xs.length; i++) last = lp.update(ride.xs[i], ride.ys[i], ride.ts[i]);
+  assert(last.onRoute && last.s > WIDE_ROAD_L - 10, `live final s ${last.s}, want ~${WIDE_ROAD_L}`);
+  const { s } = projectRideOffline(ride.xs, ride.ys, WIDE_ROAD_REF);
+  assert(s[0] < 30, `offline anchor s ${s[0]}, want ~5`);
+  let minStep = Infinity;
+  for (let i = 1; i < s.length; i++) minStep = Math.min(minStep, s[i] - s[i - 1]);
+  assert(minStep > -3, `offline ran backwards by ${-minStep} m`);
+  assert(s[s.length - 1] > WIDE_ROAD_L - 10, `offline end s ${s[s.length - 1]}`);
+  const gatesM = [22, 700, 1400, 2100, WIDE_ROAD_L - 25];
+  const spec: TrackSpec = { id: 'WideRoad', ref: WIDE_ROAD_REF, gates: gatesM };
+  const { gates, first: st0, final } = runEngine(spec, ride);
+  assert(st0.chainageM !== null && st0.chainageM < 30, `engine anchor chainage ${st0.chainageM}, want ~5`);
+  assert(gates.map((g) => g.gateIndex).join(',') === '0,1,2,3,4' && gates.every((g) => !g.estimated), `gate events ${JSON.stringify(gates.map((g) => [g.gateIndex, g.t - t0, g.estimated]))}`);
+  assert(final.phase === 'finished' && final.chainageM !== null && final.chainageM > WIDE_ROAD_L - 10, `phase ${final.phase}, chainage ${final.chainageM}`);
 });

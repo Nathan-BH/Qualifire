@@ -235,3 +235,16 @@ test('catalogmap: source taps stop at the map so a pin tap is not an empty tap',
 test('catalogmap: the credit control is exported for the sibling map', () => {
   assert(src('src', 'ui', 'wayMapView.tsx').includes('export function Credit('), 'Credit is not exported');
 });
+
+
+// ------------------------------------------------ virgin-cycle26 brief 05
+test('virgin-cycle26 05: MAP titles a loop route "<Place> loop" in the place focus rows and as the route focus label', () => {
+  const d = fixture();
+  const place = placeFocusModel('H', d)!;
+  const loopRow = place.rows.find((r) => r.routeId === 'rLoop')!;
+  assert(loopRow.label === 'Home loop', `place focus loop row: ${loopRow.label}`);
+  assert(place.rows.find((r) => r.routeId === 'rWH')!.label === 'Work → Home', 'a pair row is unchanged');
+  const focus = routeFocusModel('rLoop', d)!;
+  assert(focus.label === 'Home loop', `route focus label: ${focus.label}`);
+  assert(!focus.label.includes('→'), 'no arrow in a loop title');
+});

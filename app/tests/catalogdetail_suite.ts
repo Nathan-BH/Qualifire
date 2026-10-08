@@ -186,3 +186,13 @@ test('catalogdetail: referenceRide vs referenceUnscored vs omitted', () => {
   assert(loop.referenceRide === null, 'an unresolvable referenceRideId must not produce a referenceRide');
   assert(loop.referenceUnscored === true, 'a referenceRideId with no stored result must be flagged unscored');
 });
+
+// ------------------------------------------------ virgin-cycle26 brief 01
+test('virgin-cycle26 01: catalog detail titles a loop route "<Place> loop" and a pair "<From> → <To>"', () => {
+  const loopW = routeDetailFor('way:Loop', DEPS)!;
+  assert(loopW.label === 'Park Loop loop', `loop route label: ${loopW.label}`);
+  const abW = routeDetailFor('way:AB', DEPS)!;
+  assert(abW.label === 'Home → Work', `pair label unchanged: ${abW.label}`);
+  const place = placeDetailFor('lm:c', DEPS)!;
+  assert(place.routes.length === 1 && place.routes[0].label === 'Park Loop loop', `place C's touching route: ${JSON.stringify(place.routes[0])}`);
+});

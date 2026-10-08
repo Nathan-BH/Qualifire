@@ -16,7 +16,8 @@ import { freeRideNear, freeRideResults } from '../store/freeRides';
 import { currentCatalog } from '../store/catalogStore';
 import { effectiveRideSportId } from '../store/sports';
 import { activeSportId, currentSports } from '../store/sportStore';
-import { wayLabelIn } from '../store/defaultWay';
+import { routeTitle, wayLabelIn } from '../store/defaultWay';
+import { pickedLoop } from './recordFlow';
 import { createExpoFsAdapter } from '../storage/expoFsAdapter';
 import { decodeEventsFile } from '../storage/eventsJsonl';
 import { buildRideRows } from './rideHistoryModel';
@@ -138,7 +139,7 @@ export default function RidesScreen() {
             const { events } = decodeEventsFile(text);
             const pick = events.find((e): e is PickEvent => e.kind === 'pick');
             if (pick && pick.fromLabel && pick.toLabel) {
-              updates.set(m.rideId, `${pick.fromLabel} → ${pick.toLabel}`);
+              updates.set(m.rideId, routeTitle(pick.fromLabel, pick.toLabel, pickedLoop(pick.from, pick.to)));
             }
           }
         } catch { /* best-effort — the row just falls back to "no way" */ }

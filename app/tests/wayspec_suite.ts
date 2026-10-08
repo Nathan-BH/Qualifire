@@ -12,7 +12,7 @@ import {
   specVocabulary,
   type SpecPickRow,
 } from '../src/store/waySpecs.ts';
-import { isUserMintedWayId, wayLabel, wayLabelIn, wayVariantLabel } from '../src/store/defaultWay.ts';
+import { isUserMintedWayId, routeTitle, wayLabel, wayLabelIn, wayVariantLabel } from '../src/store/defaultWay.ts';
 import { emptyCatalog } from '../src/store/catalog.ts';
 import type { Catalog, Way, Route } from '../src/store/types.ts';
 
@@ -165,4 +165,23 @@ test('WP-G routespec 11: labels — routeVariantLabel / routeLabelIn', () => {
   assert(wayLabelIn(userCat, 'route:x') === 'Home → Work · Dry · Fast', 'user-minted route with specs: way + specs');
   assert(wayLabelIn(userCat, 'route:y') === 'Home → Work', 'user-minted route without specs: just the way');
   assert(wayLabelIn(userCat, 'route:not-there') === wayLabel('route:not-there'), 'unknown id: falls back to routeLabel byte-identical');
+});
+
+// ------------------------------------------------ virgin-cycle26 brief 01
+test('virgin-cycle26 01: routeTitle — a loop is "<Place> loop", never "<Place> → <Place>"; ids decide, not labels; wayLabelIn keeps the " · spec" suffix', () => {
+  assert(routeTitle('Home', 'Home', true) === 'Home loop', `loop: ${routeTitle('Home', 'Home', true)}`);
+  assert(routeTitle('Home', 'Work', false) === 'Home → Work', 'an ordinary pair is byte-identical to the old template');
+  assert(routeTitle('Home', 'Home', false) === 'Home → Home', 'two DIFFERENT places sharing a label are not a loop (the caller decides from ids)');
+  assert(routeTitle('new', 'new', false) === 'new → new', 'a first ride stays new → new');
+  const lm = (id: string, label: string) => ({ id, label, lat: 0, lon: 0, radiusM: 1, activeFromMs: 0, activeUntilMs: null, offerAtStart: true });
+  const loopRoute: Route = { id: 'home>home', startLandmarkId: 'home', endLandmarkId: 'home', loopDiscriminator: 'loop:park', wayIds: ['route:lp', 'route:lq'] };
+  const abRoute: Route = { id: 'home>work', startLandmarkId: 'home', endLandmarkId: 'work', wayIds: ['route:ab'] };
+  const lp: Way = { id: 'route:lp', routeId: 'home>home', refLineId: 'route:lp', gateSetVersion: 1, seeded: false };
+  const lq: Way = { id: 'route:lq', routeId: 'home>home', refLineId: 'route:lq', gateSetVersion: 1, seeded: false, specs: ['Dry', 'Fast'] };
+  const ab: Way = { id: 'route:ab', routeId: 'home>work', refLineId: 'route:ab', gateSetVersion: 1, seeded: false, specs: ['Dry'] };
+  const c: Catalog = { ...emptyCatalog(), landmarks: [lm('home', 'Home'), lm('work', 'Work')], routes: [loopRoute, abRoute], ways: [lp, lq, ab] };
+  assert(wayLabelIn(c, 'route:lp') === 'Home loop', `plain loop way: ${wayLabelIn(c, 'route:lp')}`);
+  assert(wayLabelIn(c, 'route:lq') === 'Home loop · Dry · Fast', `loop way with specs: ${wayLabelIn(c, 'route:lq')}`);
+  assert(wayLabelIn(c, 'route:ab') === 'Home → Work · Dry', 'a non-loop way is unchanged');
+  assert(!wayLabelIn(c, 'route:lq').includes('→'), 'no arrow anywhere in a loop title');
 });

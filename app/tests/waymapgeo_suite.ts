@@ -12,7 +12,10 @@ import {
   gateTicksFeatureCollection, metresBetween, riderFeature, rotateEnabledFor, wayBounds,
   wayLineFeature, waySplitFeatures, sectorSpansFeatureCollection, trailBounds,
   placeFeatureCollection, placeBounds,
+  buildPassModel, faintVertices, gateFaint, routeRunsFeatureCollection, FADE_NEAR_M, FAINT_OPACITY,
 } from '../src/ui/wayMapGeo.ts';
+import { pathCumulativeM, progressAtTime } from '../src/ui/wayMapMath.ts';
+import { xyToLatLon } from '../core/src/index.ts';
 import { gateName } from '../src/ui/gateAdjustModel.ts';
 import type { WayAsset } from '../src/ui/wayMapMath.ts';
 
@@ -590,4 +593,117 @@ test('virgin-cycle22 06: fitMeNextMode — the one FIT/ME button names the ACTIO
   for (const m of ['follow', 'fit', 'free'] as const) {
     assert(fitMeNextMode(m, false) === 'fit', `browse surface (${m}) -> plain FIT`);
   }
+});
+
+// ------------------------------------------------ virgin-cycle26 brief 04
+/** A WayAsset from planar waypoints (metres about 50.87 N, 4.70 E), vertices every 5 m,
+ * gates at the given path-metre positions. Pixel fields are dummies (never read here). */
+function synAsset(waypoints: [number, number][], gateAtM: number[]): WayAsset {
+  const pts: [number, number][] = [];
+  const cum: number[] = [];
+  let total = 0;
+  for (let i = 0; i + 1 < waypoints.length; i++) {
+    const [x0, y0] = waypoints[i]; const [x1, y1] = waypoints[i + 1];
+    const len = Math.hypot(x1 - x0, y1 - y0);
+    for (let d = 0; d < len; d += 5) { pts.push([x0 + ((x1 - x0) * d) / len, y0 + ((y1 - y0) * d) / len]); cum.push(total + d); }
+    total += len;
+  }
+  pts.push(waypoints[waypoints.length - 1]); cum.push(total);
+  const path = pts.map(([x, y]) => xyToLatLon(x, y, 50.87, 4.70) as [number, number]);
+  const gateIdx = gateAtM.map((m) => { let k = 0; while (k + 1 < cum.length && cum[k + 1] <= m) k++; return k; });
+  return {
+    image: '', path, gateIdx, w: 900, h: 1400, x0: 0, y1: 0, scale: 1, offx: 0, offy: 0, sourceRide: 'syn',
+    gates: gateIdx.map((k, i) => ({ name: gateName(i, gateIdx.length), lat: path[k][0], lon: path[k][1], px: 0, py: 0 })),
+  };
+}
+const OB_WP: [number, number][] = [[0, 0], [300, 0], [300, 400], [700, 400], [700, -4], [0, -4]];
+const OB_GATES_M = [22, 551, 1102, 1653, 2160];
+
+test('virgin-cycle26 04: buildPassModel marks only retraced ground; a straight line has no partners and never fades', () => {
+  const straight = synAsset([[0, 0], [3000, 0]], [30, 750, 1500, 2250, 2970]);
+  const m = buildPassModel(straight)!;
+  assert(m !== null && m.partnerM.every((p) => p === null), 'no partner on a single-pass line');
+  assert(faintVertices(m, 100) === null && faintVertices(m, 2900) === null && faintVertices(m, null) === null, 'nothing faint, ever');
+  assert(Math.abs(m.cumM[m.cumM.length - 1] - 3000) < 3, `cumM end ${m.cumM[m.cumM.length - 1]}`);
+  const ob = buildPassModel(synAsset(OB_WP, OB_GATES_M))!;
+  for (let k = 0; k < ob.cumM.length; k++) {
+    const c = ob.cumM[k]; const p = ob.partnerM[k];
+    // the return copy mirrors the outbound one: x = c outbound, x = 2204 - chainage on the return, so the partner sits at ≈ 2204 - c either way
+    if (c <= 290 || c >= 1915) assert(p !== null && Math.abs(Math.abs(p - c) - Math.abs(2204 - 2 * c)) < 40, `street vertex at ${c} must have a partner on the other copy (≈ ${2204 - c}), got ${p}`);
+    if (c > 350 && c < 1850) assert(p === null, `block vertex at ${c} must have no partner, got ${p}`);
+  }
+});
+
+test('virgin-cycle26 04: faintVertices — outbound: the return copy is faint; on the block near the return: nothing faint; on the return: the outbound copy is faint; never within FADE_NEAR_M', () => {
+  const a = synAsset(OB_WP, OB_GATES_M);
+  const m = buildPassModel(a)!;
+  const out = faintVertices(m, 100)!;
+  assert(out !== null, 'outbound: something is faint');
+  for (let k = 0; k < m.cumM.length; k++) {
+    const c = m.cumM[k];
+    if (c >= 1915) assert(out[k], `return copy at ${c} must be faint while outbound at 100`);
+    if (c <= 290 || (c > 350 && c < 1850)) assert(!out[k], `current pass / block at ${c} must stay bright`);
+  }
+  const back = faintVertices(m, 2000)!;
+  assert(back !== null, 'return: something is faint');
+  for (let k = 0; k < m.cumM.length; k++) {
+    const c = m.cumM[k];
+    if (c <= 290) assert(back[k], `outbound copy at ${c} must be faint while on the return at 2000`);
+    if (c >= 1915) assert(!back[k], `current (return) pass at ${c} must be bright`);
+  }
+  // Nearing the return street from the block (s = 1700): return vertices within 240 m ahead
+  // (cum ≤ 1940) are already bright; the far end of the street (cum 2150+) is bright too because
+  // the rider's chainage is NOT nearer its outbound partner any more. The outbound copy fades.
+  const near = faintVertices(m, 1700)!;
+  assert(near !== null, 'approaching: the outbound copy fades');
+  for (let k = 0; k < m.cumM.length; k++) {
+    const c = m.cumM[k];
+    if (c >= 1915) assert(!near[k], `return copy at ${c} must be bright when within reach or current`);
+    if (c <= 290) assert(near[k], `outbound copy at ${c} must be faint at 1700`);
+  }
+  // FADE_NEAR_M: a vertex less than 240 m ahead of the rider is never faint.
+  const s = 1950; const f = faintVertices(m, s);
+  if (f) for (let k = 0; k < m.cumM.length; k++) if (Math.abs(m.cumM[k] - s) <= FADE_NEAR_M) assert(!f[k], `vertex at ${m.cumM[k]} within ${FADE_NEAR_M} m of ${s} must not be faint`);
+  assert(FAINT_OPACITY > 0 && FAINT_OPACITY < 1, 'dim, never hidden');
+});
+
+test('virgin-cycle26 04: gateFaint and the feature builders — faint:1 exactly where flagged, omitted otherwise, old call shapes unchanged', () => {
+  const a = synAsset(OB_WP, OB_GATES_M);
+  const m = buildPassModel(a)!;
+  const out = faintVertices(m, 100);
+  const g = gateFaint(a, out);
+  assert(g.join(',') === 'false,false,false,false,true', `outbound at 100: only FINISH (on the return copy) is faint, got ${g}`);
+  const g2 = gateFaint(a, faintVertices(m, 2000));
+  assert(g2.join(',') === 'true,false,false,false,false', `return at 2000: only START (outbound copy) is faint, got ${g2}`);
+  assert(gateFaint(a, null).every((v) => !v), 'no flags: nothing faint');
+  const ticks = gateTicksFeatureCollection(a, undefined, 15, g);
+  assert(ticks.features.length === 5 && ticks.features[4].properties.faint === 1 && !('faint' in ticks.features[0].properties), 'tick faint property');
+  const plain = gateTicksFeatureCollection(a, undefined, 15);
+  assert(plain.features.every((f) => !('faint' in f.properties)), 'three-argument call: no faint key');
+  const spans = sectorSpansFeatureCollection(a, [null, 'x', 'x', 'x', 'x'], undefined, g)!;
+  assert(spans.features.length === 4 && spans.features[3].properties.faint === 1 && spans.features.slice(0, 3).every((f) => !('faint' in f.properties)), 'span ending at FINISH is faint');
+  const spansLead = sectorSpansFeatureCollection(a, [null, 'x', 'x', 'x', 'x'], 'grey', g)!;
+  assert(spansLead.features.slice(4).every((f) => f.properties.lead && !('faint' in f.properties)), 'lead-in/out never faint');
+  const runs = routeRunsFeatureCollection(a, out)!;
+  assert(runs.features.length >= 2, `runs: ${runs.features.length}`);
+  const faintRuns = runs.features.filter((f) => f.properties.faint === 1);
+  assert(faintRuns.length >= 1 && runs.features.some((f) => !('faint' in f.properties)), 'both faint and bright runs');
+  const coords = runs.features.reduce((n, f) => n + f.geometry.coordinates.length, 0);
+  assert(coords === a.path!.length + runs.features.length - 1, `runs share boundary vertices: ${coords} coords for ${a.path!.length} vertices in ${runs.features.length} runs`);
+  const single = routeRunsFeatureCollection(a, null)!;
+  const base = wayLineFeature(a)!;
+  assert(single.features.length === 1 && !('faint' in single.features[0].properties) && single.features[0].geometry.coordinates.length === base.geometry.coordinates.length, 'null flags: today\'s single feature');
+  assert(routeRunsFeatureCollection({ ...a, path: undefined }, null) === null, 'no path: null');
+});
+
+test('virgin-cycle26 04: progressAtTime walks the same k/f as positionAtTime and is monotonic over a demo-style clock', () => {
+  const a = synAsset([[0, 0], [3000, 0]], [30, 750, 1500, 2250, 2970]);
+  const cum = pathCumulativeM(a.path!);
+  const gateAt = [0, 100, 200, 300, 400];
+  assert(progressAtTime(a, gateAt, -5) !== null && Math.abs(progressAtTime(a, gateAt, -5)! - cum[a.gateIdx![0]]) < 1e-6, 'before START: at gate 0');
+  for (let k = 0; k < gateAt.length; k++) assert(Math.abs(progressAtTime(a, gateAt, gateAt[k])! - cum[a.gateIdx![k]]) < 1e-6, `at gate time ${k}: progress at gate ${k}`);
+  let prev = -1;
+  for (let t = 0; t <= 450; t += 7) { const p = progressAtTime(a, gateAt, t)!; assert(p >= prev, `monotonic at t=${t}: ${p} < ${prev}`); prev = p; }
+  assert(Math.abs(progressAtTime(a, gateAt, 150)! - (cum[a.gateIdx![1]] + cum[a.gateIdx![2]]) / 2) < 1e-6, 'midway in sector 2 by time = midway by metres');
+  assert(progressAtTime({ ...a, gateIdx: undefined }, gateAt, 10) === null, 'no gateIdx: null');
 });

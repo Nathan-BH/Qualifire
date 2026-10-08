@@ -31,25 +31,35 @@ export const SNAP_STEP_M = 10;
 export const MIN_GATE_GAP_M = 50;
 /** Below this there is no room to slide anything — quantiles only. */
 export const MIN_SNAP_LENGTH_M = 600;
+/** virgin-cycle26 brief 03: a sector gate stays this far (chainage) from any
+ * vertex on retraced ground (core/src/projection.ts overlapChainages) — more
+ * than the 40 m corridor, so the moved gate's tick sits outside the other
+ * pass's corridor. Same ±SNAP_WINDOW_M search as the stop rule; a blocked
+ * window leaves the quantile where it is (the engine fires by chainage, so a
+ * doubled spot is a display nuisance, never a timing error). */
+export const OVERLAP_CLEAR_M = 60;
 
 /**
  * The 5 seeded gate chainages (START, G1, G2, G3, FINISH) for a reference
  * line of `refLengthM` metres, given the reference ride's own stop
  * chainages. Always strictly increasing for any refLengthM > 0.
+ * `overlapChainageM` (virgin-cycle26 brief 03) lists vertices on retraced ground; sector gates keep OVERLAP_CLEAR_M clear of them by the same slide.
  */
 export function seedGateChainages(
   refLengthM: number,
   stopChainageM: readonly number[],
+  overlapChainageM: readonly number[] = [],
 ): number[] {
   const L = refLengthM;
   const start = START_FRAC * L;
   const finish = FINISH_FRAC * L;
   const quantiles = SECTOR_FRACS.map((f) => f * L);
-  if (L < MIN_SNAP_LENGTH_M || stopChainageM.length === 0) {
+  if (L < MIN_SNAP_LENGTH_M || (stopChainageM.length === 0 && overlapChainageM.length === 0)) {
     return [start, ...quantiles, finish];
   }
   const clear = (c: number): boolean =>
-    stopChainageM.every((s) => Math.abs(c - s) >= SIGNAL_CLEAR_M);
+    stopChainageM.every((s) => Math.abs(c - s) >= SIGNAL_CLEAR_M) &&
+    overlapChainageM.every((s) => Math.abs(c - s) >= OVERLAP_CLEAR_M);
   const snapped = quantiles.map((g0) => {
     if (clear(g0)) return g0;
     for (let k = 1; k * SNAP_STEP_M <= SNAP_WINDOW_M; k++) {

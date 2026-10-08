@@ -44,7 +44,8 @@ import { tierTextColour } from './tierColour.ts';
 import { currentCatalog, userCatalog } from '../store/catalogStore.ts';
 import { effectiveRideSportId, scopeCatalog } from '../store/sports.ts';
 import { activeCatalog, currentSports } from '../store/sportStore.ts';
-import { wayLabelIn } from '../store/defaultWay.ts';
+import { routeTitle, wayLabelIn } from '../store/defaultWay.ts';
+import { pickedLoop } from './recordFlow.ts';
 import {
   clearUnmatched, getStoredResult, removeStoredResult, storedResultsForWay,
 } from '../store/resultsStore.ts';
@@ -223,7 +224,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
         const { events } = decodeEventsFile(text);
         const pick = events.find((e): e is PickEvent => e.kind === 'pick');
         if (!cancelled) {
-          setPickLabel(pick && pick.fromLabel && pick.toLabel ? `${pick.fromLabel} → ${pick.toLabel}` : null);
+          setPickLabel(pick && pick.fromLabel && pick.toLabel ? routeTitle(pick.fromLabel, pick.toLabel, pickedLoop(pick.from, pick.to)) : null);
         }
       } catch {
         if (!cancelled) setPickLabel(null);

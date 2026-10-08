@@ -78,3 +78,18 @@ export function fmtPct(chainageM: number, refLengthM: number): string {
   if (refLengthM <= 0) return '— %';
   return `${((chainageM / refLengthM) * 100).toFixed(1)} %`;
 }
+
+/** virgin-cycle26 brief 04: which gate a map tap selects when the tap hit
+ * SEVERAL gate ticks at once (an out-and-back street puts two gates on one
+ * pixel). `hits` = the gate indices of every feature under the tap, any
+ * order, duplicates allowed, -1 for unknown names. None selected among them
+ * => the first (lowest index); otherwise the next one cyclically, so repeated
+ * taps walk through the stack. A single hit returns that hit — exactly the
+ * pre-cycle26 behaviour, and the card's own toggle still deselects it. The
+ * chip row keeps selecting any gate directly. */
+export function nextGateOnTap(hits: readonly number[], selected: number | null): number | null {
+  const sorted = [...new Set(hits)].filter((i) => i >= 0).sort((a, b) => a - b);
+  if (sorted.length === 0) return null;
+  const at = selected === null ? -1 : sorted.indexOf(selected);
+  return at < 0 ? sorted[0] : sorted[(at + 1) % sorted.length];
+}

@@ -66,7 +66,7 @@ import { catalogTrackSpecs } from './tracks.ts';
 /** Memory guard: 4 h at 1 Hz. Past this the engine stops (recording doesn't). */
 const MAX_BUFFERED_FIXES = 14400;
 /** Cycle 023 fix 2: a candidate's very first fix seeds LiveProjector's
- * chainage via a GLOBAL nearest-vertex search (no window yet) — a fix this
+ * chainage via a GLOBAL pass-aware vertex search (no window yet) — a fix this
  * inaccurate can seed the wrong point on the polyline entirely, and because
  * projection is forward-only-monotonic there is no way back. Above this
  * accuracy (metres) that anchor is untrustworthy enough to warrant a retry
@@ -340,7 +340,7 @@ export class LiveEngine {
     let dirty = false;
     const poorNow = accuracyM !== undefined && accuracyM > POOR_ACCURACY_M;
     // Cycle 023 fix 2: the FIRST fix anchors the candidate's chainage via a
-    // global nearest-vertex search (core/live.ts LiveProjector) — if that
+    // global pass-aware vertex search (core/live.ts LiveProjector) — if that
     // fix's accuracy was poor, the anchor can land on the wrong part of the
     // polyline entirely, and forward-only projection can never correct it
     // afterwards. Guarded to fire at most once, only when the ORIGINAL anchor

@@ -229,3 +229,34 @@ export function cropFor(
   ty = imgH <= viewH ? (viewH - imgH) / 2 : Math.min(0, Math.max(viewH - imgH, ty));
   return { scale, translateX: tx, translateY: ty };
 }
+
+/** virgin-cycle26 brief 04: planar metres along `path` per vertex (cumM[0] = 0),
+ * the same per-segment equirectangular arithmetic positionAtTime uses. The
+ * runtime asset's path IS the reference's 5 m vertices, so this agrees with
+ * the engine's chainage to rounding. */
+export function pathCumulativeM(path: readonly [number, number][]): number[] {
+  const cum = [0];
+  for (let i = 0; i + 1 < path.length; i++) {
+    const dy = (path[i + 1][0] - path[i][0]) * 111320;
+    const dx = (path[i + 1][1] - path[i][1]) * 111320 * Math.cos((path[i][0] * Math.PI) / 180);
+    cum.push(cum[cum.length - 1] + Math.hypot(dx, dy));
+  }
+  return cum;
+}
+
+/** virgin-cycle26 brief 04: the DEMO's progress in path metres at ride time
+ * `tSec` — the same k/f selection as positionAtTime (same bound, same span), so
+ * the dot and the pass-aware fade agree. null when the asset cannot be walked. */
+export function progressAtTime(a: WayAsset, gateTimes: number[], tSec: number): number | null {
+  const path = a.path;
+  const idx = a.gateIdx;
+  if (!path || !idx || path.length < 2 || idx.length !== gateTimes.length || idx.length < 2) return null;
+  let k = 0;
+  while (k < gateTimes.length - 2 && tSec >= gateTimes[k + 1]) k++;
+  const span = Math.max(gateTimes[k + 1] - gateTimes[k], 1e-6);
+  const f = Math.max(0, Math.min(1, (tSec - gateTimes[k]) / span));
+  const cum = pathCumulativeM(path);
+  const i0 = Math.min(idx[k], path.length - 1);
+  const i1 = Math.min(Math.max(idx[k + 1], i0 + 1), path.length - 1);
+  return cum[i0] + f * (cum[i1] - cum[i0]);
+}

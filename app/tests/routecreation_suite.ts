@@ -1424,3 +1424,21 @@ test('c18-06 rc7 (createRouteFromDraft): an untimeable founding ride drops its s
   assert(wphResultsStore.getStoredResult('stale1') === null, 'the stale result on way:onehome1 must be dropped (brief 06 decision 6)');
   assert(wphResultsStore.getStoredResult('onehome1')?.wayId === 'way:onehome1', 'other rides untouched');
 });
+
+
+// ------------------------------------------------ virgin-cycle26 brief 05
+test('virgin-cycle26 05: existingRouteProps (naming card) titles a loop route "<Place> loop" and a pair "<From> → <To>"', async () => {
+  await wphSetup();
+  const c = wphUserCatalog();
+  c.routes.push({ id: 'wph-a>wph-a', startLandmarkId: 'wph-a', endLandmarkId: 'wph-a', wayIds: ['WphLoop'], loopDiscriminator: 'loop:test' });
+  c.ways.push({ id: 'WphLoop', routeId: 'wph-a>wph-a', refLineId: 'WphLoop', gateSetVersion: 1, seeded: false, specs: ['Dry'] });
+  c.gateSets.push({ wayId: 'WphLoop', version: 1, chainageM: [50, 500, 1000, 1500, 1950], createdAtMs: 0 });
+  const errs = await wphCatalogStore.saveUserCatalog(c);
+  await wphCatalogStore.flushCatalogWrites();
+  assert(errs.length === 0, `loop catalog must save clean, got ${errs.join('; ')}`);
+  const loop = wphRouteFromRide.existingRouteProps('wph-a>wph-a');
+  assert(loop !== null && loop.label === 'wph-a loop', `loop label: ${JSON.stringify(loop)}`);
+  assert(loop!.knownSpecLists.length === 1 && loop!.knownSpecLists[0].join() === 'Dry', `loop spec lists: ${JSON.stringify(loop!.knownSpecLists)}`);
+  const pair = wphRouteFromRide.existingRouteProps('wph-a>wph-b');
+  assert(pair !== null && pair.label === 'wph-a → wph-b', `pair label: ${JSON.stringify(pair)}`);
+});

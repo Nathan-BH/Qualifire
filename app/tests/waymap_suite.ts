@@ -423,3 +423,20 @@ test('virgin-cycle22 09: a patched style is only used for the theme URL it was f
   assert(src.includes('url: styleUrl,'), 'the fetched patch is stored with its URL');
   assert(src.includes('patched: patchedStyles?.url === styleUrl ? patchedStyles : null'), 'a stale-theme patch is never handed to mapStyleFor');
 });
+
+test('virgin-cycle26 04: wayMapView draws the pass the rider is not on at FAINT_OPACITY (progressM prop, faint paint on route / spans / ticks), cycles stacked gates on tap; the three live surfaces pass progressM', () => {
+  const src = fs.readFileSync(path.join(TESTS_DIR, '..', 'src', 'ui', 'wayMapView.tsx'), 'utf8');
+  assert(src.includes('progressM?: number | null;'), 'progressM prop');
+  assert((src.match(/\['case', \['has', 'faint'\], FAINT_OPACITY, 1\]/g) ?? []).length === 5, `faint opacity expression on route-casing, route-core, sector-spans-core, gate-ticks-casing, gate-ticks (want 5), got ${(src.match(/\['has', 'faint'\]/g) ?? []).length}`);
+  assert(!src.includes("'line-opacity': 1,"), 'the fixed gate-ticks opacity is gone');
+  assert(src.includes('routeRunsFeatureCollection(asset, faintVerts)') && src.includes('buildPassModel(asset)'), 'route FC built from the pass model');
+  assert(src.includes('gateTicksFeatureCollection(asset, props.gateColours, gateHalfLen, faintGates)') && src.includes('sectorSpansFeatureCollection(asset, props.sectorColours, props.leadColour, faintGates)'), 'faint gates reach ticks and spans');
+  assert(src.includes('nextGateOnTap(hits, props.gateSelect!.selected)') && !src.includes('features?.[0]?.properties?.name'), 'tap handler cycles stacked gates');
+  assert(!/['"]line-(dasharray|gradient)['"]/.test(src), 'no dasharray / gradient paint property (2026-08-24 device bug class; comments may name them)');
+  const rec = fs.readFileSync(path.join(TESTS_DIR, '..', 'src', 'ui', 'RecordScreen.tsx'), 'utf8');
+  const demo = fs.readFileSync(path.join(TESTS_DIR, '..', 'src', 'ui', 'DemoScreen.tsx'), 'utf8');
+  const rep = fs.readFileSync(path.join(TESTS_DIR, '..', 'src', 'ui', 'ReplayScreen.tsx'), 'utf8');
+  assert(rec.includes('progressM={live.chainageM}'), 'LIVE: engine chainage');
+  assert(demo.includes('progressM={progressAtTime(ASSET, script.gateAt, clockS)}'), 'DEMO: progressAtTime');
+  assert(rep.includes('progressM={pos ? pos.sM : null}'), 'REPLAY: recorded chainage');
+});

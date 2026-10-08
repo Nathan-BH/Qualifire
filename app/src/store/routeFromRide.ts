@@ -19,6 +19,7 @@ import type { FsAdapter } from '../storage/fsAdapter.ts';
 import { chronologicalFixes, decodeRideFile } from '../storage/jsonl.ts';
 import { buildRefFromRideFixes, saveUserRef, userRefFor } from '../live/userRefs.ts';
 import { seedGateChainages } from './gateSeeding.ts';
+import { routeTitle } from './defaultWay.ts';
 import { addGateSet, gateSetFor, waysForRoute } from './catalog.ts';
 import { currentCatalog, saveUserCatalog, userCatalog } from './catalogStore.ts';
 import { scopeCatalog } from './sports.ts';
@@ -114,7 +115,7 @@ export async function promoteRideToReference(
   const withGates = addGateSet(user, {
     wayId,
     version,
-    chainageM: seedGateChainages(built.ref.length, built.stopChainageM),
+    chainageM: seedGateChainages(built.ref.length, built.stopChainageM, built.overlapChainageM),
     createdAtMs: Date.now(),
     origin: 'geometric',
     note: `re-seeded when ride ${rideId} became the reference (WP-H §3.3b)`,
@@ -193,7 +194,7 @@ export function existingRouteProps(routeId: string): { label: string; knownSpecL
   if (!w) return null;
   const lab = (id: string) => c.landmarks.find((l) => l.id === id)?.label ?? id;
   return {
-    label: `${lab(w.startLandmarkId)} → ${lab(w.endLandmarkId)}`,
+    label: routeTitle(lab(w.startLandmarkId), lab(w.endLandmarkId), w.startLandmarkId === w.endLandmarkId),
     knownSpecLists: waysForRoute(c, routeId).map((r) => r.specs ?? []),
   };
 }
@@ -237,7 +238,7 @@ export async function createRouteFromDraft(
   const fixes = await readRideFixes(draft.rideId, fs);
   const builtRef = fixes ? buildRefFromRideFixes(fixes) : null;
   const seed = builtRef
-    ? { chainageM: seedGateChainages(builtRef.ref.length, builtRef.stopChainageM) }
+    ? { chainageM: seedGateChainages(builtRef.ref.length, builtRef.stopChainageM, builtRef.overlapChainageM) }
     : undefined;
   const built = buildRouteCreationCatalog(userCatalog(), draft, names, seed);
   const errs = await saveUserCatalog(built);
