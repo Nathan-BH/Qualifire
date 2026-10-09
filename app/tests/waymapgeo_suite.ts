@@ -13,6 +13,7 @@ import {
   wayLineFeature, waySplitFeatures, sectorSpansFeatureCollection, trailBounds,
   placeFeatureCollection, placeBounds,
   buildPassModel, faintVertices, gateFaint, routeRunsFeatureCollection, FADE_NEAR_M, FAINT_OPACITY,
+  gateFocusStop, GATE_FOCUS_ZOOM,
 } from '../src/ui/wayMapGeo.ts';
 import { pathCumulativeM, progressAtTime } from '../src/ui/wayMapMath.ts';
 import { xyToLatLon } from '../core/src/index.ts';
@@ -706,4 +707,14 @@ test('virgin-cycle26 04: progressAtTime walks the same k/f as positionAtTime and
   for (let t = 0; t <= 450; t += 7) { const p = progressAtTime(a, gateAt, t)!; assert(p >= prev, `monotonic at t=${t}: ${p} < ${prev}`); prev = p; }
   assert(Math.abs(progressAtTime(a, gateAt, 150)! - (cum[a.gateIdx![1]] + cum[a.gateIdx![2]]) / 2) < 1e-6, 'midway in sector 2 by time = midway by metres');
   assert(progressAtTime({ ...a, gateIdx: undefined }, gateAt, 10) === null, 'no gateIdx: null');
+});
+
+test('virgin-cycle28 01: gateFocusStop centres the gate as [lon, lat] and never zooms out', () => {
+  const g = { lat: 10, lon: 20 };
+  const a = gateFocusStop(g, null);
+  assert(a.center[0] === 20 && a.center[1] === 10, `center ${JSON.stringify(a.center)}`);
+  assert(GATE_FOCUS_ZOOM === 17 && a.zoom === 17, `zoom ${a.zoom}`);
+  assert(gateFocusStop(g, 14).zoom === 17, 'zooms in from a wider view');
+  assert(gateFocusStop(g, 18.4).zoom === 18.4, 'keeps a closer rider zoom');
+  assert(a.duration === 500, `duration ${a.duration}`);
 });

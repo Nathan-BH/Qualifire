@@ -79,6 +79,15 @@ export function fmtPct(chainageM: number, refLengthM: number): string {
   return `${((chainageM / refLengthM) * 100).toFixed(1)} %`;
 }
 
+/** virgin-cycle28 02 (Nathan 2026-10-09): how far a gate has moved since the card opened, in the
+ * readout's own metre format: "+36 m" further along the route, "−4 m" back (U+2212, like the pad).
+ * '' when it rounds to 0 m. Display only: the nudge model above is unchanged. */
+export function fmtMoved(currentM: number, initialM: number): string {
+  const d = Math.round(currentM - initialM);
+  if (d === 0) return '';
+  return `${d > 0 ? '+' : '−'}${fmtChainage(Math.abs(d))}`;
+}
+
 /** virgin-cycle26 brief 04: which gate a map tap selects when the tap hit
  * SEVERAL gate ticks at once (an out-and-back street puts two gates on one
  * pixel). `hits` = the gate indices of every feature under the tap, any

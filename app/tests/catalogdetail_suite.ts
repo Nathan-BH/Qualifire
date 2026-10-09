@@ -5,7 +5,9 @@
  * same fixture style as `catalogdelete_suite.ts`'s hand-built cases. No
  * `registerHooks` shim needed — the model's import chain is JSON-free.
  */
-import { assert, test } from './lib.ts';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { assert, test, TESTS_DIR } from './lib.ts';
 import {
   fmtLengthM, placeDetailFor, routeDetailFor, type CatalogDetailDeps,
 } from '../src/ui/catalogDetailModel.ts';
@@ -195,4 +197,23 @@ test('virgin-cycle26 01: catalog detail titles a loop route "<Place> loop" and a
   assert(abW.label === 'Home → Work', `pair label unchanged: ${abW.label}`);
   const place = placeDetailFor('lm:c', DEPS)!;
   assert(place.routes.length === 1 && place.routes[0].label === 'Park Loop loop', `place C's touching route: ${JSON.stringify(place.routes[0])}`);
+});
+
+test('virgin-cycle28 03: a user way is renamable and carries its specs as one line; a shipped way is not', () => {
+  const r = routeDetailFor('way:AB', DEPS)!;
+  const std = r.ways.find((w) => w.id === STD_ID)!;
+  assert(std.renamable === true && std.specsText === '', `std ${std.renamable}/${std.specsText}`);
+  const withSpecs: Catalog = { ...CATALOG, ways: [{ ...wayStd, specs: ['Dry', 'Fast'] }, wayAlt, wayLoop] };
+  const r2 = routeDetailFor('way:AB', { ...DEPS, catalog: withSpecs })!;
+  assert(r2.ways.find((w) => w.id === STD_ID)!.specsText === 'Dry · Fast', 'parts joined with a middle dot');
+  const r3 = routeDetailFor('way:AB', { ...DEPS, seed: { ...SEED, ways: [wayAlt] } })!;
+  assert(r3.ways.find((w) => w.id === ALT_ID)!.renamable === false, 'a shipped way is not renamable');
+});
+
+test('virgin-cycle28 03: CatalogDetailScreen wires rename way and recomputes the model on bump', () => {
+  const src = fs.readFileSync(path.join(TESTS_DIR, '..', 'src', 'ui', 'CatalogDetailScreen.tsx'), 'utf8');
+  assert(src.includes('const out = renameWay(userCatalog(), SEED, wayId, text);'), 'pure rename on the user catalog');
+  assert(src.includes('const [tick, setTick] = useState(0);') && src.includes('[request, tick],'), 'model memo keys on the tick');
+  assert(src.includes('{r.renamable && !renaming ? ('), 'button only for a renamable way');
+  assert(src.includes('>rename way</Text>'), 'button label');
 });

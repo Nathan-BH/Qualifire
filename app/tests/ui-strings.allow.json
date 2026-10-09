@@ -384,6 +384,14 @@
     {
       "file": "src/ui/CatalogDetailScreen.tsx",
       "kind": "text",
+      "text": "rename way",
+      "reason": "virgin-cycle28 03 (Nathan 2026-10-09): ways can be renamed like places; lowercase like edit gates / delete way",
+      "since": "2026-10-09",
+      "by": "Sonnet execute, virgin-cycle28 brief 03"
+    },
+    {
+      "file": "src/ui/CatalogDetailScreen.tsx",
+      "kind": "text",
       "text": "to:",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",

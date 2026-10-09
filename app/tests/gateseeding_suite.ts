@@ -4,7 +4,7 @@
 import { assert, test } from './lib.ts';
 import { OVERLAP_CLEAR_M, seedGateChainages } from '../src/store/gateSeeding.ts';
 import { cumdist, overlapChainages, resample, type RefLine } from '../core/src/index.ts';
-import { clampNudge, gateName, isAdjustable, fmtChainage, fmtPct, nudgeDeltaM, nextGateOnTap } from '../src/ui/gateAdjustModel.ts';
+import { clampNudge, gateName, isAdjustable, fmtChainage, fmtPct, fmtMoved, nudgeDeltaM, nextGateOnTap } from '../src/ui/gateAdjustModel.ts';
 
 const near = (a: number, b: number) => Math.abs(a - b) < 1e-9;
 
@@ -137,4 +137,12 @@ test('virgin-cycle26 04: nextGateOnTap — single hit is the old behaviour, a st
   assert(nextGateOnTap([4, 0], 2) === 0, 'stack, a gate outside the stack selected: first of the stack');
   assert(nextGateOnTap([-1, 3, 3, -1], null) === 3, 'duplicates and unknown names (-1) are dropped');
   assert(nextGateOnTap([-1], null) === null && nextGateOnTap([], 1) === null, 'nothing tappable: null');
+});
+
+test('virgin-cycle28 02: fmtMoved reads metres moved since the card opened', () => {
+  assert(fmtMoved(1000, 1000) === '', 'unmoved: empty');
+  assert(fmtMoved(1000.4, 1000) === '', 'rounds to 0: empty');
+  assert(fmtMoved(1036, 1000) === '+36 m', `got ${fmtMoved(1036, 1000)}`);
+  assert(fmtMoved(996, 1000) === '−4 m', `got ${fmtMoved(996, 1000)}`);
+  assert(fmtMoved(3234, 2000) === '+1 234 m', `got ${fmtMoved(3234, 2000)}`);
 });

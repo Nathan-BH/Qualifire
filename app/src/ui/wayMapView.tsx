@@ -96,7 +96,7 @@ import {
   bearingBetween, cameraTargetFor, fitMeNextMode,
   gateHalfLenM, gateTicksFeatureCollection, metresBetween, riderFeature, rotateEnabledFor, wayBounds,
   sectorSpansFeatureCollection, trailBounds, placeFeatureCollection, placeBounds,
-  buildPassModel, faintVertices, gateFaint, routeRunsFeatureCollection, FAINT_OPACITY,
+  buildPassModel, faintVertices, gateFaint, routeRunsFeatureCollection, FAINT_OPACITY, gateFocusStop,
 } from './wayMapGeo.ts';
 import { trailLineFeature, type TrailPoint } from './trailModel.ts';
 import { selfsFeatureCollection, type SelfDot } from './selfRaceModel.ts';
@@ -306,6 +306,11 @@ type WayMapProps = {
    * Selection is UI state, not a verdict: the ring is riderBlue, never a
    * tier colour (D-013/D-030). */
   gateSelect?: { selected: number | null; onPress: (gateIndex: number) => void };
+  /** virgin-cycle28 01 (Nathan 2026-10-09): bring gate `index` of the drawn asset into view. A new `seq`
+   * = a new request (the gate card bumps it per chip tap, so a repeat tap re-centres). Sets the camera
+   * mode to 'free' first (as a drag does) so the declarative fit push stops pulling back; FIT re-fits.
+   * Absent/null = no request (every other caller). */
+  focusGate?: { index: number; seq: number } | null;
   /** virgin-cycle26 brief 04 (Nathan 2026-10-08): the rider's progress in
    * metres along the drawn path — the live engine's forward-only chainage
    * (RecordScreen), the recorded chainage (ReplayScreen) or progressAtTime
@@ -509,6 +514,24 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
       // userBearing=0 on the next render instead.
     }
   };
+
+  // virgin-cycle28 01 (Nathan 2026-10-09): the gate card's chip row asks for one gate to be brought into
+  // view (focusGate.seq changes per tap). 'free' first, so the declarative fit push stops pulling the
+  // camera back to the whole route (the same state a drag leaves); FIT re-fits as ever. Above the
+  // riderOnly early return (Rules of Hooks).
+  const focusSeq = props.focusGate?.seq ?? null;
+  useEffect(() => {
+    if (focusSeq === null || !props.focusGate || !asset) return;
+    const gate = asset.gates[props.focusGate.index];
+    if (!gate) return;
+    setMode('free');
+    try {
+      cameraRef.current?.setStop({ ...gateFocusStop(gate, liveZoom), easing: 'ease' });
+    } catch {
+      // map not initialised yet: nothing to move
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusSeq]);
 
   // Runtime style patch (design contract B): fetch the online style once,
   // memoize BOTH a labels-on and a labels-off copy. Until it arrives (or if

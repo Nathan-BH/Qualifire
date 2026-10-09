@@ -23,7 +23,7 @@ import WayMapView from './wayMapView.tsx';
 import { dateTimeLabel } from './rideHistoryModel.ts';
 import { rankedCountFor } from './colourModel.ts';
 import { currentCatalog, saveUserCatalog, userCatalog } from '../store/catalogStore.ts';
-import { mergeLandmarks, renameLandmark } from '../store/catalogMerge.ts';
+import { mergeLandmarks, renameLandmark, renameWay } from '../store/catalogMerge.ts';
 import { landmarkUsageCounts } from '../store/landmarkUsage.ts';
 import { placeOptions } from '../store/placeSearch.ts';
 import { PlacePicker } from './placePicker.tsx';
@@ -47,7 +47,7 @@ export default function CatalogDetailScreen({ request }: { request: CatalogDetai
   const styles = useMemo(() => makeStyles(t), [t]);
   // Bumped after an in-screen delete so the model re-reads currentCatalog()
   // (same idiom as RoutesScreen's old tick/RidesScreen's resultsTick).
-  const [, setTick] = useState(0);
+  const [tick, setTick] = useState(0);
   const bump = () => setTick((v) => v + 1);
 
   // B-39: read per render, never captured at import (RoutesScreen.tsx:122-125).
@@ -80,7 +80,7 @@ export default function CatalogDetailScreen({ request }: { request: CatalogDetai
     // deps is rebuilt every render from the same per-render CATALOG/SEED
     // reads above; request/tick are what actually decide when to recompute.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [request, setTick],
+    [request, tick],
   );
 
   // §3.4: the subject can vanish out from under this screen (a route delete
@@ -163,6 +163,14 @@ export default function CatalogDetailScreen({ request }: { request: CatalogDetai
           onOpenPlace={(placeId) => tabNav.openCatalog({ kind: 'place', id: placeId })}
           onOpenRide={(rideId, startedAtMs) => tabNav.openRide({ rideId, source: 'routes', startedAtMs })}
           onEditGates={(wayId) => tabNav.openGateAdjust({ wayId })}
+          onRenameWay={async (wayId, text) => {
+            const out = renameWay(userCatalog(), SEED, wayId, text);
+            if (!out.ok) { Alert.alert('Could not rename', out.errors.join('\n')); return false; }
+            const errs = await saveUserCatalog(out.next);
+            if (errs.length > 0) { Alert.alert('Could not rename', errs.join('\n')); return false; }
+            bump();
+            return true;
+          }}
           onDeleteWay={(wayId) => {
             const w = CATALOG.routes.find((x) => x.id === request.id);
             const r = CATALOG.ways.find((x) => x.id === wayId);
@@ -319,7 +327,7 @@ function RouteLinkRow({
 // ------------------------------------------------------------------ WayBody
 
 function RouteBody({
-  model, t, styles, onOpenPlace, onOpenRide, onEditGates, onDeleteWay, onDeleteRoute,
+  model, t, styles, onOpenPlace, onOpenRide, onEditGates, onDeleteWay, onDeleteRoute, onRenameWay,
 }: {
   model: RouteDetailModel;
   t: PaddockTheme;
@@ -329,6 +337,7 @@ function RouteBody({
   onEditGates: (wayId: string) => void;
   onDeleteWay: (wayId: string) => void;
   onDeleteRoute: () => void;
+  onRenameWay: (wayId: string, text: string) => Promise<boolean>;
 }) {
   return (
     <>
@@ -364,6 +373,7 @@ function RouteBody({
           onOpenRide={onOpenRide}
           onEditGates={onEditGates}
           onDeleteWay={onDeleteWay}
+          onRenameWay={onRenameWay}
         />
       ))}
 
@@ -389,7 +399,7 @@ function FactRow({ label, value, t }: { label: string; value: string; t: Paddock
 }
 
 function WaySection({
-  r, t, styles, onOpenRide, onEditGates, onDeleteWay,
+  r, t, styles, onOpenRide, onEditGates, onDeleteWay, onRenameWay,
 }: {
   r: WayDetailModel;
   t: PaddockTheme;
@@ -397,12 +407,17 @@ function WaySection({
   onOpenRide: (rideId: string, startedAtMs: number) => void;
   onEditGates: (wayId: string) => void;
   onDeleteWay: (wayId: string) => void;
+  onRenameWay: (wayId: string, text: string) => Promise<boolean>;
 }) {
   // B.2 (2026-09-05 update): the "edit gates" guard is computed here at the
   // screen level, mirroring RoutesScreen.tsx:210's own `routeDeletable ?
   // gateEditDraftFor(r.id) : null` — kept out of the pure model on purpose
   // (taste call T6; the model stays store-read-agnostic about wayFromRide.ts).
   const gateEditable = r.deletable && gateEditDraftFor(r.id) !== null;
+  // virgin-cycle28 03 (Nathan 2026-10-09): rename this way's specifier inline, like the place rename
+  // above (Alert.prompt is iOS-only). Pre-filled with the parts joined ' · '.
+  const [renaming, setRenaming] = useState(false);
+  const [renameText, setRenameText] = useState(r.specsText);
 
   return (
     <View style={{ marginTop: 16 }}>
@@ -434,6 +449,31 @@ function WaySection({
         <Pressable style={[styles.deleteBtn, { borderColor: t.cardBorder }]} onPress={() => onEditGates(r.id)}>
           <Text style={[styles.deleteText, { color: t.textDim }]}>edit gates</Text>
         </Pressable>
+      ) : null}
+      {r.renamable && !renaming ? (
+        <Pressable style={[styles.deleteBtn, { borderColor: t.cardBorder, marginTop: 8 }]} onPress={() => { setRenameText(r.specsText); setRenaming(true); }}>
+          <Text style={[styles.deleteText, { color: t.textDim }]}>rename way</Text>
+        </Pressable>
+      ) : null}
+      {renaming ? (
+        <View style={st.renameRow}>
+          <TextInput
+            style={[st.renameInput, { color: t.text, borderColor: t.cardBorder, backgroundColor: t.bg }]}
+            value={renameText}
+            onChangeText={setRenameText}
+            maxLength={40}
+            autoFocus
+          />
+          <Pressable
+            style={[styles.deleteBtn, { borderColor: t.cardBorder }]}
+            onPress={() => { void onRenameWay(r.id, renameText).then((ok) => { if (ok) setRenaming(false); }); }}
+          >
+            <Text style={[styles.deleteText, { color: t.text }]}>SAVE</Text>
+          </Pressable>
+          <Pressable style={[styles.deleteBtn, { borderColor: t.cardBorder }]} onPress={() => setRenaming(false)}>
+            <Text style={[styles.deleteText, { color: t.textDim }]}>cancel</Text>
+          </Pressable>
+        </View>
       ) : null}
       {r.deletable ? (
         <Pressable style={[styles.deleteBtn, { borderColor: t.cardBorder, marginTop: 8 }]} onPress={() => onDeleteWay(r.id)}>

@@ -441,3 +441,21 @@ test('virgin-cycle26 04: wayMapView draws the pass the rider is not on at FAINT_
   assert(demo.includes('progressM={progressAtTime(ASSET, script.gateAt, clockS)}'), 'DEMO: progressAtTime');
   assert(rep.includes('progressM={pos ? pos.sM : null}'), 'REPLAY: recorded chainage');
 });
+
+test('virgin-cycle28 01-02: a gate chip tap brings that gate into view; map taps unchanged; pad has no percent, same deltas', () => {
+  const src = fs.readFileSync(path.join(TESTS_DIR, '..', 'src', 'ui', 'wayMapView.tsx'), 'utf8');
+  const card = fs.readFileSync(path.join(TESTS_DIR, '..', 'src', 'ui', 'gateAdjustCard.tsx'), 'utf8');
+  assert(src.includes('focusGate?: { index: number; seq: number } | null;'), 'focusGate prop');
+  assert(/setMode\('free'\);\s*try \{\s*cameraRef\.current\?\.setStop\(\{ \.\.\.gateFocusStop\(gate, liveZoom\), easing: 'ease' \}\);/.test(src), "free first, then the imperative stop");
+  assert(src.includes('}, [focusSeq]);'), 'effect keyed on seq');
+  assert(src.indexOf('const focusSeq =') < src.indexOf('if (riderOnly && !showRider && !hasTrail && !place) return null;'), 'hook above the early return');
+  assert(card.includes('focusGate={focus}'), 'card passes focus');
+  assert(card.includes('gateSelect={{ selected, onPress: (i) => setSelected((cur) => (cur === i ? null : i)) }}'), 'map-tap path unchanged');
+  assert(card.includes('if (next !== null) setFocus((f) => ({ index: next, seq: (f?.seq ?? 0) + 1 }));'), 'a selecting chip tap bumps seq');
+  assert((card.match(/setFocus\(/g) ?? []).length === 1, 'only the chip row moves the map');
+  assert(!card.includes("%'") && !card.includes('fmtPct('), 'no percent label, no percent readout');
+  for (const call of ["pad('backBig', '−', -largeM, 'big')", "pad('backSmall', '−', -smallM, 'small')", "pad('onSmall', '+', smallM, 'small')", "pad('onBig', '+', largeM, 'big')"]) {
+    assert(card.includes(call), `pad call ${call}`);
+  }
+  assert(card.includes('const smallM = nudgeDeltaM(NUDGE_SMALL_PCT, props.refLengthM);') && card.includes('const largeM = nudgeDeltaM(NUDGE_LARGE_PCT, props.refLengthM);'), 'step sizes unchanged');
+});

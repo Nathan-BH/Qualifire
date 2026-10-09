@@ -36,6 +36,7 @@
  */
 import { landmarkAt, metresBetween } from './catalog.ts';
 import { placeByLabel } from './placeSearch.ts';
+import { ORIGINAL_SPEC_LABEL } from './waySpecs.ts';
 import type { Catalog, GateSet, Landmark, Way, Route } from './types.ts';
 
 /** Default disc for a landmark born from a single visit. The measured seed
@@ -429,11 +430,21 @@ export function buildRouteCreationCatalog(
       referenceRideId: draft.rideId,
       ...specField,
     };
+    // virgin-cycle28 04 (Nathan 2026-10-09, 4c/4e): the route's ONLY way, ours and plain, becomes
+    // ORIGINAL_SPEC_LABEL in this same write so the two ways read apart (renamable afterwards). Not when
+    // the route is shipped (not ours to edit), and not when the new way itself is called that (the two
+    // would collide under validateCatalog's duplicate-specs rule): then the old way stays plain, as before.
+    const ownRoute = userCat.routes.some((w) => w.id === routeId);
+    const siblings = userCat.ways.filter((r) => r.routeId === routeId);
+    const relabelId = ownRoute && siblings.length === 1 && cleanSpecs(siblings[0].specs).length === 0
+      && !sameSpecs(specs, [ORIGINAL_SPEC_LABEL])
+      ? siblings[0].id
+      : null;
     return {
       schemaVersion: userCat.schemaVersion,
       landmarks: userCat.landmarks,
       routes: userCat.routes.map((w) => (w.id === routeId ? { ...w, wayIds: [...w.wayIds, wayId] } : w)),
-      ways: [...userCat.ways, way],
+      ways: [...userCat.ways.map((r) => (r.id === relabelId ? { ...r, specs: [ORIGINAL_SPEC_LABEL] } : r)), way],
       gateSets: [...userCat.gateSets, gateSet],
     };
   }

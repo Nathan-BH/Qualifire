@@ -36,7 +36,7 @@ import {
 import { liveEngine, type LiveEngineState } from '../live/engine';
 import { LiveSectorPane, realTimebase, viewModelFromEngine } from './liveView';
 import { LaunchAnimation } from './launchAnimation';
-import { LOOP_ID, effectiveFromId, endingSlotFor, interruptedRideAction, isFullscreen, liveMapOverlayFor, namingOfferMode, recordPressAction, resolveGoingTo, routeForEndpoints, wayHintForPick, type RecordPhase } from './recordFlow';
+import { LOOP_ID, effectiveFromId, endingSlotFor, interruptedRideAction, isFullscreen, liveMapOverlayFor, namingOfferMode, recordPressAction, resolveGoingTo, routeForEndpoints, wayHintForPick, newWayOn, showWhichWay, toggleNewWay, type RecordPhase } from './recordFlow';
 import { nextPollDelayMs, restartsBudget } from '../location/positionRetryPolicy';
 import { useTabNav } from './tabNav';
 import WayMapView from './wayMapView';
@@ -305,6 +305,7 @@ export default function RecordScreen({
     setTo(reset.to ?? NEW_ID);
     setToExplicit(false);
     setWayPick(reset.wayPick);
+    setNewWayRouteId(null);
     setSportSwitchTick((v) => v + 1);
   };
   // §8a route pick (Nathan 2026-08-16, re-confirmed 2026-08-18): only asked
@@ -314,6 +315,10 @@ export default function RecordScreen({
   // reference (virgin-cycle21): the engine scores this way or nothing — it never
   // reassigns the ride to the road actually ridden.
   const [wayPick, setWayPick] = useState<{ routeId: string; wayId: string } | null>(null);
+  // virgin-cycle28 04 (Nathan 2026-10-09, 4b): WHICH WAY TODAY?'s 'new' pill: the id of the route it is on
+  // for, null = off. Never seeded: only a tap sets it (toggleNewWay); cleared with wayPick at sport switch,
+  // ride end and discard.
+  const [newWayRouteId, setNewWayRouteId] = useState<string | null>(null);
   // The pick frozen at START — the LIVE map's route line (virgin-cycle21: the only one it ever draws). Frozen
   // because `fromId` can drift mid-ride in auto mode (detected landmark goes
   // null once you leave the disc) while nothing has been tapped (N5), which
@@ -826,6 +831,7 @@ export default function RecordScreen({
       // panel) sees them cleared too — WP-H's own identity capture already
       // ran above, from `s`/`sessionRef`, not from these.
       setWayPick(null);
+      setNewWayRouteId(null);
       pickedWayRef.current = null;
       setRideWayHint(null);
       setReveal(nextReveal);
@@ -1057,6 +1063,7 @@ export default function RecordScreen({
             // virgin-cycle15 06 (D3): same ride-scoped reset as onEnd, and
             // for the same reason — a discarded ride is a ride ending too.
             setWayPick(null);
+            setNewWayRouteId(null);
             pickedWayRef.current = null;
             setRideWayHint(null);
             setPhase('setup');
@@ -1176,7 +1183,10 @@ export default function RecordScreen({
   const route = routeForEndpoints(CATALOG.routes, fromId, toId);
   const routeWays = route ? sortWaysForDisplay(CATALOG.ways.filter((r) => r.routeId === route.id)) : [];
   const ghostCount = routeWays.reduce((n, r) => n + ghostsFor(r.id).length, 0);
-  const pickedWay: Way | null = route
+  // virgin-cycle28 04: 'new' on = no way picked = the free ride on this known pair (no reference, live
+  // trail, no off-route scoring); STOP then offers "New way on <route>" (existingRouteId).
+  const newOn = newWayOn(newWayRouteId, route?.id ?? null);
+  const pickedWay: Way | null = route && !newOn
     ? (wayPick && wayPick.routeId === route.id
         ? (routeWays.find((r) => r.id === wayPick.wayId) ?? defaultWayFor(routeWays))
         : defaultWayFor(routeWays))
@@ -1193,6 +1203,14 @@ export default function RecordScreen({
   // Mirror for onStart's [] useCallback closure (it must read the CURRENT pick).
   const pickedWayRef = useRef<Way | null>(null);
   pickedWayRef.current = pickedWay;
+  // virgin-cycle28 04: the 'new' pill that ends WHICH WAY TODAY?. A tap toggles it; either way the explicit
+  // way pick is cleared, so on = no way pill lit, off = back to the default (most-ridden) way.
+  const newWayPill = (routeId: string) => (
+    <Pressable key={NEW_ID} onPress={() => { setNewWayRouteId((cur) => toggleNewWay(cur, routeId)); setWayPick(null); }}
+      style={[styles.pill, newOn && styles.pillOn]}>
+      <Text style={[styles.pillText, newOn && styles.pillTextOn]}>new</Text>
+    </Pressable>
+  );
 
   // virgin-cycle20 06 (Nathan 2026-10-01, START-gate lag): the selfs belong to the
   // way that is ON SCREEN, not to the engine — during a ride the engine's
@@ -1635,31 +1653,33 @@ export default function RecordScreen({
                   <Text style={[styles.pillText, to === NEW_ID && styles.pillTextOn]}>new</Text>
                 </Pressable>
               </View>
-              {/* A 'new' endpoint never resolves a route, so this is hidden by construction. */}
-              {route && routeWays.length > 1 ? (
+              {/* A 'new' endpoint never resolves a route, so this is hidden by construction. virgin-cycle28 04: shown from ONE way, ending with the 'new' pill. */}
+              {route && showWhichWay(routeWays.length) ? (
                 <>
                   <Text style={styles.flowLabel}>WHICH WAY TODAY?</Text>
-                  {hasSpecs(routeWays)
-                    ? specPickRows(routeWays, pickedWay?.id ?? null, defaultWayFor).map((row) => (
+                  {hasSpecs(routeWays) && routeWays.length > 1
+                    ? specPickRows(routeWays, pickedWay?.id ?? null, defaultWayFor).filter((_, i) => !newOn || i === 0).map((row, i) => (
                         <View key={row.depth} style={styles.pillRow}>
                           {row.options.map((o) => (
-                            <Pressable key={`${row.depth}:${o.label}`} onPress={() => setWayPick({ routeId: route.id, wayId: o.way.id })}
-                              style={[styles.pill, o.on && styles.pillOn]}>
-                              <Text style={[styles.pillText, o.on && styles.pillTextOn]}>{o.label}</Text>
+                            <Pressable key={`${row.depth}:${o.label}`} onPress={() => { setNewWayRouteId(null); setWayPick({ routeId: route.id, wayId: o.way.id }); }}
+                              style={[styles.pill, o.on && !newOn && styles.pillOn]}>
+                              <Text style={[styles.pillText, o.on && !newOn && styles.pillTextOn]}>{o.label}</Text>
                             </Pressable>
                           ))}
+                          {i === 0 ? newWayPill(route.id) : null}
                         </View>
                       ))
                     : (
                       <View style={styles.pillRow}>
                         {routeWays.map((r) => (
-                          <Pressable key={r.id} onPress={() => setWayPick({ routeId: route.id, wayId: r.id })}
+                          <Pressable key={r.id} onPress={() => { setNewWayRouteId(null); setWayPick({ routeId: route.id, wayId: r.id }); }}
                             style={[styles.pill, pickedWay?.id === r.id && styles.pillOn]}>
                             <Text style={[styles.pillText, pickedWay?.id === r.id && styles.pillTextOn]}>
                               {wayVariantLabel(r.id, route, r.specs)}
                             </Text>
                           </Pressable>
                         ))}
+                        {newWayPill(route.id)}
                       </View>
                     )}
                 </>

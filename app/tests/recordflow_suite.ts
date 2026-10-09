@@ -9,7 +9,7 @@ import { assert, test, TESTS_DIR } from './lib.ts';
 import {
   canTransition, effectiveFromId, endingSlotFor, isFullscreen, liveMapOverlayFor, namingOfferMode, recordPressAction, type RecordPhase,
   wayHintForPick, interruptedRideAction, INTERRUPTED_MIN_FIXES,
-  LOOP_ID, resolveGoingTo, routeForEndpoints, NEW_ID, pickedLoop,
+  LOOP_ID, resolveGoingTo, routeForEndpoints, NEW_ID, pickedLoop, showWhichWay, toggleNewWay, newWayOn,
 } from '../src/ui/recordFlow.ts';
 import { routeTitle } from '../src/store/defaultWay.ts';
 import { addSport, emptySports } from '../src/store/sports.ts';
@@ -753,4 +753,18 @@ test('virgin-cycle27 01: GOING TO follows START — suggestedDestination effect,
   assert((src.match(/onPress=\{\(\) => pickTo\(/g) ?? []).length === 3, 'place, loop and new pills all go through pickTo');
   assert(!/onPress=\{\(\) => setTo\(/.test(src), 'no GOING TO pill bypasses pickTo');
   assert((src.match(/setToExplicit\(false\);/g) ?? []).length === 3, 're-armed at sport switch, ride end and discard');
+});
+
+test('virgin-cycle28 04: the new pill is opt-in, toggles, is keyed to its route; WHICH WAY shows from one way', () => {
+  assert(showWhichWay(1) && showWhichWay(3) && !showWhichWay(0), 'shown from one way');
+  assert(toggleNewWay(null, 'r1') === 'r1' && toggleNewWay('r1', 'r1') === null && toggleNewWay('r2', 'r1') === 'r1', 'toggle');
+  assert(newWayOn('r1', 'r1') && !newWayOn('r1', 'r2') && !newWayOn(null, 'r1') && !newWayOn('r1', null), 'keyed to its route');
+  const rec = fs.readFileSync(path.resolve(TESTS_DIR, '..', 'src', 'ui', 'RecordScreen.tsx'), 'utf8');
+  assert(rec.includes('const [newWayRouteId, setNewWayRouteId] = useState<string | null>(null);'), 'starts off, never seeded');
+  assert((rec.match(/setNewWayRouteId\(null\)/g) ?? []).length === 5, 'cleared at sport switch, ride end, discard and on both way-pill taps');
+  assert((rec.match(/setNewWayRouteId\(\(cur\) => toggleNewWay\(cur, routeId\)\)/g) ?? []).length === 1 && (rec.match(/setNewWayRouteId\(/g) ?? []).length === 6, 'only the pill turns it on');
+  assert(rec.includes('const pickedWay: Way | null = route && !newOn'), "'new' on = no way picked");
+  assert(rec.includes('{route && showWhichWay(routeWays.length) ? (') && !rec.includes('route && routeWays.length > 1'), 'one-way routes show the block');
+  assert(rec.includes('wayPick: pickedWayRef.current?.id ?? null,') && rec.includes('setRideWayHint(pickedWayRef.current?.refLineId ?? null);'), 'START path unchanged');
+  assert((rec.match(/newWayPill\(route\.id\)/g) ?? []).length === 2, 'pill in both layouts');
 });

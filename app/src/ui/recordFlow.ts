@@ -175,6 +175,23 @@ export function routeForEndpoints<R extends { startLandmarkId: string; endLandma
   return routes.find((r) => r.startLandmarkId === fromId && r.endLandmarkId === toId);
 }
 
+/** virgin-cycle28 04 (Nathan 2026-10-09): WHICH WAY TODAY? shows for any known route, one way included,
+ * because it carries the 'new' pill. */
+export function showWhichWay(routeWayCount: number): boolean {
+  return routeWayCount >= 1;
+}
+
+/** virgin-cycle28 04 (4b): the 'new' pill's state is the id of the route it was tapped on (null = off).
+ * A tap toggles it; nothing else ever sets it, so it is never the default on any route. */
+export function toggleNewWay(cur: string | null, routeId: string): string | null {
+  return cur === routeId ? null : routeId;
+}
+
+/** On only for the route it was tapped on: an id left over from another pair reads as off. */
+export function newWayOn(cur: string | null, routeId: string | null): boolean {
+  return routeId !== null && cur === routeId;
+}
+
 /** virgin-cycle26 brief 05: the '~new' sentinel RecordScreen keeps as its
  * module-local NEW_ID ("no place picked" / the first ride from or to an
  * unknown place). Mirrored here, pure and testable, so a ride's logged pick

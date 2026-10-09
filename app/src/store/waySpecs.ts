@@ -14,6 +14,13 @@ type SpecWay = Pick<Way, 'id' | 'specs'>;
  * made) sitting beside its variants, or ['Dry'] beside ['Dry','Fast']. */
 export const PLAIN_SPEC_LABEL = 'plain';
 
+/** virgin-cycle28 04 (Nathan 2026-10-09, ideas 4c/4e): the specifier a route's ONLY, plain way receives
+ * when a second way is added to that route, so the two read apart. Provisional (Nathan: "a bit long";
+ * fallbacks Classic / First / Main): this is the one place to change it. Renamable afterwards
+ * (catalogMerge.ts renameWay). src/store is outside the ui-strings scanner's scope, so it has no
+ * allow-list entry; it is reviewed via virgin-cycle28/10-plan.md's visible-text table. */
+export const ORIGINAL_SPEC_LABEL = 'Original';
+
 /** True when at least one route carries a spec — RecordScreen's switch between
  * today's flat pill row (kept byte-identical) and the grouped rows. */
 export function hasSpecs(ways: readonly SpecWay[]): boolean {

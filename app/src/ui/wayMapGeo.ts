@@ -689,3 +689,14 @@ export function routeRunsFeatureCollection(
   }
   return { type: 'FeatureCollection', features };
 }
+
+/** virgin-cycle28 01 (Nathan 2026-10-09): the camera stop that brings ONE gate into view when the rider
+ * taps its chip on the gate card. Centre on the gate; never zoom OUT a rider who is already closer than
+ * GATE_FOCUS_ZOOM. Pure, so the suite pins it. */
+export const GATE_FOCUS_ZOOM = 17;
+export function gateFocusStop(
+  gate: { lat: number; lon: number },
+  liveZoom: number | null,
+): { center: [number, number]; zoom: number; duration: number } {
+  return { center: [gate.lon, gate.lat], zoom: Math.max(liveZoom ?? 0, GATE_FOCUS_ZOOM), duration: 500 };
+}

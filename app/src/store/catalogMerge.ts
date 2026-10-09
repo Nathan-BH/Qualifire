@@ -9,7 +9,7 @@
  */
 import { mergeCatalogs } from './catalog.ts';
 import { placeByLabel } from './placeSearch.ts';
-import { sameSpecs } from './routeCreation.ts';
+import { cleanSpecs, sameSpecs } from './routeCreation.ts';
 import type { Catalog, Route, Way } from './types.ts';
 
 export type RenameOutcome = { ok: true; next: Catalog } | { ok: false; errors: string[] };
@@ -24,6 +24,37 @@ export function renameLandmark(userCat: Catalog, seedCat: Catalog, id: string, l
   const clash = placeByLabel(mergeCatalogs(seedCat, userCat), next, id);
   if (clash) return { ok: false, errors: [`A place called "${clash.label}" already exists`] };
   return { ok: true, next: { ...userCat, landmarks: userCat.landmarks.map((x) => (x.id === id ? { ...x, label: next } : x)) } };
+}
+
+/** virgin-cycle28 03 (Nathan 2026-10-09): a way's specifier typed in ONE field, parts separated by '·'
+ * ("Dry · Fast" -> ['Dry', 'Fast']); trimmed, empties dropped (cleanSpecs). */
+export function parseSpecsText(text: string): string[] {
+  return cleanSpecs(text.split('·'));
+}
+
+/** The naming card's per-part cap (routeNamingCard.tsx spec input maxLength={24}). */
+export const MAX_SPEC_LEN = 24;
+
+/** virgin-cycle28 03: rename a way = replace its specs (the only rider-typed part of a way's name; the
+ * From → To part is the places' labels). USER catalog in/out like renameLandmark; the caller runs
+ * saveUserCatalog (which re-validates the seed+user merge). Only `specs` changes: id, refLineId, gate
+ * sets and every stored result are keyed by way id and untouched. A shipped way cannot be renamed; each
+ * part <= MAX_SPEC_LEN; no other way on the same route may carry the same parts (sameSpecs,
+ * case-insensitive); no parts at all (the plain From → To) only when it is the route's only way. */
+export function renameWay(userCat: Catalog, seedCat: Catalog, wayId: string, text: string): RenameOutcome {
+  const w = userCat.ways.find((x) => x.id === wayId);
+  if (!w) return { ok: false, errors: ['a shipped way cannot be renamed'] };
+  const specs = parseSpecsText(text);
+  if (specs.some((s) => s.length > MAX_SPEC_LEN)) return { ok: false, errors: [`each part is at most ${MAX_SPEC_LEN} letters`] };
+  const siblings = mergeCatalogs(seedCat, userCat).ways.filter((x) => x.routeId === w.routeId && x.id !== wayId);
+  if (specs.length === 0 && siblings.length > 0) return { ok: false, errors: ['this route has other ways, so this one needs a name'] };
+  if (specs.length > 0 && siblings.some((x) => sameSpecs(cleanSpecs(x.specs), specs))) {
+    return { ok: false, errors: [`"${specs.join(' · ')}" is already a way on this route`] };
+  }
+  const next: Way = { ...w };
+  if (specs.length > 0) next.specs = specs;
+  else delete next.specs;
+  return { ok: true, next: { ...userCat, ways: userCat.ways.map((x) => (x.id === wayId ? next : x)) } };
 }
 
 export interface FoldedRoute { droppedRouteId: string; intoRouteId: string; movedWayIds: string[] }

@@ -5,7 +5,7 @@
  */
 import { assert, test } from './lib.ts';
 import { emptyCatalog, mergeCatalogs, metresBetween, validateCatalog } from '../src/store/catalog.ts';
-import { mergeLandmarks, renameLandmark } from '../src/store/catalogMerge.ts';
+import { mergeLandmarks, parseSpecsText, renameLandmark, renameWay, MAX_SPEC_LEN } from '../src/store/catalogMerge.ts';
 import type { Catalog, GateSet, Landmark, Route, Way } from '../src/store/types.ts';
 
 function lm(id: string, lat: number, lon: number, radiusM = 120): Landmark {
@@ -178,4 +178,53 @@ test('c18-05 m8: both twins re-pointed (pre-existing twins on the dropped place)
   assert(out.repointedRouteIds.join(',') === 'r2,r4,r8', `repointed: ${out.repointedRouteIds.join(',')}`);
   const errs = valid(out.next);
   assert(errs.length === 0, `must validate, got ${errs.join('; ')}`);
+});
+
+function renameFixture(): Catalog {
+  return {
+    ...emptyCatalog(),
+    landmarks: [lm('home', 50.0, 4.0), lm('stat', 50.02, 4.0), lm('park', 50.04, 4.0)],
+    routes: [rt('r1', 'home', 'stat', ['w1', 'w2']), rt('r2', 'home', 'park', ['w3'])],
+    ways: [wy('w1', 'r1', 1), wy('w2', 'r1', 2, ['Dry']), wy('w3', 'r2', 3, ['Original'])],
+    gateSets: [
+      { wayId: 'w1', version: 1, chainageM: [10, 990], createdAtMs: 0 },
+      { wayId: 'w2', version: 1, chainageM: [10, 990], createdAtMs: 0 },
+      { wayId: 'w3', version: 1, chainageM: [10, 990], createdAtMs: 0 },
+    ],
+  };
+}
+
+test('virgin-cycle28 03: renameWay replaces only specs; split on ·; merged catalog validates', () => {
+  const user = renameFixture();
+  assert(JSON.stringify(parseSpecsText(' Wet ·  · Fast ')) === JSON.stringify(['Wet', 'Fast']), 'split, trim, drop empties');
+  const out = renameWay(user, emptyCatalog(), 'w1', ' Original ');
+  assert(out.ok, `rename refused: ${out.ok ? '' : out.errors.join('; ')}`);
+  if (!out.ok) return;
+  const w1 = out.next.ways.find((w) => w.id === 'w1')!;
+  const was = user.ways.find((w) => w.id === 'w1')!;
+  assert(JSON.stringify(w1.specs) === JSON.stringify(['Original']), `specs ${JSON.stringify(w1.specs)}`);
+  assert(w1.refLineId === was.refLineId && w1.gateSetVersion === was.gateSetVersion && w1.referenceRideId === was.referenceRideId && w1.routeId === was.routeId, 'only specs changed');
+  assert(out.next.ways.find((w) => w.id === 'w2') === user.ways.find((w) => w.id === 'w2'), 'other ways untouched');
+  assert(out.next.gateSets === user.gateSets && out.next.routes === user.routes && out.next.landmarks === user.landmarks, 'gates, routes, places untouched');
+  const errs = validateCatalog(mergeCatalogs(emptyCatalog(), out.next));
+  assert(errs.length === 0, `merged must validate: ${errs.join('; ')}`);
+  const multi = renameWay(user, emptyCatalog(), 'w1', 'Wet · Fast');
+  assert(multi.ok && JSON.stringify(multi.next.ways.find((w) => w.id === 'w1')!.specs) === JSON.stringify(['Wet', 'Fast']), 'multi-part name');
+  const own = renameWay(user, emptyCatalog(), 'w2', 'dry');
+  assert(own.ok, 'a way may keep its own name (any casing)');
+});
+
+test('virgin-cycle28 03: renameWay refusals: duplicate, empty with siblings, too long, shipped way; empty allowed for a sole way', () => {
+  const user = renameFixture();
+  const dup = renameWay(user, emptyCatalog(), 'w1', 'DRY');
+  assert(!dup.ok, 'same parts as another way on the route (case-insensitive) is refused');
+  const empty = renameWay(user, emptyCatalog(), 'w2', '  ·  ');
+  assert(!empty.ok, 'no name while the route has other ways is refused');
+  const long = renameWay(user, emptyCatalog(), 'w1', 'x'.repeat(MAX_SPEC_LEN + 1));
+  assert(!long.ok && MAX_SPEC_LEN === 24, 'a part over 24 is refused');
+  assert(renameWay(user, emptyCatalog(), 'w1', 'x'.repeat(MAX_SPEC_LEN)).ok, 'exactly 24 is fine');
+  const sole = renameWay(user, emptyCatalog(), 'w3', '');
+  assert(sole.ok && !('specs' in sole.next.ways.find((w) => w.id === 'w3')!), 'the sole way may go back to plain: specs field removed');
+  const seed: Catalog = { ...emptyCatalog(), ways: [wy('ws', 'r1', 9)] };
+  assert(!renameWay(user, seed, 'ws', 'Wet').ok, 'a shipped way cannot be renamed');
 });

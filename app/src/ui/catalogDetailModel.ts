@@ -36,6 +36,10 @@ export interface GateRowModel { name: string; chainageLabel: string }
 export interface WayDetailModel {
   id: string; refLineId: string; variantLabel: string; fullLabel: string;
   seedOwned: boolean; deletable: boolean;
+  /** virgin-cycle28 03: a user way's specifier can be edited (shipped ways never, like shipped places) */
+  renamable: boolean;
+  /** the way's specs as one editable line, parts joined ' · '; '' for a plain way */
+  specsText: string;
   lengthLabel: string | null;                       // '5.8 km' (1 dp; '850 m' under 1 km)
   gatesLabel: string | null;                        // '5 · v2 · geometric' — null when no gate set
   gateRows: GateRowModel[];                         // [] when no gate set
@@ -82,6 +86,8 @@ function wayDetailFor(r: Way, w: Route, deps: CatalogDetailDeps): WayDetailModel
     fullLabel: wayLabelIn(c, r.id),
     seedOwned,
     deletable: !seedOwned,
+    renamable: !seedOwned,
+    specsText: (r.specs ?? []).join(' · '),
     lengthLabel: lengthM !== null ? fmtLengthM(lengthM) : null,
     gatesLabel: gates ? `${n} · v${gates.version}${gates.origin ? ` · ${gates.origin}` : ''}` : null,
     gateRows: gates ? gates.chainageM.map((m, i) => ({ name: gateName(i, n), chainageLabel: fmtChainage(m) })) : [],

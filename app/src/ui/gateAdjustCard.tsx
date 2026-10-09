@@ -1,7 +1,7 @@
 /**
  * Save-flow gate-adjustment card (OPEN-ITEMS item 3, Part B). SETUP-UX §4,
  * cited not redesigned: tap a gate -> it enlarges; a glove-sized
- * `−1% −0.1% │ 1 842 m │ +0.1% +1%` nudge pad sits in the bottom third of
+ * `− − │ 1 842 m │ + +` nudge pad (big outer, small inner: virgin-cycle28 02) sits in the bottom third of
  * the card, the chainage number always visible and never under the thumb.
  * [UNTESTED ON DEVICE]
  *
@@ -34,7 +34,7 @@ import type { RefLine } from '../../core/src/index.ts';
 import { radius } from './theme';
 import { useTheme } from './themeContext';
 import {
-  NUDGE_LARGE_PCT, NUDGE_SMALL_PCT, clampNudge, fmtChainage, fmtPct, gateName, nudgeDeltaM,
+  NUDGE_LARGE_PCT, NUDGE_SMALL_PCT, clampNudge, fmtChainage, fmtMoved, gateName, nudgeDeltaM,
 } from './gateAdjustModel';
 import { buildRuntimeWayAsset } from './wayAssetRuntime.ts';
 import WayMapView from './wayMapView.tsx';
@@ -67,13 +67,15 @@ export interface GateAdjustCardProps {
 }
 
 const MAP_H = 280;
-const REPEAT_MS = 120;      // ~8 nudges/s: ±1 % → 8 %/s, ±0.1 % → 0.8 %/s
+const REPEAT_MS = 120;      // ~8 nudges/s, either step size
 const LONG_PRESS_MS = 350;
 
 export function GateAdjustCard(props: GateAdjustCardProps) {
   const { t } = useTheme();
   const [chainageM, setChainageM] = useState<number[]>(props.initialChainageM);
   const [selected, setSelected] = useState<number | null>(null);
+  // virgin-cycle28 01: a chip tap asks the map to bring that gate into view (seq: a repeat tap re-centres).
+  const [focus, setFocus] = useState<{ index: number; seq: number } | null>(null);
   const n = chainageM.length;
   const dirty = chainageM.some((v, i) => Math.abs(v - props.initialChainageM[i]) > 1e-6);
 
@@ -121,9 +123,10 @@ export function GateAdjustCard(props: GateAdjustCardProps) {
     if (props.busy || selected === null) stopRepeat();
   }, [props.busy, selected]);
 
-  const pad = (label: string, deltaM: number, size: 'big' | 'small') => (
+  // virgin-cycle28 02: `id` is the React key — two pads now share a glyph.
+  const pad = (id: string, label: string, deltaM: number, size: 'big' | 'small') => (
     <Pressable
-      key={label}
+      key={id}
       style={[st.padBtn, size === 'big' ? st.padBtnBig : st.padBtnSmall, { borderColor: t.cardBorder }]}
       disabled={props.busy}
       onPress={() => nudge(deltaM)}
@@ -139,6 +142,8 @@ export function GateAdjustCard(props: GateAdjustCardProps) {
       </Text>
     </Pressable>
   );
+
+  const moved = selected !== null ? fmtMoved(chainageM[selected], props.initialChainageM[selected]) : '';
 
   return (
     <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
@@ -158,6 +163,7 @@ export function GateAdjustCard(props: GateAdjustCardProps) {
           showRider={false}
           height={props.mapHeight ?? MAP_H}
           gateSelect={{ selected, onPress: (i) => setSelected((cur) => (cur === i ? null : i)) }}
+          focusGate={focus}
         />
       </View>
 
@@ -169,7 +175,11 @@ export function GateAdjustCard(props: GateAdjustCardProps) {
               key={i}
               style={[st.chip, { borderColor: t.cardBorder }, sel && { backgroundColor: t.accent }]}
               disabled={props.busy}
-              onPress={() => setSelected((cur) => (cur === i ? null : i))}
+              onPress={() => {
+                const next = selected === i ? null : i;
+                setSelected(next);
+                if (next !== null) setFocus((f) => ({ index: next, seq: (f?.seq ?? 0) + 1 }));
+              }}
             >
               <Text
                 style={[st.chipText, { color: sel ? t.onAccent : t.text }]}
@@ -185,13 +195,13 @@ export function GateAdjustCard(props: GateAdjustCardProps) {
       {selected !== null ? (
         <>
           <Text style={[st.readout, { color: t.text }]}>
-            {gateName(selected, n)} · {fmtChainage(chainageM[selected])} · {fmtPct(chainageM[selected], props.refLengthM)}
+            {gateName(selected, n)} · {fmtChainage(chainageM[selected])}{moved !== '' ? ` · ${moved}` : ''}
           </Text>
           <View style={st.padRow}>
-            {pad('−1%', -largeM, 'big')}
-            {pad('−0.1%', -smallM, 'small')}
-            {pad('+0.1%', smallM, 'small')}
-            {pad('+1%', largeM, 'big')}
+            {pad('backBig', '−', -largeM, 'big')}
+            {pad('backSmall', '−', -smallM, 'small')}
+            {pad('onSmall', '+', smallM, 'small')}
+            {pad('onBig', '+', largeM, 'big')}
           </View>
         </>
       ) : (
@@ -231,8 +241,8 @@ const st = StyleSheet.create({
   padBtn: { borderWidth: 1, borderRadius: radius.btn, minWidth: 0, alignItems: 'center', justifyContent: 'center' },
   padBtnBig: { flex: 1.25, paddingVertical: 16, paddingHorizontal: 6 },
   padBtnSmall: { flex: 0.75, paddingVertical: 10, paddingHorizontal: 4 },
-  padTextBig: { fontSize: 17, fontWeight: '800' },
-  padTextSmall: { fontSize: 13, fontWeight: '700' },
+  padTextBig: { fontSize: 30, fontWeight: '800', lineHeight: 34 },
+  padTextSmall: { fontSize: 18, fontWeight: '700', lineHeight: 22 },
   hint: { fontSize: 12, textAlign: 'center', marginTop: 12, marginBottom: 4 },
   saveBtn: { marginTop: 14, borderRadius: radius.btn, paddingVertical: 12, alignItems: 'center' },
   saveText: { fontSize: 15, fontWeight: '700', letterSpacing: 1 },

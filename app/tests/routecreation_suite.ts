@@ -38,6 +38,7 @@ import {
 } from '../src/store/routeCreation.ts';
 import type { Catalog, GateSet, Landmark, Way, Route } from '../src/store/types.ts';
 
+import { ORIGINAL_SPEC_LABEL } from '../src/store/waySpecs.ts';
 const LAT0 = 50.87;
 const LON0 = 4.70;
 /** ~111.32 m per 0.001° lat at any longitude; fixture rides run due north. */
@@ -415,6 +416,7 @@ test('WP-G 1: variant build on a user way', () => {
   assert(way.routeId === 'w1' && way.refLineId === 'way:ride-t1' && way.referenceRideId === 'ride-t1',
     'new way on w1, self-refLineId, referenceRideId set');
   assert(JSON.stringify(way.specs) === JSON.stringify(['Dry', 'Fast']), 'specs trimmed, empty dropped, order kept');
+  assert(JSON.stringify(built.ways.find((r) => r.id === 'r1')!.specs) === JSON.stringify([ORIGINAL_SPEC_LABEL]), 'virgin-cycle28 04: the sole plain way became Original');
   assert(built.gateSets.length === userCat.gateSets.length + 1, 'one new gate set');
   const errs = validateCatalog(mergeCatalogs(emptyCatalog(), built));
   assert(errs.length === 0, `merged result must validate, got: ${errs.join('; ')}`);
@@ -1441,4 +1443,29 @@ test('virgin-cycle26 05: existingRouteProps (naming card) titles a loop route "<
   assert(loop!.knownSpecLists.length === 1 && loop!.knownSpecLists[0].join() === 'Dry', `loop spec lists: ${JSON.stringify(loop!.knownSpecLists)}`);
   const pair = wphRouteFromRide.existingRouteProps('wph-a>wph-b');
   assert(pair !== null && pair.label === 'wph-a → wph-b', `pair label: ${JSON.stringify(pair)}`);
+});
+
+test('virgin-cycle28 04: Original only for the sole, plain, own way; never when the new way is called that', () => {
+  const wa = lm('a', LAT0, LON0, 150);
+  const wb = lm('b', LAT0 + 0.019, LON0, 150);
+  const w1: Route = { id: 'w1', startLandmarkId: 'a', endLandmarkId: 'b', wayIds: ['r1'] };
+  const plain: Way = { id: 'r1', routeId: 'w1', refLineId: 'r1', gateSetVersion: 1, seeded: false };
+  const gs: GateSet[] = [{ wayId: 'r1', version: 1, chainageM: [10, 990], createdAtMs: 0 }];
+  const one = catWith([wa, wb], [w1], [plain]); one.gateSets = gs;
+  const built = buildRouteCreationCatalog(one, variantDraft('ride-o1', 'w1', 'a', 'b'), { start: '', end: '', specs: ['Dry'] });
+  const old = built.ways.find((r) => r.id === 'r1')!;
+  assert(ORIGINAL_SPEC_LABEL === 'Original' && JSON.stringify(old.specs) === JSON.stringify(['Original']), `old specs ${JSON.stringify(old.specs)}`);
+  assert(old.refLineId === 'r1' && old.gateSetVersion === 1 && old.routeId === 'w1', 'only specs changed');
+  assert(validateCatalog(mergeCatalogs(emptyCatalog(), built)).length === 0, 'merged validates');
+  const same = buildRouteCreationCatalog(one, variantDraft('ride-o2', 'w1', 'a', 'b'), { start: '', end: '', specs: ['original'] });
+  assert(same.ways.find((r) => r.id === 'r1')!.specs === undefined, 'new way called Original: old way stays plain');
+  assert(validateCatalog(mergeCatalogs(emptyCatalog(), same)).length === 0, 'and that validates too');
+  const named = catWith([wa, wb], [w1], [{ ...plain, specs: ['Wet'] }]); named.gateSets = gs;
+  const b2 = buildRouteCreationCatalog(named, variantDraft('ride-o3', 'w1', 'a', 'b'), { start: '', end: '', specs: ['Dry'] });
+  assert(JSON.stringify(b2.ways.find((r) => r.id === 'r1')!.specs) === JSON.stringify(['Wet']), 'a named sole way keeps its name');
+  const r2: Way = { id: 'r2', routeId: 'w1', refLineId: 'r2', gateSetVersion: 1, seeded: false, specs: ['Wet'] };
+  const two = catWith([wa, wb], [{ ...w1, wayIds: ['r1', 'r2'] }], [plain, r2]);
+  two.gateSets = [...gs, { wayId: 'r2', version: 1, chainageM: [10, 990], createdAtMs: 0 }];
+  const b3 = buildRouteCreationCatalog(two, variantDraft('ride-o4', 'w1', 'a', 'b'), { start: '', end: '', specs: ['Dry'] });
+  assert(b3.ways.find((r) => r.id === 'r1')!.specs === undefined, 'with two ways already, nothing is relabelled');
 });
