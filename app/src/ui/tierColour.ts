@@ -54,7 +54,7 @@ export const YELLOW_TEXT_DAY = tierHex.yellow;
  * the map-line palette, returns null without a verdict.
  *
  * virgin-cycle27 02 FINAL (Nathan 2026-10-09): the same three hexes as the map line (tierHex) in BOTH themes — one palette, no night table; the low night contrast is an accepted on-device trial.
- * Contrast is computed in ridedetail_suite. 'neutral' (no verdict yet) = `t.accentText` as the chips do;
+ * Contrast is computed in ridedetail_suite. 'neutral' (no verdict yet, e.g. the founding/reference ride) = tierHex.yellow, same as 'yellow' and the chips;
  * 'est' / 'none' = `t.textDim` (dim, no verdict). Never null, never PURPLE_INK.
  */
 export function tierTextColour(tier: Tier, t: PaddockTheme): string {
@@ -62,7 +62,7 @@ export function tierTextColour(tier: Tier, t: PaddockTheme): string {
     case 'purple': return tierHex.purple;
     case 'green': return tierHex.green;
     case 'yellow': return tierHex.yellow;
-    case 'neutral': return t.accentText;
+    case 'neutral': return tierHex.yellow; // brand yellow, both themes (Nathan 2026-10-09); NOT t.accentText (daylight #B98A0A rejected)
     default: return t.textDim;
   }
 }

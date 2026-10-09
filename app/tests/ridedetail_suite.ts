@@ -251,6 +251,8 @@ const ACCEPTED_LOW_CONTRAST: Record<string, number> = {
   'green/night/race.bg': 3.55, // on #0A0A0A = 3.57
   'yellow/day/card': 1.60, // brand #F5C542 on #FFFFFF = 1.62 — Nathan: "the app yellow is better"
   'yellow/day/race.bg': 1.60, // on #FFFFFF = 1.62
+  'neutral/day/race.bg': 1.60, // on #FFFFFF = 1.62 (same 2026-10-09 ruling)
+  'neutral/day/card': 1.60, // 2026-10-09: no-verdict times (founding/reference ride) are the brand yellow too = 1.62 on #FFFFFF — Nathan's FINAL ruling, #B98A0A rejected
 };
 const themeName = (t: PaddockTheme) => (t.statusBar === 'light' ? 'night' : 'day');
 function assertScoredContrast(tier: 'purple' | 'green' | 'yellow', t: PaddockTheme, ground: 'card' | 'race.bg'): void {
@@ -278,7 +280,8 @@ test('virgin-cycle22 03 → cycle27 FINAL: tierTextColour — WCAG contrast on t
     }
     for (const tier of ['neutral', 'est', 'none'] as const) {
       const r = contrast(tierTextColour(tier, t), t.card);
-      assert(r >= 3.0, `${tier} on ${t.card}: ${r.toFixed(2)} < 3.0`);
+      const floor = ACCEPTED_LOW_CONTRAST[`${tier}/${themeName(t)}/card`] ?? 3.0;
+      assert(r >= floor, `${tier} on ${t.card}: ${r.toFixed(2)} < ${floor}`);
     }
   }
   // virgin-cycle27 02 FINAL (Nathan 2026-10-09): the yellow tier IS the brand yellow again, in both themes — inverted from the 2026-10-08 brief.
@@ -297,7 +300,7 @@ test('virgin-cycle27 02 FINAL: the tier palette is EXACTLY Nathan\'s picks — #
 test('virgin-cycle27 02: both themes return the ONE palette (tierHex) for scored tiers; neutral/est follow the theme tokens', () => {
   for (const t of [night, daylight]) {
     assert(tierTextColour('purple', t) === tierHex.purple && tierTextColour('green', t) === tierHex.green && tierTextColour('yellow', t) === tierHex.yellow, `scored tiers = tierHex (${t.statusBar})`);
-    assert(tierTextColour('neutral', t) === t.accentText, 'neutral = accentText (no verdict yet, as the chips do)');
+    assert(tierTextColour('neutral', t) === tierHex.yellow && tierTextColour('neutral', t) === colors.neutral && tierTextColour('neutral', t) !== '#B98A0A', 'neutral = brand yellow in both themes (reference ride; not the rejected daylight gold)');
     assert(tierTextColour('est', t) === t.textDim && tierTextColour('none', t) === t.textDim, 'est/none = textDim');
   }
   assert(PURPLE_TEXT_NIGHT === tierHex.purple && GREEN_TEXT_DAY === tierHex.green && YELLOW_TEXT_DAY === tierHex.yellow, 'legacy names alias the palette');
@@ -317,7 +320,8 @@ test('virgin-cycle22 04: the flash colour per tier x theme on the RACE ground (r
     }
     for (const tier of ['neutral', 'est', 'none'] as const) {
       const r = contrast(tierTextColour(tier, t), t.race.bg);
-      assert(r >= 3.0, `${tier} flash (92 px, large text) on ${t.race.bg}: ${r.toFixed(2)} < 3.0`);
+      const fl = ACCEPTED_LOW_CONTRAST[`${tier}/${themeName(t)}/race.bg`] ?? 3.0;
+      assert(r >= fl, `${tier} flash (92 px, large text) on ${t.race.bg}: ${r.toFixed(2)} < ${fl}`);
     }
     // a flash is always a shade off the clock's ink, never the same colour as the ticking digits
     for (const tier of TIERS) assert(tierTextColour(tier, t) !== t.text, `${tier} flash must not be the clock ink ${t.text}`);
@@ -354,4 +358,15 @@ test('virgin-cycle23 03: sectorHighlightColours — only the selected sector car
 
 test('virgin-cycle23 03: sectorHighlightColours — null selection = [] so the caller falls back to the verdict colours', () => {
   assert(sectorHighlightColours([{ index: 1 }, { index: 2 }], null, 'X').length === 0, 'empty when nothing is selected');
+});
+
+test('virgin-cycle27 02 FINAL (neutral fix): a reference/no-verdict time is the brand yellow in BOTH themes; no time site reads accentText or #B98A0A', () => {
+  for (const t of [night, daylight]) {
+    assert(tierTextColour('neutral', t) === '#F5C542' && tierTextColour('neutral', t) !== '#B98A0A', `neutral = brand yellow (${themeName(t)})`);
+  }
+  const rd = nodeFs.readFileSync(fileURLToPath(new URL('../src/ui/RideDetailScreen.tsx', import.meta.url).href), 'utf8').replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+  assert(!rd.includes('accentText'), 'RideDetailScreen: no time reads accentText');
+  assert((rd.match(/tierTextColour\('neutral', t\)/g) ?? []).length === 4, 'the four durationLabel sites use tierTextColour(neutral)');
+  const ch = nodeFs.readFileSync(fileURLToPath(new URL('../src/ui/chips.tsx', import.meta.url).href), 'utf8').replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+  assert(!ch.includes('accentText'), 'chips: neutral chip text is no longer accentText');
 });

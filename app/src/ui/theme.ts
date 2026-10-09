@@ -64,8 +64,9 @@ export const colors = {
  * paddock makes pressing START a literal day→night flip.
  *
  * `accentText` exists because the structural yellow fails contrast as TEXT
- * on a light ground — daylight uses a darker gold for yellow *text* while
- * yellow *surfaces* (START, Export) stay #F5C542 everywhere.
+ * on a light ground — daylight uses a darker gold for NON-TIME yellow text (selected pill
+ * labels, links) while yellow *surfaces* (START, Export) stay #F5C542 everywhere.
+ * virgin-cycle27 02 FINAL: lap/sector/activity TIMES never use it — tierTextColour is brand yellow.
  */
 export interface PaddockTheme {
   bg: string;

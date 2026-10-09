@@ -49,7 +49,7 @@ export function chipColors(tier: Tier, t: PaddockTheme): ChipPalette {
     case 'green':
       return { bg: 'transparent', border: colors.green, text: colors.green };
     case 'neutral':
-      return { bg: 'transparent', border: 'transparent', text: t.accentText };
+      return { bg: 'transparent', border: 'transparent', text: YELLOW_TIER }; // virgin-cycle27 02 FINAL: brand yellow, not t.accentText
     case 'yellow':
       return { bg: 'transparent', border: 'transparent', text: YELLOW_TIER };
     // 'neutral' above means "no verdict yet" — deliberately NOT yellow, so a

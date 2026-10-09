@@ -77,7 +77,7 @@ import { ActivityMenu, MenuButton, type MenuAnchor, type MenuItem } from './acti
  * "ON THIS ROUTE" section, scoped to this ride's route (§3.4).
  * virgin-cycle20 08: ranking only — the sector-bests block is gone
  * (Nathan: rolling comparison, no records).
- * virgin-cycle22 03: the today row is coloured with THIS ride's lap tier (date + time cells), not accentText. */
+ * virgin-cycle22 03: the today row is coloured with THIS ride's lap tier (date + time cells), not accentText. virgin-cycle27 02 FINAL: no-verdict times (durationLabel) go through tierTextColour('neutral') = brand yellow too. */
 function PbDetail(props: { wayId: string; lastRideId: string | null; todayTier: UiTier; t: PaddockTheme }) {
   const { wayId, lastRideId, todayTier, t } = props;
   const detail = buildPbDetail(rankingPoolFor(wayId, lastRideId), lastRideId);
@@ -477,7 +477,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
             <Text style={[styles.name, { color: t.text }]}>{wayLabelIn(currentCatalog(), model.wayId as string)}</Text>
             <Text style={[styles.date, { color: t.textDim }]}>{dateTimeLabel(request.startedAtMs)}</Text>
             {model.unranked
-              ? <Text style={[st.big, { color: t.accentText }]}>{durationLabel(meta)}</Text>
+              ? <Text style={[st.big, { color: tierTextColour('neutral', t) }]}>{durationLabel(meta)}</Text>
               : <Text style={[st.big, { color: tierTextColour(model.lapTier, t) }]}>{model.lapLabel}</Text>}
             <Text style={[styles.rankLine, { color: t.text2 }]}>{model.rankLine}</Text>
             {model.referenceOf ? (
@@ -503,7 +503,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
           <View style={styles.pad}>
             <Text style={[styles.name, { color: t.text }]}>{wayLabelIn(currentCatalog(), model.referenceOf.id)}</Text>
             <Text style={[styles.date, { color: t.textDim }]}>{dateTimeLabel(request.startedAtMs)}</Text>
-            <Text style={[st.big, { color: t.accentText }]}>{durationLabel(meta)}</Text>
+            <Text style={[st.big, { color: tierTextColour('neutral', t) }]}>{durationLabel(meta)}</Text>
             <Text style={[styles.rankLine, { color: t.textDim }]}>ref</Text>
           </View>
         </>
@@ -515,7 +515,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
           <View style={styles.pad}>
             <Text style={[styles.name, { color: t.text }]}>{FREE_RIDE_ROW_NAME}</Text>
             <Text style={[styles.date, { color: t.textDim }]}>{dateTimeLabel(request.startedAtMs)}</Text>
-            <Text style={[st.big, { color: t.accentText }]}>{durationLabel(meta)}</Text>
+            <Text style={[st.big, { color: tierTextColour('neutral', t) }]}>{durationLabel(meta)}</Text>
             <Text style={[styles.rankLine, { color: t.textDim }]}>{pickLabel ?? 'saved as a free activity'}</Text>
           </View>
         </>
@@ -531,7 +531,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
           <View style={styles.pad}>
             {pickLabel !== null ? <Text style={[styles.name, { color: t.text }]}>{pickLabel}</Text> : null}
             <Text style={[styles.date, { color: t.textDim }]}>{dateTimeLabel(request.startedAtMs)}</Text>
-            <Text style={[st.big, { color: t.accentText }]}>{durationLabel(meta)}</Text>
+            <Text style={[st.big, { color: tierTextColour('neutral', t) }]}>{durationLabel(meta)}</Text>
           </View>
         </>
       )}
