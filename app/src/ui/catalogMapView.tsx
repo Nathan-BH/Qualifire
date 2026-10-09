@@ -25,6 +25,8 @@ import { refFor } from '../live/refs.ts';
 import { resolveWayAsset, type WayAssetDeps } from './wayAssetRuntime.ts';
 import { cameraTargetFor, fitMeNextMode, gateHalfLenM, gateTicksFeatureCollection, riderFeature } from './wayMapGeo.ts';
 import { mapStyleFor, offlineMapStyle, patchMapStyle } from './wayMapStyle.ts';
+import { cachedPatchedStyles, rememberPatchedStyles } from './mapStyleCache.ts';
+import { MapCover, useMapCover } from './mapCover.tsx';
 import {
   differingStretches, type LatLon, type OverviewModel, type PlaceFocusModel, type RouteFocusModel,
 } from './catalogMapModel.ts';
@@ -120,7 +122,8 @@ function CatalogMapInner(props: CatalogMapViewProps & { maplibre: NonNullable<ty
   const styleUrl = themeMode === 'night' ? MAP_STYLE_NIGHT : MAP_STYLE_DAY;
 
   // Style fetch + retry (copied from WayMapView, labels on: this is a browse surface).
-  const [patchedStyles, setPatchedStyles] = useState<{ url: string; labelsOn: unknown; labelsOff: unknown } | null>(null);
+  // virgin-cycle27 12: session cache first (mapStyleCache.ts).
+  const [patchedStyles, setPatchedStyles] = useState<{ url: string; labelsOn: unknown; labelsOff: unknown } | null>(() => cachedPatchedStyles(styleUrl));
   const [styleFailed, setStyleFailed] = useState(false);
   const styleLoadedRef = useRef(false);
   useEffect(() => {
@@ -128,16 +131,21 @@ function CatalogMapInner(props: CatalogMapViewProps & { maplibre: NonNullable<ty
     let timer: ReturnType<typeof setTimeout> | null = null;
     setStyleFailed(false);
     styleLoadedRef.current = false;
+    const cached = cachedPatchedStyles(styleUrl);
+    if (cached !== null) {
+      setPatchedStyles(cached);
+      return undefined;
+    }
     const attempt = async (n: number) => {
       try {
         const res = await fetch(styleUrl);
         const json: unknown = await res.json();
         if (cancelled) return;
-        setPatchedStyles({
+        setPatchedStyles(rememberPatchedStyles({
           url: styleUrl,
           labelsOn: patchMapStyle(json, { hideLabels: false }),
           labelsOff: patchMapStyle(json, { hideLabels: true }),
-        });
+        }));
       } catch {
         if (cancelled || n >= STYLE_RETRY_MS.length) return;
         timer = setTimeout(() => { timer = null; void attempt(n + 1); }, STYLE_RETRY_MS[n]);
@@ -166,6 +174,8 @@ function CatalogMapInner(props: CatalogMapViewProps & { maplibre: NonNullable<ty
   useEffect(() => {
     setMode('fit');
   }, [focusKey, mapStyleKey]);
+  // virgin-cycle27 12: themed cover until the style has loaded and a frame has fully rendered.
+  const cover = useMapCover(mapStyleKey, styleFailed);
   const bounds = route?.bounds ?? place?.bounds ?? overview.bounds;
   // virgin-cycle27 08+09: FIT = bounds, north-up (the fit rule); ME = centre on the rider at street zoom, bearing untouched (Nathan: ME never touches the bearing).
   const followZoom = Math.max(15, liveZoom ?? 15);
@@ -248,12 +258,13 @@ function CatalogMapInner(props: CatalogMapViewProps & { maplibre: NonNullable<ty
   const fitMeNext = fitMeNextMode(mode, props.here !== null);
 
   return (
-    <View style={st.frame}>
+    <View style={[st.frame, { backgroundColor: t.race.bg }]}>
       <M.Map
         key={mapStyleKey}
         mapStyle={mapStyle as never}
         style={{ flex: 1 }}
-        onDidFinishLoadingStyle={() => { styleLoadedRef.current = true; }}
+        onDidFinishLoadingStyle={() => { styleLoadedRef.current = true; cover.onStyleLoaded(); }}
+        onDidFinishRenderingFrameFully={cover.onFrameFully}
         onDidFailLoadingMap={() => { if (!styleLoadedRef.current) setStyleFailed(true); }}
         onRegionWillChange={(e: RegionWillChangeEvent) => {
           if (e?.nativeEvent?.userInteraction) setMode('free');
@@ -360,6 +371,8 @@ function CatalogMapInner(props: CatalogMapViewProps & { maplibre: NonNullable<ty
           </M.GeoJSONSource>
         ) : null}
       </M.Map>
+      {/* virgin-cycle27 12: themed cover over the native view, under the controls. */}
+      <MapCover cover={cover} color={t.race.bg} />
       <View style={st.zoomBar}>
         <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
           onPress={() => zoomBy(1)}>

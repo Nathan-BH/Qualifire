@@ -33,3 +33,7 @@ Open the app on network, close it fully, open it again (two launches is normal).
 - A top destination not offered at the start does not light a GOING TO pill.
 - The new 1x clock test would pass even if 1x were removed.
 - Reduce-motion is read only when the breathing slot mounts.
+
+## Added after the first publish (2026-10-09 08:xx)
+- Reference-route (neutral) activity and sector times: brand yellow in day mode (commit 4836ff7).
+- Map white flash on tab switch: map style cached for the session (one native map start per mount) + a themed cover that fades out once the map has drawn (day and night). Same two commands as above publish it. On the phone: switch RECORD / ACTIVITIES / ROUTES in night mode and check for the white flash; report if it persists (the cover can't be proven headlessly). Known limits: offline the cover can hold up to 5 s; a day/night flip still restarts the map twice.

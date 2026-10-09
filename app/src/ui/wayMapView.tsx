@@ -102,6 +102,8 @@ import { trailLineFeature, type TrailPoint } from './trailModel.ts';
 import { selfsFeatureCollection, type SelfDot } from './selfRaceModel.ts';
 import { tierLineColour } from './tierColour.ts';
 import { mapStyleFor, offlineMapStyle, patchMapStyle } from './wayMapStyle.ts';
+import { cachedPatchedStyles, rememberPatchedStyles } from './mapStyleCache.ts';
+import { MapCover, useMapCover } from './mapCover.tsx';
 import { colors, radius } from './theme.ts';
 import { useTheme } from './themeContext.tsx';
 import { CREDIT_AUTO_HIDE_MS, creditFor, type MapRung } from './mapCreditModel.ts';
@@ -521,7 +523,10 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
   // The fetch retries (STYLE_RETRY_MS) so the real style takes over when the
   // connection returns; patchedStyles always wins once set. Each change of
   // the chosen style remounts the native view (mapStyleFor, virgin-cycle22 09).
-  const [patchedStyles, setPatchedStyles] = useState<{ url: string; labelsOn: unknown; labelsOff: unknown } | null>(null);
+  // virgin-cycle27 12 (Nathan 2026-10-09, white flash on every tab switch): start on the copies
+  // this session already fetched for this URL (mapStyleCache.ts), so a remounted map opens
+  // directly on the patched rung — one native start instead of url -> patched.
+  const [patchedStyles, setPatchedStyles] = useState<{ url: string; labelsOn: unknown; labelsOff: unknown } | null>(() => cachedPatchedStyles(styleUrl));
   const [styleFailed, setStyleFailed] = useState(false);
   const styleLoadedRef = useRef(false);
   useEffect(() => {
@@ -529,16 +534,21 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
     let timer: ReturnType<typeof setTimeout> | null = null;
     setStyleFailed(false);
     styleLoadedRef.current = false;
+    const cached = cachedPatchedStyles(styleUrl);
+    if (cached !== null) {
+      setPatchedStyles(cached);
+      return undefined;
+    }
     const attempt = async (n: number) => {
       try {
         const res = await fetch(styleUrl);
         const json: unknown = await res.json();
         if (cancelled) return;
-        setPatchedStyles({
+        setPatchedStyles(rememberPatchedStyles({
           url: styleUrl,
           labelsOn: patchMapStyle(json, { hideLabels: false }),
           labelsOff: patchMapStyle(json, { hideLabels: true }),
-        });
+        }));
       } catch {
         // offline or the server is down: native keeps whatever it has; retry.
         if (cancelled || n >= STYLE_RETRY_MS.length) return;
@@ -578,6 +588,12 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
     setMode(initialMode);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapStyleKey]);
+  // virgin-cycle27 12: a cover in the frame colour sits over the native view from every (re)mount
+  // until the style has loaded and a frame has fully rendered (mapCover.tsx / mapCoverModel.ts);
+  // never when the style failed (the offline fallback stays visible). Keyed on mapStyleKey so a
+  // native remount gets a fresh opaque cover. Hook order: above the asset guard below, like the
+  // other hooks here.
+  const cover = useMapCover(mapStyleKey, styleFailed);
 
   // Reverted 2026-08-24 (Nathan, live device feedback on WP-E): the
   // dotted-ahead/solid-behind split below used to call routeSplitFeatures()
@@ -750,7 +766,8 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
         key={mapStyleKey}
         mapStyle={mapStyle as never}
         style={{ flex: 1 }}
-        onDidFinishLoadingStyle={() => { styleLoadedRef.current = true; }}
+        onDidFinishLoadingStyle={() => { styleLoadedRef.current = true; cover.onStyleLoaded(); }}
+        onDidFinishRenderingFrameFully={cover.onFrameFully}
         onDidFailLoadingMap={() => { if (!styleLoadedRef.current) setStyleFailed(true); }}
         // Cycle 020 (Nathan 2026-08-19): D-006 "no controls while moving" is
         // relaxed for map GESTURES — the race-mode map must be draggable and
@@ -998,6 +1015,8 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
         ) : null}
       </M.Map>
       </View>
+      {/* virgin-cycle27 12: themed cover over the native view, under every control (JSX order). */}
+      <MapCover cover={cover} color={t.race.bg} />
       {/* Cycle 020: the zoom bar is always visible now, not gated on
           `unlocked` — the race-mode ribbon is draggable/zoomable too. */}
       {oneFingerOn ? (
