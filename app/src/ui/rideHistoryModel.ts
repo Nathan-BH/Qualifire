@@ -113,7 +113,7 @@ export interface RideRowModel {
  *
  * `laps(routeId, excl)` must exclude the ride's own rideId from its history
  * (mockup's `rankInTower` in-place semantics, colourModel's own contract) —
- * the caller passes lapValues(routeId, rideId), which already does this.
+ * the caller passes priorLapValues(routeId, rideId, startedAtMs) (virgin-cycle29 03: frozen window).
  *
  * WP-G: `labelFor` defaults to the plain `routeLabel` re-export (unchanged
  * for every existing caller/test); RIDES passes
@@ -124,7 +124,7 @@ export interface RideRowModel {
 export function buildRideRows(
   metas: RideMeta[],
   resultFor: (rideId: string) => RideResult | null,
-  laps: (wayId: string, excl: string) => number[],
+  laps: (wayId: string, excl: string, beforeMs: number) => number[],
   labelFor: (id: string) => string = wayLabel,
   referenceWayFor: (rideId: string) => { id: string } | null = () => null,
   pickLabelFor: (rideId: string) => string | null = () => null,
@@ -175,7 +175,7 @@ export function buildRideRows(
       // not take a position. The history side was already ranks()-filtered
       // via ghostsFor; this closes the judged-ride side.
       if (lapS !== null && ranks(result)) {
-        const hist = laps(wayId, m.rideId);
+        const hist = laps(wayId, m.rideId, result.startedAtMs);
         // D-008/D-028: too little comparable history is NO verdict, not a
         // generous one — an estimated lap never reaches here at all (lapS is
         // null for 'estimated'/'missed' quality by construction). Rank reads

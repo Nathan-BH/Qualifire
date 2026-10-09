@@ -146,6 +146,7 @@ function CatalogMapInner(props: CatalogMapViewProps & { maplibre: NonNullable<ty
           labelsOn: patchMapStyle(json, { hideLabels: false }),
           labelsOff: patchMapStyle(json, { hideLabels: true }),
         }));
+        setStyleFailed(false);
       } catch {
         if (cancelled || n >= STYLE_RETRY_MS.length) return;
         timer = setTimeout(() => { timer = null; void attempt(n + 1); }, STYLE_RETRY_MS[n]);
@@ -159,7 +160,7 @@ function CatalogMapInner(props: CatalogMapViewProps & { maplibre: NonNullable<ty
   }, [styleUrl]);
   const { style: mapStyle, key: mapStyleKey } = mapStyleFor({
     styleUrl,
-    patched: patchedStyles?.url === styleUrl ? patchedStyles : null,
+    patched: patchedStyles?.url === styleUrl ? patchedStyles : cachedPatchedStyles(styleUrl),
     styleFailed,
     hideLabels: false,
     offline: offlineMapStyle(t.race.bg),
@@ -174,7 +175,7 @@ function CatalogMapInner(props: CatalogMapViewProps & { maplibre: NonNullable<ty
   useEffect(() => {
     setMode('fit');
   }, [focusKey, mapStyleKey]);
-  // virgin-cycle27 12: themed cover until the style has loaded and a frame has fully rendered.
+  // virgin-cycle27 12: themed cover until the style has loaded and one frame has rendered (virgin-cycle29 01).
   const cover = useMapCover(mapStyleKey, styleFailed);
   const bounds = route?.bounds ?? place?.bounds ?? overview.bounds;
   // virgin-cycle27 08+09: FIT = bounds, north-up (the fit rule); ME = centre on the rider at street zoom, bearing untouched (Nathan: ME never touches the bearing).
@@ -264,7 +265,8 @@ function CatalogMapInner(props: CatalogMapViewProps & { maplibre: NonNullable<ty
         mapStyle={mapStyle as never}
         style={{ flex: 1 }}
         onDidFinishLoadingStyle={() => { styleLoadedRef.current = true; cover.onStyleLoaded(); }}
-        onDidFinishRenderingFrameFully={cover.onFrameFully}
+        onDidFinishRenderingFrame={cover.onFirstFrame}
+        onDidFinishRenderingFrameFully={cover.onFirstFrame}
         onDidFailLoadingMap={() => { if (!styleLoadedRef.current) setStyleFailed(true); }}
         onRegionWillChange={(e: RegionWillChangeEvent) => {
           if (e?.nativeEvent?.userInteraction) setMode('free');

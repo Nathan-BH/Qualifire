@@ -96,7 +96,7 @@ import {
   bearingBetween, cameraTargetFor, fitMeNextMode,
   gateHalfLenM, gateTicksFeatureCollection, metresBetween, riderFeature, rotateEnabledFor, wayBounds,
   sectorSpansFeatureCollection, trailBounds, placeFeatureCollection, placeBounds,
-  buildPassModel, faintVertices, gateFaint, routeRunsFeatureCollection, FAINT_OPACITY, gateFocusStop,
+  buildPassModel, faintVertices, gateFaint, routeRunsFeatureCollection, gateFocusStop,
 } from './wayMapGeo.ts';
 import { trailLineFeature, type TrailPoint } from './trailModel.ts';
 import { selfsFeatureCollection, type SelfDot } from './selfRaceModel.ts';
@@ -105,6 +105,10 @@ import { mapStyleFor, offlineMapStyle, patchMapStyle } from './wayMapStyle.ts';
 import { cachedPatchedStyles, rememberPatchedStyles } from './mapStyleCache.ts';
 import { MapCover, useMapCover } from './mapCover.tsx';
 import { colors, radius } from './theme.ts';
+import {
+  CASING, GATE_TICKS_CASING_PAINT, GATE_TICKS_PAINT, ROUND_CAP, ROUND_LINE, ROUTE_CASING_PAINT, ROUTE_CORE_PAINT,
+  SECTOR_SPANS_PAINT, TRAIL_CASING_PAINT, TRAIL_CORE_PAINT,
+} from './wayMapLayers.ts';
 import { useTheme } from './themeContext.tsx';
 import { CREDIT_AUTO_HIDE_MS, creditFor, type MapRung } from './mapCreditModel.ts';
 import type { CameraRef, CameraStop } from '@maplibre/maplibre-react-native';
@@ -169,7 +173,7 @@ function assetDeps(): WayAssetDeps {
  * runtime-built asset from the route's ref + gate chainages second. null
  * when neither exists (unknown id, or a user route with no ref/gate set
  * yet). */
-function assetFor(id: string | null): WayAsset | null {
+export function assetFor(id: string | null): WayAsset | null {
   return id === null ? null : resolveWayAsset(id, assetDeps());
 }
 /** Beyond this the rider is drawn as off-route rather than on the line. */
@@ -179,7 +183,6 @@ const OFF_WAY_M = 120;
  * GROUND_FILL (the old gate-circle unscored fill, '#E8E4DA') is gone with
  * WP-E — the PNG rung's unscored ticks use CASING instead (see gate tick
  * rendering below). */
-const CASING = '#14120C';
 /** virgin-cycle21 03: the empty collection every always-mounted source falls back to
  * (MapLibre paints sources in MOUNT order, so every source except the rider is
  * mounted from the first render and the rider dot always paints last). */
@@ -189,8 +192,8 @@ const EMPTY_FC = { type: 'FeatureCollection' as const, features: [] };
  * 2026-08-18): dark basemap at night (yellow line on black is the brand),
  * OpenFreeMap positron (light grey) in daylight. Fetched and runtime-patched
  * (labels + palette firewall, routeMapStyle.ts) — see MapLibreRouteMap. */
-const MAP_STYLE_NIGHT = 'https://tiles.openfreemap.org/styles/dark';
-const MAP_STYLE_DAY = 'https://tiles.openfreemap.org/styles/positron';
+export const MAP_STYLE_NIGHT = 'https://tiles.openfreemap.org/styles/dark';
+export const MAP_STYLE_DAY = 'https://tiles.openfreemap.org/styles/positron';
 
 /** Course-up bearing holds until a fix has actually moved this far — cheap
  * jitter guard against a GPS fix wobbling the heading while stationary. */
@@ -572,6 +575,7 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
           labelsOn: patchMapStyle(json, { hideLabels: false }),
           labelsOff: patchMapStyle(json, { hideLabels: true }),
         }));
+        setStyleFailed(false);
       } catch {
         // offline or the server is down: native keeps whatever it has; retry.
         if (cancelled || n >= STYLE_RETRY_MS.length) return;
@@ -597,8 +601,10 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
   const { style: mapStyle, key: mapStyleKey } = mapStyleFor({
     styleUrl,
     // A patched style belongs to the theme URL it was fetched for: after a day/night flip the old
-    // one must not be used, or the new fetch would swap the style in place on the mounted view.
-    patched: patchedStyles?.url === styleUrl ? patchedStyles : null,
+    // one must not be used, or the new fetch would swap the style in place on the mounted view; the
+    // copies already cached for the NEW URL are used at once (virgin-cycle29 01: one native mount on
+    // a theme flip, not url -> patched).
+    patched: patchedStyles?.url === styleUrl ? patchedStyles : cachedPatchedStyles(styleUrl),
     styleFailed,
     hideLabels,
     offline: offlineMapStyle(t.race.bg),
@@ -612,7 +618,7 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapStyleKey]);
   // virgin-cycle27 12: a cover in the frame colour sits over the native view from every (re)mount
-  // until the style has loaded and a frame has fully rendered (mapCover.tsx / mapCoverModel.ts);
+  // until the style has loaded and one frame has rendered (virgin-cycle29 01) (mapCover.tsx / mapCoverModel.ts);
   // never when the style failed (the offline fallback stays visible). Keyed on mapStyleKey so a
   // native remount gets a fresh opaque cover. Hook order: above the asset guard below, like the
   // other hooks here.
@@ -790,7 +796,8 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
         mapStyle={mapStyle as never}
         style={{ flex: 1 }}
         onDidFinishLoadingStyle={() => { styleLoadedRef.current = true; cover.onStyleLoaded(); }}
-        onDidFinishRenderingFrameFully={cover.onFrameFully}
+        onDidFinishRenderingFrame={cover.onFirstFrame}
+        onDidFinishRenderingFrameFully={cover.onFirstFrame}
         onDidFailLoadingMap={() => { if (!styleLoadedRef.current) setStyleFailed(true); }}
         // Cycle 020 (Nathan 2026-08-19): D-006 "no controls while moving" is
         // relaxed for map GESTURES — the race-mode map must be draggable and
@@ -847,11 +854,11 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
             below except the rider — the rider dot must be the LAST mounted. */}
         <M.GeoJSONSource key="route" id="route" data={wayFC ?? EMPTY_FC}>
           <M.Layer id="route-casing" type="line"
-            paint={{ 'line-color': CASING, 'line-width': 7, 'line-opacity': ['case', ['has', 'faint'], FAINT_OPACITY, 1] }}
-            layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
+            paint={ROUTE_CASING_PAINT}
+            layout={ROUND_LINE} />
           <M.Layer id="route-core" type="line"
-            paint={{ 'line-color': colors.neutral, 'line-width': 4, 'line-opacity': ['case', ['has', 'faint'], FAINT_OPACITY, 1] }}
-            layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
+            paint={ROUTE_CORE_PAINT}
+            layout={ROUND_LINE} />
         </M.GeoJSONSource>
         {/* WP-J (breadcrumb trail): the rider's own ridden line, casing+core
             styled exactly like the route line above (same CASING/colors.neutral,
@@ -861,11 +868,11 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
             ahead of the rider dot on every render regardless of `trail`. */}
         <M.GeoJSONSource key="trail" id="trail" data={trailFC}>
           <M.Layer id="trail-casing" type="line"
-            paint={{ 'line-color': CASING, 'line-width': 7 }}
-            layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
+            paint={TRAIL_CASING_PAINT}
+            layout={ROUND_LINE} />
           <M.Layer id="trail-core" type="line"
-            paint={{ 'line-color': colors.neutral, 'line-width': 4 }}
-            layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
+            paint={TRAIL_CORE_PAINT}
+            layout={ROUND_LINE} />
         </M.GeoJSONSource>
         {/* WP-sector-coloured-trail P1 (ruled 2026-08-26), moved below the trail
             source by WP-K phase 2: the WP-J trail's width-7 casing + width-4 core
@@ -912,12 +919,8 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
             grey by design, not "not yet run". */}
         <M.GeoJSONSource key="sector-spans" id="sector-spans" data={sectorSpansFC ?? EMPTY_FC}>
           <M.Layer id="sector-spans-core" type="line"
-            paint={{
-              'line-color': ['case', ['has', 'colour'], ['get', 'colour'], 'rgba(0,0,0,0)'],
-              'line-width': 4,
-              'line-opacity': ['case', ['has', 'faint'], FAINT_OPACITY, 1],
-            }}
-            layout={{ 'line-join': 'round', 'line-cap': 'round' }} />
+            paint={SECTOR_SPANS_PAINT}
+            layout={ROUND_LINE} />
         </M.GeoJSONSource>
         <M.GeoJSONSource key="place" id="place" data={placeFC ?? EMPTY_FC}>
           <M.Layer id="place-disc-fill" type="fill"
@@ -970,13 +973,9 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
           hitbox={props.gateSelect ? { top: 24, right: 24, bottom: 24, left: 24 } : undefined}
         >
           <M.Layer id="gate-ticks-casing" type="line"
-            paint={{ 'line-color': CASING, 'line-width': 5, 'line-opacity': ['case', ['has', 'faint'], FAINT_OPACITY, 1] }}
-            layout={{ 'line-cap': 'round' }} />
-          <M.Layer id="gate-ticks" type="line" paint={{
-            'line-color': ['case', ['has', 'colour'], ['get', 'colour'], colors.white],
-            'line-width': ['case', ['has', 'colour'], 3, 2],
-            'line-opacity': ['case', ['has', 'faint'], FAINT_OPACITY, 1],
-          }} layout={{ 'line-cap': 'round' }} />
+            paint={GATE_TICKS_CASING_PAINT}
+            layout={ROUND_CAP} />
+          <M.Layer id="gate-ticks" type="line" paint={GATE_TICKS_PAINT} layout={ROUND_CAP} />
         </M.GeoJSONSource>
         {/* WP-J (gate-adjust card): the selected-gate ring, always mounted
             (virgin-cycle21 03: empty collection when gateSelect is absent or

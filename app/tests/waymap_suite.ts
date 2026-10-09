@@ -422,14 +422,17 @@ test('virgin-cycle22 09: the native map is never handed a different mapStyle —
 test('virgin-cycle22 09: a patched style is only used for the theme URL it was fetched for (no in-place style swap after a day/night flip)', () => {
   const src = fs.readFileSync(path.join(TESTS_DIR, '..', 'src', 'ui', 'wayMapView.tsx'), 'utf8');
   assert(src.includes('url: styleUrl,'), 'the fetched patch is stored with its URL');
-  assert(src.includes('patched: patchedStyles?.url === styleUrl ? patchedStyles : null'), 'a stale-theme patch is never handed to mapStyleFor');
+  assert(src.includes('patched: patchedStyles?.url === styleUrl ? patchedStyles : cachedPatchedStyles(styleUrl),'), 'a stale-theme patch is never handed to mapStyleFor; cached copies of the new URL are used at once');
 });
 
 test('virgin-cycle26 04: wayMapView draws the pass the rider is not on at FAINT_OPACITY (progressM prop, faint paint on route / spans / ticks), cycles stacked gates on tap; the three live surfaces pass progressM', () => {
   const src = fs.readFileSync(path.join(TESTS_DIR, '..', 'src', 'ui', 'wayMapView.tsx'), 'utf8');
   assert(src.includes('progressM?: number | null;'), 'progressM prop');
-  assert((src.match(/\['case', \['has', 'faint'\], FAINT_OPACITY, 1\]/g) ?? []).length === 5, `faint opacity expression on route-casing, route-core, sector-spans-core, gate-ticks-casing, gate-ticks (want 5), got ${(src.match(/\['has', 'faint'\]/g) ?? []).length}`);
-  assert(!src.includes("'line-opacity': 1,"), 'the fixed gate-ticks opacity is gone');
+  const layers = fs.readFileSync(path.join(TESTS_DIR, '..', 'src', 'ui', 'wayMapLayers.ts'), 'utf8');
+  assert((layers.match(/\['case', \['has', 'faint'\], FAINT_OPACITY, 1\]/g) ?? []).length === 1, 'the faint opacity expression is defined once, in wayMapLayers.ts');
+  assert((layers.match(/FAINT_OPACITY_EXPR/g) ?? []).length >= 6, 'FAINT_OPACITY_EXPR: definition + route-casing, route-core, sector-spans-core, gate-ticks-casing, gate-ticks (want >= 6)');
+  assert(!src.includes("['has', 'faint']"), 'the view carries no inline faint expression any more');
+  assert(!layers.includes("'line-opacity': 1,"), 'the fixed gate-ticks opacity is gone');
   assert(src.includes('routeRunsFeatureCollection(asset, faintVerts)') && src.includes('buildPassModel(asset)'), 'route FC built from the pass model');
   assert(src.includes('gateTicksFeatureCollection(asset, props.gateColours, gateHalfLen, faintGates)') && src.includes('sectorSpansFeatureCollection(asset, props.sectorColours, props.leadColour, faintGates)'), 'faint gates reach ticks and spans');
   assert(src.includes('nextGateOnTap(hits, props.gateSelect!.selected)') && !src.includes('features?.[0]?.properties?.name'), 'tap handler cycles stacked gates');

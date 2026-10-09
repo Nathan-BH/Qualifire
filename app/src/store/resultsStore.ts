@@ -85,6 +85,7 @@ export function isValidRideResult(v: unknown): v is RideResult {
   for (const s of v.sectors) {
     if (!isNonNullObject(s) || typeof s.index !== 'number') return false;
   }
+  if (v.ignoredAtMs !== undefined && !(typeof v.ignoredAtMs === 'number' && Number.isFinite(v.ignoredAtMs))) return false;
   return true;
 }
 
@@ -263,12 +264,13 @@ export async function removeStoredResult(rideId: string): Promise<void> {
  * null when no result is stored for the id (the caller then has nothing to
  * toggle — e.g. a free ride or an unmatched ride with no sidecar). `false`
  * is stored as an ABSENT field, so an un-ignored file is byte-identical in
- * meaning to one that was never ignored. */
-export async function setIgnoredFromRanking(rideId: string, ignored: boolean): Promise<RideResult | null> {
+ * meaning to one that was never ignored. virgin-cycle29 03: ignoring also
+ * stamps ignoredAtMs (epoch ms, `nowMs`); "Count in ranking" drops both fields. */
+export async function setIgnoredFromRanking(rideId: string, ignored: boolean, nowMs: number = Date.now()): Promise<RideResult | null> {
   const cur = store.get(rideId);
   if (!cur) return null;
-  const { ignoredFromRanking: _drop, ...rest } = cur;
-  const next: RideResult = ignored ? { ...rest, ignoredFromRanking: true } : rest;
+  const { ignoredFromRanking: _drop, ignoredAtMs: _dropAt, ...rest } = cur;
+  const next: RideResult = ignored ? { ...rest, ignoredFromRanking: true, ignoredAtMs: nowMs } : rest;
   await saveResult(next);
   return next;
 }

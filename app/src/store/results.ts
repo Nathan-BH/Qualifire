@@ -96,6 +96,17 @@ export function ranks(r: RideResult): boolean {
   return scoredS(r.lap) !== null; // identical set in both modes — scoredS keeps the movingS-null marker
 }
 
+/** virgin-cycle29 03: ranks() AS OF the moment `judged` was ridden. The derivation facts (quality, scoredS, tripwire) are
+ * read as stored: they only change on a re-derive. The rider's ignore is time-aware: an ignore stamped AFTER the judged
+ * ride's start did not exist when it was ridden, so the ride still counts for `judged`. `judged.gateSetVersion` is
+ * accepted and unread for now (brief 05, gate edits, adds the clause here without touching callers). */
+export function rankedAsOf(r: RideResult, judged: { startedAtMs: number; gateSetVersion?: number }): boolean {
+  if (r.lap.quality === 'estimated' || r.lap.quality === 'missed') return false;
+  if (r.tripwireDemoted) return false;
+  if (r.ignoredFromRanking === true && !(typeof r.ignoredAtMs === 'number' && r.ignoredAtMs > judged.startedAtMs)) return false;
+  return scoredS(r.lap) !== null;
+}
+
 /**
  * The timing tower for one route (D-028) — B-28's whole seam.
  *

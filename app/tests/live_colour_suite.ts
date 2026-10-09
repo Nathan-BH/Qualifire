@@ -29,8 +29,9 @@ registerHooks({
 });
 const {
   fmt, ghostsFor, lapValues, liveTierFor, positionAmong, sectorValues, tierFor, MIN_HISTORY, WINDOW_N,
-  WINDOW_PREV, rankingPoolFor, rankedCountFor,
+  WINDOW_PREV, rankingPoolFor, rankedCountFor, priorWindowFor, priorLapValues, priorSectorValues, priorPoolFor,
 } = await import('../src/ui/colourModel.ts');
+const { rankedAsOf } = await import('../src/store/results.ts');
 const { buildRankingReveal } = await import('../src/ui/rankingRevealModel.ts');
 const { getLiveTowerPosition } = await import('../src/live/towerSource.ts');
 const { getLastRide, recordedResults, rememberRide, resetRecordedForTests } =
@@ -771,4 +772,128 @@ test('virgin-cycle20 10: a clean founding ride is unchanged — ride 2 slower �
   } finally {
     b10Teardown();
   }
+});
+
+// ============================================================ virgin-cycle29 03: freeze rule
+
+function fzResult(rideId: string, wayId: string, startedAtMs: number, s: number, extra?: Record<string, unknown>) {
+  return {
+    kind: 'rideResult' as const,
+    schemaVersion: 2,
+    rideId,
+    startedAtMs,
+    wayId,
+    source: 'app' as const,
+    lap: { rawS: s, movingS: s, quality: 'clean' as const },
+    sectors: [{ index: 1, fromChainageM: 0, toChainageM: 1, rawS: 100, movingS: 100, quality: 'clean' as const }],
+    derivedBy: { engineVersion: 'test', gateSetVersion: 1, resultSchemaVersion: 2 },
+    ...extra,
+  } as import('../src/store/types.ts').RideResult;
+}
+function fzSeed(wayId: string, n: number): void {
+  resetRecordedForTests();
+  for (let i = 1; i <= n; i++) b10ReplaceRecorded(fzResult(`u${i}`, wayId, 1000 * i, 500 + i));
+}
+const fzIds = (rs: { rideId: string }[]) => JSON.stringify(rs.map((r) => r.rideId));
+
+test('virgin-cycle29 03: rankedAsOf — quality/tripwire as stored, ignore is time-aware (strict >)', () => {
+  const j4 = { startedAtMs: 4000 };
+  assert(rankedAsOf(fzResult('a', 'w', 1, 500), j4) === true, 'clean + time ranks');
+  assert(rankedAsOf(fzResult('a', 'w', 1, 500, { lap: { rawS: 500, movingS: null, quality: 'estimated' } }), j4) === false, 'estimated never ranks');
+  assert(rankedAsOf(fzResult('a', 'w', 1, 500, { lap: { rawS: 500, movingS: null, quality: 'missed' } }), j4) === false, 'missed never ranks');
+  assert(rankedAsOf(fzResult('a', 'w', 1, 500, { tripwireDemoted: true }), j4) === false, 'tripwireDemoted never ranks');
+  assert(rankedAsOf(fzResult('a', 'w', 1, 500, { ignoredFromRanking: true }), j4) === false, 'ignored without timestamp: out for any judged');
+  assert(rankedAsOf(fzResult('a', 'w', 1, 500, { ignoredFromRanking: true }), { startedAtMs: 0 }) === false, 'ignored without timestamp: out even for judged 0');
+  const ig = fzResult('a', 'w', 1, 500, { ignoredFromRanking: true, ignoredAtMs: 5000 });
+  assert(rankedAsOf(ig, { startedAtMs: 4000 }) === true, 'ignored at 5000, judged at 4000: still counts');
+  assert(rankedAsOf(ig, { startedAtMs: 5000 }) === false, 'ignored at 5000, judged at 5000: out (strict)');
+  assert(rankedAsOf(ig, { startedAtMs: 6000 }) === false, 'ignored at 5000, judged at 6000: out');
+});
+
+test('virgin-cycle29 03: freeze by time — a later ride never changes an earlier ride\'s window', () => {
+  const w = 'Freeze:time';
+  fzSeed(w, 12);
+  assert(fzIds(priorWindowFor(w, 'u6', 6000)) === JSON.stringify(['u1', 'u2', 'u3', 'u4', 'u5']), `got ${fzIds(priorWindowFor(w, 'u6', 6000))}`);
+  const before = JSON.stringify(priorLapValues(w, 'u6', 6000));
+  b10ReplaceRecorded(fzResult('u13', w, 13000, 1));
+  assert(JSON.stringify(priorLapValues(w, 'u6', 6000)) === before, 'adding u13 must not change u6\'s frozen values');
+  resetRecordedForTests();
+});
+
+test('virgin-cycle29 03: freeze by ignore — an ignore after the ride leaves its window alone, future pools lose it', async () => {
+  const w = 'Freeze:ignore';
+  fzSeed(w, 12);
+  const ig = fzResult('u3', w, 3000, 503, { ignoredFromRanking: true, ignoredAtMs: 7000 });
+  await b10ResultsStore.saveResult(ig);   // the store keeps the ignored ride (with its timestamp) ...
+  b10ReplaceRecorded(ig);                 // ... the NOW window drops it (lastRide WP-H contract, unchanged)
+  assert(!recordedResults().some((r) => r.rideId === 'u3'), 'NOW mirror `recorded` drops the ignored ride (lastRide pin holds)');
+  assert(priorWindowFor(w, 'u6', 6000).some((r) => r.rideId === 'u3'), 'u6 (ridden before the ignore) still has u3');
+  assert(!priorWindowFor(w, 'u9', 9000).some((r) => r.rideId === 'u3'), 'u9 (ridden after the ignore) does not have u3');
+  assert(!ghostsFor(w).some((r) => r.rideId === 'u3'), 'NOW pool ghostsFor drops u3');
+  assert(rankedCountFor(w) === 11, `NOW count drops to 11, got ${rankedCountFor(w)}`);
+  assert(!rankingPoolFor(w, 'u12').some((r) => r.rideId === 'u3'), 'NOW pool rankingPoolFor drops u3');
+  resetRecordedForTests();
+});
+
+test('virgin-cycle29 03: count again — dropping both fields restores u3 to both windows', async () => {
+  const w = 'Freeze:count';
+  fzSeed(w, 12);
+  const ig = fzResult('u3', w, 3000, 503, { ignoredFromRanking: true, ignoredAtMs: 7000 });
+  await b10ResultsStore.saveResult(ig);
+  b10ReplaceRecorded(ig);
+  const counted = fzResult('u3', w, 3000, 503);
+  await b10ResultsStore.saveResult(counted);
+  b10ReplaceRecorded(counted);
+  assert(priorWindowFor(w, 'u6', 6000).some((r) => r.rideId === 'u3'), 'u6 window has u3');
+  assert(priorWindowFor(w, 'u9', 9000).some((r) => r.rideId === 'u3'), 'u9 window has u3');
+  assert(rankedCountFor(w) === 12, `NOW count back to 12, got ${rankedCountFor(w)}`);
+  resetRecordedForTests();
+});
+
+test('virgin-cycle29 03: priorSectorValues / priorPoolFor shapes', () => {
+  const w = 'Freeze:shape';
+  fzSeed(w, 12);
+  const sv = priorSectorValues(w, 1, 'u6', 6000);
+  assert(sv.length === 5, `5 sector values expected, got ${sv.length}`);
+  assert(fzIds(priorPoolFor(w, 'u6', 6000)) === JSON.stringify(['u1', 'u2', 'u3', 'u4', 'u5', 'u6']), `pool got ${fzIds(priorPoolFor(w, 'u6', 6000))}`);
+  assert(fzIds(priorPoolFor(w, 'zz', 6000)) === JSON.stringify(['u1', 'u2', 'u3', 'u4', 'u5']), `unknown ride pool got ${fzIds(priorPoolFor(w, 'zz', 6000))}`);
+  resetRecordedForTests();
+});
+
+test('virgin-cycle29 03 (inspector blocker): a ride that cannot rank is not in its own "ON THIS ROUTE" pool', async () => {
+  const w = 'Freeze:ownunranked';
+  fzSeed(w, 6);
+  const ig = fzResult('u3', w, 3000, 503, { ignoredFromRanking: true, ignoredAtMs: 7000 });
+  await b10ResultsStore.saveResult(ig);
+  b10ReplaceRecorded(ig);
+  assert(!priorPoolFor(w, 'u3', 3000).some((r) => r.rideId === 'u3'), 'ignored own ride is not in its own pool');
+  const est = fzResult('u4', w, 4000, 504, { lap: { rawS: 504, movingS: null, quality: 'estimated' } });
+  await b10ResultsStore.saveResult(est);
+  b10ReplaceRecorded(est);
+  assert(!priorPoolFor(w, 'u4', 4000).some((r) => r.rideId === 'u4'), 'estimated own ride is not in its own pool');
+  assert(priorPoolFor(w, 'u5', 5000).some((r) => r.rideId === 'u5'), 'a ranked own ride still is');
+  resetRecordedForTests();
+});
+
+test('virgin-cycle29 03: ride 1 — empty window, pool is just itself', () => {
+  const w = 'Freeze:first';
+  fzSeed(w, 3);
+  assert(priorWindowFor(w, 'u1', 1000).length === 0, 'window empty');
+  assert(fzIds(priorPoolFor(w, 'u1', 1000)) === JSON.stringify(['u1']), `pool got ${fzIds(priorPoolFor(w, 'u1', 1000))}`);
+  resetRecordedForTests();
+});
+
+test('virgin-cycle29 03: source pins — stored surfaces use the frozen window, replay unchanged', () => {
+  const rd2 = (f: string) => nodeFs.readFileSync(path.resolve(TESTS_DIR, '..', 'src', 'ui', f), 'utf8');
+  const rides = rd2('RidesScreen.tsx');
+  const det = rd2('RideDetailScreen.tsx');
+  for (const [name, src] of [['RidesScreen.tsx', rides], ['RideDetailScreen.tsx', det]] as const) {
+    for (const gone of ['lapValues(', 'sectorValues(', 'rankingPoolFor(']) {
+      assert(!new RegExp('(^|[^A-Za-z])' + gone.replace('(', '\\(')).test(src), `${name} still calls ${gone}`);
+    }
+  }
+  assert(det.includes('priorPoolFor(wayId, lastRideId ?? \'\', startedAtMs)'), 'detail PbDetail uses priorPoolFor with the ride start');
+  assert(rd2('ReplayScreen.tsx').includes('priorWindowFor(wayId, rideId, startedAtMs)'), 'ReplayScreen still uses priorWindowFor');
+  assert(/import \{ storedResultsForWay \} from '\.\.\/store\/resultsStore\.ts';/.test(rd2('colourModel.ts')), 'colourModel reads the store for the frozen pool');
+  assert(!rd2('lastRide.ts').includes('ignoredAtMs'), 'lastRide.ts untouched by brief 03');
 });

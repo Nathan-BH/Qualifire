@@ -19,6 +19,11 @@ export interface FsAdapter {
   listDir(relDir: string): Promise<string[]>;
   /** Removes the file; no-op when it does not exist. */
   deleteFile(relPath: string): Promise<void>;
+  /** virgin-cycle29 02: moves a file:// URI (e.g. a snapshotter PNG in the cache dir) into the root at relPath,
+   * creating parents; overwrites when present. */
+  importFile(srcUri: string, relPath: string): Promise<void>;
+  /** The file:// URI of a root path, for <Image source={{ uri }}>. */
+  fileUri(relPath: string): string;
 }
 
 /** In-memory adapter for headless tests. No platform imports whatsoever. */
@@ -51,6 +56,12 @@ export function createMemoryFsAdapter(): FsAdapter & { files: Map<string, string
     },
     async deleteFile(relPath) {
       files.delete(relPath);
+    },
+    async importFile(srcUri, relPath) {
+      files.set(relPath, 'moved:' + srcUri);
+    },
+    fileUri(relPath) {
+      return 'memory://' + relPath;
     },
   };
 }

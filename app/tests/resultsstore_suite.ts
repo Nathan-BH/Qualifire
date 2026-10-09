@@ -668,3 +668,42 @@ test('lastRide (WP-H): initRideHistory never hydrates an ignored stored result i
   resultsStore.resetResultsStoreForTests();
 });
 
+test('virgin-cycle29 03: setIgnoredFromRanking stamps ignoredAtMs, count drops both, validator checks the field', async () => {
+  lastRide.resetRecordedForTests();
+  resultsStore.resetResultsStoreForTests();
+  const fs = createMemoryFsAdapter();
+  await resultsStore.initResultsStore(fs);
+  await resultsStore.saveResult(makeResult('fz1', 'Morning', 1000, 800));
+  const ig = await resultsStore.setIgnoredFromRanking('fz1', true, 123456);
+  assert(ig !== null && ig.ignoredFromRanking === true && ig.ignoredAtMs === 123456, 'ignore stores the flag and the timestamp');
+  assert(resultsStore.isValidRideResult(ig), 'an ignored result round-trips through isValidRideResult');
+  const cnt = await resultsStore.setIgnoredFromRanking('fz1', false);
+  assert(cnt !== null && !('ignoredFromRanking' in cnt) && !('ignoredAtMs' in cnt), 'count drops both fields');
+  const valid = makeResult('fz2', 'Morning', 2000, 800);
+  assert(resultsStore.isValidRideResult({ ...valid, ignoredAtMs: 'x' }) === false, 'string ignoredAtMs is invalid');
+  assert(resultsStore.isValidRideResult({ ...valid, ignoredAtMs: 5 }) === true, 'numeric ignoredAtMs is valid');
+  await resultsStore.flushResultWrites();
+  resultsStore.resetResultsStoreForTests();
+  lastRide.resetRecordedForTests();
+});
+
+test('virgin-cycle29 03 (ruling-03-stop): the frozen window survives a restart — an ignored ride stays in the pools of rides ridden before the ignore', async () => {
+  lastRide.resetRecordedForTests();
+  const { priorWindowFor, ghostsFor } = await import('../src/ui/colourModel.ts');
+  const w = 'FreezeBoot:w';
+  const fs = createMemoryFsAdapter();
+  await resultsStore.initResultsStore(fs);
+  for (let i = 1; i <= 4; i++) await resultsStore.saveResult(makeResult(`b${i}`, w, 1000 * i, 500 + i));
+  await resultsStore.setIgnoredFromRanking('b1', true, 2500);   // ignored between b2 (2000) and b3 (3000)
+  await resultsStore.flushResultWrites();
+
+  resultsStore.resetResultsStoreForTests();   // simulated app restart
+  lastRide.resetRecordedForTests();
+  await lastRide.initRideHistory(fs);
+  assert(!lastRide.recordedResults().some((x) => x.rideId === 'b1'), 'NOW window never hydrates an ignored ride (WP-H pin)');
+  assert(resultsStore.getStoredResult('b1')?.ignoredAtMs === 2500, 'the store rehydrates ignoredAtMs from disk');
+  assert(priorWindowFor(w, 'b2', 2000).some((r) => r.rideId === 'b1'), 'b2 (ridden before the ignore) still counts b1 after a restart');
+  assert(!priorWindowFor(w, 'b3', 3000).some((r) => r.rideId === 'b1'), 'b3 (ridden after the ignore) does not');
+  assert(!ghostsFor(w).some((r) => r.rideId === 'b1'), 'the NOW pool does not');
+  lastRide.resetRecordedForTests();
+});

@@ -21,6 +21,7 @@ import './waymap_suite.ts';
 import './waymapgeo_suite.ts';
 import './waymapstyle_suite.ts';
 import './mapcover_suite.ts';
+import './cardsnapshot_suite.ts';
 import './live_colour_suite.ts';
 import './towermodel_suite.ts';
 import './resultsstore_suite.ts';

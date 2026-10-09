@@ -1367,6 +1367,14 @@
       "by": "bootstrap"
     },
     {
+      "file": "src/ui/cardSnapshotQueue.ts",
+      "kind": "literal",
+      "text": "mapsnaps/index.json",
+      "reason": "virgin-cycle29 02: relative path of the snapshot cache index under the storage root, never shown as text",
+      "since": "2026-10-10",
+      "by": "Sonnet execute, virgin-cycle29 brief 02"
+    },
+    {
       "file": "src/ui/catalogDeleteActions.ts",
       "kind": "alert-title",
       "text": "Could not delete",
@@ -3439,6 +3447,70 @@
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"
+    },
+    {
+      "file": "src/ui/wayMapLayers.ts",
+      "kind": "literal",
+      "text": "gate-ticks",
+      "reason": "virgin-cycle29 02: MapLibre layer/source id of the card layer stack (same id as wayMapView.tsx), never shown as text",
+      "since": "2026-10-10",
+      "by": "Sonnet execute, virgin-cycle29 brief 02"
+    },
+    {
+      "file": "src/ui/wayMapLayers.ts",
+      "kind": "literal",
+      "text": "gate-ticks-casing",
+      "reason": "virgin-cycle29 02: MapLibre layer/source id of the card layer stack (same id as wayMapView.tsx), never shown as text",
+      "since": "2026-10-10",
+      "by": "Sonnet execute, virgin-cycle29 brief 02"
+    },
+    {
+      "file": "src/ui/wayMapLayers.ts",
+      "kind": "literal",
+      "text": "route-casing",
+      "reason": "virgin-cycle29 02: MapLibre layer/source id of the card layer stack (same id as wayMapView.tsx), never shown as text",
+      "since": "2026-10-10",
+      "by": "Sonnet execute, virgin-cycle29 brief 02"
+    },
+    {
+      "file": "src/ui/wayMapLayers.ts",
+      "kind": "literal",
+      "text": "route-core",
+      "reason": "virgin-cycle29 02: MapLibre layer/source id of the card layer stack (same id as wayMapView.tsx), never shown as text",
+      "since": "2026-10-10",
+      "by": "Sonnet execute, virgin-cycle29 brief 02"
+    },
+    {
+      "file": "src/ui/wayMapLayers.ts",
+      "kind": "literal",
+      "text": "sector-spans",
+      "reason": "virgin-cycle29 02: MapLibre layer/source id of the card layer stack (same id as wayMapView.tsx), never shown as text",
+      "since": "2026-10-10",
+      "by": "Sonnet execute, virgin-cycle29 brief 02"
+    },
+    {
+      "file": "src/ui/wayMapLayers.ts",
+      "kind": "literal",
+      "text": "sector-spans-core",
+      "reason": "virgin-cycle29 02: MapLibre layer/source id of the card layer stack (same id as wayMapView.tsx), never shown as text",
+      "since": "2026-10-10",
+      "by": "Sonnet execute, virgin-cycle29 brief 02"
+    },
+    {
+      "file": "src/ui/wayMapLayers.ts",
+      "kind": "literal",
+      "text": "trail-casing",
+      "reason": "virgin-cycle29 02: MapLibre layer/source id of the card layer stack (same id as wayMapView.tsx), never shown as text",
+      "since": "2026-10-10",
+      "by": "Sonnet execute, virgin-cycle29 brief 02"
+    },
+    {
+      "file": "src/ui/wayMapLayers.ts",
+      "kind": "literal",
+      "text": "trail-core",
+      "reason": "virgin-cycle29 02: MapLibre layer/source id of the card layer stack (same id as wayMapView.tsx), never shown as text",
+      "since": "2026-10-10",
+      "by": "Sonnet execute, virgin-cycle29 brief 02"
     },
     {
       "file": "src/ui/wayMapView.tsx",

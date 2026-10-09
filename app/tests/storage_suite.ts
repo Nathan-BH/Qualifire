@@ -593,3 +593,11 @@ test('storage: cycle025 stale-fix — preStart/warmup flags round-trip the JSONL
     && dec.fixes[2].preStart === undefined && dec.fixes[2].warmup === undefined,
     'flags did not round-trip verbatim through the tolerant decoder');
 });
+
+test('virgin-cycle29 02: the memory adapter imports a file by URI and names it back', async () => {
+  const fs = createMemoryFsAdapter();
+  await fs.importFile('file:///cache/a.png', 'mapsnaps/k.png');
+  assert(fs.files.get('mapsnaps/k.png') === 'moved:file:///cache/a.png', 'moved under its root path');
+  assert(fs.fileUri('mapsnaps/k.png') === 'memory://mapsnaps/k.png', 'uri for the path');
+  assert(await fs.exists('mapsnaps/k.png'), 'exists after import');
+});

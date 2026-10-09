@@ -34,7 +34,7 @@ import WayMapView from './wayMapView.tsx';
 import { appendTrailPoint, type TrailPoint } from './trailModel.ts';
 import { FREE_RIDE_ROW_NAME, dateTimeLabel, buildPbDetail } from './rideHistoryModel.ts';
 import {
-  lapValues, ownLapBarredFromRanking, rankingPoolFor, sectorValues, type UiTier,
+  ownLapBarredFromRanking, priorLapValues, priorPoolFor, priorSectorValues, type UiTier,
 } from './colourModel.ts';
 import { rideDetailFor, sectorHighlightColours, sectorTimeCell } from './rideDetailModel.ts';
 import ReplayScreen from './ReplayScreen.tsx';
@@ -77,10 +77,11 @@ import { ActivityMenu, MenuButton, type MenuAnchor, type MenuItem } from './acti
  * "ON THIS ROUTE" section, scoped to this ride's route (§3.4).
  * virgin-cycle20 08: ranking only — the sector-bests block is gone
  * (Nathan: rolling comparison, no records).
+ * virgin-cycle29 03: the pool is the ride's FROZEN window + itself (priorPoolFor), so this list and the P-rank above never disagree.
  * virgin-cycle22 03: the today row is coloured with THIS ride's lap tier (date + time cells), not accentText. virgin-cycle27 02 FINAL: no-verdict times (durationLabel) go through tierTextColour('neutral') = brand yellow too. */
-function PbDetail(props: { wayId: string; lastRideId: string | null; todayTier: UiTier; t: PaddockTheme }) {
-  const { wayId, lastRideId, todayTier, t } = props;
-  const detail = buildPbDetail(rankingPoolFor(wayId, lastRideId), lastRideId);
+function PbDetail(props: { wayId: string; lastRideId: string | null; startedAtMs: number; todayTier: UiTier; t: PaddockTheme }) {
+  const { wayId, lastRideId, startedAtMs, todayTier, t } = props;
+  const detail = buildPbDetail(priorPoolFor(wayId, lastRideId ?? '', startedAtMs), lastRideId);
   const todayColour = tierTextColour(todayTier, t);
   return (
     <View style={st.pbDetail}>
@@ -153,8 +154,8 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
       free: freeRideNear(freeRideResults(), request.startedAtMs),
       ways: currentCatalog().ways,
       userWays: userCatalog().ways,
-      laps: (wayId) => lapValues(wayId, request.rideId),
-      sectors: (wayId, i) => sectorValues(wayId, i, request.rideId),
+      laps: (wayId) => priorLapValues(wayId, request.rideId, request.startedAtMs),
+      sectors: (wayId, i) => priorSectorValues(wayId, i, request.rideId, request.startedAtMs),
       barred: (wayId) => ownLapBarredFromRanking(wayId, request.rideId),
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -561,7 +562,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
             </Pressable>
           ))}
           <Text style={[st.h2, styles.h2, { color: t.textDim }]}>ON THIS WAY</Text>
-          <PbDetail wayId={model.wayId as string} lastRideId={request.rideId} todayTier={model.lapTier} t={t} />
+          <PbDetail wayId={model.wayId as string} lastRideId={request.rideId} startedAtMs={request.startedAtMs} todayTier={model.lapTier} t={t} />
         </>
       ) : null}
 

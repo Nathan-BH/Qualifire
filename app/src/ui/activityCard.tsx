@@ -16,8 +16,8 @@
  * hero slot and an empty strip row; no time, no rank, no quality word (feedModel.unrankedForDisplay).
  */
 import { memo, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import WayMapView, { type WayMapGestures } from './wayMapView';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import WayMapView, { Credit, type WayMapGestures } from './wayMapView';
 import { ALL_YELLOW } from './sectorTrailModel';
 import { tierTextColour } from './tierColour';
 import { colors, type PaddockTheme } from './theme';
@@ -36,13 +36,13 @@ import { MenuButton, type MenuAnchor } from './activityMenu';
  * moves on the card. 'twoFinger' stays a legal WayMapGestures value for other
  * surfaces; the feed does not use it. */
 export const CARD_MAP_GESTURES: WayMapGestures = 'readonly';
-/** live maps = viewable blocks ± this many neighbours */
-export const MAP_MOUNT_RADIUS = 1;
+/** live maps = exactly the viewable blocks (virgin-cycle29 01, Nathan 2026-10-09: a card map is a picture, nothing off-screen needs one) */
+export const MAP_MOUNT_RADIUS = 0;
 /** trails kept in memory / JSONL reads in flight at once */
 export const TRAIL_CACHE_CAPACITY = 30;
 export const TRAIL_READ_CONCURRENCY = 2;
 
-const rideTrails = createTrailLoader((id) => readRideFixes(id, createExpoFsAdapter()), TRAIL_CACHE_CAPACITY, TRAIL_READ_CONCURRENCY);
+export const rideTrails = createTrailLoader((id) => readRideFixes(id, createExpoFsAdapter()), TRAIL_CACHE_CAPACITY, TRAIL_READ_CONCURRENCY);
 
 function useRideTrail(rideId: string, enabled: boolean): readonly TrailPoint[] | null {
   const [trail, setTrail] = useState<readonly TrailPoint[] | null>(() => rideTrails.peek(rideId) ?? null);
@@ -59,6 +59,8 @@ function useRideTrail(rideId: string, enabled: boolean): readonly TrailPoint[] |
 
 export const ActivityCard = memo(function ActivityCard(props: {
   card: FeedCardModel; live: boolean; sectorColoursOn: boolean;
+  /** virgin-cycle29 02 probe: a snapshotter picture that replaces the live map while set */
+  snapshotUri?: string | null;
   onOpen: (card: FeedCardModel) => void; onMenu: (card: FeedCardModel, anchor: MenuAnchor) => void;
 }) {
   const { card, live, sectorColoursOn } = props;
@@ -82,7 +84,13 @@ export const ActivityCard = memo(function ActivityCard(props: {
       </View>
       <View style={st.mapSlot}>
         <View style={st.placeholder} />
-        {showMap ? (
+        {typeof props.snapshotUri === 'string' ? (
+          <>
+            <Image source={{ uri: props.snapshotUri }} style={StyleSheet.absoluteFill} resizeMode="cover" fadeDuration={0} />
+            {/* inspect-02 M2: the picture has no attribution baked in; the licence credit is the same control the live map shows */}
+            <Credit rung="maplibre" locked={false} />
+          </>
+        ) : showMap ? (
           <WayMapView
             variant="browse"
             wayId={card.wayId}

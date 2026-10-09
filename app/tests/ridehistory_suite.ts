@@ -376,3 +376,13 @@ test('ridehistory: dateTimeLabel is absolute — month name + HH:MM, no relative
   assert(/\d{2}:\d{2}/.test(label), `dateTimeLabel must contain HH:MM, got "${label}"`);
   assert(!/today|yesterday/i.test(label), `dateTimeLabel must never use a relative form, got "${label}"`);
 });
+
+test('ridehistory (virgin-cycle29 03): buildRideRows passes the result startedAtMs as the third laps argument', () => {
+  const metas: RideMeta[] = [{ rideId: 'q1', startMs: 7000, endMs: 8000, nFixes: 10 }];
+  const q1 = makeResult('q1', 'Morning', 7000, { movingS: 900, rawS: 900, quality: 'clean' }, [
+    { index: 1, movingS: 900, rawS: 900, quality: 'clean' },
+  ]);
+  const seen: Array<[string, string, number]> = [];
+  buildRideRows(metas, (id) => (id === 'q1' ? q1 : null), (wayId, excl, beforeMs) => { seen.push([wayId, excl, beforeMs]); return []; });
+  assert(seen.length === 1 && seen[0][1] === 'q1' && seen[0][2] === 7000, `expected one call with (_, q1, 7000), got ${JSON.stringify(seen)}`);
+});

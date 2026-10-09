@@ -5,7 +5,8 @@
 import { registerHooks } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import * as nodeFs from 'node:fs';
-import { assert, test } from './lib.ts';
+import * as nodePath from 'node:path';
+import { assert, test, TESTS_DIR } from './lib.ts';
 import type { RideMeta } from '../src/storage/types.ts';
 import type { RideRowModel, SectorRowModel } from '../src/ui/rideHistoryModel.ts';
 import type { RideDetailModel } from '../src/ui/rideDetailModel.ts';
@@ -168,6 +169,10 @@ test('feedmodel: liveMapIndices — viewable plus radius neighbours, clamped; em
   assert(set(liveMapIndices([9], 10, 2)) === '7,8,9', 'high clamp');
   assert(liveMapIndices([], 10, 1).size === 0, 'empty');
   assert(set(liveMapIndices([5], 10, 0)) === '5', 'radius 0');
+  const ui = (f: string) => nodeFs.readFileSync(nodePath.join(TESTS_DIR, '..', 'src', 'ui', f), 'utf8');
+  assert(ui('activityCard.tsx').includes('export const MAP_MOUNT_RADIUS = 0;'), 'virgin-cycle29 01: radius 0 in code');
+  const rs = ui('RidesScreen.tsx');
+  assert(rs.includes('itemVisiblePercentThreshold: 40') && rs.includes('windowSize={3}') && rs.includes('initialNumToRender={2}'), 'virgin-cycle29 01: feed visibility/window pins');
 });
 
 test('feedmodel: sameIndexSet', () => {

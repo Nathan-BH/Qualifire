@@ -8,7 +8,7 @@
  * virgin-cycle23 brief 02: the rows became a feed of pre-expanded blocks with live maps (activityCard.tsx); a tap still opens the detail.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View, type ViewToken } from 'react-native';
+import { Alert, FlatList, PixelRatio, Pressable, StyleSheet, Text, useWindowDimensions, View, type ViewToken } from 'react-native';
 import { listRides } from '../storage';
 import type { PickEvent, RideMeta } from '../storage/types';
 import { getStoredResult } from '../store/resultsStore';
@@ -22,23 +22,30 @@ import { createExpoFsAdapter } from '../storage/expoFsAdapter';
 import { decodeEventsFile } from '../storage/eventsJsonl';
 import { buildRideRows } from './rideHistoryModel';
 import { userCatalog } from '../store/catalogStore';
-import { lapValues, ownLapBarredFromRanking, sectorValues } from './colourModel';
+import { ownLapBarredFromRanking, priorLapValues, priorSectorValues } from './colourModel';
 import { rideDetailFor } from './rideDetailModel';
-import { buildFeedCards, feedItemLayout, liveMapIndices, sameIndexSet, type FeedCardModel } from './feedModel';
-import { ActivityCard, MAP_MOUNT_RADIUS } from './activityCard';
+import { buildFeedCards, CARD_MAP_HEIGHT, feedItemLayout, liveMapIndices, sameIndexSet, type FeedCardModel } from './feedModel';
+import { ActivityCard, MAP_MOUNT_RADIUS, rideTrails } from './activityCard';
+import { assetFor, MAP_STYLE_DAY, MAP_STYLE_NIGHT } from './wayMapView';
+import { fitZoomFor, paddedBoundsFor, cardSnapshotStyle } from './cardSnapshotModel';
+import { requestSnapshot } from './cardSnapshotQueue';
+import { cachedPatchedStyles } from './mapStyleCache';
+import { ALL_YELLOW } from './sectorTrailModel';
+import { trailLineFeature, type TrailPoint } from './trailModel';
+import { gateHalfLenM, gateTicksFeatureCollection, routeRunsFeatureCollection, sectorSpansFeatureCollection, trailBounds, wayBounds } from './wayMapGeo';
 import { ActivityMenu, type MenuAnchor, type MenuItem } from './activityMenu';
 import { confirmDeleteRide, toggleIgnoreRide } from './rideActions';
 import { useSettings } from './settings';
 import { settleRideHomes } from './rideHomes';
 import { useTabNav } from './tabNav';
-import { PaddockTheme, radius } from './theme';
+import { colors, PaddockTheme, radius } from './theme';
 import { useTheme } from './themeContext';
 
 /** survives the detail's mount-swap (App.tsx) so BACK lands where the rider was */
 let feedScrollOffset = 0;
 
 export default function RidesScreen() {
-  const { t } = useTheme();
+  const { t, mode } = useTheme();
   const tabNav = useTabNav();
   const styles = useMemo(() => makeStyles(t), [t]);
   const { s } = useSettings();
@@ -162,7 +169,7 @@ export default function RidesScreen() {
     // it "Free ride" + gate count instead of the generic "new → new · no
     // lap". Same freeRideNear tolerance match RideDetailScreen uses, so the
     // row's label and the detail's free view can never disagree.
-    () => buildRideRows(rides ?? [], getStoredResult, (wayId, excl) => lapValues(wayId, excl),
+    () => buildRideRows(rides ?? [], getStoredResult, (wayId, excl, beforeMs) => priorLapValues(wayId, excl, beforeMs),
       (id) => wayLabelIn(currentCatalog(), id),
       (rideId) => currentCatalog().ways.find((w) => w.referenceRideId === rideId) ?? null,
       (rideId) => pickLabels.get(rideId) ?? null,
@@ -178,8 +185,8 @@ export default function RidesScreen() {
         free: freeRideNear(freeRideResults(), startMs),
         ways: currentCatalog().ways,
         userWays: userCatalog().ways,
-        laps: (wayId) => lapValues(wayId, rideId),
-        sectors: (wayId, i) => sectorValues(wayId, i, rideId),
+        laps: (wayId) => priorLapValues(wayId, rideId, startMs),
+        sectors: (wayId, i) => priorSectorValues(wayId, i, rideId, startMs),
         barred: (wayId) => ownLapBarredFromRanking(wayId, rideId),
       }),
       (rideId) => metaById.get(rideId) ?? null,
@@ -189,11 +196,51 @@ export default function RidesScreen() {
   );
   const cardsRef = useRef(cards); cardsRef.current = cards;
   const tabNavRef = useRef(tabNav); tabNavRef.current = tabNav;
+  // virgin-cycle29 02 PROBE (off by default): long-press the title to swap the FIRST card's live map for a
+  // snapshotter picture of the same card; long-press again to go back. Brief 04 decides whether this ships.
+  const { width: winW } = useWindowDimensions();
+  const [probe, setProbe] = useState(false);
+  const [probeUri, setProbeUri] = useState<string | null>(null);
+  useEffect(() => {
+    if (!probe) { setProbeUri(null); return; }
+    setProbeUri(null); // inspect-02 m2: never show a picture of a previous input
+    const card = cards[0];
+    if (card === undefined) return;
+    let cancelled = false;
+    const styleUrl = mode === 'night' ? MAP_STYLE_NIGHT : MAP_STYLE_DAY;
+    const patched = cachedPatchedStyles(styleUrl);
+    if (patched === null) { console.log('[snap]', 'skip', 'style'); return; }
+    const route = card.variant === 'route';
+    const asset = route ? assetFor(card.wayId) : null;
+    const peeked = card.needsTrail ? rideTrails.peek(card.rideId) : null;
+    const trail: readonly TrailPoint[] | null = peeked ?? null;
+    const bounds = route ? (asset ? wayBounds(asset) : null) : (trail ? trailBounds(trail) : null);
+    if (bounds === null) { console.log('[snap]', 'skip', 'trail'); return; }
+    const colours = route ? (s.sectorColours ? card.sectorColours : ALL_YELLOW) : undefined;
+    const lead = route && s.sectorColours ? colors.grey : undefined;
+    const widthDp = Math.floor(winW); // inspect-02 m3: native does .toInt(); the maths must use the same width
+    const fitZ = fitZoomFor(bounds, widthDp, CARD_MAP_HEIGHT, 20);
+    const trailFeature = !route && trail ? trailLineFeature(trail) : null;
+    const style = cardSnapshotStyle(patched.labelsOn, {
+      route: asset ? routeRunsFeatureCollection(asset, null) : null,
+      trail: { type: 'FeatureCollection', features: trailFeature ? [trailFeature] : [] },
+      spans: asset && colours ? sectorSpansFeatureCollection(asset, colours, lead, undefined) : null,
+      ticks: asset ? gateTicksFeatureCollection(asset, undefined, gateHalfLenM(asset.gates[0]?.lat ?? 0, fitZ), undefined) : null,
+    });
+    void requestSnapshot({
+      variant: card.variant, rideId: card.rideId, wayId: card.wayId, gateSetVersion: null, styleUrl,
+      sectorColoursOn: s.sectorColours, sectorColours: card.sectorColours, trailPoints: trail?.length ?? 0,
+      widthDp, heightDp: CARD_MAP_HEIGHT, density: PixelRatio.get(),
+      styleJson: style, bounds: paddedBoundsFor(bounds, widthDp, CARD_MAP_HEIGHT, 20),
+    }).then((uri) => { if (!cancelled) setProbeUri(uri); }, () => { /* logged by the queue */ });
+    return () => { cancelled = true; };
+  }, [probe, cards, s.sectorColours, mode, winW]);
   const onOpenCard = useCallback((card: FeedCardModel) => {
     tabNavRef.current.openRide({ rideId: card.rideId, source: 'rides', startedAtMs: card.startMs });
   }, []);
   const onMenuCard = useCallback((card: FeedCardModel, anchor: MenuAnchor) => setMenu({ anchor, card }), []);
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 5, minimumViewTime: 0 }).current;
+  // virgin-cycle29 01: 40 % visible before a card carries a live map; with 307 dp cards that is the two the rider sees, never a sliver.
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 40, minimumViewTime: 0 }).current;
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     const idx = viewableItems.map((v) => v.index).filter((i): i is number => i !== null);
     const next = liveMapIndices(idx, cardsRef.current.length, MAP_MOUNT_RADIUS);
@@ -212,7 +259,9 @@ export default function RidesScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Activities</Text>
+        <Pressable onLongPress={() => setProbe((v) => !v)} delayLongPress={600}>
+          <Text style={styles.title}>Activities</Text>
+        </Pressable>
         <Pressable style={styles.refreshBtn} onPress={refresh}>
           <Text style={styles.refreshText}>Refresh</Text>
         </Pressable>
@@ -235,6 +284,7 @@ export default function RidesScreen() {
               card={item}
               live={liveIdx.has(index)}
               sectorColoursOn={s.sectorColours}
+              snapshotUri={index === 0 ? probeUri : null}
               onOpen={onOpenCard}
               onMenu={onMenuCard}
             />
@@ -248,8 +298,8 @@ export default function RidesScreen() {
             restoredRef.current = true;
             if (feedScrollOffset > 0) listRef.current?.scrollToOffset({ offset: feedScrollOffset, animated: false });
           }}
-          windowSize={5}
-          initialNumToRender={3}
+          windowSize={3}
+          initialNumToRender={2}
           maxToRenderPerBatch={3}
           removeClippedSubviews
           contentContainerStyle={styles.feed}

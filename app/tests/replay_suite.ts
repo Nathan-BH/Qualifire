@@ -413,6 +413,8 @@ test('replay: loadSelfTracksFor over an explicit window returns exactly that win
     exists: async () => false,
     listDir: async () => [],
     deleteFile: async () => {},
+    importFile: async () => {},
+    fileUri: (relPath) => 'memory://' + relPath,
   };
   const empty = await loadSelfTracksFor('Morning', 1, throwingFs, []);
   assert(empty.length === 0, 'an empty window must return [] without reading the fs');

@@ -130,6 +130,12 @@ export interface RideResult {
    * Enforced at the ONE gate every consumer already uses — results.ts ranks()
    * — so no reader needs to know this field exists. Absent = counts. */
   ignoredFromRanking?: boolean;
+  /** virgin-cycle29 03 (Nathan 2026-10-09, freeze rule): epoch ms of the LAST time the rider ignored this ride.
+   * Set together with ignoredFromRanking by resultsStore.setIgnoredFromRanking; both are dropped on "Count in
+   * ranking". A ride ignored BEFORE this field existed has none and counts as ignored since the beginning.
+   * Read only by results.rankedAsOf (the as-of-then pool): a ride B keeps counting A when A.ignoredAtMs > B.startedAtMs.
+   * Single value = "last ignore wins" (count-then-re-ignore cannot represent two intervals; accepted). */
+  ignoredAtMs?: number;
   derivedBy: {
     engineVersion: string;
     gateSetVersion: number;

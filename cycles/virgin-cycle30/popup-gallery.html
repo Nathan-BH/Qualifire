@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en" data-theme="day">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Qualifire popups</title>
+<style>
+:root[data-theme="day"]{--bg:#FAF7EE;--card:#FFFFFF;--cardBorder:#E0D9C4;--text:#201F24;--textDim:#8A8577;--text2:#6D6759;--accent:#F5C542;--onAccent:#17171b;--md-card:#ECE6F0;--md-title:#1D1B20;--md-body:#49454F;--md-btn:#6750A4}
+:root[data-theme="night"]{--bg:#17171b;--card:#212127;--cardBorder:#41414c;--text:#F4F2EC;--textDim:#9a978f;--text2:#b5b3ac;--accent:#F5C542;--onAccent:#17171b;--md-card:#2B2930;--md-title:#E6E0E9;--md-body:#CAC4D0;--md-btn:#D0BCFF}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 4px;font-weight:800}
+.note{color:var(--text2);margin:0 0 4px}
+.muted{color:var(--textDim);font-size:12px}
+.bar{display:flex;flex-wrap:wrap;gap:10px 16px;margin:14px 0}
+.grp{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.grp>span{color:var(--textDim);font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+.seg{display:inline-flex;border:1px solid var(--cardBorder);border-radius:10px;overflow:hidden;background:var(--card)}
+button{font:inherit;color:var(--text);cursor:pointer}
+.seg button,.chip-f,.act{min-height:44px;padding:0 14px;border:0;background:transparent}
+.seg button+button{border-left:1px solid var(--cardBorder)}
+.seg button[aria-pressed=true],.chip-f[aria-pressed=true]{background:var(--accent);color:var(--onAccent);font-weight:800}
+.chip-f{border:1px solid var(--cardBorder);border-radius:10px;background:var(--card)}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:0 0 8px}
+.act{border:1px solid var(--cardBorder);border-radius:10px;background:var(--card);font-weight:700}
+.act.pri{background:var(--accent);color:var(--onAccent);border-color:var(--accent)}
+.confirmbox{border:1px solid var(--cardBorder);border-radius:10px;background:var(--card);padding:12px;margin:0 0 12px}
+#fallback{width:100%;min-height:120px;margin:8px 0;background:var(--card);color:var(--text);border:1px solid var(--cardBorder);border-radius:10px;padding:8px;font:12px monospace}
+[hidden]{display:none!important}
+h2{font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--text2);margin:24px 0 8px;font-weight:800}
+.site{background:var(--card);border:1px solid var(--cardBorder);border-radius:14px;padding:12px;margin:0 0 14px}
+.sh{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 10px}
+.sh b{font-size:13px;margin-right:4px;word-break:break-word}
+.chip{font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid var(--cardBorder);color:var(--text2)}
+.chip.kind{font-weight:800;color:var(--text)}
+.chip.sug{color:var(--textDim)}
+.chip.badge{border-color:var(--accent);color:var(--text)}
+.vlabel{font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--textDim);margin:8px 0 4px}
+.stage{position:relative;border-radius:14px;padding:24px 12px;background:var(--bg);border:1px solid var(--cardBorder);overflow:hidden}
+.stage::before{content:"";position:absolute;inset:0;background:rgba(0,0,0,.45)}
+.stage>*{position:relative}
+.dlg{width:min(100%,340px);margin:0 auto;background:var(--card);border:1px solid var(--cardBorder);border-radius:16px;padding:20px}
+.dlg .t{font-size:15px;font-weight:800;letter-spacing:1px;color:var(--text);margin:0 0 10px;overflow-wrap:anywhere}
+.dlg .b{font-size:14px;font-weight:400;color:var(--text2);line-height:1.45;white-space:pre-line;margin:0 0 16px;overflow-wrap:anywhere}
+.dlg .btns{display:flex;gap:10px}
+.dbtn{flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;text-align:center;border-radius:10px;font-size:12.5px;font-weight:800;letter-spacing:1px;text-transform:uppercase;padding:0 8px}
+.dbtn.cancel{border:1px solid var(--cardBorder);color:var(--textDim);background:transparent}
+.dbtn.go{background:var(--accent);color:var(--onAccent);border:1px solid var(--accent)}
+.md{width:min(100%,312px);margin:0 auto;background:var(--md-card);border-radius:28px;padding:24px}
+.md .t{font-size:24px;line-height:1.25;color:var(--md-title);margin:0 0 16px;font-weight:400;overflow-wrap:anywhere}
+.md .b{font-size:14px;line-height:1.45;color:var(--md-body);white-space:pre-line;margin:0 0 24px;overflow-wrap:anywhere}
+.md .btns{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+.md .mbtn{min-height:44px;display:flex;align-items:center;padding:0 12px;color:var(--md-btn);font-size:14px;font-weight:500}
+.look{font-size:11px;color:var(--textDim);margin:6px 0 0;text-align:center}
+.errnote{font-size:12px;color:var(--textDim);margin:8px 0 0}
+.dec{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0 8px}
+@media(min-width:560px){.dec{grid-template-columns:repeat(4,1fr)}}
+.dec button{min-height:44px;border:1px solid var(--cardBorder);border-radius:10px;background:transparent;font-weight:700;font-size:13px;padding:0 6px}
+.dec button[aria-pressed=true]{background:var(--accent);color:var(--onAccent);border-color:var(--accent);font-weight:800}
+.noteinp{width:100%;min-height:44px;padding:0 12px;border:1px solid var(--cardBorder);border-radius:10px;background:var(--bg);color:var(--text);font:inherit}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Qualifire popups</h1>
+<p class="note">Mock-up outside the app. Nothing here is in the app yet.</p>
+<p class="muted">Proposal: no red, destructive confirm uses the brand yellow.</p>
+<div class="bar">
+  <div class="grp"><span>Theme</span><div class="seg" id="segTheme"></div></div>
+  <div class="grp"><span>Look</span><div class="seg" id="segLook"></div></div>
+</div>
+<div class="filters" id="filters"></div>
+<div class="row"><b id="counter"></b><button class="act pri" id="copyBtn" type="button">Copy my decisions</button><button class="act" id="resetBtn" type="button">Reset</button><span class="muted" id="status" role="status"></span></div>
+<div class="confirmbox" id="resetBox" hidden><div>Clear all decisions and notes?</div><div class="row" style="margin:8px 0 0"><button class="act pri" id="resetYes" type="button">Yes, clear</button><button class="act" id="resetNo" type="button">Cancel</button></div></div>
+<textarea id="fallback" hidden readonly></textarea>
+<div id="list"></div>
+</div>
+<script>
+/*DATA_START*/
+const ERR1 = `landmarks p3 and p7 overlap: 12 m apart, radii 30 + 30 m`;
+const ERR2 = `A place called "Home" already exists`;
+const ERR3 = `ways "Fast" on Home → Work would exist twice after the merge (w4 and w9) — rename or delete one of them first`;
+const ERR4 = `"Fast" is already a way on this route`;
+const ERR5 = `gate 2 at 340 m is not on the line or not after gate 1`;
+const ERR6 = `start and end cannot share a name`;
+const ERR7 = `no reference line can be built from this activity (recording unreadable, or under 200 m)`;
+const EXC1 = `Permission denied: could not write file`;
+const EXC2 = `Location services are disabled`;
+const OK = [{label:'OK',role:'ok'}];
+const CD = (l)=>[{label:'Cancel',role:'cancel'},{label:l,role:'destructive'}];
+const CONS = 'Consolidate: one shared themed error dialog';
+const KEEP = 'Keep (destructive confirm)';
+const err = (id,file,line,title,body)=>({id,file,line,kind:'E',title,body,buttons:OK,suggested:CONS});
+const DATA = [
+ err('P01','catalogDeleteActions.ts',34,`Could not delete`,ERR1),
+ {id:'P02',file:'catalogDeleteActions.ts',line:49,kind:'C',
+  title:`Delete "Fast" on Home → Work?`,
+  body:`This is the only way on Home → Work, so the route is removed too.\nIts gates and reference line go with it. 3 scored activities on this way will be re-matched against your other ways; the activity recordings themselves are kept.\nHome is no longer used by any route and will be removed as places.`,
+  buttons:CD('Delete'),suggested:KEEP,
+  variants:[
+   {label:'2a way',title:`Delete "Fast" on Home → Work?`,body:`This is the only way on Home → Work, so the route is removed too.\nIts gates and reference line go with it. 3 scored activities on this way will be re-matched against your other ways; the activity recordings themselves are kept.\nHome is no longer used by any route and will be removed as places.`,buttons:CD('Delete')},
+   {label:'2b route',title:`Delete the route Home → Work?`,body:`2 ways, its gates and reference lines go with it. 5 scored activities will be re-matched against your other ways; the activity recordings themselves are kept.\nHome is no longer used by any route and will be removed as places.`,buttons:CD('Delete')},
+   {label:'2c place',title:`Delete "Park"?`,body:`This place is no longer used by any route.`,buttons:CD('Delete')}
+  ]},
+ err('P03','CatalogDetailScreen.tsx',121,`Could not rename`,ERR2),
+ err('P04','CatalogDetailScreen.tsx',123,`Could not rename`,ERR1),
+ err('P05','CatalogDetailScreen.tsx',133,`Could not merge`,ERR3),
+ {id:'P06',file:'CatalogDetailScreen.tsx',line:141,kind:'C',
+  title:`Merge "Park" into "Home"?`,
+  body:`2 routes from or to "Park" will use "Home" instead, and "Park" is removed.\n1 route becomes the same as an existing one and folds into it — its ways, gates, reference lines and results are kept.\n1 route becomes a loop.\nRide recordings are never touched.`,
+  buttons:CD('Merge'),suggested:KEEP},
+ err('P07','CatalogDetailScreen.tsx',149,`Could not merge`,ERR1),
+ err('P08','CatalogDetailScreen.tsx',168,`Could not rename`,ERR4),
+ err('P09','CatalogDetailScreen.tsx',170,`Could not rename`,ERR1),
+ {id:'P10',file:'GateAdjustScreen.tsx',line:60,kind:'C',
+  title:`Move the gates of "Fast"?`,
+  body:`Its 3 timed activities are re-timed from the recordings against the new gates — old times and ranks do not survive, the activities do. The reference activity is kept and re-timed too, so it still races you as a dot. Recordings are never touched.`,
+  buttons:CD('Save & re-time'),suggested:KEEP,
+  variants:[
+   {label:'with activities (n=3)',title:`Move the gates of "Fast"?`,body:`Its 3 timed activities are re-timed from the recordings against the new gates — old times and ranks do not survive, the activities do. The reference activity is kept and re-timed too, so it still races you as a dot. Recordings are never touched.`,buttons:CD('Save & re-time')},
+   {label:'no activities (n=0)',title:`Move the gates of "Fast"?`,body:`There are no timed activities on this way yet. The reference activity is kept and re-timed too, so it still races you as a dot. Recordings are never touched.`,buttons:CD('Save & re-time')}
+  ]},
+ err('P11','GateAdjustScreen.tsx',75,`Could not save the gates`,ERR5),
+ {id:'P12',file:'GateAdjustScreen.tsx',line:88,kind:'I',title:`Gates saved — reference not re-timed`,body:`The gates are saved, but this way's reference activity could not be timed against them (its recording is missing or unreadable), so it will not race you as a dot.`,buttons:OK,suggested:`Replace: yellow button sub-label instead`},
+ err('P13','GateAdjustScreen.tsx',96,`Could not save the gates`,EXC1),
+ err('P14','RecordScreen.tsx',688,`Could not check permissions`,EXC2),
+ err('P15','RecordScreen.tsx',743,`Could not start tracking`,EXC2),
+ err('P16','RecordScreen.tsx',850,`Could not stop cleanly`,EXC2),
+ err('P17','RecordScreen.tsx',955,`Could not create the route`,ERR6),
+ err('P18','RecordScreen.tsx',973,`Could not create the route`,EXC1),
+ err('P19','RecordScreen.tsx',998,`Could not save the gates`,ERR5),
+ err('P20','RecordScreen.tsx',1013,`Could not save the gates`,EXC1),
+ {id:'P21',file:'RecordScreen.tsx',line:1029,kind:'C',title:`Discard activity?`,body:`This stops recording and permanently removes the raw trace. Nothing is saved.`,buttons:CD('Discard'),suggested:KEEP},
+ err('P22','RecordScreen.tsx',1043,`Could not stop cleanly`,EXC2),
+ err('P23','RecordScreen.tsx',1078,`Could not discard`,`${EXC1}\nThe activity was ended and kept instead — you can delete it from ACTIVITIES.`),
+ {id:'P24',file:'rideActions.ts',line:32,kind:'C',title:`Delete activity?`,body:`9 Oct, 08:12 · 24m05s\nThis permanently removes the raw trace.`,buttons:CD('Delete'),suggested:KEEP},
+ err('P25','rideActions.ts',48,`Could not delete`,EXC1),
+ err('P26','rideActions.ts',63,`Could not update`,EXC1),
+ {id:'P27',file:'rideActions.ts',line:75,kind:'I',title:`Exported`,body:`20261009-0812.gpx saved to the folder you picked.`,buttons:OK,suggested:`Replace: drop it, OS sheet/folder picker already confirms`},
+ {id:'P28',file:'rideActions.ts',line:77,kind:'I',title:`Shared`,body:`GPX sent as text via the share sheet.`,buttons:OK,suggested:`Replace: drop it, OS sheet/folder picker already confirms`},
+ err('P29','rideActions.ts',80,`Export failed`,EXC1),
+ {id:'P30',file:'RideDetailScreen.tsx',line:274,kind:'I',title:`That way already exists`,body:`Pick it on RECORD next time instead of adding it again.`,buttons:OK,suggested:`Replace: inline text instead`},
+ err('P31','RideDetailScreen.tsx',281,`Could not create the route`,ERR6),
+ err('P32','RideDetailScreen.tsx',295,`Could not create the route`,EXC1),
+ err('P33','RideDetailScreen.tsx',338,`Could not save the gates`,ERR5),
+ err('P34','RideDetailScreen.tsx',347,`Could not save the gates`,EXC1),
+ err('P35','RideDetailScreen.tsx',383,`Could not set the reference`,ERR7),
+ err('P36','RideDetailScreen.tsx',396,`Could not set the reference`,EXC1),
+ {id:'P37',file:'RideDetailScreen.tsx',line:409,kind:'C',
+  title:`Overwrite the reference of "Fast"?`,
+  body:`This way will be overwritten and past ghosts will be lost.\n\nIts reference line and gates are rebuilt from this activity (9 Oct 08:12). Its 4 past results are discarded and re-timed from the recordings against the new reference — old times and ranks do not survive. Activity recordings are kept.`,
+  buttons:CD('Overwrite'),suggested:KEEP,
+  variants:[
+   {label:'with past results (n=4)',title:`Overwrite the reference of "Fast"?`,body:`This way will be overwritten and past ghosts will be lost.\n\nIts reference line and gates are rebuilt from this activity (9 Oct 08:12). Its 4 past results are discarded and re-timed from the recordings against the new reference — old times and ranks do not survive. Activity recordings are kept.`,buttons:CD('Overwrite')},
+   {label:'no past results (n=0)',title:`Overwrite the reference of "Fast"?`,body:`This way will be overwritten and past ghosts will be lost.\n\nIts reference line and gates are rebuilt from this activity (9 Oct 08:12). There are no past results on this way yet. Activity recordings are kept.`,buttons:CD('Overwrite')}
+  ]},
+ err('P38','RidesScreen.tsx',80,`Could not load activities`,EXC1),
+ {id:'P39',file:'settings.tsx',line:265,kind:'I',title:`Nothing to export yet`,body:`No places, routes or reference lines on this phone yet.`,buttons:OK,suggested:`Replace: grey out the button instead`},
+ {id:'P40',file:'settings.tsx',line:284,kind:'I',title:`Exported`,body:`qualifire-export.json saved to the folder you picked.`,buttons:OK,suggested:`Replace: drop it, OS sheet/folder picker already confirms`},
+ {id:'P41',file:'settings.tsx',line:285,kind:'I',title:`Exported`,body:`qualifire-export.json sent as text via the share sheet.`,buttons:OK,suggested:`Replace: drop it, OS sheet/folder picker already confirms`},
+ err('P42','settings.tsx',287,`Export failed`,EXC1),
+ {id:'P43',file:'settings.tsx',line:340,kind:'I',title:`Reset done`,body:`Qualifire is back at its first launch. Close it fully and reopen it to see the launch animation and a clean RECORD tab.\nYour old data is in <documents>/qualifire-old-20261010 on the phone.`,buttons:OK,suggested:`Keep (instructs restart)`},
+ err('P44','settings.tsx',348,`Reset failed`,`${EXC1}\nYour old data was moved aside to <documents>/qualifire-old-20261010, but finishing the reset failed. Restart the app.`),
+ {id:'P45',file:'settings.tsx',line:357,kind:'I',title:`An activity is being recorded`,body:`Stop it on the RECORD tab first.`,buttons:OK,suggested:`Replace: disable the Reset button instead`},
+ {id:'P46',file:'settings.tsx',line:366,kind:'C',title:`Reset app?`,body:`42 activities, 6 places, 9 routes, 11 ways, every sport and every result will be moved out of the app. Your settings and theme stay. Export anything you want to keep first (ACTIVITIES → Export GPX+, or Export app above).`,buttons:[{label:'Cancel',role:'cancel'},{label:'Continue…',role:'normal'}],suggested:KEEP},
+ {id:'P47',file:'settings.tsx',line:374,kind:'C',title:`Really reset?`,body:`This cannot be undone from inside the app.`,buttons:CD('Reset'),suggested:KEEP},
+ err('P48','settings.tsx',455,`Cannot delete`,`sport "walk" has 3 routes · 12 activities — delete those first`),
+ err('P49','settings.tsx',460,`Cannot delete`,`sports.json could not be read at boot — not saved`),
+ {id:'P50',file:'settings.tsx',line:468,kind:'C',title:`Delete "Walk"?`,body:`This cannot be undone from inside the app.`,buttons:CD('Delete'),suggested:KEEP}
+];
+/*DATA_END*/
+
+const LS_KEY='qualifire-popups-v1';
+let state={theme:'day',look:'themed',filter:'all',dec:{}};
+function load(){try{const s=JSON.parse(localStorage.getItem(LS_KEY)||'null');if(s){if(s.theme)state.theme=s.theme;if(s.look)state.look=s.look;if(s.dec)state.dec=s.dec;}}catch(e){}}
+function save(){try{localStorage.setItem(LS_KEY,JSON.stringify({theme:state.theme,look:state.look,dec:state.dec}));}catch(e){}}
+const el=(t,c,x)=>{const e=document.createElement(t);if(c)e.className=c;if(x!=null)e.textContent=x;return e;};
+const KIND={C:'Confirm',I:'Info',E:'Error'};
+const DEC=[['keep','Keep'],['remove','Remove'],['replace','Replace (inline or label)'],['merge','Merge into one error dialog']];
+const DECW={keep:'KEEP',remove:'REMOVE',replace:'REPLACE',merge:'MERGE INTO ONE ERROR DIALOG'};
+
+function dialog(v,look){
+  const stage=el('div','stage');
+  const themed=look==='themed';
+  const d=el('div',themed?'dlg':'md');
+  d.appendChild(el('div','t',v.title));
+  d.appendChild(el('div','b',v.body));
+  const bt=el('div','btns');
+  v.buttons.forEach(b=>bt.appendChild(el('div',themed?('dbtn '+(b.role==='cancel'?'cancel':'go')):'mbtn',b.label)));
+  d.appendChild(bt);stage.appendChild(d);
+  return stage;
+}
+function wordCount(s){return s.split(/\s+/).filter(Boolean).length;}
+function allVariants(s){return s.variants||[s];}
+
+function card(s){
+  const c=el('div','site');c.id=s.id;c.dataset.kind=s.kind;
+  const h=el('div','sh');
+  h.appendChild(el('b',null,s.id+' · '+s.file+':'+s.line));
+  h.appendChild(el('span','chip kind',KIND[s.kind]));
+  h.appendChild(el('span','chip sug','suggested: '+s.suggested));
+  const vs=allVariants(s);
+  if(vs.some(v=>(v.title+v.body).indexOf('—')>=0))h.appendChild(el('span','chip badge','em dash'));
+  const wc=Math.max.apply(null,vs.map(v=>wordCount(v.body)));
+  if(wc>20)h.appendChild(el('span','chip badge',wc+' words'));
+  c.appendChild(h);
+  vs.forEach(v=>{
+    if(s.variants)c.appendChild(el('div','vlabel',v.label));
+    c.appendChild(dialog(v,state.look));
+  });
+  c.appendChild(el('div','look',state.look==='themed'?'Proposed in-app dialog (themed)':'Current Android system dialog: approximate, real look depends on the phone'));
+  if(s.kind==='E')c.appendChild(el('div','errnote','Example message. The real text is whatever the failing step reports.'));
+  const dec=el('div','dec');
+  DEC.forEach(([k,l])=>{
+    const b=el('button',null,l);b.type='button';
+    b.setAttribute('aria-pressed',String((state.dec[s.id]||{}).d===k));
+    b.addEventListener('click',()=>{
+      const cur=state.dec[s.id]||{};
+      state.dec[s.id]={d:cur.d===k?undefined:k,n:cur.n||''};
+      save();
+      dec.querySelectorAll('button').forEach((x,i)=>x.setAttribute('aria-pressed',String(state.dec[s.id].d===DEC[i][0])));
+      counter();applyFilter();
+    });
+    dec.appendChild(b);
+  });
+  c.appendChild(dec);
+  const n=el('input','noteinp');n.type='text';n.placeholder='Note (optional)';n.setAttribute('aria-label','Note for '+s.id);
+  n.value=(state.dec[s.id]||{}).n||'';
+  n.addEventListener('input',()=>{const cur=state.dec[s.id]||{};state.dec[s.id]={d:cur.d,n:n.value};save();});
+  c.appendChild(n);
+  return c;
+}
+
+function render(){
+  document.documentElement.setAttribute('data-theme',state.theme);
+  seg('segTheme',[['day','Day'],['night','Night']],'theme');
+  seg('segLook',[['themed','Themed (proposed)'],['current','Current (Android system)']],'look');
+  const f=document.getElementById('filters');f.textContent='';
+  [['all','All'],['C','Confirm'],['I','Info'],['E','Error'],['undecided','Undecided']].forEach(([k,l])=>{
+    const b=el('button','chip-f',l);b.type='button';b.setAttribute('aria-pressed',String(state.filter===k));
+    b.addEventListener('click',()=>{state.filter=k;render();});
+    f.appendChild(b);
+  });
+  const list=document.getElementById('list');list.textContent='';
+  let cur=null;
+  DATA.forEach(s=>{
+    if(s.file!==cur){cur=s.file;const h=el('h2',null,s.file);h.dataset.file=s.file;list.appendChild(h);}
+    list.appendChild(card(s));
+  });
+  counter();applyFilter();
+}
+function seg(id,opts,key){
+  const box=document.getElementById(id);box.textContent='';
+  opts.forEach(([k,l])=>{
+    const b=el('button',null,l);b.type='button';b.setAttribute('aria-pressed',String(state[key]===k));
+    b.addEventListener('click',()=>{state[key]=k;save();render();});
+    box.appendChild(b);
+  });
+}
+function decided(id){return !!(state.dec[id]&&state.dec[id].d);}
+function counter(){
+  const n=DATA.filter(s=>decided(s.id)).length;
+  document.getElementById('counter').textContent=n+' of '+DATA.length+' decided';
+}
+function applyFilter(){
+  const vis={};
+  DATA.forEach(s=>{
+    const f=state.filter;
+    const show=f==='all'||(f==='undecided'?!decided(s.id):s.kind===f);
+    document.getElementById(s.id).hidden=!show;
+    if(show)vis[s.file]=true;
+  });
+  document.querySelectorAll('#list h2').forEach(h=>{h.hidden=!vis[h.dataset.file];});
+}
+function buildMd(){
+  const line=(s)=>{
+    const d=state.dec[s.id]||{};
+    return '- '+s.id+' '+s.title+' ('+s.file.replace(/\.(tsx|ts)$/,'')+')'+(d.d?' → '+DECW[d.d]:'')+(d.n?' — '+d.n:'');
+  };
+  const done=DATA.filter(s=>decided(s.id)),und=DATA.filter(s=>!decided(s.id));
+  let out='## Decisions ('+done.length+' of '+DATA.length+')\n'+done.map(line).join('\n');
+  out+='\n\n## Undecided ('+und.length+')\n'+und.map(line).join('\n')+'\n';
+  return out;
+}
+function setStatus(t){document.getElementById('status').textContent=t;}
+document.getElementById('copyBtn').addEventListener('click',()=>{
+  const txt=buildMd();
+  const fb=()=>{
+    const ta=document.getElementById('fallback');ta.hidden=false;ta.value=txt;ta.focus();ta.select();
+    let ok=false;try{ok=document.execCommand('copy');}catch(e){}
+    if(ok){ta.hidden=true;setStatus('Copied.');}else setStatus('Select all and copy from the box below.');
+  };
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(()=>{document.getElementById('fallback').hidden=true;setStatus('Copied.');},fb);
+  }else fb();
+});
+document.getElementById('resetBtn').addEventListener('click',()=>{document.getElementById('resetBox').hidden=false;});
+document.getElementById('resetNo').addEventListener('click',()=>{document.getElementById('resetBox').hidden=true;});
+document.getElementById('resetYes').addEventListener('click',()=>{state.dec={};save();document.getElementById('resetBox').hidden=true;setStatus('Cleared.');render();});
+load();render();
+</script>
+</body>
+</html>

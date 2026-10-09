@@ -134,6 +134,8 @@ test('selfrace: loader — an all-archive window never reads a ride file (R3)', 
     exists: async () => false,
     listDir: async () => [],
     deleteFile: async () => {},
+    importFile: async () => {},
+    fileUri: (relPath) => 'memory://' + relPath,
   };
   const window = ghostsFor('Morning');
   assert(window.length > 0, 'expected the shipped seed to give Morning some archive ghosts to test against');

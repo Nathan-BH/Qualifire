@@ -64,6 +64,18 @@ export function createExpoFsAdapter(rootName = 'qualifire'): FsAdapter {
       const f = fileAt(relPath);
       if (f.exists) f.delete();
     },
+    async importFile(srcUri, relPath) {
+      ensureRoot();
+      const parent = parts(relPath).slice(0, -1).join('/');
+      const d = dirAt(parent);
+      if (!d.exists) d.create({ intermediates: true, idempotent: true });
+      const dest = fileAt(relPath);
+      if (dest.exists) dest.delete();
+      await new File(srcUri).move(dest);
+    },
+    fileUri(relPath) {
+      return fileAt(relPath).uri;
+    },
   };
 }
 

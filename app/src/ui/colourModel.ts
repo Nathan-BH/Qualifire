@@ -16,10 +16,11 @@
  * models costs nothing but this function.
  */
 import { shippedResults } from '../store/seed.ts';
-import { ranks, sectorHistory } from '../store/results.ts';
+import { ranks, rankedAsOf, sectorHistory } from '../store/results.ts';
 import { scoredS } from '../store/timing.ts';
 import type { RideResult } from '../store/types.ts';
 import { recordedResults } from './lastRide.ts';
+import { storedResultsForWay } from '../store/resultsStore.ts';
 
 /** D-045 ruling 2 (Nathan, 2026-08-26): the RANKING POOL size — the judged
  * ride plus its WINDOW_PREV most recent previous rides, so a position always
@@ -45,11 +46,8 @@ export const WINDOW_PREV = WINDOW_N - 1;
  * once stored (see `rankLineFor`/`getLiveTowerPosition`) — rank and colour
  * are independent facts, and only colour reads this floor. NOTE: like
  * every stored ride, `ghostsFor`'s window excludes the judged ride BY ID,
- * not by time (B-44) — so once later rides exist, re-opening the
- * reference ride's own RESULT judges it against the window same as any
- * other ride, and it CAN pick up a purple/green/yellow verdict then. The
- * "no verdict" guarantee is for the moment it's ridden, not a permanent
- * exemption. */
+ * not by time (B-44). virgin-cycle29 03: stored surfaces judge against the
+ * frozen prior window, so the reference ride stays 'neutral' / P1 of 1 for good. */
 export const MIN_HISTORY = 1;
 
 export type UiTier = 'purple' | 'green' | 'neutral' | 'yellow' | 'est';
@@ -67,6 +65,20 @@ function rankedFor(wayId: string): RideResult[] {
     .sort((a, b) => a.startedAtMs - b.startedAtMs);
 }
 
+/** virgin-cycle29 03 (ruling-03-stop): every result of a way, ascending by start, UNFILTERED - rankedAsOf judges per
+ * ride. Union of the shipped ghosts, this session's NOW window (`recorded`) and the persistent store, de-duplicated by
+ * rideId with the STORE object winning: `recorded` (ui/lastRide.ts) only ever holds ranks()-passing results, so a ride
+ * ignored later lives in the store alone, carrying its ignoredAtMs. resultsStore.initResultsStore hydrates ignored
+ * results too, so a frozen pool survives a restart. Read ONLY by priorWindowFor/priorPoolFor; every NOW pool keeps
+ * reading rankedFor. */
+function resultsFor(wayId: string): RideResult[] {
+  const byId = new Map<string, RideResult>();
+  for (const r of GHOSTS) if (r.wayId === wayId) byId.set(r.rideId, r);
+  for (const r of recordedResults()) if (r.wayId === wayId) byId.set(r.rideId, r);
+  for (const r of storedResultsForWay(wayId)) byId.set(r.rideId, r);
+  return [...byId.values()].sort((a, b) => a.startedAtMs - b.startedAtMs);
+}
+
 /**
  * The previous-rides comparison window: the WINDOW_PREV most recent ranked
  * rides, minus the judged ride when it is already stored (B-44's exclusion
@@ -78,14 +90,33 @@ export function ghostsFor(wayId: string, excludeRideId?: string): RideResult[] {
   return rankedFor(wayId).filter((r) => r.rideId !== excludeRideId).slice(-WINDOW_PREV);
 }
 
-/** virgin-cycle14 brief 02 (replay): the comparison window AS IT STOOD when `rideId`
- * was ridden — ranked rides of the way started before `beforeMs`, this ride excluded
- * by id, last WINDOW_PREV. Ride k replays against k-1 (capped at 9), exactly what
- * the live screen showed that day; rides ridden later never appear. */
+/** The comparison window AS IT STOOD when `rideId` was ridden (cycle14 replay; virgin-cycle29 03 made it the ONE
+ * frozen pool the feed card, the detail page, its "ON THIS ROUTE" list and REPLAY share): results of the way started
+ * before `beforeMs`, this ride excluded by id, that rankedAsOf() accepts for a ride started at `beforeMs` - so a later
+ * ride never appears and a later "Ignore in ranking" never removes a ride that counted on the day. Last WINDOW_PREV. */
 export function priorWindowFor(wayId: string, rideId: string, beforeMs: number): RideResult[] {
-  return rankedFor(wayId)
-    .filter((r) => r.rideId !== rideId && r.startedAtMs < beforeMs)
+  const all = resultsFor(wayId);
+  const own = all.find((r) => r.rideId === rideId);
+  const judged = { startedAtMs: beforeMs, gateSetVersion: own?.derivedBy.gateSetVersion };
+  return all
+    .filter((r) => r.rideId !== rideId && r.startedAtMs < beforeMs && rankedAsOf(r, judged))
     .slice(-WINDOW_PREV);
+}
+/** virgin-cycle29 03: lapValues over the frozen window. */
+export function priorLapValues(wayId: string, rideId: string, beforeMs: number): number[] {
+  return priorWindowFor(wayId, rideId, beforeMs).map((r) => scoredS(r.lap) as number);
+}
+/** virgin-cycle29 03: sectorValues over the frozen window (store's own sectorHistory, as sectorValues). */
+export function priorSectorValues(wayId: string, index: number, rideId: string, beforeMs: number): number[] {
+  return sectorHistory(priorWindowFor(wayId, rideId, beforeMs), index);
+}
+/** virgin-cycle29 03: the detail page's "ON THIS ROUTE" pool: the frozen window plus the ride itself (when stored),
+ * ascending by start - the same shape rankingPoolFor gives, judged as of then, so the list and the P-rank agree. */
+export function priorPoolFor(wayId: string, rideId: string, beforeMs: number): RideResult[] {
+  const own = resultsFor(wayId).find((r) => r.rideId === rideId);
+  const pool = priorWindowFor(wayId, rideId, beforeMs);
+  // Inspector blocker (cycle29 03): a ride that cannot rank (estimated, missed, demoted, or ignored) is not in its own list.
+  return (own && ranks(own) ? [...pool, own] : pool).sort((a, b) => a.startedAtMs - b.startedAtMs);
 }
 
 /** True count of rankable rides on file for a route — NOT windowed. The only
