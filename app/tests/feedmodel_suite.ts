@@ -70,7 +70,7 @@ test('feedmodel: buildFeedCard route — ignored ride is unranked: no time, no r
   const c = buildFeedCard(row({ rank: null, quality: null }), detail({ ignored: true, lapTier: 'neutral', canToggleIgnore: true }), null, q);
   assert(c.unranked === true, 'unranked');
   assert(c.heroLabel === '', `no time, got "${c.heroLabel}"`);
-  assert(c.rankLabel === null, 'no rank');
+  assert(c.rankLabel === 'Not ranked', 'verdict in the rank slot (virgin-cycle27 10)');
   assert(c.sectors.length === 0, 'no strip');
   assert(c.title === 'Morning', 'title kept');
   assert(c.wayId === 'w1' && c.variant === 'route', 'still a route card (not a free activity)');
@@ -78,14 +78,17 @@ test('feedmodel: buildFeedCard route — ignored ride is unranked: no time, no r
   assert(c.ignoreToggle === 'count', 'count');
 });
 
-test('feedmodel: buildFeedCard route — estimated / missed lap is unranked: no time, no ~, no rank, no strip; title + map kept', () => {
+test('feedmodel: buildFeedCard route — estimated / missed lap is unranked: duration shown, neutral, "Not ranked" in the rank slot, no strip (virgin-cycle27 10)', () => {
+  const umeta: RideMeta = { rideId: 'r1', startMs: 1000, endMs: 1000 + 1830 * 1000, nFixes: 10 };
   for (const quality of ['estimated', 'missed'] as const) {
-    const c = buildFeedCard(row({ quality, lapS: null, lapLabel: '', rank: null }), detail({ lapTier: 'est', canToggleIgnore: false, sectorRows: [sec(1, '~1:30', 'est'), sec(2, '– did not traverse –', 'est')] }), null, q);
+    const c = buildFeedCard(row({ quality, lapS: null, lapLabel: '', rank: null }), detail({ lapTier: 'est', canToggleIgnore: false, sectorRows: [sec(1, '~1:30', 'est'), sec(2, '– did not traverse –', 'est')] }), umeta, q);
     assert(c.unranked === true, `${quality}: unranked`);
-    assert(c.heroLabel === '' && c.rankLabel === null && c.sectors.length === 0, `${quality}: nothing but the label`);
+    assert(c.heroLabel === durationLabel(umeta) && c.heroLabel !== '', `${quality}: total time kept`);
+    assert(c.heroTier === 'neutral' && c.rankLabel === 'Not ranked' && c.sectors.length === 0, `${quality}: neutral, label in the rank slot, no strip`);
+    assert(buildFeedCard(row({ quality, lapS: null, lapLabel: '', rank: null }), detail({ lapTier: 'est', canToggleIgnore: false }), null, q).heroLabel === '', `${quality}: no meta -> never invented`);
     assert(c.title === 'Morning' && c.wayId === 'w1' && c.variant === 'route', `${quality}: title/map kept, still a route card`);
     assert(c.ignoreToggle === null, `${quality}: nothing to toggle (it never ranked)`);
-    for (const v of Object.values(c)) assert(typeof v !== 'string' || !/~|no lap|estimated|missed|interrupted|ignored/.test(v), `${quality}: card string "${v}" leaks a quality word or an estimate`);
+    for (const v of Object.values(c)) assert(typeof v !== 'string' || !/~|no lap|estimated|missed|interrupted|ignored|gap/.test(v), `${quality}: card string "${v}" leaks a quality word or an estimate`);
   }
 });
 

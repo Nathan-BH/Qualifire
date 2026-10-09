@@ -85,7 +85,7 @@ import { effectiveRideSportId, scopeCatalog, setActiveSport, showSportPillRow, w
 import { afterSportSwitch } from '../store/sportSwitch';
 import { activeCatalog, activeSportId, currentSports, saveSports } from '../store/sportStore';
 import { defaultEndpoints, routeTitle, wayLabelIn, wayVariantLabel, sortWaysForDisplay } from '../store/defaultWay';
-import { landmarkUsageCounts, sortLandmarksByUsage } from '../store/landmarkUsage';
+import { landmarkUsageCounts, sortLandmarksByUsage, suggestedDestination } from '../store/landmarkUsage';
 import { placeOptions } from '../store/placeSearch';
 import type { Way } from '../store/types';
 import { PaddockTheme, colors, radius } from './theme';
@@ -113,8 +113,8 @@ const NO_SPORT_MSG = 'No sport configured yet';
 const NO_SPORT_FLASH_HOLD_MS = 1000;
 /** virgin-cycle21 04 (Nathan 2026-10-04): the one trace of an interrupted ride (app killed,
  * phone reset, battery dead) — never resumed, never scored, filed free. Flashed once in the
- * RECORD sub-label on the mount that saved it. */
-const INTERRUPTED_MSG = 'Interrupted · saved as free activity';
+ * RECORD sub-label on the mount that saved it. virgin-cycle27 10: no "Interrupted" — nothing negative. */
+const INTERRUPTED_MSG = 'Saved as free activity';
 const INTERRUPTED_FLASH_HOLD_MS = 5000;
 
 /** Stationary detection (B-51, RecordScreen-owned): the live ribbon dims and
@@ -282,6 +282,13 @@ export default function RecordScreen({
   // must keep the rider's choice.
   const [fromExplicit, setFromExplicit] = useState(false);
   const pickFrom = (id: string) => { setFrom(id); setFromExplicit(true); };
+  // virgin-cycle27 brief 01 (Nathan 2026-10-08): GOING TO follows the START
+  // place — the destination most ridden from it (store/landmarkUsage.ts
+  // suggestedDestination) — until the rider taps GOING TO themselves this
+  // setup; a ride end or a sport switch re-arms the follow. No history from
+  // this start ⇒ `to` is left exactly as it was (never a guess).
+  const [toExplicit, setToExplicit] = useState(false);
+  const pickTo = (id: string) => { setTo(id); setToExplicit(true); };
   // WP-1 (C1): tapping a sport pill sets the global active sport, then
   // resets from/to to the newly-scoped catalog's own defaults and clears any
   // way pick — a pick from the OTHER sport must never survive a switch.
@@ -296,6 +303,7 @@ export default function RecordScreen({
     setFrom(reset.from ?? NEW_ID);
     setFromExplicit(false);
     setTo(reset.to ?? NEW_ID);
+    setToExplicit(false);
     setWayPick(reset.wayPick);
     setSportSwitchTick((v) => v + 1);
   };
@@ -808,6 +816,7 @@ export default function RecordScreen({
       // notes5 N5: a finished ride's explicit FROM tap must not carry into
       // the next ride's setup — the next setup gets a fresh suggestion.
       setFromExplicit(false);
+      setToExplicit(false);
       // virgin-cycle15 06 (D3): these five are ride-scoped by their own
       // comments above ("frozen at START", "the
       // LIVE map's route line") and none feeds the post-ride setup suggestion (unlike
@@ -1044,6 +1053,7 @@ export default function RecordScreen({
             // notes5 N5: same reset as onEnd — a discarded ride's explicit
             // FROM tap must not carry into the next ride's setup.
             setFromExplicit(false);
+            setToExplicit(false);
             // virgin-cycle15 06 (D3): same ride-scoped reset as onEnd, and
             // for the same reason — a discarded ride is a ride ending too.
             setWayPick(null);
@@ -1148,11 +1158,17 @@ export default function RecordScreen({
   // A tap sticks even if detection later changes or goes null.
   // recordFlow.ts's effectiveFromId owns the pure rule so it is tested
   // without RN.
-  const fromId = effectiveFromId({ startMode: settings.startMode, detectedId: detected?.id ?? null, from, fromExplicit });
+  const fromId = effectiveFromId({ detectedId: detected?.id ?? null, from, fromExplicit });
 
   // virgin-cycle26 brief 01: `to` may be the LOOP_ID sentinel ("finish where I
   // start"); resolve it against the effective START before anything reads it.
   const { toId, loop: loopOn } = resolveGoingTo(to, fromId, NEW_ID);
+  useEffect(() => {
+    if (phase !== 'setup' || toExplicit || fromId === NEW_ID) return;
+    const best = suggestedDestination(CATALOG, fromId);
+    if (best === null) return;
+    setTo(best === fromId ? LOOP_ID : best);
+  }, [fromId, toExplicit, phase]);
 
   // The route the rider picked, and the ways on it -- so the ghost count is
   // THIS way's, not always Morning's. A loop (toId === fromId) resolves like
@@ -1266,8 +1282,10 @@ export default function RecordScreen({
           {routeTitle(landmarkLabel(fromId), landmarkLabel(toId), loopOn && toId !== NEW_ID)}
           {route && pickedWay ? ` · ${wayVariantLabel(pickedWay.id, route, pickedWay.specs)}` : ''}
         </Text>
-        <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch' }}>
+        {/* virgin-cycle27 06 (Nathan 2026-10-08): the map runs edge to edge like the ACTIVITIES cards — bleed frame, parent inset cancelled on the map only. */}
+        <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch', marginHorizontal: -12 }}>
           <WayMapView
+            bleed
             wayId={pickedWay?.refLineId ?? null}
             lat={status.lastLat}
             lon={status.lastLon}
@@ -1307,8 +1325,8 @@ export default function RecordScreen({
             pattern, mirrored here. The end-of-ride LaunchAnimation stays an
             absolute-fill sibling below, outside the scroll. */}
         <ScrollView
-          style={{ flex: 1, alignSelf: 'stretch' }}
-          contentContainerStyle={{ gap: 8, paddingBottom: 24 }}
+          style={{ flex: 1, alignSelf: 'stretch', marginHorizontal: -12 }}
+          contentContainerStyle={{ gap: 8, paddingBottom: 24, paddingHorizontal: 12 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -1333,6 +1351,7 @@ export default function RecordScreen({
               rendered in the same tick as the end mark and was never tappable. */}
           {endingSlot === 'adjust' && adjust !== null ? (
             <GateAdjustCard
+              mapInset={12}
               wayId={adjust.wayId}
               refLine={adjust.ref}
               refLengthM={adjust.refLengthM}
@@ -1415,8 +1434,9 @@ export default function RecordScreen({
             the clock/strip; Nathan's ruling overrules B-51's "subordinate
             ribbon" layout for race mode. flex:1 keeps the rest pinned
             to the bottom. */}
-        <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch' }}>
+        <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch', marginHorizontal: -12 }}>
           <WayMapView
+            bleed
             wayId={mapOverlay.wayId}
             lat={riderDot?.lat ?? status.lastLat}
             lon={riderDot?.lon ?? status.lastLon}
@@ -1535,8 +1555,9 @@ export default function RecordScreen({
             removed the catalog-wide defaultRouteId() fallback in
             routeMapView.tsx, so a null pick draws rider-only even once the
             catalog holds drawable routes. */}
-        <View style={{ alignSelf: 'stretch' }}>
+        <View style={{ alignSelf: 'stretch', marginHorizontal: -20 }}>
           <WayMapView
+            bleed
             wayId={pickedWay?.refLineId ?? null}
             lat={status.lastLat}
             lon={status.lastLon}
@@ -1571,21 +1592,16 @@ export default function RecordScreen({
               </View>
             ) : null}
             <View style={styles.startFlow}>
+              {/* virgin-cycle27 01: always-on detection; no "not detected" wording (nothing negative), no pill checkmark */}
               <Text style={styles.flowLabel}>
-                {settings.startMode === 'auto'
-                  ? (fromId === detected?.id
-                      ? 'DETECTED START'
-                      : detected
-                        ? 'STARTING FROM'
-                        : 'START NOT DETECTED')
-                  : 'STARTING FROM'}
+                {fromId === detected?.id ? 'DETECTED START' : 'STARTING FROM'}
               </Text>
               <View style={styles.pillRow}>
                 {startable.map((l) => (
                   <Pressable key={l.id} onPress={() => pickFrom(l.id)}
                     style={[styles.pill, fromId === l.id && styles.pillOn]}>
                     <Text style={[styles.pillText, fromId === l.id && styles.pillTextOn]}>
-                      {l.label}{detected?.id === l.id ? ' ✓' : ''}
+                      {l.label}
                     </Text>
                   </Pressable>
                 ))}
@@ -1600,7 +1616,7 @@ export default function RecordScreen({
               <Text style={styles.flowLabel}>GOING TO</Text>
               <View style={styles.pillRow}>
                 {startable.filter((l) => l.id !== fromId).map((l) => (
-                  <Pressable key={l.id} onPress={() => setTo(l.id)}
+                  <Pressable key={l.id} onPress={() => pickTo(l.id)}
                     style={[styles.pill, to === l.id && styles.pillOn]}>
                     <Text style={[styles.pillText, to === l.id && styles.pillTextOn]}>{l.label}</Text>
                   </Pressable>
@@ -1608,13 +1624,13 @@ export default function RecordScreen({
                 {/* virgin-cycle26 brief 01 (Nathan 2026-10-08): 'loop' — finish
                     where I start. Resolves to the START place at use time
                     (recordFlow.ts resolveGoingTo), so it follows a START change. */}
-                <Pressable key={LOOP_ID} onPress={() => setTo(LOOP_ID)}
+                <Pressable key={LOOP_ID} onPress={() => pickTo(LOOP_ID)}
                   style={[styles.pill, loopOn && styles.pillOn]}>
                   <Text style={[styles.pillText, loopOn && styles.pillTextOn]}>loop</Text>
                 </Pressable>
                 {/* WP-B: 'new' — unknown destination (e.g. new>>home), i.e. the
                     first ride from/to this landmark. */}
-                <Pressable key={NEW_ID} onPress={() => setTo(NEW_ID)}
+                <Pressable key={NEW_ID} onPress={() => pickTo(NEW_ID)}
                   style={[styles.pill, to === NEW_ID && styles.pillOn]}>
                   <Text style={[styles.pillText, to === NEW_ID && styles.pillTextOn]}>new</Text>
                 </Pressable>
@@ -1679,7 +1695,7 @@ export default function RecordScreen({
             existing accent-yellow slab — t.onAccent inherited from the
             parent Text, same colour the RECORD label itself uses. */}
         <Text style={[styles.bigBtnText, styles.startText]}>{'●'} RECORD</Text>
-        {yellowSub('same activity · new meaning')}
+        {yellowSub('same route · new meaning')}
       </Pressable>
 
     </ScrollView>

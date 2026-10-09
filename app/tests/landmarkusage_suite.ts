@@ -25,7 +25,7 @@ registerHooks({
     return nextLoad(url, context);
   },
 });
-const { landmarkUsageCounts, sortLandmarksByUsage } = await import('../src/store/landmarkUsage.ts');
+const { landmarkUsageCounts, sortLandmarksByUsage, destinationUsageFrom, suggestedDestination } = await import('../src/store/landmarkUsage.ts');
 
 // ------------------------------------------------------------------ helpers
 
@@ -83,4 +83,43 @@ test('sortLandmarksByUsage with an empty counts map returns an equal but new arr
   const sorted = sortLandmarksByUsage(list, new Map());
   assert(sorted !== list, 'expected a new array, got the same reference');
   assert(sorted.length === list.length && sorted.every((l, i) => l === list[i]), 'expected same order/contents');
+});
+
+// ---------------------------------------------- virgin-cycle27 brief 01: GOING TO follows START
+
+const stat = (table: Record<string, { count: number; lastMs: number }>) =>
+  (wayId: string) => table[wayId] ?? { count: 0, lastMs: 0 };
+
+test('virgin-cycle27 01: destinationUsageFrom counts rides per destination from ONE start, loop under the start id, other starts ignored', () => {
+  const routes = [
+    route('route:hw', 'H', 'W', ['w1', 'w2']),
+    route('route:hz', 'H', 'Z', ['w3']),
+    route('route:hh', 'H', 'H', ['w4']),
+    route('route:wh', 'W', 'H', ['w5']),
+  ];
+  const u = destinationUsageFrom({ routes }, 'H', stat({ w1: { count: 3, lastMs: 10 }, w2: { count: 2, lastMs: 50 }, w3: { count: 4, lastMs: 20 }, w4: { count: 1, lastMs: 99 }, w5: { count: 9, lastMs: 999 } }));
+  assert(u.get('W')?.count === 5 && u.get('W')?.lastMs === 50, `W: ${JSON.stringify(u.get('W'))}`);
+  assert(u.get('Z')?.count === 4, 'Z counted');
+  assert(u.get('H')?.count === 1, 'loop counted under the start id');
+  assert(!u.has('X') && u.size === 3, 'nothing from other starts');
+});
+
+test('virgin-cycle27 01: suggestedDestination — most rides wins; ties go to the most recent; then catalog order; loop returns the start id', () => {
+  const landmarks = [landmark('H'), landmark('W'), landmark('Z')];
+  const routes = [route('route:hw', 'H', 'W', ['w1']), route('route:hz', 'H', 'Z', ['w2']), route('route:hh', 'H', 'H', ['w3'])];
+  assert(suggestedDestination({ routes, landmarks }, 'H', stat({ w1: { count: 5, lastMs: 1 }, w2: { count: 2, lastMs: 9 } })) === 'W', 'count wins');
+  assert(suggestedDestination({ routes, landmarks }, 'H', stat({ w1: { count: 2, lastMs: 1 }, w2: { count: 2, lastMs: 9 } })) === 'Z', 'tie → most recent');
+  assert(suggestedDestination({ routes, landmarks }, 'H', stat({ w1: { count: 2, lastMs: 5 }, w2: { count: 2, lastMs: 5 } })) === 'W', 'full tie → catalog order');
+  assert(suggestedDestination({ routes, landmarks }, 'H', stat({ w3: { count: 7, lastMs: 5 } })) === 'H', 'loop → the start id');
+});
+
+test('virgin-cycle27 01: suggestedDestination is null with no rides from this start (the picker then changes nothing)', () => {
+  const landmarks = [landmark('H'), landmark('W')];
+  const routes = [route('route:wh', 'W', 'H', ['w5'])];
+  assert(suggestedDestination({ routes, landmarks }, 'H', stat({ w5: { count: 9, lastMs: 1 } })) === null, 'no history from H');
+  assert(suggestedDestination({ routes: [], landmarks }, 'H', stat({})) === null, 'empty catalog');
+});
+
+test('virgin-cycle27 01: the default statsForWay reads the results store (count + latest startedAtMs) — smoke, empty store', () => {
+  assert(destinationUsageFrom({ routes: [route('route:hw', 'H', 'W', ['w-none'])] }, 'H').size === 0, 'no stored results → no usage');
 });

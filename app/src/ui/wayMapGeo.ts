@@ -405,7 +405,7 @@ export function gateTicksFeatureCollection(
  * `undefined`/`null` for every pre-WP-M caller and every existing test —
  * byte-identical output. When non-null it overrides `bearing` on EVERY push,
  * including 'fit' (which otherwise pins 0), so a held rotation survives
- * +/-/FIT/ME until the compass button explicitly sets it back to 0 (0, not
+ * +/-/FIT/ME until FIT explicitly sets it back to 0 (virgin-cycle27 08 — the compass button is gone) (0, not
  * null — a `finished` map holds a course-up `bearing`, so clearing to null
  * would let the next push bring that course-up value back and un-reset the
  * map). */

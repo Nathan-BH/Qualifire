@@ -13,9 +13,9 @@ import { registerHooks } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import * as nodeFs from 'node:fs';
 import { assert, test } from './lib.ts';
-import { colors, daylight, night } from '../src/ui/theme.ts';
+import { colors, daylight, night, tierHex, type PaddockTheme } from '../src/ui/theme.ts';
 import { tierTextColour, tierLineColour, YELLOW_TIER, PURPLE_TEXT_NIGHT, GREEN_TEXT_DAY, YELLOW_TEXT_DAY } from '../src/ui/tierColour.ts';
-const PURPLE_INK = '#120521'; // chips.tsx:25, mirrored — chips.tsx is JSX and not loadable here
+const PURPLE_INK = '#FFFFFF'; // chips.tsx PURPLE_INK (= colors.white since cycle27 FINAL), mirrored — chips.tsx is JSX and not loadable here
 import { freeRideNear, type FreeRideRecord } from '../src/store/freeRides.ts';
 import { RESULT_SCHEMA_VERSION, type RideResult, type Way } from '../src/store/types.ts';
 import type { RideDetailDeps } from '../src/ui/rideDetailModel.ts';
@@ -108,7 +108,7 @@ test('ridedetail: rideDetailFor — estimated lap → canToggleIgnore false, unr
   });
   const m = rideDetailFor('r3', 7000, { ...NOOP_DEPS, result: res });
   assert(!m.canToggleIgnore, 'nothing to ignore on a lap that never ranked in the first place');
-  assert(m.rankLine === 'GPS gap at a gate', `unexpected rank line: "${m.rankLine}"`);
+  assert(m.rankLine === 'Not ranked', `unexpected rank line: "${m.rankLine}"`);
   assert(m.unranked === true && m.lapLabel === '', 'estimated → unranked, no label (no ~)');
 });
 
@@ -148,7 +148,7 @@ test('brief 05: rideDetailFor.unranked follows feedModel.unrankedForDisplay — 
   assert(mk('clean').unranked === false && mk('interrupted').unranked === false, 'real time → ranked');
   assert(mk('estimated').unranked === true && mk('missed').unranked === true, 'no real time → unranked');
   assert(mk('clean', true).unranked === true && mk('interrupted', true).unranked === true, 'ignored → unranked');
-  assert(mk('missed').rankLine === 'a gate was missed', `missed reason, got "${mk('missed').rankLine}"`);
+  assert(mk('missed').rankLine === 'Not ranked' && mk('estimated').rankLine === 'Not ranked', 'no reason line, one neutral verdict (virgin-cycle27 10)');
   assert(mk('missed').lapLabel === '' && mk('estimated').lapLabel === '', 'no label without a real time');
   assert(rideDetailFor('n', 1, NOOP_DEPS).unranked === false, 'kind none → false');
   for (const m of [mk('estimated'), mk('missed'), mk('clean', true)]) {
@@ -240,6 +240,26 @@ function contrast(a: string, b: string): number {
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 }
 const TIERS = ['none', 'neutral', 'yellow', 'green', 'purple', 'est'] as const;
+/** virgin-cycle27 02 FINAL (Nathan 2026-10-09): scored-tier text must clear WCAG 4.5:1 on its ground
+ * EXCEPT the pairs Nathan accepted as an on-device trial after seeing them. Each exemption pins the
+ * ratio it had when accepted (rounded DOWN to 0.05) so a silent drift still fails. Key: tier/theme/ground.
+ * Remove a line here only when Nathan changes the palette or revokes the trial. */
+const ACCEPTED_LOW_CONTRAST: Record<string, number> = {
+  'purple/night/card': 2.35, // #7B3FA8 on #212127 = 2.38
+  'purple/night/race.bg': 2.90, // on #0A0A0A = 2.94
+  'green/night/card': 2.85, // #007A00 on #212127 = 2.89
+  'green/night/race.bg': 3.55, // on #0A0A0A = 3.57
+  'yellow/day/card': 1.60, // brand #F5C542 on #FFFFFF = 1.62 — Nathan: "the app yellow is better"
+  'yellow/day/race.bg': 1.60, // on #FFFFFF = 1.62
+};
+const themeName = (t: PaddockTheme) => (t.statusBar === 'light' ? 'night' : 'day');
+function assertScoredContrast(tier: 'purple' | 'green' | 'yellow', t: PaddockTheme, ground: 'card' | 'race.bg'): void {
+  const bg = ground === 'card' ? t.card : t.race.bg;
+  const r = contrast(tierTextColour(tier, t), bg);
+  const key = `${tier}/${themeName(t)}/${ground}`;
+  const floor = ACCEPTED_LOW_CONTRAST[key] ?? 4.5;
+  assert(r >= floor, `${key} ${bg}: ${r.toFixed(2)} < ${floor}${floor < 4.5 ? ' (accepted trial value drifted — palette changed?)' : ''}`);
+}
 
 test('virgin-cycle22 03: tierTextColour — a #rrggbb for every tier in both themes, never the chip ink, never a map-line API', () => {
   for (const t of [night, daylight]) {
@@ -251,46 +271,49 @@ test('virgin-cycle22 03: tierTextColour — a #rrggbb for every tier in both the
   }
 });
 
-test('virgin-cycle22 03: tierTextColour — WCAG contrast on the card: scored tiers >= 4.5, verdict-less >= 3.0, both themes (computed, not eyeballed)', () => {
+test('virgin-cycle22 03 → cycle27 FINAL: tierTextColour — WCAG contrast on the card: scored tiers >= 4.5 except the dated ACCEPTED_LOW_CONTRAST exemptions; verdict-less >= 3.0, both themes', () => {
   for (const t of [night, daylight]) {
     for (const tier of ['purple', 'green', 'yellow'] as const) {
-      const r = contrast(tierTextColour(tier, t), t.card);
-      assert(r >= 4.5, `${tier} on ${t.statusBar === 'light' ? 'night' : 'day'} card ${t.card}: ${r.toFixed(2)} < 4.5`);
+      assertScoredContrast(tier, t, 'card');
     }
     for (const tier of ['neutral', 'est', 'none'] as const) {
       const r = contrast(tierTextColour(tier, t), t.card);
       assert(r >= 3.0, `${tier} on ${t.card}: ${r.toFixed(2)} < 3.0`);
     }
   }
-  // The two failures this brief fixes must stay fixed: dark purple text is not the brand fill, day yellow text is not the brand yellow.
-  assert(tierTextColour('purple', night) !== colors.purple, 'night purple text is a readable tint, not #9000C8 (2.30:1 on the card)');
-  assert(tierTextColour('yellow', daylight) !== colors.neutral, 'day yellow text is not #F5C542 (1.62:1 on white)');
-  assert(tierTextColour('green', daylight) !== colors.green, 'day green text is not #00D000 (2.10:1 on white)');
+  // virgin-cycle27 02 FINAL (Nathan 2026-10-09): the yellow tier IS the brand yellow again, in both themes — inverted from the 2026-10-08 brief.
+  assert(tierTextColour('yellow', daylight) === colors.neutral && tierTextColour('yellow', night) === colors.neutral && YELLOW_TIER === colors.neutral, 'yellow tier = brand yellow');
 });
 
-test('virgin-cycle22 03: tierTextColour — dark theme keeps the brand green and yellow; neutral/est follow the theme tokens', () => {
-  assert(tierTextColour('green', night) === colors.green, 'night green = colors.green');
-  assert(tierTextColour('yellow', night) === YELLOW_TIER, 'night yellow = YELLOW_TIER');
-  assert(tierTextColour('purple', daylight) === colors.purple, 'day purple = colors.purple (6.95:1 on white)');
+test('virgin-cycle27 02 FINAL: the tier palette is EXACTLY Nathan\'s picks — #7B3FA8 / #007A00 / #F5C542 (one palette, both themes; change here on purpose)', () => {
+  assert(tierHex.purple === '#7B3FA8' && tierHex.green === '#007A00' && tierHex.yellow === '#F5C542', `tierHex = ${tierHex.purple} / ${tierHex.green} / ${tierHex.yellow}`);
+  assert(colors.neutral === '#F5C542', 'brand yellow unchanged');
   for (const t of [night, daylight]) {
+    assert(tierTextColour('purple', t) === '#7B3FA8' && tierTextColour('green', t) === '#007A00' && tierTextColour('yellow', t) === '#F5C542', `text hexes (${t.statusBar})`);
+  }
+  assert(tierLineColour('purple') === '#7B3FA8' && tierLineColour('green') === '#007A00' && tierLineColour('yellow') === '#F5C542', 'line hexes');
+});
+
+test('virgin-cycle27 02: both themes return the ONE palette (tierHex) for scored tiers; neutral/est follow the theme tokens', () => {
+  for (const t of [night, daylight]) {
+    assert(tierTextColour('purple', t) === tierHex.purple && tierTextColour('green', t) === tierHex.green && tierTextColour('yellow', t) === tierHex.yellow, `scored tiers = tierHex (${t.statusBar})`);
     assert(tierTextColour('neutral', t) === t.accentText, 'neutral = accentText (no verdict yet, as the chips do)');
     assert(tierTextColour('est', t) === t.textDim && tierTextColour('none', t) === t.textDim, 'est/none = textDim');
   }
+  assert(PURPLE_TEXT_NIGHT === tierHex.purple && GREEN_TEXT_DAY === tierHex.green && YELLOW_TEXT_DAY === tierHex.yellow, 'legacy names alias the palette');
 });
 
-test('virgin-cycle22 03: tierLineColour is untouched — map lines keep the brand colours, null for verdict-less tiers', () => {
-  assert(tierLineColour('purple') === colors.purple && tierLineColour('green') === colors.green && tierLineColour('yellow') === YELLOW_TIER, 'line colours');
+test('virgin-cycle27 02: tierLineColour = the same palette as the text (map line and time can never disagree); null for verdict-less tiers', () => {
+  assert(tierLineColour('purple') === tierHex.purple && tierLineColour('green') === tierHex.green && tierLineColour('yellow') === tierHex.yellow && tierLineColour('yellow') === colors.neutral, 'line colours (yellow = brand)');
   assert(tierLineColour('neutral') === null && tierLineColour('est') === null && tierLineColour('none') === null, 'no line colour without a verdict');
 });
 
 test('virgin-cycle22 04: the flash colour per tier x theme on the RACE ground (race.bg), pinned — what Nathan should see at each gate and at the finish', () => {
-  // Night: brand green/yellow, readable purple tint. Day: brand purple, deep green/gold. est/none dim, neutral = accentText.
-  assert(tierTextColour('purple', night) === PURPLE_TEXT_NIGHT && tierTextColour('green', night) === colors.green && tierTextColour('yellow', night) === YELLOW_TIER, 'night flash colours');
-  assert(tierTextColour('purple', daylight) === colors.purple && tierTextColour('green', daylight) === GREEN_TEXT_DAY && tierTextColour('yellow', daylight) === YELLOW_TEXT_DAY, 'day flash colours');
+  // cycle27 FINAL: one palette both themes; the low night values are listed exemptions.
+  for (const t of [night, daylight]) for (const tier of ['purple', 'green', 'yellow'] as const) assert(tierTextColour(tier, t) === tierHex[tier], `${tier} flash = tierHex`);
   for (const t of [night, daylight]) {
     for (const tier of ['purple', 'green', 'yellow'] as const) {
-      const r = contrast(tierTextColour(tier, t), t.race.bg);
-      assert(r >= 4.5, `${tier} flash on ${t.statusBar === 'light' ? 'night' : 'day'} race ground ${t.race.bg}: ${r.toFixed(2)} < 4.5`);
+      assertScoredContrast(tier, t, 'race.bg');
     }
     for (const tier of ['neutral', 'est', 'none'] as const) {
       const r = contrast(tierTextColour(tier, t), t.race.bg);
@@ -299,6 +322,22 @@ test('virgin-cycle22 04: the flash colour per tier x theme on the RACE ground (r
     // a flash is always a shade off the clock's ink, never the same colour as the ticking digits
     for (const tier of TIERS) assert(tierTextColour(tier, t) !== t.text, `${tier} flash must not be the clock ink ${t.text}`);
   }
+});
+
+test('virgin-cycle27 02: the palette is single-source — colors.purple/green alias tierHex, no stray tier hex outside theme.ts', () => {
+  assert(colors.purple === tierHex.purple && colors.green === tierHex.green, 'aliases');
+  assert(colors.neutral === '#F5C542', 'brand yellow unchanged');
+  const tc = nodeFs.readFileSync(fileURLToPath(new URL('../src/ui/tierColour.ts', import.meta.url).href), 'utf8').replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '');
+  assert(!/#[0-9A-Fa-f]{6}/.test(tc), 'tierColour.ts carries no hex of its own');
+  assert(tierHex.yellow === colors.neutral, 'tierHex.yellow and colors.neutral are the one BRAND_YELLOW literal');
+});
+
+test('virgin-cycle27 02 FINAL: filled purple chips take WHITE ink in both themes (chips.tsx PURPLE_INK = colors.white) — #120521 would be 2.92:1 on #7B3FA8', () => {
+  const chips = nodeFs.readFileSync(fileURLToPath(new URL('../src/ui/chips.tsx', import.meta.url).href), 'utf8');
+  assert(chips.includes('export const PURPLE_INK = colors.white;'), 'PURPLE_INK is colors.white');
+  assert(!chips.includes("'#120521'"), 'the near-black ink literal is gone');
+  assert(contrast('#FFFFFF', tierHex.purple) >= 4.5, `white on the purple fill: ${contrast('#FFFFFF', tierHex.purple).toFixed(2)}`);
+  assert(contrast(PURPLE_INK, tierHex.purple) >= 4.5, 'the mirrored ink constant clears 4.5 on the fill');
 });
 
 test('virgin-cycle23 03: sectorHighlightColours — only the selected sector carries the colour, gate-indexed, slot 0 never', () => {

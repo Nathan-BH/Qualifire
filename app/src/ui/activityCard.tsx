@@ -22,7 +22,7 @@ import { ALL_YELLOW } from './sectorTrailModel';
 import { tierTextColour } from './tierColour';
 import { colors, type PaddockTheme } from './theme';
 import { useTheme } from './themeContext';
-import { CARD_MAP_HEIGHT, CARD_PAD_TOP, CARD_PAD_BOTTOM, FEED_DIVIDER_DP, NOT_RANKED_LABEL, type FeedCardModel } from './feedModel';
+import { CARD_MAP_HEIGHT, CARD_PAD_TOP, CARD_PAD_BOTTOM, FEED_DIVIDER_DP, type FeedCardModel } from './feedModel';
 import { createTrailLoader } from './trailCache';
 import type { TrailPoint } from './trailModel';
 import { readRideFixes } from '../store/routeFromRide';
@@ -74,11 +74,10 @@ export const ActivityCard = memo(function ActivityCard(props: {
         <Text style={st.date} numberOfLines={1}>{card.dateLabel}</Text>
       </View>
       <View style={st.hero}>
-        {card.unranked
-          ? <Text style={st.notRanked} numberOfLines={1}>{NOT_RANKED_LABEL}</Text>
-          : <Text style={[st.lap, { color: hero }]} numberOfLines={1}>{card.heroLabel}</Text>}
+        {/* virgin-cycle27 10: the time is always shown (duration when unranked); the rank slot carries the verdict */}
+        <Text style={[st.lap, { color: hero }]} numberOfLines={1}>{card.heroLabel}</Text>
         <View style={st.heroCol}>
-          {card.rankLabel !== null ? <Text style={st.rank} numberOfLines={1}>{card.rankLabel}</Text> : null}
+          {card.rankLabel !== null ? <Text style={card.unranked ? st.notRanked : st.rank} numberOfLines={1}>{card.rankLabel}</Text> : null}
         </View>
       </View>
       <View style={st.mapSlot}>
@@ -134,7 +133,7 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
   lap: { fontSize: 34, fontWeight: '800', fontVariant: ['tabular-nums'], lineHeight: 40 },
   heroCol: { justifyContent: 'center' },
   rank: { color: t.text2, fontSize: 15, fontWeight: '700', fontVariant: ['tabular-nums'], lineHeight: 18 },
-  notRanked: { color: t.textDim, fontSize: 17, fontWeight: '700', lineHeight: 22 },
+  notRanked: { color: t.textDim, fontSize: 15, fontWeight: '700', lineHeight: 18 },
   mapSlot: { marginTop: 6, height: CARD_MAP_HEIGHT },
   placeholder: {
     position: 'absolute',

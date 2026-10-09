@@ -214,8 +214,9 @@ test('catalogmap: every route focus row has a non-empty label', () => {
   }
 });
 
-test('catalogmap: the tab label is map', () => {
-  assert(src('App.tsx').includes("routes: 'map'"), "App.tsx tab label is not routes: 'map'");
+test('catalogmap: the tab label is routes (virgin-cycle27 07)', () => {
+  assert(src('App.tsx').includes("routes: 'routes'"), "App.tsx tab label is not routes: 'routes'");
+  assert(!src('App.tsx').includes("routes: 'map'"), 'old label gone');
 });
 
 test('catalogmap: RoutesScreen renders the map and the old places list is gone', () => {
@@ -247,4 +248,26 @@ test('virgin-cycle26 05: MAP titles a loop route "<Place> loop" in the place foc
   const focus = routeFocusModel('rLoop', d)!;
   assert(focus.label === 'Home loop', `route focus label: ${focus.label}`);
   assert(!focus.label.includes('→'), 'no arrow in a loop title');
+});
+
+test('virgin-cycle27 08+09: the MAP tab map has +, −, one FIT/ME toggle, rotation on, a rider dot mounted last, and never prompts', () => {
+  const cm = src('src', 'ui', 'catalogMapView.tsx');
+  assert(!cm.includes('touchRotate={false}'), 'rotate no longer forced off');
+  assert(!cm.includes('⤢'), 'the ⤢ glyph is gone');
+  assert(cm.includes("const fitMeNext = fitMeNextMode(mode, props.here !== null);") && (cm.match(/>FIT</g) ?? []).length === 1 && (cm.match(/>ME</g) ?? []).length === 1, 'one coupled toggle, literal labels');
+  assert(cm.includes("useState<'fit' | 'free' | 'follow'>('fit')") && cm.includes("here: mode === 'follow' ? props.here : null") && cm.includes('bearing: liveBearing'), 'ME centres on the rider without touching the bearing; FIT pins north via the fit rule');
+  const riderAt = cm.indexOf('id="rider"'); const mapEnd = cm.indexOf('</M.Map>'); const pinsAt = cm.indexOf('id="catalogPins"');
+  assert(riderAt > pinsAt && riderAt < mapEnd, 'rider source is the LAST source (dot on top)');
+  assert(cm.includes("'circle-color': colors.riderBlue"), 'riderBlue, never a tier colour');
+  for (const forbidden of ['ensurePermissions', 'requestForegroundPermissionsAsync', 'refreshPositionOnce']) assert(!cm.includes(forbidden), `${forbidden} must not be on the MAP tab`);
+  const rs = src('src', 'ui', 'RoutesScreen.tsx');
+  assert(rs.includes("import { getStatus, lastKnownPositionIfPermitted, refreshPositionIfPermitted, subscribe, type TrackerStatus } from '../location';"), 'RoutesScreen reads the shared store + the OS last-known position');
+  assert(rs.includes('void lastKnownPositionIfPermitted().then(') && rs.includes('void refreshPositionIfPermitted();') && rs.includes('here={here}') && rs.includes('onMe={() => { void refreshPositionIfPermitted(); }}'), 'last-known once on open, one quiet fresh read on open, one per ME tap');
+  assert(rs.includes("? { lat: status.lastLat, lon: status.lastLon } : lastKnown"), 'order: live store fix first, OS last-known second (ruling 8.1)');
+  assert(!rs.includes('ensurePermissions') && !rs.includes('requestForegroundPermissionsAsync'), 'never prompts');
+  // ruling 8.2: activity card / detail / editor maps never get a dot or a ME button
+  for (const f of ['activityCard.tsx', 'RideDetailScreen.tsx', 'gateAdjustCard.tsx']) {
+    const s = src('src', 'ui', f);
+    for (const el of s.match(/<WayMapView[\s\S]*?\/>/g) ?? []) assert(/showRider=\{false\}/.test(el) && /lat=\{null\}/.test(el), `${f}: no rider dot on an activity map`);
+  }
 });

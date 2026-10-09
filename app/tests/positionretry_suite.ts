@@ -103,3 +103,14 @@ test('positionretry: the app-active quiet read is not wired while running/ending
   const deps = src.slice(effectEnd, src.indexOf(';', src.indexOf('}, [', effectEnd)) + 1);
   assert(deps.endsWith('}, [phase]);'), `the AppState effect is keyed on phase, got: ${deps.slice(-40)}`);
 });
+
+test('virgin-cycle27 09: lastKnownPositionIfPermitted reads the OS cache, checks (never requests) permission, writes nothing to the tracker status', () => {
+  const src = SRC('location/index.ts');
+  const start = src.indexOf('export async function lastKnownPositionIfPermitted');
+  assert(start > 0, 'lastKnownPositionIfPermitted missing');
+  assert(start < src.indexOf('export async function refreshPositionIfPermitted'), 'sits BEFORE the quiet read (the quiet-read test slices from there)');
+  const body = src.slice(start, src.indexOf('\n}\n', start));
+  assert(body.includes('Location.getForegroundPermissionsAsync()') && body.includes('Location.getLastKnownPositionAsync()'), 'permission checked, OS cache read');
+  assert(!body.includes('request') && !body.includes('getCurrentPositionAsync'), 'no prompt, no sensor');
+  assert(!body.includes('lastLat =') && !body.includes('lastLon =') && !body.includes('emit()'), 'never written into the tracker status');
+});

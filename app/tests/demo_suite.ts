@@ -122,9 +122,10 @@ test('demoModel: the run rolls out past the lap, then ends', () => {
 // changing speed mid-ride is seamless (re-anchor, never rescale) and SKIP can
 // force the clock straight to the ride's natural end.
 
-test('demoModel: DEMO_RATES is 5/15/25, default is today\'s fixed RATE', () => {
-  assert(JSON.stringify(DEMO_RATES) === JSON.stringify([5, 15, 25]), `expected [5,15,25], got ${JSON.stringify(DEMO_RATES)}`);
+test('demoModel: DEMO_RATES is 1/5/15/25 (virgin-cycle27 11 added 1x), default is today\'s fixed RATE', () => {
+  assert(JSON.stringify(DEMO_RATES) === JSON.stringify([1, 5, 15, 25]), `expected [1,5,15,25], got ${JSON.stringify(DEMO_RATES)}`);
   assert(DEMO_RATE_DEFAULT === 25, `expected default 25, got ${DEMO_RATE_DEFAULT}`);
+  assert(Math.min(...DEMO_RATES) === 1, '1x = real time is on the dial');
 });
 
 test('demoModel: demoSimSAt reads simulated seconds off the anchor', () => {

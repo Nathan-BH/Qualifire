@@ -25,7 +25,7 @@
  *    Cycle 020 — see below);
  *  - a free BROWSE map everywhere else (before start, at the finish, and on
  *    the Routes/Result screens): pan/zoom/rotate gestures on (WP-M: two-finger
- *    rotation + compass reset everywhere except moving/stopped), zoom bar
+ *    rotation everywhere except moving/stopped; FIT resets north (virgin-cycle27 08)), zoom bar
  *    visible, labels on, bearing 0 (or held, at the finish).
  * `stopped` (a red light) additionally dims the frame — a light is not a
  * finish, the map must not loosen, but it should look paused rather than
@@ -77,8 +77,8 @@
  * `unlocked` matrix: browse/prestart/finished, not moving/stopped). A held
  * `userBearing` state, read back from `onRegionDidChange`, composes with the
  * existing `effectiveBearing`/course-up rule downstream in `cameraTargetFor`
- * so it is not lost on `+`/`−`/FIT/ME or a mode reset. A compass button in
- * the MapLibre zoom bar (not MapLibre's own native compass) resets it to
+ * so it is not lost on `+`/`−`/FIT/ME or a mode reset. FIT in the
+ * zoom bar (virgin-cycle27 08; was a compass button) resets it to
  * north-up via an imperative `cameraRef.setStop({ bearing: 0 })` (the
  * declarative push is a no-op once a drag has flipped `mode` to 'free').
  * PNG rung untouched — a cropped bitmap cannot rotate.
@@ -475,8 +475,8 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
   // WP-M: the bearing the rider turned the map to with two fingers, read
   // back from onRegionDidChange (below). null = no rotation intent yet — the
   // camera keeps using effectiveBearing as today. A number = hold THIS
-  // bearing on every camera push (+/-/FIT/ME/mode resets) until the compass
-  // button sets it back to 0. Per map instance, never persisted (one mount
+  // bearing on every camera push (+/-/FIT/ME/mode resets) until FIT (virgin-cycle27 08)
+  // sets it back to 0. Per map instance, never persisted (one mount
   // of one map; RECORD's prestart and running phases are different mounts,
   // ROUTES renders one map per card, and an app-restart-persisted rotation
   // would surprise on the next ride).
@@ -861,6 +861,7 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
             now visually silent against an unscored one. Flagged, not fixed;
             Nathan's call given the whole cycle's direction is less colour
             emphasis, not more.
+            virgin-cycle27 02 FINAL (Nathan 2026-10-09): true again -- the yellow tier IS the brand yellow (tierHex.yellow === colors.neutral), by his ruling.
             Unearned sectors paint transparent, so the base yellow core shows
             through. Solid lines + the same data-driven ['has','colour']
             expression family as the gate-ticks layer below — NO line-dasharray
@@ -1015,28 +1016,16 @@ function MapLibreWayMap(props: WayMapProps & { maplibre: NonNullable<typeof ML> 
             +/− above still set follow, so right after a zoom tap it reads FIT.
             Browse surfaces (no rider) always read FIT. Two literal <Text>
             branches on purpose: the ui-strings scanner only sees JSX text, so
-            the existing "FIT"/"ME" allow-list entries stay valid. */}
+            the existing "FIT"/"ME" allow-list entries stay valid.
+            virgin-cycle27 08 (Nathan 2026-10-08): FIT also resets north — it calls
+            resetNorth() (sticky userBearing 0, the old up-arrow) before fitting, so the
+            up-arrow button is retired; ME never touches the bearing. */}
         <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
-          onPress={() => setMode(fitMeNext)}>
+          onPress={() => { if (fitMeNext === 'fit' && rotateEnabled) resetNorth(); setMode(fitMeNext); }}>
           {fitMeNext === 'fit'
             ? <Text style={[st.zoomText, { color: t.textDim, fontSize: 10.5 }]}>FIT</Text>
             : <Text style={[st.zoomText, { color: t.textDim, fontSize: 10.5 }]}>ME</Text>}
         </Pressable>
-        {/* WP-M: compass reset — shown whenever rotation is enabled (even
-            north-up already, dim like the FIT/ME toggle; a button that only appears
-            after a gesture the rider may not know exists would be
-            undiscoverable). Absent on moving/stopped: it would be a no-op
-            there and D-006's spirit is "no controls while moving". */}
-        {rotateEnabled ? (
-          <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
-            onPress={resetNorth}
-            accessibilityLabel="Reset map to north up">
-            <Text style={[st.zoomText, {
-              color: (userBearing ?? effectiveBearing) === 0 ? t.textDim : t.text,
-              transform: [{ rotate: `${-(userBearing ?? effectiveBearing)}deg` }],
-            }]}>↑</Text>
-          </Pressable>
-        ) : null}
       </View>
       ) : null}
       <Credit rung="maplibre" locked={creditLocked} />

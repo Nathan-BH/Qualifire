@@ -11,7 +11,7 @@ import { ranks } from '../store/results.ts';
 import { scoredS } from '../store/timing.ts';
 import { MIN_HISTORY, positionAmong, tierFor, type UiTier } from './colourModel.ts';
 import { lapCellLabel, buildSectorRows, type SectorRowModel } from './rideHistoryModel.ts';
-import { unrankedForDisplay } from './feedModel.ts';
+import { NOT_RANKED_LABEL, unrankedForDisplay } from './feedModel.ts';
 import { storedSectorColours } from './sectorTrailModel.ts';
 import { tierLineColour } from './tierColour.ts';
 
@@ -65,7 +65,7 @@ export interface RideDetailDeps {
 /** ResultScreen.tsx's rankLineFor, verbatim, plus the WP-H 'ignored' branch
  * FIRST — a rider's own exclusion is the most specific reason and reads as
  * such. virgin-cycle20 08: bare status words — the explanations were clutter
- * (Nathan, Q7). brief 05 (Nathan 2026-10-07): no "lap", no "no time", no "estimated" — the three unranked lines say what happened (the big slot already says "Not ranked"). */
+ * (Nathan, Q7). brief 05 (Nathan 2026-10-07): no "lap", no "no time", no "estimated" — the three unranked lines say what happened (the big slot already says "Not ranked"). virgin-cycle27 10 (Nathan 2026-10-08): a lap without a real time says NOT_RANKED_LABEL, never why. */
 export function rankLineFor(
   r: { lapS: number | null; estimated: boolean; ignored: boolean },
   hist: number[],
@@ -88,7 +88,7 @@ export function rankLineFor(
     }
     return 'too few to rank';
   }
-  return r.estimated ? 'GPS gap at a gate' : 'a gate was missed';
+  return NOT_RANKED_LABEL; // virgin-cycle27 10: no reason line — nothing negative; estimated and missed read the same
 }
 
 /** WP-K: thin wrapper over sectorTrailModel.storedSectorColours (the ONE

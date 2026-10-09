@@ -8,15 +8,38 @@
  *   (use inkDim for that).
  * - Labels are uppercase + letterspaced; numbers are heavy (800) and tabular.
  */
+/** The brand yellow — buttons, the ridden reference line, the MAP/ROUTES tab lines,
+ * night accent text, AND (since the virgin-cycle27 FINAL ruling, Nathan 2026-10-09)
+ * the yellow TIER. One literal, two names: `colors.neutral` and `tierHex.yellow`. */
+export const BRAND_YELLOW = '#F5C542';
+
+/** virgin-cycle27 brief 02, FINAL (Nathan 2026-10-09 00:24): THE tier palette — the
+ * three colours a scored sector / lap paints, for the MAP LINE and for TEXT on a card,
+ * in BOTH themes (Nathan: "keep both the day mode green and purple for the dark mode
+ * as well"; "the app yellow is better than the intermediate one"). Change a value here
+ * and every surface follows: tierColour.ts, tower.tsx, chips.tsx, the live strip, the
+ * gate flash, the sector-coloured trail, the ghost dots, PreviewScreen.
+ * Earlier trials, all dropped: purple #9000C8 / #C364FF, green #00D000, yellow #8C6900
+ * / #B98A0A. A yellow sector on the map is therefore the SAME hex as the un-scored base
+ * line again (wayMapView.tsx's note) — Nathan's call.
+ * Contrast (WCAG, computed 2026-10-09) on the day / night card: purple 6.73 / 2.38,
+ * green 5.55 / 2.89, yellow 1.62 / 9.87 — the three low values are an on-device trial
+ * Nathan accepted; ridedetail_suite lists them as explicit, dated exemptions. */
+export const tierHex = {
+  purple: '#7B3FA8',
+  green: '#007A00',
+  yellow: BRAND_YELLOW,
+} as const;
+
 export const colors = {
   bg: '#0A0A0A', // --bg-screen
   ink: '#F4F2EC', // --ink
   inkDim: '#9a978f', // --ink-dim
   grey: '#6f6e6a', // --grey — NO-DATA only
-  purple: '#9000C8', // filled tier — fastest of the ranking pool (colourModel.ts)
-  purpleDeep: '#65008C', // darker purple (channels x0.7 of `purple`) — unreferenced today; keep in step with `purple`
-  green: '#00D000', // outlined tier — above the pool's recent average
-  neutral: '#F5C542', // flat tier / accent — warm, never grey
+  purple: tierHex.purple, // filled tier — fastest of the ranking pool (colourModel.ts); alias of tierHex
+  purpleDeep: '#562C76', // darker purple (channels x0.7 of `purple`) — unreferenced today; keep in step with `purple`
+  green: tierHex.green, // outlined tier — above the pool's recent average; alias of tierHex
+  neutral: BRAND_YELLOW, // BRAND yellow / accent — warm, never grey; ALSO the yellow tier (tierHex.yellow) since the cycle27 FINAL ruling
   white: '#FFFFFF', // structural markers (gates) — not a tier colour
   amber: '#E8A33D', // warnings (D-013: this, not red)
   riderBlue: '#2F7DE1', // rider dot — the universal "you are here" hue; never a tier colour (D-030), never red (D-013)

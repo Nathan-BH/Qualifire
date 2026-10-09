@@ -17,7 +17,7 @@
  *   routeMapView.tsx no longer has any catalog-wide fallback to avoid).
  *
  * Both modes drive the SAME pane as the Record screen (§17's
- * shared-render-path rule): a scripted ride replayed at 25x by default (5x/15x/25x on
+ * shared-render-path rule): a scripted ride replayed at 25x by default (1x/5x/15x/25x on
  * pills since virgin-cycle15 brief 03). Nothing here
  * writes to storage and nothing here is a ride — the Rides tab and the
  * Result tab never see it.
@@ -489,7 +489,7 @@ export default function DemoScreen({ onFullscreenChange }: {
   }, []);
 
   // virgin-cycle16 07: one speed dial instead of three pills — each tap moves
-  // to the next DEMO_RATES entry and wraps (5 → 15 → 25 → 5), the same shape
+  // to the next DEMO_RATES entry and wraps (1 → 5 → 15 → 25 → 1; virgin-cycle27 11), the same shape
   // as replayModel.nextReplayRate. Goes through onPickRate so the clock
   // re-anchors exactly as a pill tap did.
   const cycleRate = useCallback(() => {
@@ -658,12 +658,13 @@ export default function DemoScreen({ onFullscreenChange }: {
     const progressPct = 100 * Math.min(Math.max(clockS / endS, 0), 1);
     return (
       <View style={styles.raceColumn}>
-        <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch' }}>
+        {/* virgin-cycle27 06 (Nathan 2026-10-08): the map runs edge to edge like the ACTIVITIES cards — bleed frame, parent inset cancelled on the map only. */}
+        <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch', marginHorizontal: -12 }}>
           {mode === 'first' ? (
-            <WayMapView key={`first-${runSeq.current}`} wayId={DEMO_FIRST_RIDE_ID} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
+            <WayMapView bleed key={`first-${runSeq.current}`} wayId={DEMO_FIRST_RIDE_ID} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
               zoom={4} trail={trail} variant="live" liveState={running ? 'moving' : 'finished'} fill />
           ) : (
-            <WayMapView key={`${mode}-${runSeq.current}`} wayId={DEMO_WAY_ID} asset={DEMO_WAY_ASSET} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
+            <WayMapView bleed key={`${mode}-${runSeq.current}`} wayId={DEMO_WAY_ID} asset={DEMO_WAY_ASSET} lat={pos?.lat ?? null} lon={pos?.lon ?? null}
               zoom={4} sectorColours={sectorColours} leadColour={colors.grey}
               selfs={showSelfs ? selfDots : undefined}
               progressM={progressAtTime(ASSET, script.gateAt, clockS)}
@@ -708,8 +709,8 @@ export default function DemoScreen({ onFullscreenChange }: {
     return (
       <View style={styles.raceColumn}>
         <ScrollView
-          style={{ flex: 1, alignSelf: 'stretch' }}
-          contentContainerStyle={{ gap: 8, paddingBottom: 24 }}
+          style={{ flex: 1, alignSelf: 'stretch', marginHorizontal: -12 }}
+          contentContainerStyle={{ gap: 8, paddingBottom: 24, paddingHorizontal: 12 }}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
@@ -725,6 +726,7 @@ export default function DemoScreen({ onFullscreenChange }: {
               <Text style={styles.trackLine}>{savedLine}</Text>
             ) : adjust !== null ? (
               <GateAdjustCard
+                mapInset={12}
                 wayId={DEMO_FIRST_RIDE_ID}
                 refLine={adjust.ref}
                 refLengthM={adjust.refLengthM}

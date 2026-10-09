@@ -228,8 +228,10 @@ export default function ReplayScreen(props: {
 
   return (
     <View style={styles.raceColumn}>
-      <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch' }}>
+      {/* virgin-cycle27 06 (Nathan 2026-10-08): the map runs edge to edge like the ACTIVITIES cards — bleed frame, parent inset cancelled on the map only. */}
+      <View style={{ flex: 1, minHeight: 220, alignSelf: 'stretch', marginHorizontal: -12 }}>
         <WayMapView
+          bleed
           key={`replay-${rideId}`}
           wayId={wayId}
           lat={pos ? pos.lat : null}

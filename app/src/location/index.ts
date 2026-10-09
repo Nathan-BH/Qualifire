@@ -491,6 +491,25 @@ export async function refreshPositionOnce(): Promise<void> {
   }
 }
 
+/** virgin-cycle27 09 (Nathan 2026-10-08, ruling 8.1): the phone's own LAST KNOWN position —
+ * what Google Maps centres on before a fresh fix. Read from the OS cache (no sensor, no
+ * prompt: permission is CHECKED, never requested; a missing permission or an empty cache
+ * returns null). Deliberately NOT written into the tracker status: RecordScreen's detected
+ * START is derived from lastLat/lastLon without an age check, and this value may be hours
+ * old. Used by the MAP/ROUTES tab only (RoutesScreen), as the ME target and dot when no
+ * live fix exists this launch. [UNTESTED ON DEVICE] */
+export async function lastKnownPositionIfPermitted(): Promise<{ lat: number; lon: number; ageMs: number } | null> {
+  try {
+    const perm = await Location.getForegroundPermissionsAsync();
+    if (!perm.granted) return null;
+    const loc = await Location.getLastKnownPositionAsync();
+    if (loc === null) return null;
+    return { lat: loc.coords.latitude, lon: loc.coords.longitude, ageMs: Math.max(0, Date.now() - loc.timestamp) };
+  } catch {
+    return null; // display only
+  }
+}
+
 /** WP-D Piece B → virgin-cycle20 brief 11: the QUIET position read for the
  * setup/armed screen. Never prompts: permission is CHECKED (getForeground-
  * PermissionsAsync), never requested; services are CHECKED (a plain

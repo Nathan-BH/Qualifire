@@ -23,7 +23,7 @@ import { currentCatalog } from '../store/catalogStore.ts';
 import { SEED_MODE, bundledForSeedMode } from '../store/seed.ts';
 import { refFor } from '../live/refs.ts';
 import { resolveWayAsset, type WayAssetDeps } from './wayAssetRuntime.ts';
-import { cameraTargetFor, gateHalfLenM, gateTicksFeatureCollection } from './wayMapGeo.ts';
+import { cameraTargetFor, fitMeNextMode, gateHalfLenM, gateTicksFeatureCollection, riderFeature } from './wayMapGeo.ts';
 import { mapStyleFor, offlineMapStyle, patchMapStyle } from './wayMapStyle.ts';
 import {
   differingStretches, type LatLon, type OverviewModel, type PlaceFocusModel, type RouteFocusModel,
@@ -85,6 +85,11 @@ export interface CatalogMapViewProps {
   sheetOpen: boolean;
   /** bottom camera padding while the sheet is open (virgin-cycle25 02: the route sheet is taller); default 300 */
   sheetPad?: number;
+  /** virgin-cycle27 09 (Nathan 2026-10-08): the rider's last known position from the shared
+   * location store — a blue dot and the ME half of the toggle; null = no dot, toggle reads FIT. */
+  here: { lat: number; lon: number } | null;
+  /** called on each ME tap so the owner can refresh the position quietly (never prompts) */
+  onMe?: () => void;
   onPressPin: (placeId: string) => void;
   onPressLine: (routeId: string) => void;
   onPressEmpty: () => void;
@@ -153,7 +158,8 @@ function CatalogMapInner(props: CatalogMapViewProps & { maplibre: NonNullable<ty
   });
 
   // Camera (D13): 'fit' on every level change and style remount, 'free' after a gesture.
-  const [mode, setMode] = useState<'fit' | 'free'>('fit');
+  const [mode, setMode] = useState<'fit' | 'free' | 'follow'>('fit');
+  const [liveBearing, setLiveBearing] = useState(0);
   const [liveZoom, setLiveZoom] = useState<number | null>(null);
   const cameraRef = useRef<CameraRef>(null);
   const focusKey = JSON.stringify(focus);
@@ -161,8 +167,10 @@ function CatalogMapInner(props: CatalogMapViewProps & { maplibre: NonNullable<ty
     setMode('fit');
   }, [focusKey, mapStyleKey]);
   const bounds = route?.bounds ?? place?.bounds ?? overview.bounds;
+  // virgin-cycle27 08+09: FIT = bounds, north-up (the fit rule); ME = centre on the rider at street zoom, bearing untouched (Nathan: ME never touches the bearing).
+  const followZoom = Math.max(15, liveZoom ?? 15);
   const cameraProps: Partial<CameraStop> = {
-    ...cameraTargetFor({ mode, here: null, bounds, zoom: 14, bearing: 0 }),
+    ...cameraTargetFor({ mode, here: mode === 'follow' ? props.here : null, bounds, zoom: followZoom, bearing: liveBearing }),
     ...(mode === 'fit' && bounds
       ? { padding: { top: 48, right: 48, bottom: props.sheetOpen ? (props.sheetPad ?? 300) : 48, left: 48 } }
       : {}),
@@ -237,6 +245,8 @@ function CatalogMapInner(props: CatalogMapViewProps & { maplibre: NonNullable<ty
     cameraRef.current?.zoomTo(Math.max(3, Math.min(18, (liveZoom ?? 14) + d)), { duration: 300 });
   };
 
+  const fitMeNext = fitMeNextMode(mode, props.here !== null);
+
   return (
     <View style={st.frame}>
       <M.Map
@@ -251,6 +261,8 @@ function CatalogMapInner(props: CatalogMapViewProps & { maplibre: NonNullable<ty
         onRegionDidChange={(e: RegionDidChangeEvent) => {
           const z = e?.nativeEvent?.zoom;
           if (typeof z === 'number') setLiveZoom(z);
+          const b = e?.nativeEvent?.bearing;
+          if (typeof b === 'number') setLiveBearing(b);
         }}
         onPress={() => props.onPressEmpty()}
         attribution={false}
@@ -260,7 +272,8 @@ function CatalogMapInner(props: CatalogMapViewProps & { maplibre: NonNullable<ty
         touchZoom
         doubleTapZoom
         doubleTapHoldZoom
-        touchRotate={false}
+        // virgin-cycle27 08: two-finger rotate on, like every other map (cycle24 had it off with no recorded reason).
+        touchRotate
         touchPitch={false}
       >
         <M.Camera ref={cameraRef} {...cameraProps} />
@@ -334,6 +347,18 @@ function CatalogMapInner(props: CatalogMapViewProps & { maplibre: NonNullable<ty
               'text-opacity': ['get', 'opacity'],
             }} />
         </M.GeoJSONSource>
+        {/* virgin-cycle27 09: the rider — same paint as WayMapView's rider-dot, always the topmost layer. */}
+        {props.here ? (
+          <M.GeoJSONSource key="rider" id="rider" data={riderFeature(props.here.lat, props.here.lon)}>
+            <M.Layer id="rider-dot" type="circle" paint={{
+              'circle-radius': 7,
+              'circle-opacity': 0.85,
+              'circle-color': colors.riderBlue,
+              'circle-stroke-color': '#FFFFFF',
+              'circle-stroke-width': 2,
+            }} />
+          </M.GeoJSONSource>
+        ) : null}
       </M.Map>
       <View style={st.zoomBar}>
         <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
@@ -344,9 +369,13 @@ function CatalogMapInner(props: CatalogMapViewProps & { maplibre: NonNullable<ty
           onPress={() => zoomBy(-1)}>
           <Text style={[st.zoomText, { color: t.text }]}>−</Text>
         </Pressable>
+        {/* virgin-cycle27 08+09: ONE FIT/ME toggle (fitMeNextMode), labelled with the NEXT action; with no
+            position (location off, never granted, no fix yet) it always reads FIT and nothing is said. */}
         <Pressable style={[st.zoomBtn, { backgroundColor: t.race.card, borderColor: t.cardBorder }]}
-          onPress={() => setMode('fit')}>
-          <Text style={[st.zoomText, { color: t.textDim }]}>⤢</Text>
+          onPress={() => { if (fitMeNext === 'follow') props.onMe?.(); setMode(fitMeNext); }}>
+          {fitMeNext === 'fit'
+            ? <Text style={[st.zoomText, { color: t.textDim, fontSize: 10.5 }]}>FIT</Text>
+            : <Text style={[st.zoomText, { color: t.textDim, fontSize: 10.5 }]}>ME</Text>}
         </Pressable>
       </View>
       <Credit rung="maplibre" locked={false} />

@@ -60,6 +60,10 @@ export interface GateAdjustCardProps {
    * (280) — the inline Record/RideDetail hosts. GateAdjustScreen.tsx passes
    * a larger value so the full-screen editor spends its room on the map. */
   mapHeight?: number;
+  /** virgin-cycle27 06 (Nathan 2026-10-08, ruling 6.2): the editor map runs edge to edge like every
+   * map. The horizontal inset of the SCREEN that mounts this card (dp) — cancelled, together with
+   * the card's own padding, on the map wrapper only. Required so no mount forgets it. */
+  mapInset: number;
 }
 
 const MAP_H = 280;
@@ -143,8 +147,9 @@ export function GateAdjustCard(props: GateAdjustCardProps) {
         {props.subtitle ?? 'Tap a gate to move it'}
       </Text>
 
-      <View style={st.mapWrap}>
+      <View style={[st.mapWrap, { marginHorizontal: -(CARD_PAD + props.mapInset) }]}>
         <WayMapView
+          bleed
           wayId={props.wayId}
           asset={asset}
           lat={null}
@@ -211,8 +216,10 @@ export function GateAdjustCard(props: GateAdjustCardProps) {
   );
 }
 
+// virgin-cycle27 06: the card's padding, cancelled on the map wrapper (bleed)
+const CARD_PAD = 16;
 const st = StyleSheet.create({
-  card: { borderWidth: 1, borderRadius: radius.card, padding: 16, gap: 6 },
+  card: { padding: CARD_PAD, gap: 6 }, // virgin-cycle27 06: no border / radius — the map bleeds through the card like the ACTIVITIES cards
   title: { fontSize: 16, fontWeight: '700' },
   sub: { fontSize: 12.5, marginBottom: 6 },
   mapWrap: { marginTop: 10 },

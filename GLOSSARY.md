@@ -83,9 +83,7 @@ records it and shows nothing to compare against — no reference line, no colour
 STOP offers to name the two places, which turns the ride into a real route + way with that
 ride as its reference.
 
-**Results board / scatterplot.** The RESULTS tab: a board of your ways, most-ridden first;
-tap one for its all-time ranked history (fastest first) and a plot of your last nine rides
-on it — faster is higher, each dot purple/green/yellow against the window's average.
+**Trend plot.** Inside the ROUTES tab's route sheet: a plot of your last ten activities on that way — faster is higher, each dot purple/green/yellow against the window's average (the separate RESULTS tab was removed in virgin-cycle25).
 
 **Luck factor (retired virgin-cycle14, Nathan #5).** Was SETTINGS → SCORING's raw/moving switch (cycle7 rename of "Timing"). Gone from the screen: every score is raw wall-clock time from gate to gate — a stop is your luck, same as a real race. Moving time is still computed and stored (`movingS`) but nothing user-facing reads it; `store/timing.ts`'s register stays at `raw`.
 
@@ -103,7 +101,7 @@ Shared per ride from RIDES; SETTINGS → DATA can also share the catalog and ref
 files ("debug export") so a problem can be looked at off the phone.
 
 **Paddock vs. race mode.** Two visual moods the app switches between automatically. Paddock
-is the everyday browsing look (warmer, livelier) for RIDES, ROUTES, RESULTS, SETTINGS. Race
+is the everyday browsing look (warmer, livelier) for ACTIVITIES, ROUTES, SETTINGS. Race
 is what RECORD switches to once you're riding — near-black or bright white depending on
 your theme, chrome stripped away, so nothing but the numbers and colours competes for your
 glance.

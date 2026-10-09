@@ -94,7 +94,7 @@ export interface StripSlotModel {
 export interface LiveViewModel {
   /** drives the ticking lap clock; null = placeholder 0:00.0 (dim) */
   clock: Timebase | null;
-  /** small context line: current sector label, e.g. 'S3' (never a benchmark) */
+  /** current sector label, e.g. 'S3' — kept in the model for REPLAY/DEMO/tests; NOT rendered since virgin-cycle27 05 (the strip's current slot breathes instead) */
   contextLabel: string;
   /** latest gate result — flashes over the clock for FLASH_HOLD_MS */
   flash: FlashModel | null;
@@ -305,13 +305,10 @@ export function LiveSectorPane({ vm, clockSize }: { vm: LiveViewModel; clockSize
 
   return (
     <View style={paneStyles.pane}>
-      <Text style={[paneStyles.ctx, { color: t.textDim }]}>
-        {vm.contextLabel || (vm.livePos ? '' : ' ')}
-        {vm.livePos ? (
-          <Text style={{ color: t.text }}>
-            {(vm.contextLabel ? ' · ' : '') + vm.livePos}
-          </Text>
-        ) : null}
+      {/* virgin-cycle27 05 (Nathan 2026-10-08): position only — the current sector is shown by its
+          breathing strip slot, never as text here. The blank keeps the row's height when there is no P. */}
+      <Text style={[paneStyles.ctx, { color: t.text }]}>
+        {vm.livePos ?? ' '}
       </Text>
       <View style={paneStyles.bigSlot}>
         {lapFlashOn && vm.lap ? (

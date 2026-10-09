@@ -55,37 +55,40 @@ test('recordFlow: isFullscreen is true exactly for armed/running/ending, false f
   }
 });
 
-test('effectiveFromId: pick mode always ignores detection, tapped or not', () => {
-  assert(
-    effectiveFromId({ startMode: 'pick', detectedId: 'work', from: 'home', fromExplicit: false }) === 'home',
-    'pick mode + untapped must read `from`, never detection',
-  );
-  assert(
-    effectiveFromId({ startMode: 'pick', detectedId: 'work', from: 'home', fromExplicit: true }) === 'home',
-    'pick mode + tapped must still read `from` — detection is never consulted in pick mode',
-  );
+test('virgin-cycle27 01 (ruling 1.2): effectiveFromId has no startMode — detection always counts until a tap', () => {
+  assert(effectiveFromId({ detectedId: 'work', from: 'home', fromExplicit: false }) === 'work', 'untapped: the detected place wins');
+  assert(effectiveFromId({ detectedId: 'work', from: 'home', fromExplicit: true }) === 'home', 'tapped: the tap wins');
+  const src = fs.readFileSync(path.resolve(TESTS_DIR, '..', 'src', 'ui', 'recordFlow.ts'), 'utf8');
+  assert(!src.includes('startMode'), 'recordFlow.ts no longer knows startMode');
+  for (const f of ['src/ui/settings.tsx', 'src/ui/RecordScreen.tsx']) {
+    const s = fs.readFileSync(path.resolve(TESTS_DIR, '..', f), 'utf8').replace(/^.*\.startMode;.*$/m, ''); // the one load-scrub line is allowed
+    assert(!s.includes('startMode'), `${f}: startMode gone (the load scrub excepted)`);
+  }
+  const rs = fs.readFileSync(path.resolve(TESTS_DIR, '..', 'src', 'ui', 'RecordScreen.tsx'), 'utf8');
+  assert(!rs.includes("' ✓'") && !rs.includes('START NOT DETECTED') && !rs.includes('Start place'), 'no checkmark, no negative label');
+  assert(rs.includes("{fromId === detected?.id ? 'DETECTED START' : 'STARTING FROM'}"), 'two-state label');
 });
 
 test('effectiveFromId: auto + untapped seeds from detection, falls back to `from` when nothing detected', () => {
   assert(
-    effectiveFromId({ startMode: 'auto', detectedId: 'work', from: 'home', fromExplicit: false }) === 'work',
+    effectiveFromId({ detectedId: 'work', from: 'home', fromExplicit: false }) === 'work',
     'auto + untapped must seed from the detected landmark (untapped-case behaviour, byte-identical to pre-N5)',
   );
   assert(
-    effectiveFromId({ startMode: 'auto', detectedId: null, from: 'home', fromExplicit: false }) === 'home',
+    effectiveFromId({ detectedId: null, from: 'home', fromExplicit: false }) === 'home',
     'auto + untapped + nothing detected must fall back to `from`',
   );
 });
 
 test('effectiveFromId: auto + tapped — the tap wins over a differing detection (the core N5 regression)', () => {
   assert(
-    effectiveFromId({ startMode: 'auto', detectedId: 'work', from: 'home', fromExplicit: true }) === 'home',
+    effectiveFromId({ detectedId: 'work', from: 'home', fromExplicit: true }) === 'home',
     'a rider who tapped home while work was detected must get home, not have the tap silently ignored',
   );
 });
 
 test('effectiveFromId: a tap sticks after detection later changes or goes null', () => {
-  const tapped = { startMode: 'auto' as const, from: 'home', fromExplicit: true };
+  const tapped = { from: 'home', fromExplicit: true };
   assert(effectiveFromId({ ...tapped, detectedId: 'depot' }) === 'home', 'tap must survive detection changing to a third landmark');
   assert(effectiveFromId({ ...tapped, detectedId: null }) === 'home', 'tap must survive detection going null entirely');
 });
@@ -95,18 +98,18 @@ test('effectiveFromId: tapping the detected pill itself is a no-op that still "s
   // from === detectedId — result is unchanged, but it must now be locked in
   // (a later detection change must not silently override it).
   assert(
-    effectiveFromId({ startMode: 'auto', detectedId: 'work', from: 'work', fromExplicit: true }) === 'work',
+    effectiveFromId({ detectedId: 'work', from: 'work', fromExplicit: true }) === 'work',
     'tapping the detected pill must still read as work immediately after',
   );
   assert(
-    effectiveFromId({ startMode: 'auto', detectedId: 'depot', from: 'work', fromExplicit: true }) === 'work',
+    effectiveFromId({ detectedId: 'depot', from: 'work', fromExplicit: true }) === 'work',
     'and must stay work once detection moves on — the earlier tap-of-the-suggestion still sticks',
   );
 });
 
 test('effectiveFromId: tapping `new` in auto mode now takes hold (was previously silently ignored)', () => {
   assert(
-    effectiveFromId({ startMode: 'auto', detectedId: 'work', from: '~new', fromExplicit: true }) === '~new',
+    effectiveFromId({ detectedId: 'work', from: '~new', fromExplicit: true }) === '~new',
     'tapping new while a landmark is detected must win, exactly like any other explicit tap',
   );
 });
@@ -316,7 +319,8 @@ test('virgin-cycle20 08: clutter text is gone (CLUTTER-REVIEW §1 + Nathan\'s §
   const card = read('src', 'ui', 'gateAdjustCard.tsx');
   assert(!card.includes('Sector gates') && !card.includes('Seeded at') && !card.includes('keep the proposal') && card.includes("'Tap a gate to move it'"), 'gate card defaults');
   const model = read('src', 'ui', 'rideDetailModel.ts');
-  for (const kept of ["'ignored in ranking'", "'no rank'", "'too few to rank'", "'GPS gap at a gate'", "'a gate was missed'"]) assert(model.includes(kept), `rankLine lacks ${kept}`);
+  for (const kept of ["'ignored in ranking'", "'no rank'", "'too few to rank'"]) assert(model.includes(kept), `rankLine lacks ${kept}`);
+  for (const gone of ["'GPS gap at a gate'", "'a gate was missed'"]) assert(!model.includes(gone), `negative reason line still present: ${gone}`);
   const naming = read('src', 'ui', 'routeNamingCard.tsx');
   assert(!naming.includes('becomes its reference') && !naming.includes('name where you rode') && !naming.includes('— e.g. Dry, Left') && !naming.includes('pick it on RECORD next time'), 'naming card tails removed');
   const demo = read('src', 'ui', 'DemoScreen.tsx');
@@ -376,7 +380,7 @@ test('virgin-cycle23 02: ACTIVITIES is a flat feed — FlatList of ActivityCards
   assert(menu.includes('<Modal transparent') && menu.includes('measureInWindow'), 'anchored menu over a transparent modal');
 });
 
-test('virgin-cycle23 04: WayMapView `bleed` is opt-in — default frame untouched, only the feed card passes it', () => {
+test('virgin-cycle27 06: every WayMapView mount bleeds edge to edge (bleed prop), the gate editor included; the two frame styles are unchanged', () => {
   const read = (...p: string[]) => fs.readFileSync(path.resolve(TESTS_DIR, '..', ...p), 'utf8');
   const map = read('src', 'ui', 'wayMapView.tsx');
   assert(map.includes('bleed?: boolean;'), 'prop declared');
@@ -384,35 +388,52 @@ test('virgin-cycle23 04: WayMapView `bleed` is opt-in — default frame untouche
   assert(!/^\s+st\.frame,$/m.test(map), 'no unconditional st.frame left');
   assert(map.includes("frame: { alignSelf: 'stretch', borderRadius: radius.card, borderWidth: 1, overflow: 'hidden' },"), 'default frame style unchanged');
   assert(map.includes("frameBleed: { alignSelf: 'stretch', overflow: 'hidden' },"), 'bleed frame: no border, no radius');
-  for (const f of ['RecordScreen.tsx', 'ReplayScreen.tsx', 'CatalogDetailScreen.tsx', 'DemoScreen.tsx', 'gateAdjustCard.tsx', 'RideDetailScreen.tsx']) {
+  for (const f of ['RecordScreen.tsx', 'ReplayScreen.tsx', 'CatalogDetailScreen.tsx', 'DemoScreen.tsx', 'RideDetailScreen.tsx', 'activityCard.tsx', 'gateAdjustCard.tsx']) {
     const els = read('src', 'ui', f).match(/<WayMapView[\s\S]*?\/>/g) ?? [];
     assert(els.length > 0, `${f} mounts WayMapView`);
-    for (const el of els) assert(!/\bbleed\b/.test(el), `${f} must not pass bleed`);
+    for (const el of els) assert(/\bbleed\b/.test(el), `${f} must pass bleed (virgin-cycle27 06): ${el.slice(0, 60)}`);
+  }
+  const gate = read('src', 'ui', 'gateAdjustCard.tsx');
+  const gateEls = gate.match(/<WayMapView[\s\S]*?\/>/g) ?? [];
+  assert(gateEls.length === 1 && /\bbleed\b/.test(gateEls[0]), 'the gate editor map bleeds too (ruling 6.2)');
+  assert(gate.includes('marginHorizontal: -(CARD_PAD + props.mapInset)') && gate.includes('card: { padding: CARD_PAD, gap: 6 }') && !gate.includes('borderWidth: 1, borderRadius: radius.card'), 'editor card: no frame, map wrapper cancels card padding + screen inset');
+  for (const [f, inset] of [['RecordScreen.tsx', 12], ['DemoScreen.tsx', 12], ['RideDetailScreen.tsx', 16], ['GateAdjustScreen.tsx', 16]] as const) {
+    assert(new RegExp(`<GateAdjustCard[\\s\\S]{0,60}mapInset=\\{${inset}\\}`).test(read('src', 'ui', f)), `${f} passes mapInset={${inset}} as the first prop`);
+  }
+  assert(read('src', 'ui', 'RideDetailScreen.tsx').includes('mapWrap: { marginHorizontal: 0 },'), 'detail page inset cancelled (Q6.1 a, supersedes cycle23)');
+  for (const f of ['RecordScreen.tsx', 'DemoScreen.tsx']) {
+    assert(read('src', 'ui', f).includes("style={{ flex: 1, alignSelf: 'stretch', marginHorizontal: -12 }}\n          contentContainerStyle={{ gap: 8, paddingBottom: 24, paddingHorizontal: 12 }}"), `${f}: end-of-ride ScrollView bleeds (-12) and its content keeps the 12 dp padding, so the editor map is not clipped`);
+  }
+  // counts include the end-of-ride ScrollView's -12 (post-inspection fix 1); the editor's negative margin is an expression, not a literal, so it is not counted here
+  for (const [f, n] of [['RecordScreen.tsx', 4], ['ReplayScreen.tsx', 1], ['DemoScreen.tsx', 2], ['CatalogDetailScreen.tsx', 2]] as const) {
+    const neg = (read('src', 'ui', f).match(/marginHorizontal: -(12|16|20)/g) ?? []).length;
+    assert(neg === n, `${f}: ${n} map wrapper(s) cancel the parent inset, got ${neg}`);
   }
 });
 
-test('virgin-cycle23 05: unranked activities show "Not ranked" (feed hero + detail big slot), no quality words, no ~, no "lap" in the real screens', () => {
+test('virgin-cycle27 10: unranked activities keep their duration; "Not ranked" sits in the rank slot (feed) / rank line (detail); no quality words, no reasons', () => {
   const read = (...p: string[]) => fs.readFileSync(path.resolve(TESTS_DIR, '..', ...p), 'utf8');
   const card = read('src', 'ui', 'activityCard.tsx');
-  assert(card.includes('{card.unranked') && card.includes('{NOT_RANKED_LABEL}') && card.includes('st.notRanked'), 'card hero shows the label when unranked');
+  assert(card.includes("{card.rankLabel !== null ? <Text style={card.unranked ? st.notRanked : st.rank}") && !card.includes('{NOT_RANKED_LABEL}'), 'card: verdict in the rank slot, time always shown');
   for (const gone of ['subLabel', 'st.qual', 'st.dim', 'card.ignored &&']) assert(!card.includes(gone), `card still has ${gone}`);
-  assert((card.match(/numberOfLines=\{1\}/g) ?? []).length === 8, 'every text row still single-line (8 incl. the header comment)');
+  assert((card.match(/numberOfLines=\{1\}/g) ?? []).length === 7, 'every text row still single-line (7 incl. the header comment; virgin-cycle27 10 merged the two hero branches)');
   assert(card.includes('{card.variant === \'route\' ? (') && card.includes('{card.sectors.map((sec) => ('), 'strip row kept (renders empty when sectors is [])');
   const feed = read('src', 'ui', 'feedModel.ts');
   assert(feed.includes("export const NOT_RANKED_LABEL = 'Not ranked';") && feed.includes('export function unrankedForDisplay('), 'label + rule live in feedModel');
   assert(!feed.includes("'ignored'") && !feed.includes('subLabel'), 'no quality word, no subLabel in the feed model');
   const det = read('src', 'ui', 'RideDetailScreen.tsx');
-  assert(det.includes('{model.unranked') && det.includes('{NOT_RANKED_LABEL}') && det.includes('styles.notRanked') && det.includes('{sectorTimeCell(sec)}'), 'detail big slot + sector cell');
+  assert(det.includes('{model.unranked') && det.includes('{durationLabel(meta)}') && !det.includes('{NOT_RANKED_LABEL}') && det.includes('{sectorTimeCell(sec)}'), 'detail big slot = duration when unranked');
   assert(!det.includes('styles.dim') && det.includes('[styles.secTime, { color: tierTextColour(sec.tier, t) }]'), 'dim gone; sector time style pinned');
   const model = read('src', 'ui', 'rideDetailModel.ts');
   const hist = read('src', 'ui', 'rideHistoryModel.ts');
   for (const gone of ["'no lap'", "'no time'", "'not ranked'", '`~${']) assert(!model.includes(gone), `old wording/estimate still in rideDetailModel: ${gone}`);
   assert(!hist.includes("'no lap'") && !hist.includes('`~${fmt(rawS)}`'), 'rideHistoryModel: no "no lap", no ~raw lap label (buildSectorRows keeps its own ~ row for replay)');
-  assert(model.includes("import { unrankedForDisplay } from './feedModel.ts';") && model.includes('unranked: unrankedForDisplay(res.lap.quality, ignored),'), 'detail model uses the one rule');
+  assert(model.includes("import { NOT_RANKED_LABEL, unrankedForDisplay } from './feedModel.ts';") && model.includes('unranked: unrankedForDisplay(res.lap.quality, ignored),'), 'detail model uses the one rule');
   const tower = read('src', 'ui', 'tower.tsx');
   assert(tower.includes('>TIME</Text>') && !tower.includes('>LAP</Text>'), 'tower ceremony label');
   const allow = read('tests', 'ui-strings.allow.json');
   assert(allow.includes('"text": "Not ranked"') && !allow.includes('"text": "no lap"') && !allow.includes('"text": "no time"'), 'allow-list follows the code');
+  assert(!allow.includes('"text": "a gate was missed"') && !allow.includes('"text": "GPS gap at a gate"'), 'negative reason entries removed');
 });
 
 test('virgin-cycle23 03: the activity detail is one flat scroll — map first, no card boxes, Replay the single primary, ⋯ menu for Export/Ignore/Delete, sector rows tap-to-highlight, back labels per source kept', () => {
@@ -464,7 +485,7 @@ test('virgin-cycle21 04: RecordScreen only continues a remounted live ride; ever
     assert(i > last, `missing or out of order in the interrupted path: ${o}`);
     last = i;
   }
-  assert(src.includes("const INTERRUPTED_MSG = 'Interrupted · saved as free activity';"), 'INTERRUPTED_MSG constant');
+  assert(src.includes("const INTERRUPTED_MSG = 'Saved as free activity';"), 'INTERRUPTED_MSG constant (virgin-cycle27 10: no negative word)');
 });
 
 test('virgin-cycle22 01: the ACTIVITIES route card draws one yellow line (the reference) — the raw trail only on cards with no reference', () => {
@@ -670,7 +691,7 @@ test('virgin-cycle26 01: RECORD offers a loop pill in GOING TO, resolves to/toId
   assert(src.includes('const { toId, loop: loopOn } = resolveGoingTo(to, fromId, NEW_ID);'), 'to must be resolved through resolveGoingTo');
   assert(src.includes('const route = routeForEndpoints(CATALOG.routes, fromId, toId);'), 'route lookup must go through routeForEndpoints with toId');
   assert(!/CATALOG\.routes\.find\(\s*\(w\) => w\.startLandmarkId === fromId/.test(src), 'the inline route lookup should be gone');
-  assert((src.match(/<Pressable key=\{LOOP_ID\} onPress=\{\(\) => setTo\(LOOP_ID\)\}/g) ?? []).length === 1, 'exactly one loop pill');
+  assert((src.match(/<Pressable key=\{LOOP_ID\} onPress=\{\(\) => pickTo\(LOOP_ID\)\}/g) ?? []).length === 1, 'exactly one loop pill');
   assert(src.includes('pillTextOn]}>loop</Text>'), 'the pill reads `loop`');
   assert(src.includes('to: toId, fromLabel: landmarkLabel(fromId), toLabel: landmarkLabel(toId), pickSource,'), 'start context carries the resolved toId');
   assert(src.includes('{routeTitle(landmarkLabel(fromId), landmarkLabel(toId), loopOn && toId !== NEW_ID)}'), 'armed title goes through routeTitle with the resolved toId (Nathan 2026-10-08: "Home loop", never "Home → Home")');
@@ -709,4 +730,27 @@ test('virgin-cycle26 05: RIDES and ride detail derive the pick-event title throu
     assert(!/\$\{pick\.fromLabel\} → \$\{pick\.toLabel\}/.test(src), `${file}: no hand-written arrow title`);
     assert(src.includes(`import { pickedLoop } from './recordFlow${ext}';`), `${file}: imports pickedLoop`);
   }
+});
+
+test('virgin-cycle27 05: the live context line renders only P; the current strip slot breathes (Animated.loop, floor 0.55, reduce-motion aware)', () => {
+  const read = (...p: string[]) => fs.readFileSync(path.resolve(TESTS_DIR, '..', ...p), 'utf8');
+  const lv = read('src', 'ui', 'liveView.tsx');
+  assert(lv.includes("{vm.livePos ?? ' '}"), 'context line = P only');
+  assert(!lv.includes('{vm.contextLabel') && !lv.includes("(vm.contextLabel ? ' · ' : '')"), 'contextLabel is no longer rendered');
+  assert(lv.includes('const contextLabel =') && lv.includes('contextLabel: string;'), 'the model field stays (REPLAY/DEMO/tests read it)');
+  const ch = read('src', 'ui', 'chips.tsx');
+  assert(ch.includes('export const BREATHE_FLOOR = 0.55;') && ch.includes('export const BREATHE_PERIOD_MS = 2400;'), 'tunables');
+  assert(ch.includes('Animated.loop(Animated.sequence([') && ch.includes('useNativeDriver: true') && ch.includes('<Animated.View style={[s.slot, { opacity: breathe }]}>'), 'the slot breathes via native-driver opacity');
+  assert(ch.includes('AccessibilityInfo.isReduceMotionEnabled()') && ch.includes('if (!props.current || reduceMotion) {'), 'only the current slot, and not under reduce-motion');
+  assert(ch.includes('return () => { loop.stop(); breathe.setValue(1); };'), 'loop stopped on cleanup');
+});
+
+test('virgin-cycle27 01: GOING TO follows START — suggestedDestination effect, pickTo on every GOING TO pill, re-armed at ride end / discard / sport switch', () => {
+  const src = fs.readFileSync(path.resolve(TESTS_DIR, '..', 'src', 'ui', 'RecordScreen.tsx'), 'utf8');
+  assert(src.includes("import { landmarkUsageCounts, sortLandmarksByUsage, suggestedDestination } from '../store/landmarkUsage';"), 'import');
+  assert(src.includes('const [toExplicit, setToExplicit] = useState(false);') && src.includes('const pickTo = (id: string) => { setTo(id); setToExplicit(true); };'), 'toExplicit + pickTo');
+  assert(src.includes("if (phase !== 'setup' || toExplicit || fromId === NEW_ID) return;") && src.includes('const best = suggestedDestination(CATALOG, fromId);') && src.includes('setTo(best === fromId ? LOOP_ID : best);'), 'the follow effect');
+  assert((src.match(/onPress=\{\(\) => pickTo\(/g) ?? []).length === 3, 'place, loop and new pills all go through pickTo');
+  assert(!/onPress=\{\(\) => setTo\(/.test(src), 'no GOING TO pill bypasses pickTo');
+  assert((src.match(/setToExplicit\(false\);/g) ?? []).length === 3, 're-armed at sport switch, ride end and discard');
 });

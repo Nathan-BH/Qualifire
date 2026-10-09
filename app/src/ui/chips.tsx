@@ -5,8 +5,8 @@
  * surface (RecordScreen, engine-fed) and the Preview demo render through the
  * same components — one visual code path, not a fake and a copy.
  */
-import { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AccessibilityInfo, Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { PaddockTheme, colors } from './theme';
 import { useTheme } from './themeContext';
 import { YELLOW_TIER, tierLineColour } from './tierColour';
@@ -14,6 +14,12 @@ import { YELLOW_TIER, tierLineColour } from './tierColour';
 // F1-style sector bar thickness (Nathan: a bit bigger than the first
 // sketch's 4px) -- tune further on device if it still reads thin.
 const STRIP_BAR_HEIGHT = 6;
+
+// virgin-cycle27 brief 05 (Nathan 2026-10-08): the CURRENT sector's slot breathes —
+// a slow opacity cycle, never below BREATHE_FLOOR so the label stays legible in
+// daylight; off (full opacity, still) when the OS reduce-motion setting is on.
+export const BREATHE_FLOOR = 0.55;
+export const BREATHE_PERIOD_MS = 2400;
 
 export type Tier = 'none' | 'neutral' | 'yellow' | 'green' | 'purple' | 'est';
 
@@ -23,7 +29,11 @@ export type Tier = 'none' | 'neutral' | 'yellow' | 'green' | 'purple' | 'est';
  * tierColour.ts for the doc comment on what these mean. */
 export { YELLOW_TIER, tierLineColour };
 
-export const PURPLE_INK = '#120521';
+/** Ink for text ON a filled purple chip / the purple ceremony row (tower.tsx). virgin-cycle27 02
+ * FINAL (Nathan 2026-10-09): the final purple #7B3FA8 is dark, so the ink is WHITE (6.73:1; the old
+ * near-black #120521 would be 2.92:1). Same in both themes — the chip fill is theme-less. Never
+ * use this for text on a card (tierTextColour). */
+export const PURPLE_INK = colors.white;
 
 export interface ChipPalette {
   bg: string;
@@ -56,12 +66,35 @@ export function chipColors(tier: Tier, t: PaddockTheme): ChipPalette {
  * (purple/green/yellow, via tierLineColour -- never chipColors().border,
  * which is 'transparent' for yellow); `'est'` and `'neutral'` (no verdict
  * yet) both stay grey too. No time text — the decimal lives in the override
- * and on the board. The current sector gets no cue at all (identical to an
- * unreached one): the context line above the clock already names it, so
- * `current` is accepted for the caller's sake but does not affect styling. */
+ * and on the board. virgin-cycle27 05: the current sector's label and bar BREATHE
+ * (opacity 1 -> BREATHE_FLOOR -> 1 over BREATHE_PERIOD_MS, looped, native driver) — the only
+ * cue that a sector is live; the context line no longer names it. Reduced motion: no
+ * animation, full opacity. */
 export function StripSlot(props: { tier: Tier; label: string; time?: string; current?: boolean }) {
   const { t } = useTheme();
   const s = useMemo(() => makeChipStyles(t), [t]);
+  const breathe = useRef(new Animated.Value(1)).current;
+  const [reduceMotion, setReduceMotion] = useState(false);
+  useEffect(() => {
+    let live = true;
+    AccessibilityInfo.isReduceMotionEnabled()
+      .then((v) => { if (live) setReduceMotion(v); })
+      .catch(() => { /* default: animate */ });
+    return () => { live = false; };
+  }, []);
+  useEffect(() => {
+    if (!props.current || reduceMotion) {
+      breathe.stopAnimation();
+      breathe.setValue(1);
+      return;
+    }
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(breathe, { toValue: BREATHE_FLOOR, duration: BREATHE_PERIOD_MS / 2, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      Animated.timing(breathe, { toValue: 1, duration: BREATHE_PERIOD_MS / 2, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+    ]));
+    loop.start();
+    return () => { loop.stop(); breathe.setValue(1); };
+  }, [props.current, reduceMotion, breathe]);
   // tierLineColour (not chipColors().border): yellow's .border is
   // 'transparent' (LAYOUT §6 filled > outlined > FLAT) -- .border only
   // carries the hue for purple/green. tierLineColour returns null for
@@ -74,10 +107,10 @@ export function StripSlot(props: { tier: Tier; label: string; time?: string; cur
   const barColour = line ?? t.race.border;
   const labelColour = line ?? t.textDim;
   return (
-    <View style={s.slot}>
+    <Animated.View style={[s.slot, { opacity: breathe }]}>
       <Text style={[s.slotText, { color: labelColour }]}>{props.label}</Text>
       <View style={[s.slotBar, { backgroundColor: barColour }]} />
-    </View>
+    </Animated.View>
   );
 }
 

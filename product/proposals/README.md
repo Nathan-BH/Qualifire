@@ -10,3 +10,4 @@ original (pre-WP-3) vocabulary — the note at the top of each file explains the
   "ride n of N" honesty ladder, and the noise-floor question it depends on.
 - `SETUP-UX.md` — largely built (ROUTES-as-editor, first-run, nudge pad). Depth strip: dropped.
 - `ROUTING-AND-SEGMENTATION.md` — still a proposal (IDEAS §29, parked); its §3 gate rules shipped.
+- `watch.md` — idea only (2026-10-08, not urgent): a smartwatch glance with a sector ring and a breathing current sector. No watch owned yet; feasibility captured, nothing built.

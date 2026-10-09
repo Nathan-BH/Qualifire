@@ -55,8 +55,9 @@ import {
 // virgin-cycle20 brief 05 (Nathan, 2026-09-30): the app serves walking and
 // running too, so the user sees "activities"; the tab ID stays 'rides' (it is
 // referenced across screens and never shown).
+// virgin-cycle27 07 (Nathan 2026-10-08): the tab is ROUTES again (was MAP in cycle24; places live inside routes).
 const TAB_LABEL: Record<Tab, string> = {
-  record: 'record', rides: 'activities', routes: 'map', settings: 'settings', demo: 'demo',
+  record: 'record', rides: 'activities', routes: 'routes', settings: 'settings', demo: 'demo',
 };
 
 /**

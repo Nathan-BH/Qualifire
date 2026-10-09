@@ -316,7 +316,7 @@ test('routemap: <M.Map> carries touchRotate={rotateEnabled} (not a literal false
     'onRegionDidChange handler not found on <M.Map> — WP-M reads the rider\'s rotation back through it');
 });
 
-test('routemap: exactly one zoom bar (MapLibre) with exactly one compass reset button — the PNG rung is gone (virgin-cycle22 05)', () => {
+test('routemap: exactly one zoom bar (MapLibre), no compass button — FIT resets north (virgin-cycle27 08)', () => {
   // Same static-guard doctrine as the tests above.
   const src = fs.readFileSync(
     path.join(TESTS_DIR, '..', 'src', 'ui', 'wayMapView.tsx'), 'utf8');
@@ -327,8 +327,9 @@ test('routemap: exactly one zoom bar (MapLibre) with exactly one compass reset b
   const creditTag = src.indexOf('<Credit rung="maplibre"', firstZoomBar);
   assert(creditTag > firstZoomBar, '<Credit rung="maplibre" ...> not found after the zoom bar');
   const mapLibreResets = src.slice(firstZoomBar, creditTag).match(/onPress=\{resetNorth\}/g) ?? [];
-  assert(mapLibreResets.length === 1,
-    `expected exactly one onPress={resetNorth} in the MapLibre zoom bar, got ${mapLibreResets.length}`);
+  assert(mapLibreResets.length === 0, 'no onPress={resetNorth} button left in the bar (FIT calls resetNorth())');
+  assert(!src.includes('accessibilityLabel="Reset map to north up"') && !src.includes('>↑<'), '↑ button retired');
+  assert(src.slice(firstZoomBar, creditTag).includes("if (fitMeNext === 'fit' && rotateEnabled) resetNorth();"), 'FIT resets north');
   // Code tokens only (history comments may still say "PNG rung", see the file header).
   // (the asset path is concatenated so easignore_suite's relative-require scanner does not read this line as a require).
   for (const gone of ['PngWayMap', 'setImgFailed', 'setMapFailed', 'onMapFailed', 'const IMAGES', 'MAP IMAGE FAILED', 'needs the tile map', "require('" + '../../assets/ways/', 'rung="png"', 'cropFor(', 'gateTickPx(', 'nearestOnPath(', 'LayoutChangeEvent']) {
@@ -398,11 +399,11 @@ test('virgin-cycle22 06: the MapLibre zoom bar has ONE FIT/ME toggle (fitMeNextM
     'FIT and ME each appear once, as literal JSX text (ui-strings entries stay valid)');
   assert(bar.includes("fitMeNext === 'fit'"), 'the label branches on fitMeNext');
   assert(/fitMeNext === 'fit'\s*\?\s*<Text[^>]*>FIT<\/Text>\s*:\s*<Text[^>]*>ME<\/Text>/.test(bar), "label = the NEXT action: fitMeNext 'fit' shows FIT, otherwise ME");
-  assert((bar.match(/onPress=\{resetNorth\}/g) ?? []).length === 1, 'compass untouched');
+  assert((bar.match(/onPress=\{resetNorth\}/g) ?? []).length === 0, 'compass gone (virgin-cycle27 08)');
   assert(src.includes('const fitMeNext = fitMeNextMode(mode, showRider);'), 'fitMeNext comes from the pure helper');
   assert(src.includes('fitMeNextMode') && src.includes("from './wayMapGeo.ts'"), 'helper imported from wayMapGeo.ts');
   const pressables = (bar.match(/<Pressable/g) ?? []).length;
-  assert(pressables === 4, `four Pressables in the bar (+, −, FIT/ME, ↑), got ${pressables}`);
+  assert(pressables === 3, `three Pressables in the bar (+, −, FIT/ME), got ${pressables}`);
 });
 
 test('virgin-cycle22 09: the native map is never handed a different mapStyle — key and style come from ONE mapStyleFor call, and a remount resets the mode', () => {

@@ -1,5 +1,5 @@
 /**
- * MAP tab (virgin-cycle24 brief 03, Nathan 2026-10-06). The old ROUTES tab
+ * ROUTES tab (MAP in cycle24; renamed back in virgin-cycle27 07) (virgin-cycle24 brief 03, Nathan 2026-10-06). The old ROUTES tab
  * (a places list + route cards) is now one full-bleed map of the active
  * sport's catalog, with three levels:
  *   OVERVIEW    every place a labelled pin, ONE line per route pair (A->B and
@@ -11,7 +11,7 @@
  *               lists the ways.
  * The sheet header opens the existing CatalogDetailScreen (rename/merge/delete/
  * edit gates stay reachable). The file keeps its old name and the tab id
- * 'routes'; only the tab label changed to `map`.
+ * 'routes'; the tab label is `routes` again.
  * virgin-cycle25 brief 02: route focus also carries the way's trend panel (trendPanelModel.ts + ResultsPlot inline) under the way rows; place focus unchanged.
  *
  * B-39: the catalog is read per render, never captured at import.
@@ -25,6 +25,7 @@ import {
   overviewModel, placeFocusModel, routeFocusModel, type CatalogMapDeps,
 } from './catalogMapModel.ts';
 import CatalogMapView, { catalogAssetFor, type CatalogMapFocus } from './catalogMapView.tsx';
+import { getStatus, lastKnownPositionIfPermitted, refreshPositionIfPermitted, subscribe, type TrackerStatus } from '../location';
 import { useTheme } from './themeContext.tsx';
 import { useTabNav } from './tabNav.tsx';
 import ResultsPlot from './resultsPlot.tsx';
@@ -42,6 +43,22 @@ export default function RoutesScreen() {
   // virgin-cycle25 02: the tapped dot of the trend panel, keyed by way so a way
   // switch never carries a selection over (no effect needed: derived below).
   const [plotSel, setPlotSel] = useState<{ wayId: string; rideId: string } | null>(null);
+
+  // virgin-cycle27 09 (Nathan 2026-10-08): the rider's position for the blue dot and the ME half of
+  // the toggle. Order (Fable ruling 8.1): a LIVE fix from the shared store this launch → the phone's
+  // last known position (OS cache, read once on open, kept in local state, never written to the
+  // store) → nothing (toggle reads FIT, no dot, nothing said). Plus ONE quiet fresh read when the tab
+  // opens and one per ME tap (never prompts; RECORD is still the only place that asks).
+  const [status, setStatus] = useState<TrackerStatus>(getStatus());
+  const [lastKnown, setLastKnown] = useState<{ lat: number; lon: number } | null>(null);
+  useEffect(() => subscribe(setStatus), []);
+  useEffect(() => {
+    let alive = true;
+    void lastKnownPositionIfPermitted().then((p) => { if (alive && p !== null) setLastKnown({ lat: p.lat, lon: p.lon }); });
+    void refreshPositionIfPermitted();
+    return () => { alive = false; };
+  }, []);
+  const here = status.lastLat !== null && status.lastLon !== null ? { lat: status.lastLat, lon: status.lastLon } : lastKnown;
 
   const deps: CatalogMapDeps = {
     catalog: CATALOG,
@@ -97,6 +114,8 @@ export default function RoutesScreen() {
         onPressPin={(id) => setFocus({ level: 'place', placeId: id, highlightRouteId: null })}
         onPressLine={onPressRoute}
         onPressEmpty={toOverview}
+        here={here}
+        onMe={() => { void refreshPositionIfPermitted(); }}
       />
       <View style={[st.badge, { backgroundColor: t.card, borderColor: t.cardBorder }]} pointerEvents="none">
         <Text style={[st.badgeText, { color: t.textDim }]}>

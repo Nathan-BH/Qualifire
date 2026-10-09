@@ -176,7 +176,7 @@ export default function CatalogDetailScreen({ request }: { request: CatalogDetai
       )}
 
       <Pressable style={[st.slimBtn, { backgroundColor: t.accent }]} onPress={() => tabNav.closeCatalog()}>
-        <Text style={[st.slimBtnText, { color: t.onAccent }]}>BACK TO MAP</Text>
+        <Text style={[st.slimBtnText, { color: t.onAccent }]}>BACK</Text>
       </Pressable>
     </ScrollView>
   );
@@ -232,8 +232,10 @@ function PlaceBody({
         </>
       )}
 
-      <View style={{ marginTop: 12 }}>
+      {/* virgin-cycle27 06 (Nathan 2026-10-08): the map runs edge to edge like the ACTIVITIES cards — bleed frame, parent inset cancelled on the map only. */}
+      <View style={{ marginTop: 12, marginHorizontal: -16 }}>
         <WayMapView
+          bleed
           variant="browse"
           place={{ lat: model.lat, lon: model.lon, radiusM: model.radiusM }}
           wayId={null}
@@ -405,7 +407,9 @@ function WaySection({
   return (
     <View style={{ marginTop: 16 }}>
       <Text style={[st.h2, { color: t.textDim, marginTop: 0 }]}>WAY · {r.variantLabel}</Text>
-      <WayMapView variant="browse" wayId={r.refLineId} lat={null} lon={null} zoom={1} height={260} showRider={false} />
+      <View style={{ marginHorizontal: -16 }}>
+        <WayMapView bleed variant="browse" wayId={r.refLineId} lat={null} lon={null} zoom={1} height={260} showRider={false} />
+      </View>
 
       <View style={{ marginTop: 8 }}>
         {r.lengthLabel !== null ? <FactRow label="length" value={r.lengthLabel} t={t} /> : null}

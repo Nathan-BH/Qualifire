@@ -21,13 +21,11 @@ export interface FeedCardModel {
   /** route/way name, "Free activity", "<from> → <to>", or null (header shows the date only) */
   title: string | null;
   variant: FeedCardVariant;
-  /** 'route': the time (fmt m:ss.d), '' when unranked; 'plain': the ride's wall-clock duration, or '' when endMs <= startMs */
+  /** 'route': the time (fmt m:ss.d) — or, unranked, the wall-clock duration (virgin-cycle27 10: the total activity time stays visible); 'plain': the duration, '' when endMs <= startMs */
   heroLabel: string;
   heroTier: UiTier;         // 'route': detail.lapTier (neutral while ignored); 'plain': 'neutral'
-  rankLabel: string | null; // 'P3/10' or null
-  /** brief 05 (Nathan 2026-10-07): a route activity that cannot be ranked (unrankedForDisplay):
-   * the card shows NOT_RANKED_LABEL in the hero slot, no time, no rank, no quality word, and
-   * leaves the strip row empty. Always false for 'plain'. */
+  rankLabel: string | null; // 'P3/10'; NOT_RANKED_LABEL when unranked (virgin-cycle27 10); null = nothing
+  /** virgin-cycle27 10 (Nathan 2026-10-08, supersedes brief 05's "no time"): a route activity that cannot be ranked (unrankedForDisplay) keeps its total time (durationLabel) in neutral, shows NOT_RANKED_LABEL where the rank goes, no quality word, empty strip. Always false for 'plain'. */
   unranked: boolean;
   ignored: boolean;
   wayId: string | null;     // the map asset for 'route'; null for 'plain'
@@ -87,9 +85,9 @@ export function buildFeedCard(row: RideRowModel, detail: RideDetailModel, meta: 
     dateLabel: row.dateLabel,
     title: row.wayName,
     variant: route ? 'route' : 'plain',
-    heroLabel: route ? (unranked ? '' : row.lapLabel) : durationLabel(meta),
-    heroTier: route ? detail.lapTier : 'neutral',
-    rankLabel: route && !unranked && row.rank ? `P${row.rank.pos}/${row.rank.of}` : null,
+    heroLabel: route ? (unranked ? durationLabel(meta) : row.lapLabel) : durationLabel(meta),
+    heroTier: route && !unranked ? detail.lapTier : 'neutral',
+    rankLabel: route ? (unranked ? NOT_RANKED_LABEL : row.rank ? `P${row.rank.pos}/${row.rank.of}` : null) : null,
     unranked,
     ignored: detail.ignored,
     wayId: route ? detail.wayId : null,

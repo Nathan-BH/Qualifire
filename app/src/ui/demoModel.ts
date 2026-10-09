@@ -381,8 +381,8 @@ export function demoLiveViewModel(
 /** virgin-cycle15 brief 03: DEMO playback speed presets (Nathan 2026-09-26:
  * "5x,15x,25x"). Deliberately NOT REPLAY_RATES (5/10/25) — DEMO is a test
  * harness with its own list. 25 was the fixed RATE before this brief, so the
- * default demo ride is unchanged. */
-export const DEMO_RATES = [5, 15, 25] as const;
+ * default demo ride is unchanged. virgin-cycle27 11 (Nathan 2026-10-08): 1x added first — real time, next to the three presets. */
+export const DEMO_RATES = [1, 5, 15, 25] as const;
 export type DemoRate = (typeof DEMO_RATES)[number];
 export const DEMO_RATE_DEFAULT: DemoRate = 25;
 

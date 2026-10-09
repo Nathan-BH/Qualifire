@@ -70,7 +70,7 @@ import { decodeEventsFile } from '../storage/eventsJsonl.ts';
 import { listRides } from '../storage';
 import type { PickEvent, RideMeta } from '../storage/types';
 import { confirmDeleteRide, exportRideGpx, toggleIgnoreRide } from './rideActions.ts';
-import { NOT_RANKED_LABEL, durationLabel, sectorGapLabel } from './feedModel.ts';
+import { durationLabel, sectorGapLabel } from './feedModel.ts';
 import { ActivityMenu, MenuButton, type MenuAnchor, type MenuItem } from './activityMenu.tsx';
 
 /** ResultScreen.tsx's PbDetail, lifted in verbatim — the ride-detail's own
@@ -449,6 +449,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
         <>
           <View style={styles.mapWrap}>
             <WayMapView
+              bleed
               variant="browse"
               wayId={model.wayId}
               lat={null}
@@ -476,7 +477,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
             <Text style={[styles.name, { color: t.text }]}>{wayLabelIn(currentCatalog(), model.wayId as string)}</Text>
             <Text style={[styles.date, { color: t.textDim }]}>{dateTimeLabel(request.startedAtMs)}</Text>
             {model.unranked
-              ? <Text style={[styles.notRanked, { color: t.textDim }]}>{NOT_RANKED_LABEL}</Text>
+              ? <Text style={[st.big, { color: t.accentText }]}>{durationLabel(meta)}</Text>
               : <Text style={[st.big, { color: tierTextColour(model.lapTier, t) }]}>{model.lapLabel}</Text>}
             <Text style={[styles.rankLine, { color: t.text2 }]}>{model.rankLine}</Text>
             {model.referenceOf ? (
@@ -497,7 +498,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
               no fabricated lap/rank/sectors, this ride genuinely has none on
               file. */}
           <View style={styles.mapWrap}>
-            <WayMapView variant="browse" wayId={null} lat={null} lon={null} zoom={1} height={320} showRider={false} trail={fixes ?? undefined} />
+            <WayMapView bleed variant="browse" wayId={null} lat={null} lon={null} zoom={1} height={320} showRider={false} trail={fixes ?? undefined} />
           </View>
           <View style={styles.pad}>
             <Text style={[styles.name, { color: t.text }]}>{wayLabelIn(currentCatalog(), model.referenceOf.id)}</Text>
@@ -509,7 +510,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
       ) : model.kind === 'free' && model.free ? (
         <>
           <View style={styles.mapWrap}>
-            <WayMapView variant="browse" wayId={null} lat={null} lon={null} zoom={1} height={320} showRider={false} trail={fixes ?? undefined} />
+            <WayMapView bleed variant="browse" wayId={null} lat={null} lon={null} zoom={1} height={320} showRider={false} trail={fixes ?? undefined} />
           </View>
           <View style={styles.pad}>
             <Text style={[styles.name, { color: t.text }]}>{FREE_RIDE_ROW_NAME}</Text>
@@ -525,7 +526,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
               route-mode ride that genuinely matched nothing; falls back to the
               old plain text only for a pre-GPX+ ride with no sidecar pick at all. */}
           <View style={styles.mapWrap}>
-            <WayMapView variant="browse" wayId={null} lat={null} lon={null} zoom={1} height={320} showRider={false} trail={fixes ?? undefined} />
+            <WayMapView bleed variant="browse" wayId={null} lat={null} lon={null} zoom={1} height={320} showRider={false} trail={fixes ?? undefined} />
           </View>
           <View style={styles.pad}>
             {pickLabel !== null ? <Text style={[styles.name, { color: t.text }]}>{pickLabel}</Text> : null}
@@ -615,6 +616,7 @@ export default function RideDetailScreen({ request }: { request: RideDetailReque
       {adjust !== null ? (
         <View style={styles.pad}>
           <GateAdjustCard
+            mapInset={16}
             wayId={adjust.wayId}
             refLine={adjust.ref}
             refLengthM={adjust.refLengthM}
@@ -638,12 +640,11 @@ const makeStyles = (t: PaddockTheme) => StyleSheet.create({
   topBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, height: 52 },
   roundBtn: { width: 40, height: 40, borderRadius: 20, borderWidth: 1, borderColor: t.cardBorder, backgroundColor: t.race.card, alignItems: 'center', justifyContent: 'center' },
   roundGlyph: { fontSize: 26, lineHeight: 28, fontWeight: '700' },
-  mapWrap: { marginHorizontal: 16 },
+  mapWrap: { marginHorizontal: 0 }, // virgin-cycle27 06 (Nathan 2026-10-08): the map runs edge to edge like the ACTIVITIES cards — bleed frame, parent inset cancelled on the map only.
   pad: { paddingHorizontal: 16 },
   name: { fontSize: 22, fontWeight: '800', marginTop: 16 },
   date: { fontSize: 13, marginTop: 2, fontVariant: ['tabular-nums'] },
   rankLine: { fontSize: 13, marginTop: 2 },
-  notRanked: { fontSize: 22, fontWeight: '700', marginTop: 10 },
   replayBtn: { marginTop: 16, paddingVertical: 14, borderRadius: radius.btn, alignItems: 'center' },
   replayText: { fontSize: 15, fontWeight: '800', letterSpacing: 2 },
   h2: { paddingHorizontal: 16, marginTop: 28, marginBottom: 8 },

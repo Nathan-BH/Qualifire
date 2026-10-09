@@ -247,10 +247,10 @@
     {
       "file": "src/ui/CatalogDetailScreen.tsx",
       "kind": "text",
-      "text": "BACK TO MAP",
-      "reason": "virgin-cycle24 03: the ROUTES tab is now the MAP tab; same button, renamed",
-      "since": "2026-10-07",
-      "by": "sonnet-executor"
+      "text": "BACK",
+      "reason": "virgin-cycle27 07: tab renamed ROUTES; the button no longer names the tab (minimal text)",
+      "since": "2026-10-08",
+      "by": "Sonnet execute, virgin-cycle27 brief 07"
     },
     {
       "file": "src/ui/CatalogDetailScreen.tsx",
@@ -775,14 +775,6 @@
     {
       "file": "src/ui/RecordScreen.tsx",
       "kind": "literal",
-      "text": "Interrupted · saved as free activity",
-      "reason": "virgin-cycle21 04: only trace of a killed ride (Nathan 2026-10-04), one flash in the RECORD sub-label",
-      "since": "2026-10-04",
-      "by": "virgin-cycle21 04"
-    },
-    {
-      "file": "src/ui/RecordScreen.tsx",
-      "kind": "literal",
       "text": "Location (GPS) is turned off",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
@@ -807,7 +799,7 @@
     {
       "file": "src/ui/RecordScreen.tsx",
       "kind": "literal",
-      "text": "START NOT DETECTED",
+      "text": "STARTING FROM",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"
@@ -815,10 +807,10 @@
     {
       "file": "src/ui/RecordScreen.tsx",
       "kind": "literal",
-      "text": "STARTING FROM",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
+      "text": "Saved as free activity",
+      "reason": "virgin-cycle27 10: no negative word; the fact is that it was saved",
+      "since": "2026-10-08",
+      "by": "Sonnet execute, virgin-cycle27 brief 10"
     },
     {
       "file": "src/ui/RecordScreen.tsx",
@@ -855,10 +847,10 @@
     {
       "file": "src/ui/RecordScreen.tsx",
       "kind": "literal",
-      "text": "same activity · new meaning",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
+      "text": "same route · new meaning",
+      "reason": "virgin-cycle27 03 (Nathan 2026-10-08): route, not activity — the slogan is about riding the same route again",
+      "since": "2026-10-08",
+      "by": "Sonnet execute, virgin-cycle27 brief 03"
     },
     {
       "file": "src/ui/RecordScreen.tsx",
@@ -1476,6 +1468,30 @@
       "since": "2026-10-07",
       "by": "sonnet-executor",
       "long": true
+    },
+    {
+      "file": "src/ui/catalogMapView.tsx",
+      "kind": "literal",
+      "text": "rider-dot",
+      "reason": "virgin-cycle27 09: MapLibre layer id of the MAP tab rider dot (same id as wayMapView.tsx), never shown as text",
+      "since": "2026-10-09",
+      "by": "Sonnet execute, virgin-cycle27 brief 08"
+    },
+    {
+      "file": "src/ui/catalogMapView.tsx",
+      "kind": "text",
+      "text": "FIT",
+      "reason": "virgin-cycle27 08: the MAP tab gets the same coupled FIT/ME toggle as every map",
+      "since": "2026-10-09",
+      "by": "Sonnet execute, virgin-cycle27 brief 08"
+    },
+    {
+      "file": "src/ui/catalogMapView.tsx",
+      "kind": "text",
+      "text": "ME",
+      "reason": "virgin-cycle27 08: the MAP tab gets the same coupled FIT/ME toggle as every map",
+      "since": "2026-10-09",
+      "by": "Sonnet execute, virgin-cycle27 brief 08"
     },
     {
       "file": "src/ui/demoModel.ts",
@@ -2559,26 +2575,10 @@
     {
       "file": "src/ui/rideDetailModel.ts",
       "kind": "literal",
-      "text": "GPS gap at a gate",
-      "reason": "virgin-cycle23 brief 05: detail reason line for an estimated lap (was \"no time\"; no \"estimated\" word)",
-      "since": "2026-10-07",
-      "by": "Sonnet execute, virgin-cycle23 brief 05"
-    },
-    {
-      "file": "src/ui/rideDetailModel.ts",
-      "kind": "literal",
       "text": "P{…} of {…} on this way",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/rideDetailModel.ts",
-      "kind": "literal",
-      "text": "a gate was missed",
-      "reason": "virgin-cycle23 brief 05: detail reason line for a missed-gate lap (was \"no lap\"; no \"lap\" word, Nathan 2026-10-07)",
-      "since": "2026-10-07",
-      "by": "Sonnet execute, virgin-cycle23 brief 05"
     },
     {
       "file": "src/ui/rideDetailModel.ts",
@@ -3076,14 +3076,6 @@
     {
       "file": "src/ui/settings.tsx",
       "kind": "attr:label",
-      "text": "Start place",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/settings.tsx",
-      "kind": "attr:label",
       "text": "Theme",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
@@ -3258,14 +3250,6 @@
       "file": "src/ui/settings.tsx",
       "kind": "text",
       "text": "SPORTS",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/settings.tsx",
-      "kind": "text",
-      "text": "STARTING AN ACTIVITY",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"
@@ -3460,14 +3444,6 @@
       "file": "src/ui/wayMapView.tsx",
       "kind": "attr:accessibilityLabel",
       "text": "Map data sources: {…}",
-      "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
-      "since": "2026-10-02",
-      "by": "bootstrap"
-    },
-    {
-      "file": "src/ui/wayMapView.tsx",
-      "kind": "attr:accessibilityLabel",
-      "text": "Reset map to north up",
       "reason": "bootstrap: survived the cycle20 clutter audit (CLUTTER-REVIEW.md)",
       "since": "2026-10-02",
       "by": "bootstrap"

@@ -110,6 +110,7 @@ export default function GateAdjustScreen({ request }: { request: GateAdjustReque
       </View>
       {draft === null ? null /* unreachable from the UI: CatalogDetailScreen hides "edit gates" without a draft (virgin-cycle20 08) */ : (
         <GateAdjustCard
+          mapInset={16}
           key={request.wayId}
           wayId={request.wayId}
           refLine={draft.ref}

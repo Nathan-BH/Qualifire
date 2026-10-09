@@ -59,14 +59,14 @@ export function isFullscreen(phase: RecordPhase): boolean {
  * the detected landmark is a SUGGESTION — it stands in for `from` only while
  * the rider has not tapped a START pill this ride. An explicit tap
  * (`fromExplicit`) wins and sticks, even if detection later changes or goes
- * null; 'pick' mode never consults detection at all. */
+ * null; 'pick' mode never consults detection at all.
+ * virgin-cycle27 01 (Nathan 2026-10-08 ruling 1.2): no 'pick' mode any more — detection is always consulted until the rider taps a START pill. */
 export function effectiveFromId(input: {
-  startMode: 'auto' | 'pick';
   detectedId: string | null;
   from: string;
   fromExplicit: boolean;
 }): string {
-  if (input.startMode !== 'auto' || input.fromExplicit) return input.from;
+  if (input.fromExplicit) return input.from;
   return input.detectedId ?? input.from;
 }
 

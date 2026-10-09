@@ -30,7 +30,6 @@ export interface Settings {
   /** virgin-cycle20 brief 08 (Nathan, clutter review): `liveMap` and `tower`
    * (Live map, Rankings) are no longer settings — the live map and the
    * rankings are always on. Old settings.json keys are scrubbed on load. */
-  startMode: 'auto' | 'pick';
   earcons: boolean;
   /** WP-K: paint each sector of the route line in the tier it earned (live
    * map, ride-detail trace, RIDES row) — off keeps the line all yellow.
@@ -60,7 +59,6 @@ export interface Settings {
 }
 
 const DEFAULTS: Settings = {
-  startMode: 'auto',
   earcons: true,
   sectorColours: false,
   selfDots: true,
@@ -101,6 +99,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         delete (saved as Record<string, unknown>).timing; // virgin-cycle14 #5: "Luck factor" row retired; scoring is raw-only, scrub old files
         delete (saved as Record<string, unknown>).liveMap; // virgin-cycle20 08: Live map row retired, always on
         delete (saved as Record<string, unknown>).tower; // virgin-cycle20 08: Rankings row retired, always on
+        delete (saved as Record<string, unknown>).startMode; // virgin-cycle27 01 (Nathan 2026-10-08): Start place row retired, the start is always detected, pills stay tappable
         // virgin-cycle14 brief 01: never load an unparseable time (hand-edited file).
         if (typeof saved.dayStart !== 'string' || parseHHMM(saved.dayStart) === null) delete saved.dayStart;
         if (typeof saved.dayEnd !== 'string' || parseHHMM(saved.dayEnd) === null) delete saved.dayEnd;
@@ -647,15 +646,6 @@ export default function SettingsScreen() {
         </Row>
         <Row label="Gate buzz" hint="A short buzz at each gate crossing." help={help} t={t}>
           <Switch on={s.earcons} onToggle={() => set('earcons', !s.earcons)} t={t} />
-        </Row>
-      </View>
-
-      <Text style={[st.h2, { color: t.textDim }]}>STARTING AN ACTIVITY</Text>
-      <View style={[st.card, { backgroundColor: t.card, borderColor: t.cardBorder }]}>
-        <Row label="Start place" help={help} t={t}>
-          <Seg t={t} value={s.startMode}
-            options={[['auto', 'detect'], ['pick', 'choose']]}
-            onPick={(v) => set('startMode', v)} />
         </Row>
       </View>
 

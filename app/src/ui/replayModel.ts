@@ -21,12 +21,13 @@ import type { Tier } from './chips.tsx';
 
 /** Ride-seconds per real second. Nathan/LBH: 10 first, tweak later. ONE constant. */
 export const REPLAY_RATE_DEFAULT = 10;
-export const REPLAY_RATES: readonly number[] = [5, 10, 25];
+export const REPLAY_RATES: readonly number[] = [1, 5, 10, 25]; // virgin-cycle27 11 (Nathan 2026-10-08): 1x = real time, first on the dial
 /** dp-to-ride-seconds scrub gain, per unit rate (cycle15 brief 08 decision 4). On a ~240 dp
  * bar this makes one full-width swipe move rate*96 ride-seconds: 8 min at 5x, 16 min at 10x,
- * 40 min at 25x — a fine nudge at low speed, a whole commute in one swipe at high speed. */
+ * 40 min at 25x — a fine nudge at low speed, a whole commute in one swipe at high speed.
+ * 1x (virgin-cycle27 11) = 1.6 min per swipe — frame-level nudging in real time. */
 export const SCRUB_S_PER_DP_PER_RATE = 0.4;
-/** Cycles the replay speed dial 5 -> 10 -> 25 -> 5 (wraps). A rate not in REPLAY_RATES
+/** Cycles the replay speed dial 1 -> 5 -> 10 -> 25 -> 1 (wraps; virgin-cycle27 11 added 1x). A rate not in REPLAY_RATES
  * (shouldn't happen) falls back to REPLAY_RATES[0] rather than throwing. */
 export function nextReplayRate(rate: number): number {
   const i = REPLAY_RATES.indexOf(rate);
@@ -44,7 +45,7 @@ export function clampClockS(v: number, endS: number): number {
 }
 /** Redraw cadence — 20 fps; see brief decision 5. */
 export const REPLAY_TICK_MS = 50;
-/** Ride-seconds the clock keeps running past the FINISH crossing before auto-pause (1 real s at 10x). */
+/** Ride-seconds the clock keeps running past the FINISH crossing before auto-pause (1 real s at 10x, 10 real s at 1x — virgin-cycle27 11). */
 export const REPLAY_ROLL_OUT_S = 10;
 /** Raw fixes kept this far either side of [startMs, endMs] so the ends interpolate (selfRaceModel's EDGE_PAD_MS). */
 export const REPLAY_EDGE_PAD_MS = 5000;

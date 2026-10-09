@@ -452,11 +452,19 @@ test('replay: loadReplayRider — memory fs round trip, and null on a missing/un
 
 // ============================================================ cycle15 brief 08 — speed dial / scrub bar
 
-test('replay: nextReplayRate cycles 5 -> 10 -> 25 -> 5 and falls back on an unknown rate', () => {
+test('replay: nextReplayRate cycles 1 -> 5 -> 10 -> 25 -> 1 (virgin-cycle27 11: 1x = real time) and falls back on an unknown rate', () => {
+  assert(JSON.stringify(REPLAY_RATES) === JSON.stringify([1, 5, 10, 25]), `REPLAY_RATES = ${JSON.stringify(REPLAY_RATES)}`);
+  assert(nextReplayRate(1) === 5, `expected 5, got ${nextReplayRate(1)}`);
   assert(nextReplayRate(5) === 10, `expected 10, got ${nextReplayRate(5)}`);
   assert(nextReplayRate(10) === 25, `expected 25, got ${nextReplayRate(10)}`);
-  assert(nextReplayRate(25) === 5, `expected wrap to 5, got ${nextReplayRate(25)}`);
+  assert(nextReplayRate(25) === 1, `expected wrap to 1, got ${nextReplayRate(25)}`);
   assert(nextReplayRate(7) === REPLAY_RATES[0], `unknown rate must fall back to REPLAY_RATES[0], got ${nextReplayRate(7)}`);
+  assert(REPLAY_RATE_DEFAULT === 10, 'the default is still 10x');
+});
+test('virgin-cycle27 11: at 1x the replay clock runs at wall-clock pace and a scrub is 0.4 ride-s per dp', () => {
+  const a = { clockS: 100, realMs: 1_000_000, rate: 1, playing: true };
+  assert(replayClockS(a, 1_000_000 + 2_500) === 102.5, `2.5 real s at 1x -> 102.5 ride-s, got ${replayClockS(a, 1_000_000 + 2_500)}`);
+  assert(scrubDeltaS(10, 1) === 4, `10 dp at 1x -> 4 ride-s, got ${scrubDeltaS(10, 1)}`);
 });
 
 test('replay: scrubDeltaS scales linearly with dx and rate, sign follows dx', () => {
